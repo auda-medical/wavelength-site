@@ -157,7 +157,9 @@
         "city": "Dartford, Kent",
         "places": 25,
         "price": 375,
-        "stripeLink": "https://book.stripe.com/cNi00i9qybB8gBt4vscs800"
+        "stripeLink": "https://book.stripe.com/cNi00i9qybB8gBt4vscs800",
+        "street": "Darenth Wood Road",
+        "postcode": "DA2 8DA"
       }
     ],
     "accreditation": []
