@@ -17,7 +17,8 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 
 ## Learn and newsletter
 - Learn posts: Markdown files in `content/learn/` (front matter: title, summary, category, date, author, draft). `draft: true` or a future date keeps a post off the live site. Preview drafts with `DRAFTS=1 node build.js`. Images go in `content/learn/images/` and are referenced as `/learn/images/<file>`. The Learn nav link appears once one post is live.
-- Newsletter form: `newsletter` in `data/site.json`. Empty `action` means the form opens an email to hello@. Fill `action`, `hidden`, field names from the Zoho Campaigns signup form embed code to send sign-ups straight to Zoho. Zoho redirect after sign-up: `/subscribe/thanks/`.
+- Newsletter form: `newsletter` in `data/site.json` posts straight to the Zoho Campaigns form "Website newsletter sign-up" (list "Wavelength newsletter", custom field Role = CONTACT_CF1, double opt-in on, redirect to `/subscribe/thanks/`). Empty `action` falls back to emailing hello@.
+- Zoho Campaigns (EU): templates "Wavelength monthly newsletter" and "Wavelength welcome email"; workflow "Newsletter welcome" sends the welcome email when a contact joins the list. Merge tag for first name: `$[LI:FIRSTNAME]$`.
 - Email templates for Zoho Campaigns: `src/email/newsletter/` and `src/email/welcome/` (live at /email/...). Images must use absolute https URLs.
 
 ## Volunteer area (hidden)
