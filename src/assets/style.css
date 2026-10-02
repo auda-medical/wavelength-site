@@ -192,6 +192,8 @@ section{position:relative}
 .portrait::before{content:"";position:absolute;inset:-30%;background:radial-gradient(circle at 70% 20%,rgba(42,127,138,.6),transparent 50%),radial-gradient(circle at 20% 90%,rgba(127,196,204,.25),transparent 45%);animation:drift3 16s ease-in-out infinite alternate;z-index:-1}
 .portrait svg{width:46%;height:auto;opacity:.9}
 .portrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.portrait.has-photo::after{content:"";position:absolute;inset:auto 0 0 0;height:30%;background:linear-gradient(to top,rgba(10,21,38,.72),transparent)}
+.portrait.has-photo .cap{z-index:1;color:var(--cream)}
 .portrait .cap{position:absolute;left:24px;bottom:22px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mist)}
 .director h2{font-family:var(--serif);font-size:clamp(40px,5vw,60px);margin:14px 0 6px}
 .director .role{color:var(--teal-ink);font-weight:600;margin-bottom:26px}

@@ -338,7 +338,7 @@ function courseCard(c, h = 'h3') {
 function directorBlock() {
   const d = site.director;
   return `<div class="director">
-    <div class="portrait reveal">${d.photo ? `<img src="${d.photo}" alt="${esc(d.name)}" loading="lazy">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">Course Director</span></div>
+    <div class="portrait reveal${d.photo ? ' has-photo' : ''}">${d.photo ? `<img src="${d.photo}" alt="${esc(d.name)}, ${esc(d.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">Course Director</span></div>
     <div>
       <p class="eyebrow reveal">Faculty</p>
       <h2 class="reveal" data-d="1">${esc(d.name)}</h2>
@@ -443,16 +443,17 @@ ${ctaBand()}`,
 pages['/faculty/'] = layout({
   title: 'Faculty | Consultant-led POCUS training',
   pathname: '/faculty/',
-  description: `Wavelength courses are led by ${site.director.name}, ${site.director.title} and Ultrasound Lead, with a faculty of emergency medicine consultants.`,
+  description: `Meet the Wavelength team: Course Director ${site.director.name}, Consultant in Emergency Medicine, and General Manager Dr Zahra Habibzadeh, ultrasonographer.`,
   jsonld: [
     breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Faculty', href: '/faculty/' }]),
     { '@context': 'https://schema.org', '@type': 'Person', name: site.director.name, jobTitle: site.director.title, worksFor: { '@id': url('/#org') }, description: site.director.bio[0] },
+    ...(site.team || []).map((m) => ({ '@context': 'https://schema.org', '@type': 'Person', name: m.name, jobTitle: m.role, worksFor: { '@id': url('/#org') }, description: m.bio[0], ...(m.photo ? { image: url(m.photo) } : {}) })),
   ],
   body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Our faculty are emergency medicine consultants and experienced ultrasound practitioners. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
 <section class="section"><div class="wrap">${directorBlock()}</div></section>
 ${(site.team || []).map((m) => `<section class="section sand"><div class="wrap"><div class="director">
-  <div class="portrait reveal">${m.photo ? `<img src="${m.photo}" alt="${esc(m.name)}" loading="lazy">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">${esc(m.role)}</span></div>
-  <div><p class="eyebrow reveal">Management</p><h2 class="reveal" data-d="1">${esc(m.name)}</h2><p class="role reveal" data-d="1">${esc(m.role)}</p>${m.bio.map((p) => `<p class="reveal" data-d="2">${esc(p)}</p>`).join('')}</div>
+  <div class="portrait reveal${m.photo ? ' has-photo' : ''}">${m.photo ? `<img src="${m.photo}" alt="${esc(m.name)}, ${esc(m.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">${esc(m.role)}</span></div>
+  <div><p class="eyebrow reveal">Management</p><h2 class="reveal" data-d="1">${esc(m.name)}</h2><p class="role reveal" data-d="1">${m.title ? esc(m.title) + ' · ' : ''}${esc(m.role)}</p>${m.bio.map((p) => `<p class="reveal" data-d="2">${esc(p)}</p>`).join('')}${m.credentials ? `<div class="creds reveal" data-d="3">${m.credentials.map((x) => `<span class="chip dark">${esc(x)}</span>`).join('')}</div>` : ''}</div>
 </div></div></section>`).join('')}
 <section class="section"><div class="wrap"><div class="empty-dates reveal"><div><h3>Join the faculty</h3><p>Experienced in point-of-care ultrasound and keen to teach? We would like to hear from you.</p></div><a class="btn" href="${mailto(site.enquiriesEmail, 'Faculty enquiry')}">Get in touch ${arrow}</a></div></div></section>
 ${ctaBand()}`,

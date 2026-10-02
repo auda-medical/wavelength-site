@@ -6,9 +6,9 @@
   "bookingsEmail": "bookings@thewavelength.co.uk",
   "enquiriesEmail": "hello@thewavelength.co.uk",
   "company": "Auda Medical Limited",
-  "companyNumber": "",
+  "companyNumber": "07392667",
   "icoNumber": "",
-  "registeredOffice": "",
+  "registeredOffice": "99 Ericson Gardens, Bromley BR2 9FZ",
   "region": "Kent and London",
   "linkedin": "",
   "director": {
@@ -32,10 +32,17 @@
     {
       "name": "Dr Zahra Habibzadeh",
       "role": "General Manager",
+      "title": "Ultrasonographer and Emergency Clinical Specialist",
       "bio": [
-        "Zahra runs Wavelength day to day, from bookings and venues to delegate support. Contact her with any question about your place on a course."
+        "Zahra is an experienced ultrasonographer and emergency clinical specialist, with years of hands-on scanning in acute and emergency care.",
+        "As General Manager she runs Wavelength day to day, from course planning and venues to bookings and delegate support, and brings a sonographer's eye for image quality to every course."
       ],
-      "photo": ""
+      "credentials": [
+        "Ultrasonographer",
+        "Emergency Clinical Specialist",
+        "General Manager"
+      ],
+      "photo": "/assets/team-zahra.webp"
     }
   ],
   "legalUpdated": "2026-10-02"
