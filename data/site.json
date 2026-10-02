@@ -57,11 +57,24 @@
   ],
   "newsletter": {
     "_help": "Paste values from the Zoho Campaigns signup form embed code. Leave action empty and the form emails hello@ instead.",
-    "action": "",
-    "hidden": {},
+    "action": "https://zcv2-zcmp.maillist-manage.eu/weboptin.zc",
+    "hidden": {
+      "zc_trackCode": "",
+      "viewFrom": "URL_ACTION",
+      "submitType": "optinCustomView",
+      "lD": "1418ed950c00711d",
+      "emailReportId": "",
+      "zx": "14af401c14",
+      "zcvers": "2.0",
+      "oldListIds": "",
+      "mode": "OptinCreateView",
+      "zcld": "1418ed950c00711d",
+      "zctd": "",
+      "zc_formIx": "3z09b6a39ea463164dfcf669d7d256c211e209f6bd9798bf13a3bd52c5e909ffa7"
+    },
     "emailField": "CONTACT_EMAIL",
     "firstNameField": "FIRSTNAME",
-    "roleField": "",
+    "roleField": "CONTACT_CF1",
     "listName": "Wavelength newsletter"
   }
 }

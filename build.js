@@ -251,7 +251,7 @@ function subscribeForm({ id = 'sub', dark = false } = {}) {
       <label>Email<input name="${nm(n.emailField || 'CONTACT_EMAIL', 'Email')}" type="email" autocomplete="email" required></label>
     </div>
     ${!live || n.roleField ? `<label>Role<select name="${nm(n.roleField, 'Role')}" required><option value="">Choose your role</option>${ROLES.map((r) => `<option>${r}</option>`).join('')}</select></label>` : ''}
-    <label class="consent"><input type="checkbox" name="${live ? 'consent' : 'Consent'}" value="yes" required><span>Send me the Wavelength newsletter: ultrasound skills, new Learn posts and course dates. I can unsubscribe at any time. Read our <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
+    <label class="consent"><input type="checkbox"${live ? '' : ' name="Consent" value="yes"'} required><span>Send me the Wavelength newsletter: ultrasound skills, new Learn posts and course dates. I can unsubscribe at any time. Read our <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
     <div><button class="btn${dark ? ' btn-teal' : ''}" type="submit">Subscribe ${arrow}</button></div>
     ${live ? '' : '<p class="form-note">This opens your email app with your details ready to send.</p>'}
   </form>`;
