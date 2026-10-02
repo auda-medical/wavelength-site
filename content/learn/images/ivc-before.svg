@@ -22,7 +22,10 @@
   <path d="M640 474 C660 430 700 400 760 380" stroke="#DADEE2" stroke-width="10" fill="none"/>
   <path d="M640 474 C660 440 698 412 760 392" stroke="#07090D" stroke-width="12" fill="none"/>
   <path d="M250 620 H970" stroke="#B9C0C7" stroke-width="12" opacity=".7"/>
-  <rect x="250" y="626" width="720" height="200" fill="#151A20"/></g></g>
+  <rect x="250" y="626" width="720" height="200" fill="#151A20"/></g><g><path d="M0 0 H1200 V420 C900 440 400 430 0 450 Z" fill="#B5553F" opacity=".3"/>
+  <path d="M250 480 C500 472 750 480 970 490 L970 560 C750 550 500 542 250 550 Z" fill="#E0483F" opacity=".45"/>
+  <path d="M640 474 C660 440 698 412 760 392" stroke="#E0483F" stroke-width="12" fill="none" opacity=".55"/>
+  <path d="M250 620 H970" stroke="#EDE4D0" stroke-width="12" opacity=".5"/></g></g>
 <path d="M504.93720640997304 80.93638733435708 A170 170 0 0 0 695.062793590027 80.93638733435708 L1047.3543227765977 603.2300580440333 A800 800 0 0 1 152.64567722340246 603.2300580440333 Z" fill="none" stroke="#24344D" stroke-width="1.5"/>
 <g transform="translate(40 36)"><rect width="122" height="40" rx="20" fill="#EDEAE3"/><text x="61" y="26.5" text-anchor="middle" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="600" letter-spacing="3" fill="#0F1E33">BEFORE</text></g>
 <g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">

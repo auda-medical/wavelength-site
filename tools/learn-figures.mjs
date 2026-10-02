@@ -57,9 +57,11 @@ const curvi = (cx, cy, r0, r1, a) => {
   return `M${cx - r0 * s} ${cy + r0 * c} A${r0} ${r0} 0 0 0 ${cx + r0 * s} ${cy + r0 * c} L${cx + r1 * s} ${cy + r1 * c} A${r1} ${r1} 0 0 1 ${cx - r1 * s} ${cy + r1 * c} Z`;
 };
 
-const scan = (clipPath, inner) => `<clipPath id="fan"><path d="${clipPath}"/></clipPath>
+// Colour-coded anatomy laid over the scan (reverse anatomy), same colours as the 3D renders
+const A = { bone: '#EDE4D0', pleura: '#F2C14E', lung: '#E9A3A3', muscle: '#C9746B', liver: '#B5553F', vein: '#4A82D6', artery: '#E0483F' };
+const scan = (clipPath, inner, over = '') => `<clipPath id="fan"><path d="${clipPath}"/></clipPath>
 <path d="${clipPath}" fill="#05080D"/>
-<g clip-path="url(#fan)"><g filter="url(#sp)">${inner}</g></g>
+<g clip-path="url(#fan)"><g filter="url(#sp)">${inner}</g><g>${over}</g></g>
 <path d="${clipPath}" fill="none" stroke="#24344D" stroke-width="1.5"/>`;
 
 const files = {};
@@ -76,7 +78,9 @@ const softTissue = `
 files['lung-before.svg'] = svg(C.deep, `
 ${scan(linearBox, `${softTissue}
   <rect x="${LX}" y="${LT + 160}" width="${LW}" height="60" fill="#454C55"/>
-  <path d="M${LX} ${LT + 224} C${LX + 160} ${LT + 212} ${LX + 380} ${LT + 212} ${LX + LW} ${LT + 226}" stroke="#F2F4F6" stroke-width="13" fill="none"/>`)}
+  <path d="M${LX} ${LT + 224} C${LX + 160} ${LT + 212} ${LX + 380} ${LT + 212} ${LX + LW} ${LT + 226}" stroke="#F2F4F6" stroke-width="13" fill="none"/>`,
+  `<rect x="${LX}" y="${LT + 50}" width="${LW}" height="44" fill="${A.muscle}" opacity=".28"/>
+  <path d="M${LX} ${LT + 224} C${LX + 160} ${LT + 212} ${LX + 380} ${LT + 212} ${LX + LW} ${LT + 226}" stroke="${A.bone}" stroke-width="15" fill="none" opacity=".55"/>`)}
 <path d="M${LX} ${LT + 224} C${LX + 160} ${LT + 212} ${LX + 380} ${LT + 212} ${LX + LW} ${LT + 226}" stroke="#FFFFFF" stroke-width="5" fill="none" filter="url(#glow)" clip-path="url(#fan)"/>
 ${pill('BEFORE', 'before')}
 ${tag(LX + 300, LT + 216, LX + LW + 40, LT + 170, 'Bright line')}
@@ -96,8 +100,12 @@ ${scan(linearBox, `${softTissue}
   <path d="M${LX} ${pleuraY + 200} H${LX + LW}" stroke="#868F99" stroke-width="7"/>
   <path d="M${LX} ${pleuraY + 400} H${LX + LW}" stroke="#646C76" stroke-width="6"/>
   ${rib(LX + 90)}${rib(LX + LW - 90)}
-  <path d="M${LX + 150} ${pleuraY} H${LX + LW - 150}" stroke="#F4F6F8" stroke-width="9"/>`)}
-<path d="M${LX + 160} ${pleuraY} H${LX + LW - 160}" stroke="#FFFFFF" stroke-width="3" filter="url(#glow)"/>
+  <path d="M${LX + 150} ${pleuraY} H${LX + LW - 150}" stroke="#F4F6F8" stroke-width="9"/>`,
+  `<rect x="${LX}" y="${LT + 50}" width="${LW}" height="44" fill="${A.muscle}" opacity=".28"/>
+  <rect x="${LX + 170}" y="${pleuraY + 6}" width="${LW - 340}" height="${LB - pleuraY}" fill="${A.lung}" opacity=".16"/>
+  ${[LX + 90, LX + LW - 90].map((cx) => `<path d="M${cx - 80} ${LT + 168} Q${cx} ${LT + 128} ${cx + 80} ${LT + 168}" stroke="${A.bone}" stroke-width="14" fill="none" opacity=".6"/>`).join('')}
+  <path d="M${LX + 150} ${pleuraY} H${LX + LW - 150}" stroke="${A.pleura}" stroke-width="10" opacity=".7"/>`)}
+<path d="M${LX + 160} ${pleuraY} H${LX + LW - 160}" stroke="#FFF4D6" stroke-width="3" filter="url(#glow)"/>
 ${pill('AFTER', 'after')}
 ${tag(LX + 90, LT + 150, LX - 40, LT + 128, 'Rib', 'end')}
 ${tag(LX + LW - 90, LT + 150, LX + LW + 40, LT + 128, 'Rib')}
@@ -127,26 +135,7 @@ const probeLin = (x, y, rot, ghost = false) => `<g transform="translate(${x} ${y
   <circle cx="0" cy="-74" r="7" fill="${C.teal}"/>
 </g>`;
 
-files['lung-move.svg'] = svg(C.cream, `
-${chest}${ribsL}${ribsR}
-${probeLin(470, 330, 80, true)}
-${probeLin(470, 330, 0)}
-<path d="M560 318 A92 92 0 0 0 498 248" fill="none" stroke="${C.teal}" stroke-width="4" marker-end="url(#ah)"/>
-${pill('THE MOVE', 'move')}
-<g>
-  ${note(952, 250, 'Turn the probe 90°', 'start', C.navy, 24, 600)}
-  ${note(952, 284, 'so it crosses two ribs.', 'start', C.slate, 22)}
-  ${note(952, 360, 'Marker to the head', 'start', C.navy, 24, 600)}
-  ${note(952, 394, '(the teal dot).', 'start', C.slate, 22)}
-  ${note(952, 470, 'Second or third', 'start', C.navy, 24, 600)}
-  ${note(952, 504, 'intercostal space,', 'start', C.slate, 22)}
-  ${note(952, 534, 'mid-clavicular line.', 'start', C.slate, 22)}
-</g>
-${note(80, 300, 'Dashed: along', 'start', C.slate, 20)}
-${note(80, 326, 'the rib (before)', 'start', C.slate, 20)}
-${note(80, 380, 'Solid: across', 'start', C.navy, 20, 600)}
-${note(80, 406, 'the ribs (after)', 'start', C.navy, 20, 600)}
-${caption('Schematic · patient supine, front of chest', false)}`, 'The move: rotate the linear probe from lying along a rib to crossing two ribs, marker to the head, second or third intercostal space in the mid-clavicular line.');
+// lung-move: 3D render, see tools/learn-3d/
 
 // ---------------- 2. Subcostal view ----------------
 const PX = 560, PT = 92, PR = 600, PA = 42;
@@ -158,7 +147,9 @@ ${scan(fan, `<rect width="${W}" height="${H}" fill="#3B424B"/>
   <path d="M300 ${PT + 280} C420 ${PT + 300} 520 ${PT + 250} 640 ${PT + 290} C730 ${PT + 320} 800 ${PT + 270} 900 ${PT + 300}" stroke="#E8EBEE" stroke-width="10" fill="none"/>
   <path d="M300 ${PT + 290} C420 ${PT + 310} 520 ${PT + 260} 640 ${PT + 300} C730 ${PT + 330} 800 ${PT + 280} 900 ${PT + 310} V${H} H300 Z" fill="#20262E"/>
   <path d="M360 ${PT + 380} H860 M380 ${PT + 470} H840" stroke="#4E565F" stroke-width="5"/>
-  <circle cx="470" cy="${PT + 150}" r="18" fill="#141A21"/><circle cx="650" cy="${PT + 120}" r="12" fill="#141A21"/>`)}
+  <circle cx="470" cy="${PT + 150}" r="18" fill="#141A21"/><circle cx="650" cy="${PT + 120}" r="12" fill="#141A21"/>`,
+  `<path d="M0 ${PT} H${W} V${PT + 250} C900 ${PT + 280} 300 ${PT + 220} 0 ${PT + 260} Z" fill="${A.liver}" opacity=".3"/>
+  <circle cx="470" cy="${PT + 150}" r="18" fill="${A.vein}" opacity=".5"/><circle cx="650" cy="${PT + 120}" r="12" fill="${A.vein}" opacity=".5"/>`)}
 ${pill('BEFORE', 'before')}
 ${tag(470, PT + 150, 140, PT + 150, 'Liver', 'end')}
 ${tag(700, PT + 296, 1000, PT + 240, 'Bowel gas')}
@@ -177,6 +168,15 @@ ${scan(fan, `<rect width="${W}" height="${H}" fill="#2E343C"/>
     <path d="M-30 -18 C70 -30 190 -24 248 20 C200 70 90 100 -10 96 C-60 94 -80 40 -30 -18 Z" fill="#090C10"/>
     <path d="M-262 -40 C-232 -70 -150 -66 -120 -34 C-100 0 -140 40 -200 36 C-250 30 -280 0 -262 -40 Z" fill="#090C10"/>
     <path d="M-200 64 C-160 40 -90 44 -70 76 C-56 110 -100 140 -150 136 C-200 130 -224 100 -200 64 Z" fill="#090C10"/>
+  </g>`,
+  `<path d="M0 ${PT} H${W} V${PT + 150} C820 ${PT + 190} 640 ${PT + 230} 420 ${PT + 270} C300 ${PT + 290} 160 ${PT + 300} 0 ${PT + 310} Z" fill="${A.liver}" opacity=".3"/>
+  <g transform="translate(600 ${PT + 395}) rotate(-12)">
+    <ellipse cx="0" cy="0" rx="300" ry="168" fill="none"/>
+    <ellipse cx="0" cy="0" rx="300" ry="168" fill="none" stroke="${A.pleura}" stroke-width="10" opacity=".55"/>
+    <path d="M-190 -112 C-80 -150 110 -130 220 -40 C150 -60 40 -62 -40 -50 C-110 -42 -170 -50 -205 -72 Z" fill="${A.vein}" opacity=".42"/>
+    <path d="M-30 -18 C70 -30 190 -24 248 20 C200 70 90 100 -10 96 C-60 94 -80 40 -30 -18 Z" fill="${A.artery}" opacity=".42"/>
+    <path d="M-262 -40 C-232 -70 -150 -66 -120 -34 C-100 0 -140 40 -200 36 C-250 30 -280 0 -262 -40 Z" fill="${A.vein}" opacity=".42"/>
+    <path d="M-200 64 C-160 40 -90 44 -70 76 C-56 110 -100 140 -150 136 C-200 130 -224 100 -200 64 Z" fill="${A.artery}" opacity=".42"/>
   </g>`)}
 ${pill('AFTER', 'after')}
 ${tag(420, PT + 120, 130, PT + 120, 'Liver', 'end')}
@@ -205,25 +205,7 @@ const beam = (x, y, angDeg, len, col, dash) => {
   return `<line x1="${x}" y1="${y}" x2="${x + len * Math.cos(a)}" y2="${y + len * Math.sin(a)}" stroke="${col}" stroke-width="3" ${dash ? 'stroke-dasharray="8 8"' : ''} marker-end="url(#ah)"/>`;
 };
 
-files['subcostal-move.svg'] = svg(C.cream, `
-${body}${heartSide}
-${probeSide(660, 368, 0, true)}
-${beam(660, 378, 90, 150, C.slate, true)}
-${probeSide(640, 370, -72)}
-${hand(640, 370, -72)}
-${beam(652, 378, 8, 230, C.teal, false)}
-${pill('THE MOVE', 'move')}
-${note(720, 130, 'Hand on top of the probe,', 'start', C.navy, 24, 600)}
-${note(720, 164, 'then lay it almost flat on the skin.', 'start', C.slate, 21)}
-${note(720, 196, 'Aim under the ribs, towards', 'start', C.slate, 21)}
-${note(720, 226, 'the left shoulder.', 'start', C.slate, 21)}
-${note(470, 610, 'Dashed: upright, beam goes to the spine', 'start', C.slate, 20)}
-${note(470, 642, 'Solid: flat, beam slides under the ribs to the heart', 'start', C.navy, 20, 600)}
-${note(918, 545, 'Heart', 'middle', C.ink, 20, 600)}
-${note(1080, 330, 'Head', 'middle', C.slate, 18)}
-${note(130, 400, 'Feet', 'middle', C.slate, 18)}
-${note(692, 330, 'Xiphoid', 'start', C.slate, 18)}
-${caption('Schematic · side view, patient supine, knees bent', false)}`, 'The move: overhand grip, probe just below the xiphoid, laid almost flat so the beam passes under the ribs towards the left shoulder and reaches the heart.');
+// subcostal-move: 3D render, see tools/learn-3d/
 
 // ---------------- 3. IVC ----------------
 const IX = 600, IY = -60, IR0 = 170, IR1 = 800, IA = 34;
@@ -237,7 +219,11 @@ ${scan(cfan, `${liverBig}
   <path d="M640 474 C660 430 700 400 760 380" stroke="#DADEE2" stroke-width="10" fill="none"/>
   <path d="M640 474 C660 440 698 412 760 392" stroke="#07090D" stroke-width="12" fill="none"/>
   <path d="M250 620 H970" stroke="#B9C0C7" stroke-width="12" opacity=".7"/>
-  <rect x="250" y="626" width="720" height="200" fill="#151A20"/>`)}
+  <rect x="250" y="626" width="720" height="200" fill="#151A20"/>`,
+  `<path d="M0 0 H${W} V420 C900 440 400 430 0 450 Z" fill="${A.liver}" opacity=".3"/>
+  <path d="M250 480 C500 472 750 480 970 490 L970 560 C750 550 500 542 250 550 Z" fill="${A.artery}" opacity=".45"/>
+  <path d="M640 474 C660 440 698 412 760 392" stroke="${A.artery}" stroke-width="12" fill="none" opacity=".55"/>
+  <path d="M250 620 H970" stroke="${A.bone}" stroke-width="12" opacity=".5"/>`)}
 ${pill('BEFORE', 'before')}
 ${tag(420, 470, 250, 380, 'Thick bright wall', 'end')}
 ${tag(740, 390, 940, 300, 'Branch runs forwards')}
@@ -256,7 +242,11 @@ ${scan(cfan, `${liverBig}
   <path d="M450 410 C580 418 760 432 1000 446" stroke="#C9CED3" stroke-width="5" fill="none"/>
   <path d="M450 480 C580 494 760 506 1000 520" stroke="#C9CED3" stroke-width="5" fill="none"/>
   <path d="M530 414 C560 340 620 270 720 220 L740 246 C650 290 600 350 590 416 Z" fill="#07090D"/>
-  <path d="M250 640 C500 630 800 640 1000 650" stroke="#9AA1A8" stroke-width="10" opacity=".6"/>`)}
+  <path d="M250 640 C500 630 800 640 1000 650" stroke="#9AA1A8" stroke-width="10" opacity=".6"/>`,
+  `<path d="M0 0 H${W} V420 C900 440 400 430 0 450 Z" fill="${A.liver}" opacity=".3"/>
+  <path d="M250 300 C330 260 430 280 470 340 C500 400 460 480 390 500 C310 520 230 470 230 400 Z" fill="${A.vein}" opacity=".45"/>
+  <path d="M450 410 C580 418 760 432 1000 446 L1000 520 C760 506 580 494 450 480 Z" fill="${A.vein}" opacity=".45"/>
+  <path d="M530 414 C560 340 620 270 720 220 L740 246 C650 290 600 350 590 416 Z" fill="${A.vein}" opacity=".45"/>`)}
 <g stroke="${C.light}" stroke-width="3" fill="none">
   <line x1="660" y1="429" x2="656" y2="494"/><line x1="646" y1="429" x2="674" y2="429"/><line x1="642" y1="494" x2="670" y2="494"/>
 </g>
@@ -277,27 +267,7 @@ const abdomen = `<g fill="none" stroke="${C.navy}" stroke-width="3" stroke-linec
   <circle cx="600" cy="560" r="7" stroke-width="2.5" opacity=".5"/>
   <path d="M600 250 V700" stroke-dasharray="2 10" stroke-width="2.5" opacity=".4"/>
 </g>`;
-files['ivc-move.svg'] = svg(C.cream, `
-${abdomen}
-${probeLin(600, 330, 90, true)}
-${probeLin(570, 345, 0)}
-<path d="M700 300 A108 108 0 0 0 600 220" fill="none" stroke="${C.teal}" stroke-width="4" marker-end="url(#ah)"/>
-${pill('THE MOVE', 'move')}
-${note(930, 230, 'Start in the subcostal', 'start', C.navy, 24, 600)}
-${note(930, 262, 'view, right atrium', 'start', C.slate, 22)}
-${note(930, 290, 'in the centre.', 'start', C.slate, 22)}
-${note(930, 370, 'Rotate 90°, marker', 'start', C.navy, 24, 600)}
-${note(930, 402, 'to the head.', 'start', C.slate, 22)}
-${note(930, 482, 'Tilt slightly to the', 'start', C.navy, 24, 600)}
-${note(930, 514, "patient's right.", 'start', C.slate, 22)}
-${note(930, 544, 'Keep the atrium in view.', 'start', C.slate, 22)}
-${note(70, 300, 'Dashed: subcostal', 'start', C.slate, 20)}
-${note(70, 326, 'view (start)', 'start', C.slate, 20)}
-${note(70, 380, 'Solid: rotated,', 'start', C.navy, 20, 600)}
-${note(70, 406, 'marker up (finish)', 'start', C.navy, 20, 600)}
-${note(600, 175, 'Xiphoid', 'middle', C.slate, 18)}
-${note(625, 566, 'Umbilicus', 'start', C.slate, 18)}
-${caption('Schematic · front of abdomen, patient supine', false)}`, 'The move: from the subcostal four-chamber view, rotate the probe 90 degrees so the marker points to the head, and tilt slightly to the patient\'s right while keeping the right atrium in view.');
+// ivc-move: 3D render, see tools/learn-3d/
 
 for (const [name, s] of Object.entries(files)) fs.writeFileSync(`${OUT}/${name}`, s);
 console.log(Object.keys(files).join('\n'));

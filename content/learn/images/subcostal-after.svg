@@ -24,6 +24,14 @@
     <path d="M-30 -18 C70 -30 190 -24 248 20 C200 70 90 100 -10 96 C-60 94 -80 40 -30 -18 Z" fill="#090C10"/>
     <path d="M-262 -40 C-232 -70 -150 -66 -120 -34 C-100 0 -140 40 -200 36 C-250 30 -280 0 -262 -40 Z" fill="#090C10"/>
     <path d="M-200 64 C-160 40 -90 44 -70 76 C-56 110 -100 140 -150 136 C-200 130 -224 100 -200 64 Z" fill="#090C10"/>
+  </g></g><g><path d="M0 92 H1200 V242 C820 282 640 322 420 362 C300 382 160 392 0 402 Z" fill="#B5553F" opacity=".3"/>
+  <g transform="translate(600 487) rotate(-12)">
+    <ellipse cx="0" cy="0" rx="300" ry="168" fill="none"/>
+    <ellipse cx="0" cy="0" rx="300" ry="168" fill="none" stroke="#F2C14E" stroke-width="10" opacity=".55"/>
+    <path d="M-190 -112 C-80 -150 110 -130 220 -40 C150 -60 40 -62 -40 -50 C-110 -42 -170 -50 -205 -72 Z" fill="#4A82D6" opacity=".42"/>
+    <path d="M-30 -18 C70 -30 190 -24 248 20 C200 70 90 100 -10 96 C-60 94 -80 40 -30 -18 Z" fill="#E0483F" opacity=".42"/>
+    <path d="M-262 -40 C-232 -70 -150 -66 -120 -34 C-100 0 -140 40 -200 36 C-250 30 -280 0 -262 -40 Z" fill="#4A82D6" opacity=".42"/>
+    <path d="M-200 64 C-160 40 -90 44 -70 76 C-56 110 -100 140 -150 136 C-200 130 -224 100 -200 64 Z" fill="#E0483F" opacity=".42"/>
   </g></g></g>
 <path d="M546 92 L158.52163618468506 537.8868952864366 A600 600 0 0 0 961.4783638153149 537.8868952864366 L574 92 Z" fill="none" stroke="#24344D" stroke-width="1.5"/>
 <g transform="translate(40 36)"><rect width="109" height="40" rx="20" fill="#2A7F8A"/><text x="54.5" y="26.5" text-anchor="middle" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="600" letter-spacing="3" fill="#fff">AFTER</text></g>

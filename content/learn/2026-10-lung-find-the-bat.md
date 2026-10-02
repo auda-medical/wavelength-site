@@ -17,7 +17,7 @@ With the probe lying along a rib, the beam hits bone. You see one bright, curved
 
 ## The move
 
-![The move: rotate the linear probe from lying along a rib to crossing two ribs, marker to the head.](/learn/images/lung-move.svg)
+![The move: rotate the linear probe from lying along a rib to crossing two ribs, marker to the head.](/learn/images/lung-move.webp)
 
 1. Start with the linear probe in the second or third intercostal space, mid-clavicular line, with the patient supine.
 2. Turn the probe 90° so it lies head to foot and crosses two ribs.

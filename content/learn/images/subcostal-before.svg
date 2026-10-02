@@ -20,7 +20,8 @@
   <path d="M300 372 C420 392 520 342 640 382 C730 412 800 362 900 392" stroke="#E8EBEE" stroke-width="10" fill="none"/>
   <path d="M300 382 C420 402 520 352 640 392 C730 422 800 372 900 402 V750 H300 Z" fill="#20262E"/>
   <path d="M360 472 H860 M380 562 H840" stroke="#4E565F" stroke-width="5"/>
-  <circle cx="470" cy="242" r="18" fill="#141A21"/><circle cx="650" cy="212" r="12" fill="#141A21"/></g></g>
+  <circle cx="470" cy="242" r="18" fill="#141A21"/><circle cx="650" cy="212" r="12" fill="#141A21"/></g><g><path d="M0 92 H1200 V342 C900 372 300 312 0 352 Z" fill="#B5553F" opacity=".3"/>
+  <circle cx="470" cy="242" r="18" fill="#4A82D6" opacity=".5"/><circle cx="650" cy="212" r="12" fill="#4A82D6" opacity=".5"/></g></g>
 <path d="M546 92 L158.52163618468506 537.8868952864366 A600 600 0 0 0 961.4783638153149 537.8868952864366 L574 92 Z" fill="none" stroke="#24344D" stroke-width="1.5"/>
 <g transform="translate(40 36)"><rect width="122" height="40" rx="20" fill="#EDEAE3"/><text x="61" y="26.5" text-anchor="middle" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="600" letter-spacing="3" fill="#0F1E33">BEFORE</text></g>
 <g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">

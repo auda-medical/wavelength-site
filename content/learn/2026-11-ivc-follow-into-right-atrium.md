@@ -17,7 +17,7 @@ Placing the probe in the epigastrium in long axis and looking for a tube often f
 
 ## The move
 
-![The move: from the subcostal four-chamber view, rotate the probe 90 degrees so the marker points to the head, tilting slightly to the patient's right.](/learn/images/ivc-move.svg)
+![The move: from the subcostal four-chamber view, rotate the probe 90 degrees so the marker points to the head, tilting slightly to the patient's right.](/learn/images/ivc-move.webp)
 
 1. Start in the subcostal four-chamber view.
 2. Move the probe until the right atrium sits in the centre of the screen.

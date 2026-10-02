@@ -17,7 +17,7 @@ Holding the probe like a pen, pointing straight into the abdomen, sends the beam
 
 ## The move
 
-![The move: overhand grip, probe just below the xiphoid, laid almost flat so the beam passes under the ribs to the heart.](/learn/images/subcostal-move.svg)
+![The move: overhand grip, probe just below the xiphoid, laid almost flat so the beam passes under the ribs to the heart.](/learn/images/subcostal-move.webp)
 
 1. Ask the patient to lie flat and bend the knees. This relaxes the abdominal wall.
 2. Use the phased array probe with the marker to the patient's left.

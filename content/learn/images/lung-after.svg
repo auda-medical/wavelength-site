@@ -27,9 +27,12 @@
   <path d="M340 278 Q420 238 500 278" stroke="#F4F6F8" stroke-width="12" fill="none"/>
   <path d="M338 280 Q420 242 502 280 L512 690 L328 690 Z" fill="#06090E"/><path d="M700 278 Q780 238 860 278" stroke="#F4F6F8" stroke-width="12" fill="none"/>
   <path d="M698 280 Q780 242 862 280 L872 690 L688 690 Z" fill="#06090E"/>
-  <path d="M480 306 H720" stroke="#F4F6F8" stroke-width="9"/></g></g>
+  <path d="M480 306 H720" stroke="#F4F6F8" stroke-width="9"/></g><g><rect x="330" y="160" width="540" height="44" fill="#C9746B" opacity=".28"/>
+  <rect x="500" y="312" width="200" height="384" fill="#E9A3A3" opacity=".16"/>
+  <path d="M340 278 Q420 238 500 278" stroke="#EDE4D0" stroke-width="14" fill="none" opacity=".6"/><path d="M700 278 Q780 238 860 278" stroke="#EDE4D0" stroke-width="14" fill="none" opacity=".6"/>
+  <path d="M480 306 H720" stroke="#F2C14E" stroke-width="10" opacity=".7"/></g></g>
 <path d="M330 110 H870 V690 H330 Z" fill="none" stroke="#24344D" stroke-width="1.5"/>
-<path d="M490 306 H710" stroke="#FFFFFF" stroke-width="3" filter="url(#glow)"/>
+<path d="M490 306 H710" stroke="#FFF4D6" stroke-width="3" filter="url(#glow)"/>
 <g transform="translate(40 36)"><rect width="109" height="40" rx="20" fill="#2A7F8A"/><text x="54.5" y="26.5" text-anchor="middle" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="600" letter-spacing="3" fill="#fff">AFTER</text></g>
 <g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
   <line x1="420" y1="260" x2="290" y2="238" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="420" cy="260" r="4" fill="#7FC4CC"/>

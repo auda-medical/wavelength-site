@@ -1,0 +1,288 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'DM Sans';src:url(/src/assets/fonts/dm-sans-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'DM Sans';src:url(/src/assets/fonts/dm-sans-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'DM Sans';src:url(/src/assets/fonts/dm-sans-latin-600-normal.woff2) format('woff2');font-weight:600}
+html,body{margin:0;width:1200px;height:750px;overflow:hidden;font-family:'DM Sans',sans-serif}
+#stage{position:relative;width:1200px;height:750px;background:radial-gradient(120% 90% at 50% 40%,#FBFAF7 0%,#F1EEE7 60%,#E4DFD4 100%)}
+canvas{position:absolute;inset:0}
+svg{position:absolute;inset:0;pointer-events:none}
+.pill{position:absolute;left:40px;top:36px;height:40px;padding:0 22px;border-radius:20px;background:#0F1E33;color:#F7F5F0;font-size:15px;font-weight:600;letter-spacing:3px;line-height:40px}
+.cap{position:absolute;right:40px;bottom:24px;font-size:16px;letter-spacing:1px;color:#8A94A3}
+.side{position:absolute;width:290px;padding:22px 24px 2px;background:rgba(251,250,247,.9);border-radius:14px;box-shadow:0 10px 30px rgba(15,30,51,.08)}
+.side h4{margin:0 0 4px;font-size:23px;font-weight:600;color:#0F1E33;line-height:1.2}
+.side p{margin:0 0 22px;font-size:19px;color:#3C4A5E;line-height:1.35}
+.key{display:flex;align-items:center;gap:10px;font-size:17px;color:#3C4A5E;margin:0 0 8px}
+.sw{width:14px;height:14px;border-radius:50%;flex:none}
+</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body><div id="stage"></div>
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const SCENE = new URLSearchParams(location.search).get('scene') || 'lung';
+const W = 1200, H = 750, DPR = 2;
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(DPR); renderer.setSize(W, H);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.localClippingEnabled = true;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const body = new THREE.Group(); scene.add(body);
+
+// ---------- Lights ----------
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd9d2c4, 1.5));
+const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(-30, 50, 60); scene.add(key);
+const rim = new THREE.DirectionalLight(0xbfe3e8, 1.4); rim.position.set(40, 20, -50); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xfff1e0, 0.8); fill.position.set(50, -20, 40); scene.add(fill);
+
+// ---------- Materials ----------
+const M = {
+  skin: new THREE.MeshPhysicalMaterial({ color: 0xE6C3A8, roughness: 0.55, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.FrontSide }),
+  bone: new THREE.MeshPhysicalMaterial({ color: 0xEDE4D0, roughness: 0.5, clearcoat: 0.3 }),
+  cart: new THREE.MeshPhysicalMaterial({ color: 0xBFD2DA, roughness: 0.4, clearcoat: 0.4 }),
+  lung: new THREE.MeshPhysicalMaterial({ color: 0xE9A3A3, roughness: 0.6, transparent: true, opacity: 0.38, depthWrite: false }),
+  heart: new THREE.MeshPhysicalMaterial({ color: 0xB8322B, roughness: 0.38, clearcoat: 0.6 }),
+  ra: new THREE.MeshPhysicalMaterial({ color: 0x9A2E36, roughness: 0.4, clearcoat: 0.5 }),
+  liver: new THREE.MeshPhysicalMaterial({ color: 0x9A4535, roughness: 0.45, clearcoat: 0.4, transparent: true, opacity: 0.62, depthWrite: false }),
+  ivc: new THREE.MeshPhysicalMaterial({ color: 0x3767B0, roughness: 0.35, clearcoat: 0.6 }),
+  aorta: new THREE.MeshPhysicalMaterial({ color: 0xD0403A, roughness: 0.35, clearcoat: 0.6 }),
+  spine: new THREE.MeshPhysicalMaterial({ color: 0xE3D8C0, roughness: 0.6 }),
+  probe: new THREE.MeshPhysicalMaterial({ color: 0x15253B, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.15 }),
+  lens: new THREE.MeshPhysicalMaterial({ color: 0x4B5B6E, roughness: 0.6 }),
+  marker: new THREE.MeshStandardMaterial({ color: 0x2A7F8A, emissive: 0x2A7F8A, emissiveIntensity: 0.6 }),
+  ghost: new THREE.MeshPhysicalMaterial({ color: 0xFFFFFF, roughness: 0.3, transparent: true, opacity: 0.55, depthWrite: false }),
+  arrow: new THREE.MeshStandardMaterial({ color: 0x2A7F8A, emissive: 0x1C6670, emissiveIntensity: 0.5, roughness: 0.4 }),
+};
+
+// ---------- Torso (lathe, flattened front to back) ----------
+const prof = [[0.01,-34],[14.6,-34],[14.2,-24],[13.8,-16],[14.6,-6],[16.2,4],[17.2,12],[17.4,18],[16.2,22],[12,25],[7.2,27],[6.4,30],[6.4,35],[0.01,35]];
+const r = (y) => { for (let i = 1; i < prof.length; i++) { const [r1, y1] = prof[i - 1], [r2, y2] = prof[i]; if (y >= y1 && y <= y2) return r1 + (r2 - r1) * (y - y1) / (y2 - y1 || 1); } return 0; };
+const ZS = 0.62;
+const lathe = new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)), 96);
+const skinShader = (base, rimA, sideMode) => new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, side: sideMode,
+  uniforms: { c: { value: new THREE.Color(0xD8AE90) }, base: { value: base }, rimA: { value: rimA } },
+  vertexShader: 'varying vec3 n; varying vec3 v; void main(){ vec4 mv=modelViewMatrix*vec4(position,1.0); n=normalize(normalMatrix*normal); v=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }',
+  fragmentShader: 'uniform vec3 c; uniform float base; uniform float rimA; varying vec3 n; varying vec3 v; void main(){ float f=pow(1.0-abs(dot(normalize(n),normalize(v))),2.2); gl_FragColor=vec4(mix(c*1.08,c*0.82,f), base+rimA*f); }',
+});
+const torso = new THREE.Mesh(lathe, skinShader(0.07, 0.55, THREE.FrontSide)); torso.scale.set(1, 1, ZS); torso.renderOrder = 10; body.add(torso);
+const torsoBack = new THREE.Mesh(lathe, skinShader(0.03, 0.18, THREE.BackSide)); torsoBack.scale.copy(torso.scale); body.add(torsoBack);
+torso.updateMatrixWorld();
+
+const groups = {}; let G = body;
+const grp = (n) => { groups[n] = new THREE.Group(); body.add(groups[n]); G = groups[n]; };
+const tube = (pts, rad, mat, seg = 64, closed = false) => { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p))), seg, rad, 16, closed), mat); G.add(m); return m; };
+const blob = (pos, sc, mat, rot = [0, 0, 0], seg = 48) => { const m = new THREE.Mesh(new THREE.SphereGeometry(1, seg, seg), mat); m.position.set(...pos); m.scale.set(...sc); m.rotation.set(...rot); G.add(m); return m; };
+const shaped = (pos, sc, mat, rot, fn, seg = 72) => {
+  const g = new THREE.SphereGeometry(1, seg, seg); const a = g.attributes.position; const v = new THREE.Vector3();
+  for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i); fn(v); a.setXYZ(i, v.x, v.y, v.z); }
+  g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.position.set(...pos); m.scale.set(...sc); m.rotation.set(...rot); G.add(m); return m;
+};
+const ring = (y, inset) => ({ a: r(y) - inset, b: r(y) * ZS - inset });
+
+// ---------- Skeleton ----------
+// Spine
+grp('spine');
+for (let y = -32; y < 27; y += 2.6) { const v = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 2.0, 24), M.spine); v.position.set(0, y, -7.2); G.add(v); }
+// Sternum
+grp('bones');
+tube([[0, 18.2, 0], [0, 12, 0], [0, 5, 0], [0, 0.5, 0]].map(([x, y]) => [x, y, ring(y, 1.4).b]), 1.0, M.bone, 32);
+tube([[0, 0.5, ring(0.5, 1.4).b], [0, -2.8, ring(-2.8, 1.6).b - 0.2]], 0.55, M.cart, 8);
+// Clavicles
+for (const s of [-1, 1]) tube([[s * 1.5, 20.5, ring(20.5, 1).b], [s * 7, 21.5, ring(21.5, 0.6).b + 0.3], [s * 13, 22.5, ring(22.5, 1).b - 1.5], [s * 15.5, 22, 0]], 0.7, M.bone, 32);
+// Ribs 1-10
+grp('ribs');
+const ribPts = [], ribTop = [];
+for (let i = 1; i <= 10; i++) {
+  const yP = 21 - i * 3.15, drop = 3.5 + i * 0.75, yA = yP - drop;
+  for (const s of [-1, 1]) {
+    const bonePts = [], cartPts = [];
+    const aEnd = i <= 7 ? 0.62 : 0.85 + (i - 8) * 0.18;
+    for (let k = 0; k <= 30; k++) {
+      const al = 2.85 - (2.85 - aEnd) * (k / 30);
+      const y = yA + (yP - yA) * Math.pow(al / 2.85, 1.25) + 1.2 * Math.sin(Math.PI * k / 30);
+      const { a, b } = ring(y, 1.5);
+      bonePts.push([s * a * Math.sin(al), y, b * Math.cos(al)]);
+    }
+    tube(bonePts, i <= 2 ? 0.42 : 0.5, M.bone, 64);
+    const last = bonePts[bonePts.length - 1];
+    if (i <= 7) {
+      const yS = 17 - i * 2.35; const { b } = ring(yS, 1.4);
+      cartPts.push(last, [s * (Math.abs(last[0]) * 0.55), (last[1] + yS) / 2, b - 0.2], [s * 1.3, yS, b]);
+    } else {
+      const tgt = 17 - 7 * 2.35 - (i - 7) * 1.0;
+      cartPts.push(last, [s * (Math.abs(last[0]) * 0.75), last[1] + 2.5, ring(last[1] + 2.5, 1.5).b], [s * (4 - (i - 8)), tgt + 0.5 - (i - 8) * 0.6, ring(tgt, 1.5).b]);
+    }
+    tube(cartPts, 0.38, M.cart, 24);
+    if (s === -1) ribPts[i] = bonePts;
+  }
+}
+// Lungs
+grp('lungs');
+for (const sd of [-1, 1]) shaped([sd * 7.4, 9, -0.5], [6.4, 11.5, 7.2], M.lung, [0, 0, 0], (v) => { if (v.x * sd < 0) v.x *= 0.45; if (v.y < -0.3) v.y = -0.3 + (v.y + 0.3) * 0.5 + 0.25 * v.x * v.x; });
+// Heart
+grp('heart');
+const heart = shaped([2.0, 0.4, 3.0], [6.2, 4.6, 4.2], M.heart, [0, -0.45, -0.5], (v) => { const t = (v.x + 1) / 2; const k = 1 - 0.78 * Math.pow(t, 1.5); v.y *= k; v.z *= k; v.x *= 1.05; });
+const ra = shaped([-2.6, -0.2, 2.2], [3.0, 3.1, 2.8], M.ra, [0, 0, 0.3], (v) => { v.x *= 1 + 0.15 * v.y; });
+// Liver
+grp('liver');
+shaped([-2.2, -4.6, 0.8], [12.5, 5.0, 7.6], M.liver, [0, 0.1, 0.12], (v) => { const t = (v.x + 1) / 2; v.y *= 1 - 0.72 * t; v.z *= 1 - 0.35 * t; if (v.y < 0) v.y *= 0.5; v.y += 0.15 * Math.cos(v.x * 2.2) - 0.25 * t; });
+// Great vessels
+grp('vessels');
+tube([[-1.6, -33, -4.8], [-1.8, -20, -4.6], [-2.3, -9, -3.4], [-2.6, -4.5, -1.2], [-2.6, -2.0, 1.2]], 1.05, M.ivc, 64);
+tube([[-7.2, -3.8, 1.4], [-4.8, -3.6, -0.2], [-2.6, -3.6, -0.9]], 0.45, M.ivc, 24);
+tube([[0.6, 3.6, 1.6], [1.2, 6.8, 0.4], [1.6, 7.6, -3.4], [1.4, 5, -6.0], [1.3, -6, -5.6], [1.0, -33, -5.0]], 1.0, M.aorta, 96);
+
+G = body;
+function fade(n, op) { groups[n].traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = op; o.material.depthWrite = false; } }); }
+const hide = (...ns) => ns.forEach((n) => { groups[n].visible = false; });
+// ---------- Helpers ----------
+const ray = new THREE.Raycaster();
+function surface(x, y) {
+  ray.set(new THREE.Vector3(x, y, 60), new THREE.Vector3(0, 0, -1));
+  const h = ray.intersectObject(torso)[0];
+  const n = h.face.normal.clone().transformDirection(torso.matrixWorld).normalize();
+  return { p: h.point, n };
+}
+// Probe: face at origin, body along +Y, long axis of the face along X, marker on +X.
+function probe(kind, mat) {
+  const g = new THREE.Group();
+  const ghost = mat === M.ghost;
+  const fw = kind === 'linear' ? 4.4 : 2.6;
+  const head = new THREE.Mesh(new RoundedBoxGeometry(fw, 2.4, 1.5, 4, 0.45), ghost ? mat : M.probe); head.position.y = 1.2; g.add(head);
+  const lens = new THREE.Mesh(new RoundedBoxGeometry(fw - 0.3, 0.3, 1.2, 2, 0.12), ghost ? mat : M.lens); lens.position.y = 0.12; g.add(lens);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(kind === 'linear' ? 1.1 : 0.95, kind === 'linear' ? 1.6 : 1.2, 2.2, 32), ghost ? mat : M.probe); neck.scale.set(1.25, 1, 0.75); neck.position.y = 3.4; g.add(neck);
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 1.1, 7, 32), ghost ? mat : M.probe); grip.scale.set(1.15, 1, 0.8); grip.position.y = 8; g.add(grip);
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.75, 1.4, 24), ghost ? mat : M.probe); tail.position.y = 12.2; g.add(tail);
+  if (!ghost) {
+    const mk = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 24), M.marker); mk.position.set(fw / 2 + 0.05, 1.8, 0); g.add(mk);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(1.02, 0.1, 12, 48), M.marker); band.rotation.x = Math.PI / 2; band.scale.set(1.15, 0.8, 1); band.position.y = 4.6; g.add(band);
+    const cable = tube([[0, 12.8, 0], [0, 15, 0.4], [0.8, 18, 2]], 0.32, M.probe, 24); body.remove(cable); g.add(cable);
+  }
+  return g;
+}
+// Place an object: origin at point p, local Y along nrm (out of the skin), local X towards dirX.
+function place(obj, p, nrm, dirX) {
+  const Y = nrm.clone().normalize();
+  const X = dirX.clone().sub(Y.clone().multiplyScalar(dirX.dot(Y))).normalize();
+  const Z = new THREE.Vector3().crossVectors(X, Y);
+  obj.matrix.makeBasis(X, Y, Z).setPosition(p); obj.matrixAutoUpdate = false; body.add(obj); return obj;
+}
+const beamMat = (op) => new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  uniforms: { c: { value: new THREE.Color(0x2FA3B0) }, o: { value: op } },
+  vertexShader: 'varying vec3 vp; void main(){ vp=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} ',
+  fragmentShader: 'uniform vec3 c; uniform float o; varying vec3 vp; void main(){ float d=clamp(-vp.y/BEAMLEN,0.0,1.0); gl_FragColor=vec4(c, o*(1.0-0.75*d)); }',
+});
+// Beam in the local X-Y plane, going to -Y. Sector for phased, rectangle for linear.
+function beam(kind, len, op = 0.42, half = 36) {
+  const s = new THREE.Shape();
+  if (kind === 'linear') { s.moveTo(-2, 0); s.lineTo(2, 0); s.lineTo(2, -len); s.lineTo(-2, -len); s.closePath(); }
+  else { const a = THREE.MathUtils.degToRad(half); s.moveTo(-0.9, 0); s.lineTo(0.9, 0); s.lineTo(len * Math.sin(a), -len * Math.cos(a)); s.absarc(0, 0, len, -Math.PI / 2 + a, -Math.PI / 2 - a, true); s.closePath(); }
+  const mat = beamMat(op); mat.fragmentShader = mat.fragmentShader.replace('BEAMLEN', len.toFixed(1));
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(s, 48), mat); m.renderOrder = 20;
+  const edge = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: 0x2A7F8A, transparent: true, opacity: op * 0.9 }));
+  const g = new THREE.Group(); g.add(m); g.add(edge); return g;
+}
+// Curved arrow around axis n at point p, from angle a0 to a1 (radians) in the plane spanned by u, v.
+function arc(p, u, v, rad, a0, a1, thick = 0.38) {
+  const pts = []; for (let k = 0; k <= 40; k++) { const a = a0 + (a1 - a0) * k / 40; pts.push(p.clone().add(u.clone().multiplyScalar(Math.cos(a) * rad)).add(v.clone().multiplyScalar(Math.sin(a) * rad))); }
+  const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, thick, 12), M.arrow); body.add(t);
+  const end = pts[pts.length - 1], dir = end.clone().sub(pts[pts.length - 3]).normalize();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(thick * 2.6, thick * 6, 24), M.arrow);
+  cone.position.copy(end.clone().add(dir.clone().multiplyScalar(thick * 2))); cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); body.add(cone);
+}
+const straightArrow = (a, b, thick = 0.35) => {
+  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), dir = B.clone().sub(A).normalize();
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(thick, thick, A.distanceTo(B), 16), M.arrow);
+  t.position.copy(A.clone().add(B).multiplyScalar(0.5)); t.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); body.add(t);
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(thick * 2.6, thick * 6, 24), M.arrow); cone.position.copy(B); cone.quaternion.copy(t.quaternion); body.add(cone);
+};
+
+// ---------- Scene setups ----------
+function supine() { body.rotation.set(-Math.PI / 2, 0, 0); body.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2); body.updateMatrixWorld(true); }
+const camera = new THREE.PerspectiveCamera(26, W / H, 1, 1000);
+const labels = []; // [worldPoint, tx, ty, text, anchor]
+let side = '', caption = '';
+
+let colL = 320, colR = 880;
+const setups = {
+  lung() {
+    hide('heart', 'liver', 'vessels'); fade('spine', 0.18); fade('lungs', 0.3); fade('bones', 0.7);
+    const s = surface(-8.2, 12.6);
+    const n = s.n.clone().multiplyScalar(0.5).add(new THREE.Vector3(0, 0, 1)).normalize();
+    const along = new THREE.Vector3(1, 0.26, 0);
+    place(probe('linear', M.probe), s.p, n, new THREE.Vector3(0, 1, 0));
+    place(beam('linear', 9, 0.6), s.p, n, new THREE.Vector3(0, 1, 0));
+    place(probe('linear', M.ghost), s.p.clone().add(n.clone().multiplyScalar(0.05)), n, along);
+    arc(s.p.clone().add(n.clone().multiplyScalar(6.5)), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), 4.6, 0.25, 1.4);
+    camera.fov = 21; camera.updateProjectionMatrix(); camera.position.set(-62, 44, 46); camera.lookAt(0, 9, 4);
+    labels.push([s.p.clone().add(n.clone().multiplyScalar(9)), 'Linear probe across two ribs', 'L'],
+      [s.p.clone().add(along.clone().multiplyScalar(-2.4)).add(n.clone().multiplyScalar(1.5)), 'Faded: along the rib', 'L'],
+      [s.p.clone().add(n.clone().multiplyScalar(-6)), 'Beam crosses two ribs', 'L'],
+      [new THREE.Vector3(-13.5, 4, 3), 'Lung under the pleura', 'L']);
+    side = `<div class="side" style="left:870px;top:190px"><h4>Turn the probe 90°</h4><p>So it crosses two ribs.</p><h4>Marker to the head</h4><p>The teal dot on the probe.</p><h4>2nd or 3rd space</h4><p>Mid-clavicular line, patient supine.</p></div>`;
+  },
+  subcostal() {
+    hide('lungs', 'vessels'); fade('spine', 0.22); fade('ribs', 0.3); fade('bones', 0.5);
+    const s = surface(-1.6, -5.2);
+    const handle = new THREE.Vector3(-0.05, -0.9, 0.42).normalize();
+    place(probe('phased', M.probe), s.p, handle, new THREE.Vector3(1, 0, 0));
+    place(beam('phased', 15, 0.5, 38), s.p, handle, new THREE.Vector3(1, 0, 0));
+    const gp = s.p.clone().add(new THREE.Vector3(0, 0.4, 0)), gn = new THREE.Vector3(0, 0.05, 1);
+    place(probe('phased', M.ghost), gp, gn, new THREE.Vector3(1, 0, 0));
+    place(beam('phased', 11, 0.18, 38), gp, gn, new THREE.Vector3(1, 0, 0));
+    arc(s.p.clone(), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, -1, 0), 10, 0.2, 1.0, 0.32);
+    camera.fov = 21; camera.updateProjectionMatrix(); camera.position.set(-92, -2, 18); camera.lookAt(0, -3, -1);
+    labels.push([new THREE.Vector3(2.4, 1.5, 6.2), 'Heart', 'R'],
+      [new THREE.Vector3(-3, -4.5, 6.2), 'Liver, your window', 'R'],
+      [s.p.clone().add(handle.clone().multiplyScalar(-8)), 'Beam under the ribs', 'R'],
+      [s.p.clone().add(handle.clone().multiplyScalar(9)), 'Flat (after)', 'R'],
+      [gp.clone().add(gn.clone().multiplyScalar(11)), 'Upright (before)', 'R']);
+    colR = 960;
+    side = `<div class="side" style="left:40px;top:160px"><h4>Overhand grip</h4><p>Palm on top of the probe.</p><h4>Lay it flat</h4><p>Almost against the skin, just below the xiphoid.</p><h4>Aim high</h4><p>Under the ribs, towards the left shoulder.</p></div>`;
+  },
+  ivc() {
+    hide('lungs'); fade('spine', 0.18); fade('ribs', 0.26); fade('bones', 0.45); fade('liver', 0.38);
+    const s = surface(-2.4, -6.0);
+    const handle = new THREE.Vector3(-0.1, -0.5, 0.86).normalize();
+    place(probe('phased', M.probe), s.p, handle, new THREE.Vector3(0, 1, 0));
+    place(beam('phased', 13, 0.5, 36), s.p, handle, new THREE.Vector3(0, 1, 0));
+    place(probe('phased', M.ghost), s.p.clone().add(new THREE.Vector3(0.6, 0, 0.1)), handle, new THREE.Vector3(1, 0, 0));
+    arc(s.p.clone().add(handle.clone().multiplyScalar(7)), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), 4.5, 0.2, 1.4);
+    camera.fov = 22; camera.updateProjectionMatrix(); camera.position.set(-46, -6, 70); camera.lookAt(-1, -4, 0);
+    labels.push([new THREE.Vector3(-3.0, 0.2, 4.6), 'Right atrium', 'L'],
+      [new THREE.Vector3(-2.4, -12, -3.4), 'IVC', 'L'],
+      [new THREE.Vector3(1.2, -20, -5.0), 'Aorta, not this one', 'L'],
+      [new THREE.Vector3(-9, -5.5, 4.5), 'Liver', 'L'],
+      [s.p.clone().add(handle.clone().multiplyScalar(10)), 'Probe rotated', 'L']);
+    colL = 330;
+    side = `<div class="side" style="left:890px;top:90px"><h4>Start subcostal</h4><p>Right atrium in the centre.</p><h4>Rotate 90°</h4><p>Marker to the head.</p><h4>Tilt to the right</h4><p>Keep the atrium on screen.</p></div>`;
+  },
+};
+setups[SCENE]();
+camera.updateMatrixWorld();
+renderer.render(scene, camera);
+
+// ---------- Overlay ----------
+const proj = (v) => { const q = v.clone().applyMatrix4(body.matrixWorld).project(camera); return [(q.x + 1) / 2 * W, (1 - q.y) / 2 * H]; };
+let svg = '';
+for (const col of ['L', 'R']) {
+  const items = labels.filter((l) => l[2] === col).map(([pt, text]) => { const [x, y] = proj(pt); return { x, y, text, ty: y }; }).sort((p, q) => p.y - q.y);
+  let last = 100;
+  for (const it of items) { it.ty = Math.min(Math.max(it.ty, last + 46), 680); last = it.ty; }
+  for (const it of items) {
+    const tx = col === 'L' ? colL : colR;
+    svg += `<line x1="${it.x}" y1="${it.y}" x2="${tx}" y2="${it.ty}" stroke="#1F6670" stroke-width="1.6"/><circle cx="${it.x}" cy="${it.y}" r="5" fill="#1F6670" stroke="#fff" stroke-width="2"/>
+    <text x="${col === 'L' ? tx - 10 : tx + 10}" y="${it.ty + 7}" text-anchor="${col === 'L' ? 'end' : 'start'}" font-family="DM Sans" font-size="21" font-weight="600" fill="#0F1E33" paint-order="stroke" stroke="#F7F5F0" stroke-width="5">${it.text}</text>`;
+  }
+}
+stage.insertAdjacentHTML('beforeend', `<svg viewBox="0 0 ${W} ${H}">${svg}</svg><div class="pill">THE MOVE</div>${side}`);
+await document.fonts.ready;
+window.__done = true;
+</script></body></html>
