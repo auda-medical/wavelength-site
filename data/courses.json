@@ -5,8 +5,8 @@
     "title": "Core Emergency Ultrasound",
     "level": "Level 1",
     "short": "One day of hands-on scanning that covers every core point-of-care ultrasound application in the RCEM curriculum. EUSEM, RCEM and FAMUS accredited.",
-    "seoTitle": "Core Emergency Ultrasound Course, EUSEM, RCEM and FAMUS accredited",
-    "seoDescription": "One-day Level 1 POCUS course, accredited by EUSEM, RCEM and FAMUS: eFAST, AAA, echo in life support, shock, vascular access and fascia iliaca block. Small groups.",
+    "seoTitle": "Core Emergency Ultrasound Course (Level 1), EUSEM, RCEM and FAMUS accredited",
+    "seoDescription": "One-day Core (Level 1) POCUS course, accredited by EUSEM, RCEM and FAMUS: eFAST, AAA, echo in life support, vascular access and fascia iliaca block. Small groups.",
     "duration": "1 day",
     "hours": "09:00 to 17:00",
     "cpd": null,
@@ -37,11 +37,7 @@
       },
       {
         "name": "Echo in life support",
-        "text": "Focused echo during cardiac arrest, timed within the ALS algorithm without delaying compressions."
-      },
-      {
-        "name": "Shock assessment",
-        "text": "A structured approach to the shocked patient, combining heart, lungs, IVC, abdomen and aorta."
+        "text": "Focused echo during cardiac arrest, timed within the ALS algorithm without delaying compressions. Includes the subcostal and IVC views."
       },
       {
         "name": "Vascular access",
@@ -90,16 +86,16 @@
         "item": "Echo in life support, with simulated arrest scenarios"
       },
       {
-        "time": "14:15",
-        "item": "Shock assessment: integrating the views"
-      },
-      {
-        "time": "15:00",
+        "time": "14:30",
         "item": "Tea"
       },
       {
-        "time": "15:15",
+        "time": "14:45",
         "item": "Vascular access and fascia iliaca block on phantoms"
+      },
+      {
+        "time": "16:00",
+        "item": "Open scanning: practise any application with faculty"
       },
       {
         "time": "16:30",
@@ -135,11 +131,6 @@
         "application": "Echo in life support",
         "stage": "Intermediate training",
         "scans": "10"
-      },
-      {
-        "application": "Shock assessment",
-        "stage": "Intermediate to higher training",
-        "scans": "25"
       }
     ],
     "includes": [
@@ -174,7 +165,14 @@
       }
     ],
     "dates": [
-      { "date": "2026-12-21", "venue": "Darent Valley Hospital Education Centre", "city": "Dartford, Kent", "places": 25, "price": 375, "stripeLink": "https://book.stripe.com/cNi00i9qybB8gBt4vscs800" }
+      {
+        "date": "2026-12-21",
+        "venue": "Darent Valley Hospital Education Centre",
+        "city": "Dartford, Kent",
+        "places": 25,
+        "price": 375,
+        "stripeLink": "https://book.stripe.com/cNi00i9qybB8gBt4vscs800"
+      }
     ],
     "accreditation": [
       "EUSEM",
