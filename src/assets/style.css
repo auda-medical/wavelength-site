@@ -301,6 +301,9 @@ section{position:relative}
 .site-footer ul{gap:0!important}
 .site-footer .bottom a{display:inline-block;padding:12px 4px}
 .site-footer a:hover{color:var(--cream)}
+.site-footer .social{display:flex;gap:12px;margin-top:14px}
+.site-footer .social a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid rgba(247,245,240,.22);border-radius:50%;color:var(--cream);transition:background .3s,border-color .3s,color .3s}
+.site-footer .social a:hover{background:var(--teal-light);border-color:var(--teal-light);color:var(--navy-deep)}
 .site-footer .bottom{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;padding-top:28px;font-size:13px}
 .foot-tag{margin-top:22px;max-width:34ch}
 
