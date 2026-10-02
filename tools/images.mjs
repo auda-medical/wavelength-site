@@ -9,6 +9,7 @@ const icon = (s,pad=0,bg='transparent') => `<html><body style="margin:0;backgrou
 await shot(icon(32),32,32,'src/favicon-32.png');
 await shot(icon(180,0,'#0F1E33').replace('r="32"','r="40"'),180,180,'src/apple-touch-icon.png');
 await shot(icon(512),512,512,'src/assets/logo-512.png');
+await shot(icon(192),192,192,'src/assets/logo-192.png');
 const og = `<html><head><style>${fs.readFileSync('src/assets/style.css','utf8').split('\n').filter(l=>l.startsWith('@font-face')).join('').replace(/url\(\/assets/g,'url(file://'+process.cwd()+'/src/assets')}</style></head>
 <body style="margin:0"><div style="width:1200px;height:630px;position:relative;overflow:hidden;background:#0A1526;font-family:'DM Sans';color:#F7F5F0">
 <div style="position:absolute;width:900px;height:900px;left:600px;top:-300px;background:radial-gradient(circle,#2A7F8A,transparent 65%);filter:blur(40px)"></div>

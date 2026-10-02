@@ -1,4 +1,5 @@
 (function () {
+  window.__wl = true;
   var doc = document.documentElement;
   doc.classList.add('js');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -19,17 +20,27 @@
 
   // Mobile menu
   var toggle = document.querySelector('.menu-toggle');
-  if (toggle) {
+  var menu = document.getElementById('mobile-menu');
+  function setMenu(open) {
+    doc.classList.toggle('menu-open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+    ['main', '.site-footer'].forEach(function (sel) { var el = document.querySelector(sel); if (el) { if (open) el.setAttribute('inert', ''); else el.removeAttribute('inert'); } });
+    if (open) { var first = menu.querySelector('a'); if (first) setTimeout(function () { first.focus(); }, 50); }
+  }
+  if (toggle && menu) {
+    if (!('inert' in menu)) { /* older browsers: menu still works */ }
+    menu.setAttribute('inert', '');
     toggle.addEventListener('click', function () {
-      var open = doc.classList.toggle('menu-open');
-      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-      document.getElementById('mobile-menu').setAttribute('aria-hidden', open ? 'false' : 'true');
+      var open = !doc.classList.contains('menu-open');
+      if (open) menu.removeAttribute('inert'); else menu.setAttribute('inert', '');
+      setMenu(open);
     });
-    document.querySelectorAll('.mobile-menu a').forEach(function (a) {
-      a.addEventListener('click', function () { doc.classList.remove('menu-open'); toggle.setAttribute('aria-expanded', 'false'); });
+    menu.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () { menu.setAttribute('inert', ''); setMenu(false); });
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && doc.classList.contains('menu-open')) { doc.classList.remove('menu-open'); toggle.setAttribute('aria-expanded', 'false'); toggle.focus(); }
+      if (e.key === 'Escape' && doc.classList.contains('menu-open')) { menu.setAttribute('inert', ''); setMenu(false); toggle.focus(); }
     });
   }
 
