@@ -800,7 +800,7 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisall
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
-    .filter((p) => !p.includes('/thanks/') && !p.startsWith('/volunteer/') && !(posts.find((x) => p === `/learn/${x.slug}/` && x.draft === true)))
+    .filter((p) => !p.includes('/thanks/') && !p.startsWith('/volunteer/') && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => p === `/learn/${x.slug}/` && x.draft === true)))
     .map((p) => `  <url><loc>${url(p)}</loc><priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );
