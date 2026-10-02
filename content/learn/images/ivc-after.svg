@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750" role="img" aria-label="After: the inferior vena cava runs through the liver into the right atrium, with a hepatic vein joining it. Measure about 2 cm from the atrium.">
+<title>After: the inferior vena cava runs through the liver into the right atrium, with a hepatic vein joining it. Measure about 2 cm from the atrium.</title><defs>
+  <filter id="sp" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.55 1.25" numOctaves="2" seed="7" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 0 1" result="g"/>
+    <feComposite in="g" in2="SourceGraphic" operator="arithmetic" k1="2.1" k2="0" k3="0" k4="0" result="m"/>
+    <feGaussianBlur in="m" stdDeviation="0.7"/>
+  </filter>
+  <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+  <filter id="glow" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2A7F8A"/></marker>
+  <marker id="ahl" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7FC4CC"/></marker>
+</defs>
+<rect width="1200" height="750" fill="#0A1526"/>
+
+<clipPath id="fan"><path d="M504.93720640997304 80.93638733435708 A170 170 0 0 0 695.062793590027 80.93638733435708 L1047.3543227765977 603.2300580440333 A800 800 0 0 1 152.64567722340246 603.2300580440333 Z"/></clipPath>
+<path d="M504.93720640997304 80.93638733435708 A170 170 0 0 0 695.062793590027 80.93638733435708 L1047.3543227765977 603.2300580440333 A800 800 0 0 1 152.64567722340246 603.2300580440333 Z" fill="#05080D"/>
+<g clip-path="url(#fan)"><g filter="url(#sp)"><rect width="1200" height="750" fill="#3A4149"/><path d="M0 0 H1200 V420 C900 440 400 430 0 450 Z" fill="#69717B"/>
+  <path d="M250 300 C330 260 430 280 470 340 C500 400 460 480 390 500 C310 520 230 470 230 400 Z" fill="#07090D"/>
+  <path d="M250 300 C330 260 430 280 470 340 C500 400 460 480 390 500 C310 520 230 470 230 400 Z" fill="none" stroke="#B9C0C7" stroke-width="5"/>
+  <path d="M450 410 C580 418 760 432 1000 446 L1000 520 C760 506 580 494 450 480 Z" fill="#07090D"/>
+  <path d="M450 410 C580 418 760 432 1000 446" stroke="#C9CED3" stroke-width="5" fill="none"/>
+  <path d="M450 480 C580 494 760 506 1000 520" stroke="#C9CED3" stroke-width="5" fill="none"/>
+  <path d="M530 414 C560 340 620 270 720 220 L740 246 C650 290 600 350 590 416 Z" fill="#07090D"/>
+  <path d="M250 640 C500 630 800 640 1000 650" stroke="#9AA1A8" stroke-width="10" opacity=".6"/></g></g>
+<path d="M504.93720640997304 80.93638733435708 A170 170 0 0 0 695.062793590027 80.93638733435708 L1047.3543227765977 603.2300580440333 A800 800 0 0 1 152.64567722340246 603.2300580440333 Z" fill="none" stroke="#24344D" stroke-width="1.5"/>
+<g stroke="#7FC4CC" stroke-width="3" fill="none">
+  <line x1="660" y1="429" x2="656" y2="494"/><line x1="646" y1="429" x2="674" y2="429"/><line x1="642" y1="494" x2="670" y2="494"/>
+</g>
+<g transform="translate(40 36)"><rect width="109" height="40" rx="20" fill="#2A7F8A"/><text x="54.5" y="26.5" text-anchor="middle" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="600" letter-spacing="3" fill="#fff">AFTER</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="350" y1="390" x2="170" y2="280" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="350" cy="390" r="4" fill="#7FC4CC"/>
+  <text x="160" y="287" text-anchor="end">Right atrium</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="680" y1="240" x2="800" y2="180" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="680" cy="240" r="4" fill="#7FC4CC"/>
+  <text x="810" y="187" text-anchor="start">Hepatic vein joins</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="820" y1="480" x2="1040" y2="560" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="820" cy="480" r="4" fill="#7FC4CC"/>
+  <text x="1050" y="567" text-anchor="start">IVC, thin wall</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="658" y1="461" x2="760" y2="600" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="658" cy="461" r="4" fill="#7FC4CC"/>
+  <text x="770" y="607" text-anchor="start">Measure here</text></g>
+<text x="770" y="634" text-anchor="start" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#9FB0C4">about 2 cm from the atrium</text>
+<text x="110" y="160" text-anchor="start" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#9FB0C4">Head</text>
+<path d="M100 153 H50" stroke="#9FB0C4" stroke-width="2" marker-end="url(#ahl)"/>
+<text x="1160" y="720" text-anchor="end" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="17" letter-spacing="1" fill="#6F7F95">Schematic · longitudinal, IVC entering the right atrium</text>
+</svg>

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750" role="img" aria-label="After: probe across two ribs. Two rib shadows with the pleural line between them, slightly deeper than the rib surface: the bat sign.">
+<title>After: probe across two ribs. Two rib shadows with the pleural line between them, slightly deeper than the rib surface: the bat sign.</title><defs>
+  <filter id="sp" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.55 1.25" numOctaves="2" seed="7" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 0 1" result="g"/>
+    <feComposite in="g" in2="SourceGraphic" operator="arithmetic" k1="2.1" k2="0" k3="0" k4="0" result="m"/>
+    <feGaussianBlur in="m" stdDeviation="0.7"/>
+  </filter>
+  <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+  <filter id="glow" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2A7F8A"/></marker>
+  <marker id="ahl" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7FC4CC"/></marker>
+</defs>
+<rect width="1200" height="750" fill="#0A1526"/>
+
+<clipPath id="fan"><path d="M330 110 H870 V690 H330 Z"/></clipPath>
+<path d="M330 110 H870 V690 H330 Z" fill="#05080D"/>
+<g clip-path="url(#fan)"><g filter="url(#sp)">
+  <rect x="330" y="110" width="540" height="160" fill="#5E6670"/>
+  <path d="M330 156 C510 150 690 164 870 156" stroke="#A9B0B8" stroke-width="5" fill="none"/>
+  <path d="M330 206 C530 214 710 200 870 210" stroke="#9AA2AB" stroke-width="4" fill="none"/>
+  <rect x="330" y="160" width="540" height="44" fill="#3C434C"/>
+  <rect x="330" y="270" width="540" height="420" fill="#4A525C"/>
+  <rect x="330" y="314" width="540" height="384" fill="#3A414A"/>
+  <path d="M330 506 H870" stroke="#868F99" stroke-width="7"/>
+  <path d="M330 706 H870" stroke="#646C76" stroke-width="6"/>
+  <path d="M340 278 Q420 238 500 278" stroke="#F4F6F8" stroke-width="12" fill="none"/>
+  <path d="M338 280 Q420 242 502 280 L512 690 L328 690 Z" fill="#06090E"/><path d="M700 278 Q780 238 860 278" stroke="#F4F6F8" stroke-width="12" fill="none"/>
+  <path d="M698 280 Q780 242 862 280 L872 690 L688 690 Z" fill="#06090E"/>
+  <path d="M480 306 H720" stroke="#F4F6F8" stroke-width="9"/></g></g>
+<path d="M330 110 H870 V690 H330 Z" fill="none" stroke="#24344D" stroke-width="1.5"/>
+<path d="M490 306 H710" stroke="#FFFFFF" stroke-width="3" filter="url(#glow)"/>
+<g transform="translate(40 36)"><rect width="109" height="40" rx="20" fill="#2A7F8A"/><text x="54.5" y="26.5" text-anchor="middle" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="600" letter-spacing="3" fill="#fff">AFTER</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="420" y1="260" x2="290" y2="238" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="420" cy="260" r="4" fill="#7FC4CC"/>
+  <text x="280" y="245" text-anchor="end">Rib</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="780" y1="260" x2="910" y2="238" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="780" cy="260" r="4" fill="#7FC4CC"/>
+  <text x="920" y="245" text-anchor="start">Rib</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="600" y1="306" x2="910" y2="376" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="600" cy="306" r="4" fill="#7FC4CC"/>
+  <text x="920" y="383" text-anchor="start">Pleural line</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="590" y1="506" x2="910" y2="506" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="590" cy="506" r="4" fill="#7FC4CC"/>
+  <text x="920" y="513" text-anchor="start">A-line</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="420" y1="470" x2="290" y2="470" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="420" cy="470" r="4" fill="#7FC4CC"/>
+  <text x="280" y="477" text-anchor="end">Rib shadow</text></g>
+<g stroke="#7FC4CC" stroke-width="2" fill="none" opacity=".85">
+  <path d="M535 280 H665" marker-start="url(#ahl)" marker-end="url(#ahl)"/>
+</g>
+<text x="600" y="266" text-anchor="middle" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#7FC4CC">Look for sliding here</text>
+<text x="1160" y="720" text-anchor="end" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="17" letter-spacing="1" fill="#6F7F95">Schematic · probe across two ribs, the bat sign</text>
+</svg>

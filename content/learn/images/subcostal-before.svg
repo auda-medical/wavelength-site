@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750" role="img" aria-label="Before: probe held upright, pointing to the back. Liver near the probe, bowel gas and dirty shadow below, no heart.">
+<title>Before: probe held upright, pointing to the back. Liver near the probe, bowel gas and dirty shadow below, no heart.</title><defs>
+  <filter id="sp" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.55 1.25" numOctaves="2" seed="7" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 0 1" result="g"/>
+    <feComposite in="g" in2="SourceGraphic" operator="arithmetic" k1="2.1" k2="0" k3="0" k4="0" result="m"/>
+    <feGaussianBlur in="m" stdDeviation="0.7"/>
+  </filter>
+  <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+  <filter id="glow" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2A7F8A"/></marker>
+  <marker id="ahl" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7FC4CC"/></marker>
+</defs>
+<rect width="1200" height="750" fill="#0A1526"/>
+
+<clipPath id="fan"><path d="M546 92 L158.52163618468506 537.8868952864366 A600 600 0 0 0 961.4783638153149 537.8868952864366 L574 92 Z"/></clipPath>
+<path d="M546 92 L158.52163618468506 537.8868952864366 A600 600 0 0 0 961.4783638153149 537.8868952864366 L574 92 Z" fill="#05080D"/>
+<g clip-path="url(#fan)"><g filter="url(#sp)"><rect width="1200" height="750" fill="#3B424B"/>
+  <path d="M0 92 H1200 V342 C900 372 300 312 0 352 Z" fill="#6A727C"/>
+  <path d="M300 372 C420 392 520 342 640 382 C730 412 800 362 900 392" stroke="#E8EBEE" stroke-width="10" fill="none"/>
+  <path d="M300 382 C420 402 520 352 640 392 C730 422 800 372 900 402 V750 H300 Z" fill="#20262E"/>
+  <path d="M360 472 H860 M380 562 H840" stroke="#4E565F" stroke-width="5"/>
+  <circle cx="470" cy="242" r="18" fill="#141A21"/><circle cx="650" cy="212" r="12" fill="#141A21"/></g></g>
+<path d="M546 92 L158.52163618468506 537.8868952864366 A600 600 0 0 0 961.4783638153149 537.8868952864366 L574 92 Z" fill="none" stroke="#24344D" stroke-width="1.5"/>
+<g transform="translate(40 36)"><rect width="122" height="40" rx="20" fill="#EDEAE3"/><text x="61" y="26.5" text-anchor="middle" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="600" letter-spacing="3" fill="#0F1E33">BEFORE</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="470" y1="242" x2="140" y2="242" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="470" cy="242" r="4" fill="#7FC4CC"/>
+  <text x="130" y="249" text-anchor="end">Liver</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="700" y1="388" x2="1000" y2="332" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="700" cy="388" r="4" fill="#7FC4CC"/>
+  <text x="1010" y="339" text-anchor="start">Bowel gas</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="640" y1="532" x2="1000" y2="512" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="640" cy="532" r="4" fill="#7FC4CC"/>
+  <text x="1010" y="519" text-anchor="start">Dirty shadow</text></g>
+<text x="1000" y="592" text-anchor="start" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#7FC4CC">No heart in view</text>
+<text x="1160" y="720" text-anchor="end" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="17" letter-spacing="1" fill="#6F7F95">Schematic · probe pointing straight back</text>
+</svg>

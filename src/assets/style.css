@@ -355,7 +355,8 @@ section{position:relative}
 .post ol{padding-left:22px}
 .post li{margin-bottom:6px}
 .post figure{margin:32px 0}
-.post figure img{width:100%;border-radius:var(--radius);background:#000}
+.post figure img{width:100%;border-radius:var(--radius);background:#000;display:block}
+.post figure a{display:block;cursor:zoom-in}
 .post figcaption{font-size:14px;color:var(--slate);margin-top:10px}
 .callout{margin:36px 0;padding:24px 28px;border-left:3px solid var(--teal);background:var(--sand);border-radius:0 var(--radius) var(--radius) 0}
 .callout p{margin:0;color:var(--navy)}

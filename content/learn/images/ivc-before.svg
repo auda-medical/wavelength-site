@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750" role="img" aria-label="Before: a thick-walled tube with a branch running forwards, stopping short of the heart. This is the aorta, not the inferior vena cava.">
+<title>Before: a thick-walled tube with a branch running forwards, stopping short of the heart. This is the aorta, not the inferior vena cava.</title><defs>
+  <filter id="sp" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.55 1.25" numOctaves="2" seed="7" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 0 1" result="g"/>
+    <feComposite in="g" in2="SourceGraphic" operator="arithmetic" k1="2.1" k2="0" k3="0" k4="0" result="m"/>
+    <feGaussianBlur in="m" stdDeviation="0.7"/>
+  </filter>
+  <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+  <filter id="glow" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2A7F8A"/></marker>
+  <marker id="ahl" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7FC4CC"/></marker>
+</defs>
+<rect width="1200" height="750" fill="#0A1526"/>
+
+<clipPath id="fan"><path d="M504.93720640997304 80.93638733435708 A170 170 0 0 0 695.062793590027 80.93638733435708 L1047.3543227765977 603.2300580440333 A800 800 0 0 1 152.64567722340246 603.2300580440333 Z"/></clipPath>
+<path d="M504.93720640997304 80.93638733435708 A170 170 0 0 0 695.062793590027 80.93638733435708 L1047.3543227765977 603.2300580440333 A800 800 0 0 1 152.64567722340246 603.2300580440333 Z" fill="#05080D"/>
+<g clip-path="url(#fan)"><g filter="url(#sp)"><rect width="1200" height="750" fill="#3A4149"/><path d="M0 0 H1200 V420 C900 440 400 430 0 450 Z" fill="#69717B"/>
+  <path d="M260 470 C500 462 750 470 960 480" stroke="#EEF0F2" stroke-width="18" fill="none"/>
+  <path d="M260 560 C500 552 750 560 960 570" stroke="#EEF0F2" stroke-width="18" fill="none"/>
+  <path d="M250 480 C500 472 750 480 970 490 L970 560 C750 550 500 542 250 550 Z" fill="#07090D"/>
+  <path d="M640 474 C660 430 700 400 760 380" stroke="#DADEE2" stroke-width="10" fill="none"/>
+  <path d="M640 474 C660 440 698 412 760 392" stroke="#07090D" stroke-width="12" fill="none"/>
+  <path d="M250 620 H970" stroke="#B9C0C7" stroke-width="12" opacity=".7"/>
+  <rect x="250" y="626" width="720" height="200" fill="#151A20"/></g></g>
+<path d="M504.93720640997304 80.93638733435708 A170 170 0 0 0 695.062793590027 80.93638733435708 L1047.3543227765977 603.2300580440333 A800 800 0 0 1 152.64567722340246 603.2300580440333 Z" fill="none" stroke="#24344D" stroke-width="1.5"/>
+<g transform="translate(40 36)"><rect width="122" height="40" rx="20" fill="#EDEAE3"/><text x="61" y="26.5" text-anchor="middle" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="600" letter-spacing="3" fill="#0F1E33">BEFORE</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="420" y1="470" x2="250" y2="380" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="420" cy="470" r="4" fill="#7FC4CC"/>
+  <text x="240" y="387" text-anchor="end">Thick bright wall</text></g>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="740" y1="390" x2="940" y2="300" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="740" cy="390" r="4" fill="#7FC4CC"/>
+  <text x="950" y="307" text-anchor="start">Branch runs forwards</text></g>
+<text x="950" y="334" text-anchor="start" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#9FB0C4">(coeliac or SMA)</text>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="300" y1="515" x2="240" y2="560" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="300" cy="515" r="4" fill="#7FC4CC"/>
+  <text x="230" y="567" text-anchor="end">Stops short of</text></g>
+<text x="230" y="592" text-anchor="end" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">the heart</text>
+<g font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#7FC4CC">
+  <line x1="820" y1="622" x2="1030" y2="640" stroke="#7FC4CC" stroke-width="1.5"/><circle cx="820" cy="622" r="4" fill="#7FC4CC"/>
+  <text x="1040" y="647" text-anchor="start">Spine</text></g>
+<text x="1160" y="64" text-anchor="end" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#7FC4CC">This is the aorta, not the IVC</text>
+<text x="1160" y="720" text-anchor="end" font-family="'DM Sans', 'Helvetica Neue', Arial, sans-serif" font-size="17" letter-spacing="1" fill="#6F7F95">Schematic · longitudinal, beam too far left</text>
+</svg>
