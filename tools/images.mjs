@@ -19,7 +19,7 @@ const og = `<html><head><style>${fs.readFileSync('src/assets/style.css','utf8').
 <div style="font-size:30px;font-weight:500;letter-spacing:10px">WAVELENGTH</div></div>
 <div style="position:absolute;left:90px;top:250px;font-family:'Cormorant Garamond';font-size:104px;line-height:1">Tune in. <i style="color:#7FC4CC">Gain clarity.</i></div>
 <div style="position:absolute;left:94px;top:420px;font-size:28px;color:#B9C3D1;max-width:900px">Point-of-care ultrasound courses for emergency and acute clinicians</div>
-<div style="position:absolute;left:94px;bottom:70px;font-size:18px;letter-spacing:4px;color:#7FC4CC;font-weight:600">RCEM-MAPPED · SMALL GROUPS · CONSULTANT-LED</div>
+<div style="position:absolute;left:94px;bottom:70px;font-size:18px;letter-spacing:4px;color:#7FC4CC;font-weight:600">EUSEM · RCEM · FAMUS ACCREDITED · SMALL GROUPS</div>
 </div></body></html>`;
 await shot(og,1200,630,'src/assets/og.png');
 await b.close();

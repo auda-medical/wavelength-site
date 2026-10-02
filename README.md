@@ -15,6 +15,9 @@ Edit `data/courses.json`. Each course has a `dates` list. Add a date like this:
 
 Add a new course by copying the whole course object and giving it a new `slug`.
 
+## Write a Learn post
+Copy a file in `content/learn/`, change the front matter and text, and set `draft: false` when ready. Put images in `content/learn/images/` and add them with `![Description](/learn/images/file.jpg)`. Use `> **Pitfall** text` for a highlighted box.
+
 ## Site details
 `data/site.json` holds the domain, emails, company details and team.
 

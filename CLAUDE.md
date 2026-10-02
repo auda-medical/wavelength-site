@@ -11,7 +11,14 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 - Course dates, prices, venues, Stripe payment links: `data/courses.json` (`dates` array; see README).
 - New course: copy a course object in `data/courses.json`, new `slug`.
 - Team, emails, company details: `data/site.json`. Each person has an optional `email` shown on their profile (aliases of the shared Zoho inbox hello@).
-- Photos: crop to 4:5 head and shoulders, 840x1050, plain studio background, export WebP to `src/assets/team-<name>.webp`.
+- Photos: crop to 4:5 head and shoulders with the face centred, 1680x2100 (2x for sharp screens), plain studio background, export WebP to `src/assets/team-<name>.webp` and set `photo` in `data/site.json`.
+- Accreditation: the core course is EUSEM, RCEM and FAMUS accredited (`accreditation` in `data/courses.json` and `data/site.json`). Faculty are FAMUS instructors. Say "RCEM curriculum", never "RCEM 2021 curriculum".
+- Firas's bio uses `{scanYears}` (since 2008) and `{teachYears}` (since 2010), filled in at build time so the numbers stay current.
+
+## Learn and newsletter
+- Learn posts: Markdown files in `content/learn/` (front matter: title, summary, category, date, author, draft). `draft: true` or a future date keeps a post off the live site. Preview drafts with `DRAFTS=1 node build.js`. Images go in `content/learn/images/` and are referenced as `/learn/images/<file>`. The Learn nav link appears once one post is live.
+- Newsletter form: `newsletter` in `data/site.json`. Empty `action` means the form opens an email to hello@. Fill `action`, `hidden`, field names from the Zoho Campaigns signup form embed code to send sign-ups straight to Zoho. Zoho redirect after sign-up: `/subscribe/thanks/`.
+- Email templates for Zoho Campaigns: `src/email/newsletter/` and `src/email/welcome/` (live at /email/...). Images must use absolute https URLs.
 
 ## Brand
 - Navy #0F1E33, deep navy #0A1526, teal #2A7F8A, light teal #7FC4CC, cream #F7F5F0, sand #EDEAE3.

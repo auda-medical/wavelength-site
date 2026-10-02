@@ -2,7 +2,7 @@
   "name": "Wavelength",
   "tagline": "Tune In · Gain Clarity",
   "domain": "https://thewavelength.co.uk",
-  "description": "Consultant-led point-of-care ultrasound courses for emergency and acute clinicians. Small-group, hands-on teaching mapped to the RCEM curriculum.",
+  "description": "Consultant-led point-of-care ultrasound courses for emergency and acute clinicians. EUSEM, RCEM and FAMUS accredited, small-group and hands-on.",
   "bookingsEmail": "bookings@thewavelength.co.uk",
   "enquiriesEmail": "hello@thewavelength.co.uk",
   "company": "Auda Medical Ltd",
@@ -16,12 +16,14 @@
     "role": "Course Director",
     "title": "Consultant in Emergency Medicine",
     "bio": [
-      "Firas is a Consultant in Emergency Medicine and the Ultrasound Lead at Darent Valley Hospital in Kent. He supervises clinicians through the FAMUS accreditation pathway and has used point-of-care ultrasound in emergency care for more than a decade.",
+      "Firas is a Consultant in Emergency Medicine and the Ultrasound Lead at Darent Valley Hospital in Kent. He has scanned in emergency care for {scanYears} years, since 2008, and has run ultrasound courses for {teachYears} years, since 2010. He is a FAMUS instructor and supervises clinicians through the FAMUS accreditation pathway.",
       "He sits on the EUSEM Ultrasound Committee and the Emergency Ultrasound Curriculum Task Force, and he examines for and writes content for the European Board Examination in Emergency Medicine. He is an ALS and ATLS instructor."
     ],
     "credentials": [
       "Ultrasound Lead, Darent Valley Hospital",
-      "FAMUS Supervisor",
+      "Scanning since 2008",
+      "Teaching ultrasound since 2010",
+      "FAMUS Instructor and Supervisor",
       "EUSEM Ultrasound Committee",
       "European Board examiner (EBEEM)",
       "ALS and ATLS Instructor"
@@ -33,19 +35,33 @@
     {
       "name": "Dr Zahra Habibzadeh",
       "role": "General Manager",
-      "title": "Ultrasonographer and Emergency Clinical Specialist",
+      "title": "Emergency Medicine Specialist",
       "bio": [
-        "Zahra is an experienced ultrasonographer and emergency clinical specialist, with years of hands-on scanning in acute and emergency care.",
+        "Zahra is an emergency medicine specialist and an experienced ultrasonographer, with years of hands-on scanning in acute and emergency care.",
         "As General Manager she runs Wavelength day to day, from course planning and venues to bookings and delegate support, and brings a sonographer's eye for image quality to every course."
       ],
       "credentials": [
+        "Emergency Medicine Specialist",
         "Ultrasonographer",
-        "Emergency Clinical Specialist",
         "General Manager"
       ],
       "photo": "/assets/team-zahra.webp",
       "email": "zahra@thewavelength.co.uk"
     }
   ],
-  "legalUpdated": "2026-10-02"
+  "legalUpdated": "2026-10-02",
+  "accreditation": [
+    "EUSEM",
+    "RCEM",
+    "FAMUS"
+  ],
+  "newsletter": {
+    "_help": "Paste values from the Zoho Campaigns signup form embed code. Leave action empty and the form emails hello@ instead.",
+    "action": "",
+    "hidden": {},
+    "emailField": "CONTACT_EMAIL",
+    "firstNameField": "FIRSTNAME",
+    "roleField": "",
+    "listName": "Wavelength newsletter"
+  }
 }

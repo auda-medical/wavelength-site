@@ -5,8 +5,23 @@ const path = require('path');
 
 const ROOT = __dirname;
 const DIST = path.join(ROOT, 'dist');
-const site = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/site.json'), 'utf8'));
+const yearsSince = (y) => new Date().getFullYear() - y;
+const fill = (s) => String(s).replace(/\{scanYears\}/g, yearsSince(2008)).replace(/\{teachYears\}/g, yearsSince(2010));
+const siteRaw = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/site.json'), 'utf8'));
+const site = JSON.parse(JSON.stringify(siteRaw), (k, v) => (typeof v === 'string' ? fill(v) : v));
 const courses = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/courses.json'), 'utf8'));
+const md = require('./lib/md.js');
+const SHOW_DRAFTS = process.env.DRAFTS === '1';
+const LEARN_DIR = path.join(ROOT, 'content/learn');
+const posts = (fs.existsSync(LEARN_DIR) ? fs.readdirSync(LEARN_DIR) : [])
+  .filter((f) => f.endsWith('.md'))
+  .map((f) => {
+    const { meta, html } = md.parse(fs.readFileSync(path.join(LEARN_DIR, f), 'utf8'));
+    const slug = meta.slug || f.replace(/\.md$/, '').replace(/^\d{4}-\d{2}(-\d{2})?-/, '');
+    return { ...meta, slug, html, date: String(meta.date || '') };
+  })
+  .filter((p) => SHOW_DRAFTS || (p.draft !== true && p.date <= new Date().toISOString().slice(0, 10)))
+  .sort((a, b) => b.date.localeCompare(a.date));
 const BUILD = Date.now().toString(36);
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -30,6 +45,7 @@ const anyDates = courses.some((c) => (c.dates || []).some((d) => d.date >= new D
 const BOOK_LABEL = anyDates ? 'Book a course' : 'Register interest';
 const NAV = [
   { href: '/courses/', label: 'Courses' },
+  ...(posts.length ? [{ href: '/learn/', label: 'Learn' }] : []),
   { href: '/faculty/', label: 'Faculty' },
   { href: '/about/', label: 'About' },
   { href: '/contact/', label: 'Contact' },
@@ -110,7 +126,7 @@ ${body}
         <p class="foot-tag">Consultant-led point-of-care ultrasound courses for emergency and acute clinicians.</p>
       </div>
       <div><h2>Courses</h2><ul>${openCourses.map((c) => `<li><a href="/courses/${c.slug}/">${esc(c.title)}</a></li>`).join('')}<li><a href="/courses/">All courses</a></li></ul></div>
-      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/contact/">Contact</a></li></ul></div>
+      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li>${posts.length ? '<li><a href="/learn/">Learn</a></li>' : ''}<li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li>${site.linkedin ? `<li><a href="${site.linkedin}" rel="me">LinkedIn</a></li>` : ''}</ul></div>
     </div>
     <div class="bottom">
@@ -219,6 +235,42 @@ function ctaBand(title = 'Tune in. <em>Gain clarity.</em>', text = 'Small groups
 </section>`;
 }
 
+const ROLES = ['Emergency medicine doctor', 'Acute or internal medicine doctor', 'Advanced clinical practitioner', 'Physician associate', 'GP', 'Nurse', 'Sonographer', 'Medical student', 'Other'];
+
+function subscribeForm({ id = 'sub', dark = false } = {}) {
+  const n = site.newsletter || {};
+  const live = !!n.action;
+  const nm = (zoho, label) => (live ? zoho : label);
+  const hidden = live ? Object.entries(n.hidden || {}).map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`).join('') : '<input type="hidden" name="subject" value="Newsletter sign-up">';
+  return `<form class="form sub-form${dark ? ' on-dark-form' : ''}" ${live ? `action="${esc(n.action)}" method="post"` : `data-mailto="${site.enquiriesEmail}"`} id="${id}">
+    ${hidden}
+    <div class="sub-row">
+      <label>First name<input name="${nm(n.firstNameField || 'FIRSTNAME', 'First name')}" autocomplete="given-name" required></label>
+      <label>Email<input name="${nm(n.emailField || 'CONTACT_EMAIL', 'Email')}" type="email" autocomplete="email" required></label>
+    </div>
+    ${!live || n.roleField ? `<label>Role<select name="${nm(n.roleField, 'Role')}" required><option value="">Choose your role</option>${ROLES.map((r) => `<option>${r}</option>`).join('')}</select></label>` : ''}
+    <label class="consent"><input type="checkbox" name="${live ? 'consent' : 'Consent'}" value="yes" required><span>Send me the Wavelength newsletter: ultrasound skills, new Learn posts and course dates. I can unsubscribe at any time. Read our <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
+    <div><button class="btn${dark ? ' btn-teal' : ''}" type="submit">Subscribe ${arrow}</button></div>
+    ${live ? '' : '<p class="form-note">This opens your email app with your details ready to send.</p>'}
+  </form>`;
+}
+
+function subscribeBand(title = 'Ultrasound skills, <em>in your inbox.</em>', text = 'One email a month: a practical scanning skill, new Learn posts and course dates before they go public.') {
+  return `<section class="section sub-band"><div class="wrap split">
+    <div><p class="eyebrow reveal">Newsletter</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,60px);margin-top:20px">${title}</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">${text}</p></div>
+    <div class="reveal" data-d="1">${subscribeForm()}</div>
+  </div></section>`;
+}
+
+function postCard(p, h = 'h3') {
+  return `<a class="post-card reveal" href="/learn/${p.slug}/">
+    <p class="eyebrow">${esc(p.category || 'Learn')}${p.draft === true ? ' · Draft' : ''}</p>
+    <${h}>${esc(p.title)}</${h}>
+    <p>${esc(p.summary || '')}</p>
+    <span class="meta">${p.date ? fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</span>
+  </a>`;
+}
+
 // ---------- Pages ----------
 const pages = {};
 const core = courses.find((c) => c.slug === 'core-emergency-ultrasound') || courses[0];
@@ -226,7 +278,8 @@ const nextDate = courses.flatMap((c) => upcoming(c).map((d) => ({ c, d }))).sort
 
 const generalFaqs = [
   { q: 'Who are Wavelength courses for?', a: 'Doctors at every grade in emergency, acute and internal medicine, plus advanced clinical practitioners, physician associates and GPs who work in urgent care.' },
-  { q: 'Are the courses mapped to the RCEM curriculum?', a: 'Yes. The core course covers every core point-of-care ultrasound application in the RCEM 2021 curriculum, and we show you how to collect the supervised scans and assessments your department needs for sign-off.' },
+  { q: 'Are the courses mapped to the RCEM curriculum?', a: 'Yes. The core course covers every core point-of-care ultrasound application in the RCEM curriculum, and we show you how to collect the supervised scans and assessments your department needs for sign-off.' },
+  { q: 'Are the courses accredited?', a: 'Yes. The core course is accredited by EUSEM, RCEM and FAMUS, and FAMUS instructors teach it. It suits clinicians working towards FAMUS accreditation as well as RCEM sign-off.' },
   { q: 'How large are the groups?', a: 'Small. We cap numbers so each delegate gets long, supervised time on the probe at every station.' },
   { q: 'How do I pay?', a: 'Online by card through Stripe when you book. If your trust or deanery pays, email us and we will send an invoice.' },
   { q: 'What happens if I need to cancel?', a: 'You can transfer to a later date or cancel under our cancellation policy, which sets out the refund at each stage.' },
@@ -244,15 +297,15 @@ pages['/'] = layout({
     <div class="rise">${mark({ size: 96, cls: 'hero-mark', draw: true, ring: '#F7F5F0' })}</div>
     <p class="eyebrow rise">Point-of-care ultrasound courses</p>
     <h1 class="split-words">Tune in. <em>Gain clarity.</em></h1>
-    <p class="lede rise">Hands-on ultrasound training for emergency and acute clinicians, mapped to the RCEM curriculum and led by an emergency medicine consultant who scans every shift.</p>
+    <p class="lede rise">Hands-on ultrasound training for emergency and acute clinicians, accredited by EUSEM, RCEM and FAMUS, and led by an emergency medicine consultant who has scanned since 2008 and taught ultrasound since 2010.</p>
     <div class="hero-ctas rise">
       <a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">Explore the core course ${arrow}</a>
       <a class="btn btn-ghost light" href="/courses/core-emergency-ultrasound/#dates">${nextDate ? 'Next date: ' + fmtDate(nextDate.d.date, { day: 'numeric', month: 'long' }) : 'Register interest'}</a>
     </div>
     <div class="hero-meta rise">
-      <div><b>RCEM-mapped</b>Core applications for 2021 curriculum</div>
+      <div><b>Accredited</b>EUSEM, RCEM and FAMUS</div>
       <div><b>Small groups</b>Long, supervised time on the probe</div>
-      <div><b>Consultant-led</b>Emergency medicine faculty</div>
+      <div><b>FAMUS instructors</b>Consultant-led faculty</div>
     </div>
   </div>
   <div class="scroll-cue" aria-hidden="true"></div>
@@ -272,7 +325,7 @@ pages['/'] = layout({
   <div class="wrap" style="margin-top:88px">
     <div class="pillars">
       <div class="pillar reveal"><div class="num">01</div><h3>Scan, don't sit</h3><p>Most of the day sits on the probe, with healthy models, simulators and vascular phantoms at every station.</p></div>
-      <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>Built for sign-off</h3><p>Content mapped to the RCEM 2021 curriculum, with logbook templates and guidance on supervised scans and assessments.</p></div>
+      <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>Built for sign-off</h3><p>Content mapped to the RCEM curriculum and accredited by EUSEM, RCEM and FAMUS, with logbook templates and guidance on supervised scans and assessments.</p></div>
       <div class="pillar reveal" data-d="2"><div class="num">03</div><h3>Led by a clinician</h3><p>Every course is led by an emergency medicine consultant and ultrasound lead who teaches the way he practises.</p></div>
     </div>
   </div>
@@ -316,6 +369,8 @@ pages['/'] = layout({
     ${faqHtml(generalFaqs)}
   </div>
 </section>
+${posts.length ? `<section class="section"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">Learn</p><h2 class="reveal" data-d="1">From the scanning room.</h2></div><div class="post-grid">${posts.slice(0, 3).map((p) => postCard(p)).join('')}</div><p class="reveal" style="margin-top:32px"><a class="text-link" href="/learn/">All Learn posts</a></p></div></section>` : ''}
+${subscribeBand()}
 ${ctaBand()}
 `,
 });
@@ -328,7 +383,7 @@ function courseCard(c, h = 'h3') {
       <p class="eyebrow light">${esc(c.level)}${c.status === 'planned' ? ' · In development' : ''}</p>
       <${h}>${esc(c.title)}</${h}>
       <p>${esc(c.short)}</p>
-      <div class="chips"><span class="chip">${esc(c.duration)}</span><span class="chip">RCEM-mapped</span>${c.cpd ? `<span class="chip">${esc(c.cpd)} CPD</span>` : ''}${money(c.price) ? `<span class="chip">${money(c.price)}</span>` : ''}${list.length ? `<span class="chip">Next: ${fmtDate(list[0].date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>` : ''}</div>
+      <div class="chips"><span class="chip">${esc(c.duration)}</span>${(c.accreditation || []).length ? `<span class="chip">${c.accreditation.join(', ').replace(/, ([^,]*)$/, ' and $1')} accredited</span>` : '<span class="chip">RCEM-mapped</span>'}${c.cpd ? `<span class="chip">${esc(c.cpd)} CPD</span>` : ''}${money(c.price) ? `<span class="chip">${money(c.price)}</span>` : ''}${list.length ? `<span class="chip">Next: ${fmtDate(list[0].date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>` : ''}</div>
       <span class="btn btn-teal">View course ${arrow}</span>
     </div>
     <div class="modules"><ol>${c.modules.map((m) => `<li>${esc(m.name)}</li>`).join('')}</ol></div>
@@ -358,7 +413,7 @@ function directorBlock() {
 pages['/courses/'] = layout({
   title: 'Point-of-care ultrasound courses',
   pathname: '/courses/',
-  description: 'Point-of-care ultrasound courses for emergency and acute clinicians, starting with the Level 1 core course mapped to the RCEM curriculum.',
+  description: 'Point-of-care ultrasound courses for emergency and acute clinicians, starting with the Level 1 core course, accredited by EUSEM, RCEM and FAMUS.',
   jsonld: [
     breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Courses', href: '/courses/' }]),
     { '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: openCourses.map((c, i) => ({ '@type': 'ListItem', position: i + 1, url: url(`/courses/${c.slug}/`) })) },
@@ -377,6 +432,7 @@ for (const c of openCourses) {
   const facts = [
     ['Level', c.level],
     ['Duration', `${c.duration}, ${c.hours}`],
+    ...((c.accreditation || []).length ? [['Accredited by', c.accreditation.join(', ').replace(/, ([^,]*)$/, ' and $1')]] : []),
     ['Fee', money(c.price) || 'Published with dates'],
     ['Next date', list.length ? fmtDate(list[0].date, { day: 'numeric', month: 'long', year: 'numeric' }) : 'Opening soon'],
   ];
@@ -422,9 +478,9 @@ for (const c of openCourses) {
 </section>
 ${c.curriculum && c.curriculum.length ? `<section class="section sand">
   <div class="wrap split">
-    <div><p class="eyebrow reveal">Curriculum</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,60px);margin-top:20px">Mapped to RCEM.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">The course covers each core point-of-care ultrasound application in the RCEM 2021 curriculum. The table shows the training phase in which RCEM introduces each application and the indicative number of supervised logbook scans before sign-off.</p></div>
+    <div><p class="eyebrow reveal">Curriculum</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,60px);margin-top:20px">Mapped to RCEM.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">The course covers each core point-of-care ultrasound application in the RCEM curriculum. The table shows the training phase in which RCEM introduces each application and the indicative number of supervised logbook scans before sign-off.</p></div>
     <div class="table-wrap reveal" data-d="1"><table class="table"><thead><tr><th scope="col">Application</th><th scope="col">Introduced in</th><th scope="col">Indicative scans</th></tr></thead><tbody>${c.curriculum.map((r) => `<tr><td><b>${esc(r.application)}</b></td><td>${esc(r.stage)}</td><td>${esc(r.scans)}</td></tr>`).join('')}</tbody></table>
-    <p class="source">Source: <a class="text-link" href="https://rcemcurriculum.co.uk/wp-content/uploads/2021/06/Appendix-3-PoCUS-for-2021-RCEM-curriculum.pdf" rel="noopener">RCEM 2021 curriculum, Appendix 3: PoCUS</a>. Scan numbers are indicative, not fixed targets. Sign-off also requires e-learning or course attendance, reflections and an entrustment decision in your department.</p></div>
+    <p class="source">Source: <a class="text-link" href="https://rcemcurriculum.co.uk/wp-content/uploads/2021/06/Appendix-3-PoCUS-for-2021-RCEM-curriculum.pdf" rel="noopener">RCEM curriculum, point-of-care ultrasound appendix</a>. Scan numbers are indicative, not fixed targets. Sign-off also requires e-learning or course attendance, reflections and an entrustment decision in your department.</p></div>
   </div>
 </section>` : ''}
 <section class="section" id="dates">
@@ -440,6 +496,7 @@ ${c.curriculum && c.curriculum.length ? `<section class="section sand">
     ${faqHtml(c.faqs)}
   </div>
 </section>
+${subscribeBand('No dates that suit? <em>Hear first.</em>', 'Subscribe and we email you new dates before they go public, with a practical scanning skill each month.')}
 ${ctaBand()}`,
   });
 }
@@ -448,13 +505,13 @@ ${ctaBand()}`,
 pages['/faculty/'] = layout({
   title: 'Faculty | Consultant-led POCUS training',
   pathname: '/faculty/',
-  description: `Meet the Wavelength team: Course Director ${site.director.name}, Consultant in Emergency Medicine, and General Manager Dr Zahra Habibzadeh, ultrasonographer.`,
+  description: `Meet the Wavelength team: Course Director ${site.director.name}, Consultant in Emergency Medicine, and General Manager Dr Zahra Habibzadeh, Emergency Medicine Specialist.`,
   jsonld: [
     breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Faculty', href: '/faculty/' }]),
     { '@context': 'https://schema.org', '@type': 'Person', name: site.director.name, jobTitle: site.director.title, worksFor: { '@id': url('/#org') }, description: site.director.bio[0], ...(site.director.email ? { email: site.director.email } : {}) },
     ...(site.team || []).map((m) => ({ '@context': 'https://schema.org', '@type': 'Person', name: m.name, jobTitle: m.role, worksFor: { '@id': url('/#org') }, description: m.bio[0], ...(m.email ? { email: m.email } : {}), ...(m.photo ? { image: url(m.photo) } : {}) })),
   ],
-  body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Our faculty are emergency medicine consultants and experienced ultrasound practitioners. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
+  body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Our faculty are emergency medicine consultants, FAMUS instructors and experienced ultrasound practitioners. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
 <section class="section"><div class="wrap">${directorBlock()}</div></section>
 ${(site.team || []).map((m) => `<section class="section sand"><div class="wrap"><div class="director">
   <div class="portrait reveal${m.photo ? ' has-photo' : ''}">${m.photo ? `<img src="${m.photo}" alt="${esc(m.name)}, ${esc(m.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">${esc(m.role)}</span></div>
@@ -477,7 +534,7 @@ pages['/about/'] = layout({
     <div class="reveal" data-d="2">
       <p class="lede">Wavelength started from a simple observation in the emergency department. Clinicians leave many ultrasound courses with a certificate but little confidence, because they spent the day watching rather than scanning.</p>
       <p class="lede">We build each course the other way round. Short, focused teaching. Live demonstration. Then supervised time on the probe, in small groups, until the views come easily and you know what to do with what you see.</p>
-      <p class="lede">We start with the core applications every emergency clinician needs, mapped to the RCEM curriculum. Specialist courses follow on the same principles.</p>
+      <p class="lede">We start with the core applications every emergency clinician needs, mapped to the RCEM curriculum. The core course is accredited by EUSEM, RCEM and FAMUS, and suits clinicians working towards FAMUS accreditation. Specialist courses follow on the same principles.</p>
     </div>
   </div>
 </section>
@@ -521,16 +578,72 @@ pages['/contact/'] = layout({
 </section>`,
 });
 
+// Subscribe
+pages['/subscribe/'] = layout({
+  title: 'Newsletter | Ultrasound skills by email',
+  pathname: '/subscribe/',
+  description: 'Subscribe to the Wavelength newsletter: one practical point-of-care ultrasound skill a month, new Learn posts and early access to course dates.',
+  jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Newsletter', href: '/subscribe/' }])],
+  body: `${pageHero({ eyebrow: 'Newsletter', title: 'Ultrasound skills, <em style="font-style:italic;color:var(--teal-light)">monthly.</em>', lede: 'One email a month from the Wavelength faculty. A practical scanning skill, new Learn posts, and course dates before they go public.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Newsletter' }] })}
+<section class="section"><div class="wrap split">
+  <div>
+    <p class="eyebrow reveal">What you receive</p>
+    <ul class="checklist reveal" data-d="1" style="margin-top:20px">${['A practical scanning skill each month, written by FAMUS instructors', 'New Learn posts, with images and pitfalls', 'Course dates before they go public', 'No sharing of your details, and one click to unsubscribe'].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
+  </div>
+  <div class="reveal" data-d="1">${subscribeForm({ id: 'sub-page' })}</div>
+</div></section>`,
+});
+pages['/subscribe/thanks/'] = layout({
+  title: 'Check your inbox',
+  pathname: '/subscribe/thanks/',
+  noindex: true,
+  body: `${pageHero({ eyebrow: 'Newsletter', title: 'Check your inbox.', lede: 'We have sent you an email to confirm your subscription. Click the link inside it to start receiving the Wavelength newsletter. If it does not arrive within a few minutes, check your spam or junk folder.', extra: '<div class="hero-ctas rise"><a class="btn btn-teal" href="/courses/">View courses</a><a class="btn btn-ghost light" href="/">Home</a></div>' })}`,
+});
+
+// Learn
+pages['/learn/'] = layout({
+  title: 'Learn | Point-of-care ultrasound skills',
+  pathname: '/learn/',
+  description: 'Practical point-of-care ultrasound skills from the Wavelength faculty: probe technique, views, pitfalls and cases for emergency and acute clinicians.',
+  jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }])],
+  body: `${pageHero({ eyebrow: 'Learn', title: 'From the scanning room.', lede: 'Practical point-of-care ultrasound skills from the Wavelength faculty. One technique, one view or one pitfall at a time.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn' }] })}
+<section class="section sand"><div class="wrap">${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
+${subscribeBand()}`,
+});
+for (const p of posts) {
+  const href = `/learn/${p.slug}/`;
+  const others = posts.filter((o) => o.slug !== p.slug).slice(0, 2);
+  pages[href] = layout({
+    title: p.title,
+    pathname: href,
+    description: p.summary,
+    ogType: 'article',
+    noindex: p.draft === true,
+    jsonld: [
+      { '@context': 'https://schema.org', '@type': 'Article', headline: p.title, description: p.summary, datePublished: p.date, author: { '@type': 'Person', name: p.author || site.director.name }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), inLanguage: 'en-GB' },
+      breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title, href }]),
+    ],
+    body: `${pageHero({ eyebrow: (p.category || 'Learn') + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: esc(p.summary || ''), crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title }], extra: `<p class="byline rise">${esc(p.author || site.director.name)}${p.date ? ' · ' + fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</p>` })}
+<section class="section"><div class="wrap"><article class="prose post reveal">${p.html}</article>
+<div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Small groups, FAMUS instructors and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
+</div></section>
+${others.length ? `<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">More to learn</p></div><div class="post-grid">${others.map((o) => postCard(o)).join('')}</div></div></section>` : ''}
+${subscribeBand('Get the next one <em>by email.</em>')}`,
+  });
+}
+
 // Legal pages
 const legal = {
   '/privacy/': {
     title: 'Privacy notice',
     body: `<p>This notice explains how ${site.company}, trading as Wavelength ("we"), collects and uses your personal data. We are the data controller for the data described here${site.registeredOffice ? `. Our registered office is ${site.registeredOffice}` : ''}${site.icoNumber ? ` and are registered with the Information Commissioner's Office under number ${site.icoNumber}` : ''}.</p>
-<h2>What we collect</h2><ul><li>Your name, email address, job title, grade and workplace when you book or contact us.</li><li>Payment details, which Stripe processes on our behalf. We never see or store your full card number.</li><li>Dietary or access requirements you choose to tell us, so we can run the day safely.</li></ul>
-<h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To tell you about future courses, only where you have agreed (consent). You can unsubscribe at any time.</li></ul>
-<h2>Who we share it with</h2><p>Stripe for payments, our email provider and our website host. Each acts under contract and protects your data. We do not sell your data.</p>
-<h2>How long we keep it</h2><p>Booking and attendance records for six years, to meet accounting rules and to confirm attendance for appraisal or revalidation. Marketing preferences until you withdraw consent.</p>
-<h2>Your rights</h2><p>You have the right to access, correct or delete your data, to object to or restrict its use, and to data portability. Email <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. If you are unhappy with our response, you can complain to the Information Commissioner's Office at ico.org.uk.</p>`,
+<h2>What we collect</h2><ul><li>Your name, email address, job title, grade and workplace when you book or contact us.</li><li>Your first name, email address and role when you subscribe to our newsletter.</li><li>Payment details, which Stripe processes on our behalf. We never see or store your full card number.</li><li>Dietary or access requirements you choose to tell us, so we can run the day safely.</li></ul>
+<h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To send you our newsletter, where you have subscribed (consent).</li><li>To tell delegates who have booked with us about similar future courses, unless they opted out when booking or later (our legitimate interests, under the soft opt-in rule in the Privacy and Electronic Communications Regulations).</li></ul>
+<h2>Our newsletter</h2><p>When you subscribe, we send you an email asking you to confirm. We add you to the list only after you click the confirmation link. Each newsletter carries an unsubscribe link, and you can also unsubscribe by emailing <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. We use your role to send you content relevant to your practice. Our newsletter service records whether you open an email and which links you click, so we can see which content helps clinicians most. We never sell or share your details for others' marketing.</p>
+<h2>Who we share it with</h2><p>Stripe for payments, Zoho for our email, newsletter and mailing list, and Cloudflare for our website. Each acts under contract as our processor and protects your data. We do not sell your data.</p>
+<h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies.</p>
+<h2>How long we keep it</h2><p>Booking and attendance records for six years, to meet accounting rules and to confirm attendance for appraisal or revalidation. Newsletter details until you unsubscribe. After you unsubscribe, we keep your email address on a suppression list so we do not email you again.</p>
+<h2>Your rights</h2><p>You have the right to access, correct or delete your data, to object to or restrict its use, to withdraw consent at any time, and to data portability. Email <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. If you are unhappy with our response, you can complain to the Information Commissioner's Office at ico.org.uk.</p>`,
   },
   '/terms/': {
     title: 'Booking terms',
@@ -591,11 +704,13 @@ function copyDir(src, dst) {
   }
 }
 copyDir(path.join(ROOT, 'src'), DIST);
+if (fs.existsSync(path.join(LEARN_DIR, 'images'))) copyDir(path.join(LEARN_DIR, 'images'), path.join(DIST, 'learn/images'));
 
-fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /email/\n\nSitemap: ${url('/sitemap.xml')}\n`);
+fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /email/\nDisallow: /subscribe/thanks/\n\nSitemap: ${url('/sitemap.xml')}\n`);
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
+    .filter((p) => !p.includes('/thanks/') && !(posts.find((x) => p === `/learn/${x.slug}/` && x.draft === true)))
     .map((p) => `  <url><loc>${url(p)}</loc><priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );
