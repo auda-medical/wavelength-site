@@ -5,7 +5,7 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 ## How it works
 - Static site, no framework. `node build.js` builds `dist/` from `data/*.json` and `src/`.
 - Cloudflare Workers (static assets) builds every push to `main`: build `npm run build`, deploy `npx wrangler deploy` using `wrangler.jsonc`. Pushing to `main` publishes the live site.
-- Domain: thewavelength.co.uk, set in `data/site.json` (`domain`). Firas is bidding for wavelength.co.uk; if he wins, change `domain` there.
+- Domain: thewavelength.co.uk (and www), attached as custom domains in `wrangler.jsonc` routes and set in `data/site.json` (`domain`). workers.dev is off so only the real domain is indexed. Firas is bidding for wavelength.co.uk; if he wins, change `domain` there.
 
 ## Common changes
 - Course dates, prices, venues, Stripe payment links: `data/courses.json` (`dates` array; see README).
