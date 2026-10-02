@@ -379,3 +379,6 @@ section{position:relative}
 .btn.small{min-height:36px;padding:0 14px;font-size:13px}
 .btn.danger{color:#8A2A1B;border-color:#E6B9B0}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pw-grid{display:grid;gap:20px}
+@media (min-width:760px){.pw-grid{grid-template-columns:1fr 1fr}}
+.pw-form{grid-template-columns:1fr auto;align-items:end;max-width:none}

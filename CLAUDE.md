@@ -23,8 +23,8 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 ## Volunteer area (hidden)
 - `/volunteer/` is a hidden, password-protected sign-up for scanning-model volunteers. Not linked anywhere, noindex, not in the sitemap.
 - `worker/index.js` runs first for `/volunteer/*` (`run_worker_first` in `wrangler.jsonc`), checks the login cookie, saves sign-ups to D1 (`wavelength-volunteers`, binding `DB`, schema in `migrations/`), and renders `/volunteer/admin/` (list, mark contacted, delete, CSV export).
-- Logins are Worker secrets set in the Cloudflare dashboard: VOLUNTEER_USERNAME, VOLUNTEER_PASSWORD (shared volunteer login), ADMIN_USERNAME, ADMIN_PASSWORD (Firas and Zahra), optional SESSION_SECRET. Without them the area shows "Opening soon".
-- Local test: `.dev.vars` with those four values, `npx wrangler d1 execute wavelength-volunteers --local --file migrations/0001_volunteers.sql`, then `npx wrangler dev --local`.
+- Logins live in the D1 `settings` table (volunteer_username "volunteer", admin_username "wavelength", PBKDF2 password hashes, session_secret). Never commit passwords. The admin page changes either password, and a change logs everyone out. Without settings the area shows "Opening soon".
+- Local test: apply both files in `migrations/` with `npx wrangler d1 execute wavelength-volunteers --local --file ...`, insert test settings, then `npx wrangler dev --local`.
 
 ## Discount codes
 Bookings go through Stripe Payment Links. Discount codes are Stripe promotion codes, switched on per payment link ("Allow promotion codes"). The course page tells people to enter codes on the payment page once any date has a `stripeLink`.
