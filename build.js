@@ -291,7 +291,7 @@ const nextDate = courses.flatMap((c) => upcoming(c).map((d) => ({ c, d }))).sort
 const generalFaqs = [
   { q: 'Who are Wavelength courses for?', a: 'Doctors at every grade in emergency, acute and internal medicine, plus advanced clinical practitioners, physician associates and GPs who work in urgent care.' },
   { q: 'Are the courses mapped to the RCEM curriculum?', a: 'Yes. The core course covers the core emergency applications in the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. We show you how to collect the supervised scans and assessments your department needs for sign-off.' },
-  { q: 'Who teaches the courses?', a: 'Accredited instructors teach every course. The core course maps to the RCEM curriculum. We plan separate FAMUS courses, mapped to the FAMUS curriculum.' },
+  { q: 'Who teaches the courses?', a: 'Senior clinicians with years of scanning and teaching experience: FAMUS-accredited instructors and RCEM-approved ultrasound supervisors. The core course maps to the RCEM curriculum.' },
   { q: 'How large are the groups?', a: 'Small. We cap numbers so each delegate gets long, supervised time on the probe at every station.' },
   { q: 'How do I pay?', a: 'Online by card through Stripe when you book. If your trust or deanery pays, email us and we will send an invoice.' },
   { q: 'What happens if I need to cancel?', a: 'You can transfer to a later date or cancel under our cancellation policy, which sets out the refund at each stage.' },
@@ -316,8 +316,9 @@ pages['/'] = layout({
     </div>
     <div class="hero-meta rise">
       <div><b>RCEM curriculum</b>Core emergency applications, mapped</div>
+      <div><b>FAMUS-accredited instructors</b>Senior clinicians, years of experience</div>
+      <div><b>RCEM-approved supervisors</b>Consultant-led faculty</div>
       <div><b>Small groups</b>Long, supervised time on the probe</div>
-      <div><b>Accredited instructors</b>Consultant-led faculty</div>
     </div>
   </div>
   <div class="scroll-cue" aria-hidden="true"></div>
@@ -523,7 +524,7 @@ pages['/faculty/'] = layout({
     { '@context': 'https://schema.org', '@type': 'Person', name: site.director.name, jobTitle: site.director.title, worksFor: { '@id': url('/#org') }, description: site.director.bio[0], ...(site.director.email ? { email: site.director.email } : {}) },
     ...(site.team || []).map((m) => ({ '@context': 'https://schema.org', '@type': 'Person', name: m.name, jobTitle: m.role, worksFor: { '@id': url('/#org') }, description: m.bio[0], ...(m.email ? { email: m.email } : {}), ...(m.photo ? { image: url(m.photo) } : {}) })),
   ],
-  body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Our faculty are emergency medicine consultants, FAMUS instructors and experienced ultrasound practitioners. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
+  body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Our faculty are senior emergency medicine consultants, FAMUS-accredited instructors, RCEM-approved ultrasound supervisors and experienced ultrasound practitioners. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
 <section class="section"><div class="wrap">${directorBlock()}</div></section>
 ${(site.team || []).map((m) => `<section class="section sand"><div class="wrap"><div class="director">
   <div class="portrait reveal${m.photo ? ' has-photo' : ''}">${m.photo ? `<img src="${ver(m.photo)}" alt="${esc(m.name)}, ${esc(m.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">${esc(m.role)}</span></div>
@@ -546,7 +547,7 @@ pages['/about/'] = layout({
     <div class="reveal" data-d="2">
       <p class="lede">Wavelength started from a simple observation in the emergency department. Clinicians leave many ultrasound courses with a certificate but little confidence, because they spent the day watching rather than scanning.</p>
       <p class="lede">We build each course the other way round. Short, focused teaching. Live demonstration. Then supervised time on the probe, in small groups, until the views come easily and you know what to do with what you see.</p>
-      <p class="lede">We start with the core applications every emergency clinician needs, mapped to the RCEM curriculum. Accredited instructors teach every course. FAMUS courses and specialist courses, such as nerve blocks, follow on the same principles, each mapped to its own curriculum.</p>
+      <p class="lede">We start with the core applications every emergency clinician needs, mapped to the RCEM curriculum. Senior FAMUS-accredited instructors and RCEM-approved ultrasound supervisors teach every course. Specialist courses, such as nerve blocks, follow on the same principles.</p>
     </div>
   </div>
 </section>
