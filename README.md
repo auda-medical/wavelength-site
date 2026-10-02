@@ -21,9 +21,9 @@ Add a new course by copying the whole course object and giving it a new `slug`.
 ## Build
 `node build.js` writes the site to `dist/`.
 
-## Hosting (Cloudflare Pages)
-- Build command: `node build.js`
-- Output directory: `dist`
+## Hosting (Cloudflare Workers)
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy` (reads wrangler.jsonc)
 Every push to `main` publishes automatically.
 
 ## Images
