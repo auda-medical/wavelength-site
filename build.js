@@ -69,7 +69,7 @@ function layout({ title, description, pathname, body, jsonld = [], ogType = 'web
       slogan: site.tagline,
       areaServed: site.region,
       description: site.description,
-      ...(site.linkedin ? { sameAs: [site.linkedin] } : {}),
+      ...([site.linkedin, site.instagram].filter(Boolean).length ? { sameAs: [site.linkedin, site.instagram].filter(Boolean) } : {}),
     },
     ...jsonld,
   ];
@@ -129,7 +129,7 @@ ${body}
       </div>
       <div><h2>Courses</h2><ul>${openCourses.map((c) => `<li><a href="/courses/${c.slug}/">${esc(c.title)}</a></li>`).join('')}<li><a href="/courses/">All courses</a></li></ul></div>
       <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li>${posts.length ? '<li><a href="/learn/">Learn</a></li>' : ''}<li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
-      <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li>${site.linkedin ? `<li><a href="${site.linkedin}" rel="me">LinkedIn</a></li>` : ''}</ul></div>
+      <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li>${site.linkedin ? `<li><a href="${site.linkedin}" rel="me noopener">LinkedIn</a></li>` : ''}${site.instagram ? `<li><a href="${site.instagram}" rel="me noopener">Instagram</a></li>` : ''}</ul></div>
     </div>
     <div class="bottom">
       <span>© <span data-year>${new Date().getFullYear()}</span> ${site.company}${site.companyNumber ? `, registered in England and Wales no. ${site.companyNumber}` : ''}. Wavelength is a trading name of ${site.company}.${site.registeredOffice ? ` Registered office: ${esc(site.registeredOffice)}.` : ''}</span>

@@ -10,9 +10,9 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 ## Common changes
 - Course dates, prices, venues, Stripe payment links: `data/courses.json` (`dates` array; see README).
 - New course: copy a course object in `data/courses.json`, new `slug`.
-- Team, emails, company details: `data/site.json`. Each person has an optional `email` shown on their profile (aliases of the shared Zoho inbox hello@).
+- Team, emails, company details, LinkedIn and Instagram links: `data/site.json`. Each person has an optional `email` shown on their profile (aliases of the shared Zoho inbox hello@).
 - Photos: crop to 4:5 head and shoulders with the face centred, 1680x2100 (2x for sharp screens), plain studio background, export WebP to `src/assets/team-<name>.webp` and set `photo` in `data/site.json`.
-- Accreditation: the core course is EUSEM accredited (`accreditation` in `data/*.json`). It is NOT RCEM or FAMUS accredited: say "mapped to the RCEM curriculum" and "taught by accredited instructors". FAMUS instructors teach on it, but keep FAMUS and RCEM in separate sentences and headings. FAMUS courses will be separate courses mapped to the FAMUS curriculum (approval per course via famus@acutemedicine.org.uk). Fascia iliaca block is not in the core course; nerve blocks will be a separate course. Say "RCEM curriculum", never "RCEM 2021 curriculum".
+- Accreditation: EUSEM accreditation is pending written confirmation, so the site does not claim it yet. When EUSEM confirms, `git revert` the commit "Hide EUSEM accreditation claim until EUSEM confirms in writing" to show it. Do not add RCEM, SAM/FAMUS or EUSEM logos without written permission from each body. It is NOT RCEM or FAMUS accredited: say "mapped to the RCEM curriculum" and "taught by accredited instructors". FAMUS instructors teach on it, but keep FAMUS and RCEM in separate sentences and headings. FAMUS courses will be separate courses mapped to the FAMUS curriculum (approval per course via famus@acutemedicine.org.uk). Fascia iliaca block is not in the core course; nerve blocks will be a separate course. Say "RCEM curriculum", never "RCEM 2021 curriculum".
 - Firas's bio uses `{scanYears}` (since 2008) and `{teachYears}` (since 2010), filled in at build time so the numbers stay current.
 
 ## Learn and newsletter
