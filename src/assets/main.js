@@ -149,6 +149,19 @@
   // Show form errors passed back in the address (?error=1)
   if (/[?&]error=1/.test(location.search)) document.querySelectorAll('[data-show-on="error"]').forEach(function (el) { el.hidden = false; });
 
+  // Newsletter: Zoho replies with JSON, so post into a hidden frame and move on to our thank-you page
+  document.querySelectorAll('form[data-zoho]').forEach(function (form) {
+    var frame = document.querySelector('iframe[name="' + form.getAttribute('target') + '"]');
+    var sent = false;
+    form.addEventListener('submit', function () {
+      sent = true;
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Subscribing…'; }
+      setTimeout(function () { if (sent) location.href = '/subscribe/thanks/'; }, 6000);
+    });
+    if (frame) frame.addEventListener('load', function () { if (sent) { sent = false; location.href = '/subscribe/thanks/'; } });
+  });
+
   // Year
   document.querySelectorAll('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
 })();

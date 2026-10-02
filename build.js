@@ -244,7 +244,7 @@ function subscribeForm({ id = 'sub', dark = false } = {}) {
   const live = !!n.action;
   const nm = (zoho, label) => (live ? zoho : label);
   const hidden = live ? Object.entries(n.hidden || {}).map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`).join('') : '<input type="hidden" name="subject" value="Newsletter sign-up">';
-  return `<form class="form sub-form${dark ? ' on-dark-form' : ''}" ${live ? `action="${esc(n.action)}" method="post"` : `data-mailto="${site.enquiriesEmail}"`} id="${id}">
+  return `<form class="form sub-form${dark ? ' on-dark-form' : ''}" ${live ? `action="${esc(n.action)}" method="post" target="zc-${id}" data-zoho` : `data-mailto="${site.enquiriesEmail}"`} id="${id}">
     ${hidden}
     <div class="sub-row">
       <label>First name<input name="${nm(n.firstNameField || 'FIRSTNAME', 'First name')}" autocomplete="given-name" required></label>
@@ -254,7 +254,7 @@ function subscribeForm({ id = 'sub', dark = false } = {}) {
     <label class="consent"><input type="checkbox"${live ? '' : ' name="Consent" value="yes"'} required><span>Send me the Wavelength newsletter: ultrasound skills, new Learn posts and course dates. I can unsubscribe at any time. Read our <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
     <div><button class="btn${dark ? ' btn-teal' : ''}" type="submit">Subscribe ${arrow}</button></div>
     ${live ? '' : '<p class="form-note">This opens your email app with your details ready to send.</p>'}
-  </form>`;
+  </form>${live ? `<iframe name="zc-${id}" title="Newsletter sign-up" hidden tabindex="-1" style="display:none"></iframe>` : ''}`;
 }
 
 function subscribeBand(title = 'Ultrasound skills, <em>in your inbox.</em>', text = 'One email a month: a practical scanning skill, new Learn posts and course dates before they go public.') {
