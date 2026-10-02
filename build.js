@@ -280,8 +280,8 @@ const nextDate = courses.flatMap((c) => upcoming(c).map((d) => ({ c, d }))).sort
 
 const generalFaqs = [
   { q: 'Who are Wavelength courses for?', a: 'Doctors at every grade in emergency, acute and internal medicine, plus advanced clinical practitioners, physician associates and GPs who work in urgent care.' },
-  { q: 'Are the courses mapped to the RCEM curriculum?', a: 'Yes. The core course covers every core point-of-care ultrasound application in the RCEM curriculum, and we show you how to collect the supervised scans and assessments your department needs for sign-off.' },
-  { q: 'Who teaches the courses?', a: 'FAMUS instructors, led by a consultant who supervises RCEM and FAMUS ultrasound sign-off and sits on the EUSEM Ultrasound Committee. The core course maps to the RCEM curriculum and suits clinicians working towards FAMUS accreditation as well as RCEM sign-off.' },
+  { q: 'Are the courses mapped to the RCEM curriculum?', a: 'Yes. The core course covers the core emergency applications in the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. We show you how to collect the supervised scans and assessments your department needs for sign-off.' },
+  { q: 'Are the courses accredited?', a: 'Yes. EUSEM accredits the core course, and accredited instructors teach it. We plan separate FAMUS courses, mapped to the FAMUS curriculum.' },
   { q: 'How large are the groups?', a: 'Small. We cap numbers so each delegate gets long, supervised time on the probe at every station.' },
   { q: 'How do I pay?', a: 'Online by card through Stripe when you book. If your trust or deanery pays, email us and we will send an invoice.' },
   { q: 'What happens if I need to cancel?', a: 'You can transfer to a later date or cancel under our cancellation policy, which sets out the refund at each stage.' },
@@ -305,9 +305,9 @@ pages['/'] = layout({
       <a class="btn btn-ghost light" href="/courses/core-emergency-ultrasound/#dates">${nextDate ? 'Next date: ' + fmtDate(nextDate.d.date, { day: 'numeric', month: 'long' }) : 'Register interest'}</a>
     </div>
     <div class="hero-meta rise">
-      <div><b>RCEM curriculum</b>Every core application, mapped</div>
+      <div><b>EUSEM accredited</b>Mapped to the RCEM curriculum</div>
       <div><b>Small groups</b>Long, supervised time on the probe</div>
-      <div><b>FAMUS instructors</b>Consultant-led faculty</div>
+      <div><b>Accredited instructors</b>Consultant-led faculty</div>
     </div>
   </div>
   <div class="scroll-cue" aria-hidden="true"></div>
@@ -327,7 +327,7 @@ pages['/'] = layout({
   <div class="wrap" style="margin-top:88px">
     <div class="pillars">
       <div class="pillar reveal"><div class="num">01</div><h3>Scan, don't sit</h3><p>Most of the day sits on the probe, with healthy models, simulators and vascular phantoms at every station.</p></div>
-      <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>Built for sign-off</h3><p>Content mapped to the RCEM curriculum, taught by RCEM and FAMUS ultrasound supervisors, with logbook templates and guidance on supervised scans and assessments.</p></div>
+      <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>Built for sign-off</h3><p>Content mapped to the RCEM curriculum, with logbook templates and guidance on supervised scans and assessments.</p></div>
       <div class="pillar reveal" data-d="2"><div class="num">03</div><h3>Led by a clinician</h3><p>Every course is led by an emergency medicine consultant and ultrasound lead who teaches the way he practises.</p></div>
     </div>
   </div>
@@ -536,7 +536,7 @@ pages['/about/'] = layout({
     <div class="reveal" data-d="2">
       <p class="lede">Wavelength started from a simple observation in the emergency department. Clinicians leave many ultrasound courses with a certificate but little confidence, because they spent the day watching rather than scanning.</p>
       <p class="lede">We build each course the other way round. Short, focused teaching. Live demonstration. Then supervised time on the probe, in small groups, until the views come easily and you know what to do with what you see.</p>
-      <p class="lede">We start with the core applications every emergency clinician needs, mapped to the RCEM curriculum. FAMUS instructors teach the core course, and it suits clinicians working towards FAMUS accreditation. Specialist courses follow on the same principles.</p>
+      <p class="lede">We start with the core applications every emergency clinician needs, mapped to the RCEM curriculum. Accredited instructors teach every course. FAMUS courses and specialist courses, such as nerve blocks, follow on the same principles, each mapped to its own curriculum.</p>
     </div>
   </div>
 </section>

@@ -4,23 +4,22 @@
     "status": "open",
     "title": "Core Emergency Ultrasound",
     "level": "Level 1",
-    "short": "One day of hands-on scanning that covers every core point-of-care ultrasound application in the RCEM curriculum. Taught by FAMUS instructors.",
-    "seoTitle": "Core Emergency Ultrasound Course (Level 1), mapped to the RCEM curriculum",
-    "seoDescription": "One-day Core (Level 1) POCUS course mapped to the RCEM curriculum and taught by FAMUS instructors: eFAST, AAA, echo in life support, vascular access and fascia iliaca block. Small groups.",
+    "short": "One day of hands-on scanning in the core emergency ultrasound applications, mapped to the RCEM curriculum. EUSEM accredited and taught by accredited instructors.",
+    "seoTitle": "Core Emergency Ultrasound Course (Level 1), EUSEM accredited",
+    "seoDescription": "One-day Core (Level 1) POCUS course mapped to the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. EUSEM accredited, accredited instructors, small groups.",
     "duration": "1 day",
     "hours": "09:00 to 17:00",
     "cpd": null,
     "price": null,
     "audience": [
       "Emergency medicine trainees working towards RCEM ultrasound sign-off",
-      "Clinicians working towards FAMUS accreditation",
       "Acute and internal medicine doctors starting point-of-care ultrasound",
       "Advanced clinical practitioners, physician associates and GPs working in urgent care",
       "Consultants and SAS doctors refreshing or formalising their skills"
     ],
     "overview": [
       "This course gives you the knowledge and the hands-on time to start scanning with confidence. Each module follows the same pattern: a short, focused talk, live demonstration, then supervised scanning on healthy models and simulators.",
-      "The content maps to the core point-of-care ultrasound applications in the RCEM curriculum. FAMUS instructors teach every station, led by a consultant who supervises RCEM and FAMUS ultrasound sign-off. You leave with a certificate, a logbook template and a clear plan for collecting supervised scans and gaining sign-off in your own department."
+      "The content maps to the core emergency point-of-care ultrasound applications in the RCEM curriculum, and EUSEM accredits the course. Accredited instructors teach every station, including FAMUS instructors. You leave with a certificate, a logbook template and a clear plan for collecting supervised scans and gaining sign-off in your own department."
     ],
     "modules": [
       {
@@ -42,10 +41,6 @@
       {
         "name": "Vascular access",
         "text": "Real-time needle guidance for peripheral and central venous access on high-fidelity phantoms."
-      },
-      {
-        "name": "Fascia iliaca block",
-        "text": "Ultrasound-guided regional anaesthesia for hip fractures, practised on phantoms with safety checks."
       },
       {
         "name": "Governance and sign-off",
@@ -91,10 +86,10 @@
       },
       {
         "time": "14:45",
-        "item": "Vascular access and fascia iliaca block on phantoms"
+        "item": "Vascular access: peripheral and central, on phantoms"
       },
       {
-        "time": "16:00",
+        "time": "15:45",
         "item": "Open scanning: practise any application with faculty"
       },
       {
@@ -113,11 +108,6 @@
         "scans": "5"
       },
       {
-        "application": "Fascia iliaca block",
-        "stage": "Core training",
-        "scans": "10"
-      },
-      {
         "application": "Abdominal aortic aneurysm",
         "stage": "Intermediate training",
         "scans": "25"
@@ -134,7 +124,7 @@
       }
     ],
     "includes": [
-      "Teaching from FAMUS instructors",
+      "Teaching from accredited instructors",
       "Small groups at every scanning station",
       "Healthy volunteer models, simulators and vascular phantoms",
       "Pre-course reading pack",
@@ -148,8 +138,8 @@
         "a": "No. The course starts from first principles. If you already scan, the structured approach and supervised practice still strengthen your technique."
       },
       {
-        "q": "Who teaches the course, and does it count towards sign-off?",
-        "a": "FAMUS instructors teach the course, led by a consultant who supervises RCEM and FAMUS ultrasound sign-off and sits on the EUSEM Ultrasound Committee. The content maps to the RCEM curriculum. Your supervised scans and sign-off take place in your own department, and the course prepares you for them, whether you are working towards RCEM sign-off or FAMUS accreditation."
+        "q": "Is the course accredited?",
+        "a": "Yes. EUSEM accredits the course. The content maps to the RCEM curriculum, and accredited instructors teach every station. Your supervised scans and sign-off take place in your own department, and the course prepares you for them."
       },
       {
         "q": "Does this course give me RCEM sign-off?",
@@ -174,6 +164,8 @@
         "stripeLink": "https://book.stripe.com/cNi00i9qybB8gBt4vscs800"
       }
     ],
-    "accreditation": []
+    "accreditation": [
+      "EUSEM"
+    ]
   }
 ]

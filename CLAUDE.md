@@ -12,7 +12,7 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 - New course: copy a course object in `data/courses.json`, new `slug`.
 - Team, emails, company details: `data/site.json`. Each person has an optional `email` shown on their profile (aliases of the shared Zoho inbox hello@).
 - Photos: crop to 4:5 head and shoulders with the face centred, 1680x2100 (2x for sharp screens), plain studio background, export WebP to `src/assets/team-<name>.webp` and set `photo` in `data/site.json`.
-- Accreditation: the course is NOT accredited by EUSEM, RCEM or FAMUS. Never claim it is. RCEM does not accredit external courses. FAMUS approves courses per course (£200, apply to famus@acutemedicine.org.uk). Use: mapped to the RCEM curriculum, taught by FAMUS instructors, led by a consultant who supervises RCEM and FAMUS sign-off and sits on the EUSEM Ultrasound Committee. `accreditation` arrays in `data/*.json` stay empty unless a body formally approves the course. Say "RCEM curriculum", never "RCEM 2021 curriculum".
+- Accreditation: the core course is EUSEM accredited (`accreditation` in `data/*.json`). It is NOT RCEM or FAMUS accredited: say "mapped to the RCEM curriculum" and "taught by accredited instructors". FAMUS instructors teach on it, but keep FAMUS and RCEM in separate sentences and headings. FAMUS courses will be separate courses mapped to the FAMUS curriculum (approval per course via famus@acutemedicine.org.uk). Fascia iliaca block is not in the core course; nerve blocks will be a separate course. Say "RCEM curriculum", never "RCEM 2021 curriculum".
 - Firas's bio uses `{scanYears}` (since 2008) and `{teachYears}` (since 2010), filled in at build time so the numbers stay current.
 
 ## Learn and newsletter

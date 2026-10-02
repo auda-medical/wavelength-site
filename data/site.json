@@ -2,7 +2,7 @@
   "name": "Wavelength",
   "tagline": "Tune In · Gain Clarity",
   "domain": "https://thewavelength.co.uk",
-  "description": "Consultant-led point-of-care ultrasound courses for emergency and acute clinicians. Mapped to the RCEM curriculum, taught by FAMUS instructors, small-group and hands-on.",
+  "description": "Consultant-led point-of-care ultrasound courses for emergency and acute clinicians. EUSEM accredited, taught by accredited instructors, small-group and hands-on.",
   "bookingsEmail": "bookings@thewavelength.co.uk",
   "enquiriesEmail": "hello@thewavelength.co.uk",
   "company": "Auda Medical Ltd",
@@ -50,7 +50,9 @@
     }
   ],
   "legalUpdated": "2026-10-02",
-  "accreditation": [],
+  "accreditation": [
+    "EUSEM"
+  ],
   "newsletter": {
     "_help": "Paste values from the Zoho Campaigns signup form embed code. Leave action empty and the form emails hello@ instead.",
     "action": "https://zcv2-zcmp.maillist-manage.eu/weboptin.zc",
