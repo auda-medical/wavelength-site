@@ -10,7 +10,7 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 ## Common changes
 - Course dates, prices, venues, Stripe payment links: `data/courses.json` (`dates` array; see README).
 - New course: copy a course object in `data/courses.json`, new `slug`.
-- Team, emails, company details: `data/site.json`.
+- Team, emails, company details: `data/site.json`. Each person has an optional `email` shown on their profile (aliases of the shared Zoho inbox hello@).
 - Photos: crop to 4:5 head and shoulders, 840x1050, plain studio background, export WebP to `src/assets/team-<name>.webp`.
 
 ## Brand

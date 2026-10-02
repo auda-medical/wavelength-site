@@ -197,6 +197,7 @@ section{position:relative}
 .portrait .cap{position:absolute;left:24px;bottom:22px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mist)}
 .director h2{font-family:var(--serif);font-size:clamp(40px,5vw,60px);margin:14px 0 6px}
 .director .role{color:var(--teal-ink);font-weight:600;margin-bottom:26px}
+.director .email{margin-top:6px;font-weight:600;overflow-wrap:anywhere}
 .director p{color:var(--slate)}
 .creds{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
 

@@ -335,6 +335,10 @@ function courseCard(c, h = 'h3') {
   </a>`;
 }
 
+function personEmail(email, d = '2') {
+  return email ? `<p class="email reveal" data-d="${d}"><a class="text-link" href="mailto:${email}">${email}</a></p>` : '';
+}
+
 function directorBlock() {
   const d = site.director;
   return `<div class="director">
@@ -344,6 +348,7 @@ function directorBlock() {
       <h2 class="reveal" data-d="1">${esc(d.name)}</h2>
       <p class="role reveal" data-d="1">${esc(d.title)} · ${esc(d.role)}</p>
       ${d.bio.map((p) => `<p class="reveal" data-d="2">${esc(p)}</p>`).join('')}
+      ${personEmail(d.email)}
       <div class="creds reveal" data-d="3">${d.credentials.map((x) => `<span class="chip dark">${esc(x)}</span>`).join('')}</div>
     </div>
   </div>`;
@@ -446,14 +451,14 @@ pages['/faculty/'] = layout({
   description: `Meet the Wavelength team: Course Director ${site.director.name}, Consultant in Emergency Medicine, and General Manager Dr Zahra Habibzadeh, ultrasonographer.`,
   jsonld: [
     breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Faculty', href: '/faculty/' }]),
-    { '@context': 'https://schema.org', '@type': 'Person', name: site.director.name, jobTitle: site.director.title, worksFor: { '@id': url('/#org') }, description: site.director.bio[0] },
-    ...(site.team || []).map((m) => ({ '@context': 'https://schema.org', '@type': 'Person', name: m.name, jobTitle: m.role, worksFor: { '@id': url('/#org') }, description: m.bio[0], ...(m.photo ? { image: url(m.photo) } : {}) })),
+    { '@context': 'https://schema.org', '@type': 'Person', name: site.director.name, jobTitle: site.director.title, worksFor: { '@id': url('/#org') }, description: site.director.bio[0], ...(site.director.email ? { email: site.director.email } : {}) },
+    ...(site.team || []).map((m) => ({ '@context': 'https://schema.org', '@type': 'Person', name: m.name, jobTitle: m.role, worksFor: { '@id': url('/#org') }, description: m.bio[0], ...(m.email ? { email: m.email } : {}), ...(m.photo ? { image: url(m.photo) } : {}) })),
   ],
   body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Our faculty are emergency medicine consultants and experienced ultrasound practitioners. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
 <section class="section"><div class="wrap">${directorBlock()}</div></section>
 ${(site.team || []).map((m) => `<section class="section sand"><div class="wrap"><div class="director">
   <div class="portrait reveal${m.photo ? ' has-photo' : ''}">${m.photo ? `<img src="${m.photo}" alt="${esc(m.name)}, ${esc(m.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">${esc(m.role)}</span></div>
-  <div><p class="eyebrow reveal">Management</p><h2 class="reveal" data-d="1">${esc(m.name)}</h2><p class="role reveal" data-d="1">${m.title ? esc(m.title) + ' · ' : ''}${esc(m.role)}</p>${m.bio.map((p) => `<p class="reveal" data-d="2">${esc(p)}</p>`).join('')}${m.credentials ? `<div class="creds reveal" data-d="3">${m.credentials.map((x) => `<span class="chip dark">${esc(x)}</span>`).join('')}</div>` : ''}</div>
+  <div><p class="eyebrow reveal">Management</p><h2 class="reveal" data-d="1">${esc(m.name)}</h2><p class="role reveal" data-d="1">${m.title ? esc(m.title) + ' · ' : ''}${esc(m.role)}</p>${m.bio.map((p) => `<p class="reveal" data-d="2">${esc(p)}</p>`).join('')}${personEmail(m.email)}${m.credentials ? `<div class="creds reveal" data-d="3">${m.credentials.map((x) => `<span class="chip dark">${esc(x)}</span>`).join('')}</div>` : ''}</div>
 </div></div></section>`).join('')}
 <section class="section"><div class="wrap"><div class="empty-dates reveal"><div><h3>Join the faculty</h3><p>Experienced in point-of-care ultrasound and keen to teach? We would like to hear from you.</p></div><a class="btn" href="${mailto(site.enquiriesEmail, 'Faculty enquiry')}">Get in touch ${arrow}</a></div></div></section>
 ${ctaBand()}`,

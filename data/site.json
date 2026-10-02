@@ -26,7 +26,8 @@
       "European Board examiner (EBEEM)",
       "ALS and ATLS Instructor"
     ],
-    "photo": ""
+    "photo": "",
+    "email": "firas@thewavelength.co.uk"
   },
   "team": [
     {
@@ -42,7 +43,8 @@
         "Emergency Clinical Specialist",
         "General Manager"
       ],
-      "photo": "/assets/team-zahra.webp"
+      "photo": "/assets/team-zahra.webp",
+      "email": "zahra@thewavelength.co.uk"
     }
   ],
   "legalUpdated": "2026-10-02"
