@@ -53,7 +53,7 @@ const NAV = [
   { href: '/contact/', label: 'Contact' },
 ];
 
-function layout({ title, description, pathname, body, jsonld = [], ogType = 'website', noindex = false }) {
+function layout({ title, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png' }) {
   const canonical = url(pathname);
   const fullTitle = title ? `${title} | ${site.name}` : `${site.name} | Point-of-care ultrasound courses`;
   const ld = [
@@ -89,7 +89,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : '<meta name="robots" cont
 <meta property="og:title" content="${esc(fullTitle)}">
 <meta property="og:description" content="${esc(description || site.description)}">
 <meta property="og:url" content="${canonical}">
-<meta property="og:image" content="${url('/assets/og.png')}">
+<meta property="og:image" content="${url(ogImage)}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="en_GB">
@@ -452,6 +452,7 @@ for (const c of openCourses) {
   pages[p] = layout({
     title: c.seoTitle || c.title,
     pathname: p,
+    ...(c.ogImage ? { ogImage: c.ogImage } : {}),
     description: c.seoDescription || c.short,
     jsonld: [courseLd(c), faqLd(c.faqs), breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Courses', href: '/courses/' }, { label: c.title, href: p }])],
     body: `${pageHero({

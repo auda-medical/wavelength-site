@@ -1,0 +1,104 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'Cormorant';src:url(/src/assets/fonts/cormorant-garamond-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'Cormorant';src:url(/src/assets/fonts/cormorant-garamond-latin-500-italic.woff2) format('woff2');font-weight:500;font-style:italic}
+@font-face{font-family:'DM Sans';src:url(/src/assets/fonts/dm-sans-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'DM Sans';src:url(/src/assets/fonts/dm-sans-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'DM Sans';src:url(/src/assets/fonts/dm-sans-latin-600-normal.woff2) format('woff2');font-weight:600}
+:root{--navy:#0F1E33;--deep:#0A1526;--teal:#2A7F8A;--lt:#7FC4CC;--cream:#F7F5F0;--mist:#A9B6C6}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--deep)}
+.card{position:relative;overflow:hidden;color:var(--cream);font-family:'DM Sans',sans-serif;
+  background:
+   radial-gradient(60% 50% at 82% 18%,rgba(42,127,138,.55),transparent 70%),
+   radial-gradient(55% 45% at 8% 92%,rgba(52,84,160,.35),transparent 70%),
+   linear-gradient(160deg,#0F1E33 0%,#0A1526 70%)}
+.grain{position:absolute;inset:0;opacity:.07;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>")}
+.waves{position:absolute;left:0;right:0;pointer-events:none}
+.inner{position:absolute;inset:0;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:18px}
+.brand svg{flex:none}
+.wm b{display:block;font-weight:500;letter-spacing:.42em;font-size:var(--wm)}
+.wm small{display:block;letter-spacing:.32em;font-size:calc(var(--wm)*.5);color:var(--mist);margin-top:6px}
+.eyebrow{font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--lt)}
+h1{font-family:'Cormorant',serif;font-weight:500;line-height:.98;letter-spacing:-.01em}
+h1 em{color:var(--lt);font-style:italic}
+.chips{display:flex;flex-wrap:wrap}
+.chip{border:1.5px solid rgba(247,245,240,.28);border-radius:999px;font-weight:500;color:var(--cream)}
+.when{display:grid;border-top:1.5px solid rgba(247,245,240,.16);border-bottom:1.5px solid rgba(247,245,240,.16)}
+.when div{display:flex;flex-direction:column}
+.when .k{font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--mist)}
+.when .v{font-weight:500;color:var(--cream);line-height:1.2}
+.faculty{color:var(--mist);line-height:1.45}
+.faculty b{color:var(--cream);font-weight:600}
+.cta{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.btn{background:var(--lt);color:var(--deep);border-radius:999px;font-weight:600;display:inline-flex;align-items:center;gap:14px;white-space:nowrap}
+.url{font-weight:500;color:var(--cream);letter-spacing:.02em}
+.places{color:var(--lt);font-weight:600}
+</style></head><body>
+<div id="c" class="card"><div class="grain"></div><svg class="waves" id="waves"></svg><div class="inner" id="in"></div></div>
+<script>
+const F = new URLSearchParams(location.search).get('f') || 'ig';
+const S = {
+  og:    { w:1200, h:630, pad:60, wm:20, logo:48, eye:17, h1:70, chip:18, chipPad:'9px 18px', kv:15, v:23, fac:17, btn:20, url:19, gapTop:0, waveY:0.5 },
+  ig:    { w:1080, h:1350, pad:84,  wm:26, logo:64, eye:22, h1:112, chip:25, chipPad:'14px 26px', kv:21, v:34, fac:25, btn:28, url:26, gapTop:84, waveY:0.53 },
+  story: { w:1080, h:1920, pad:96,  wm:28, logo:72, eye:24, h1:136, chip:28, chipPad:'16px 30px', kv:22, v:38, fac:28, btn:32, url:28, gapTop:200, waveY:0.6 },
+  li:    { w:1200, h:1200, pad:88,  wm:26, logo:64, eye:22, h1:112, chip:25, chipPad:'14px 26px', kv:20, v:32, fac:24, btn:27, url:25, gapTop:64, waveY:0.5 },
+}[F];
+const c = document.getElementById('c');
+c.style.width = S.w + 'px'; c.style.height = S.h + 'px'; c.style.setProperty('--wm', S.wm + 'px');
+const logo = `<svg width="${S.logo}" height="${S.logo}" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="#F7F5F0" stroke-width="2"/><path d="M12.5 20.5 C14 31 15.5 44 19 44 C24 44 26.5 22.5 32 22.5 C37.5 22.5 40 44 45 44 C48.5 44 50 31 51.5 20.5" stroke="#7FC4CC" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const arrow = `<svg width="${S.btn}" height="${S.btn}" viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const chips = ['eFAST', 'Aorta (AAA)', 'Echo in life support', 'Vascular access'];
+document.getElementById('in').style.padding = S.pad + 'px';
+document.getElementById('in').innerHTML = `
+  <div class="brand">${logo}<div class="wm"><b>WAVELENGTH</b><small>TUNE IN · GAIN CLARITY</small></div></div>
+  <div style="margin-top:${S.gapTop}px">
+    <p class="eyebrow" style="font-size:${S.eye}px">Level 1 · Core Emergency Ultrasound</p>
+    <h1 style="font-size:${S.h1}px;margin-top:${S.eye * 1.2}px">Scan with confidence<br><em>from day one.</em></h1>
+    <div class="chips" style="gap:${S.chip * .5}px;margin-top:${S.h1 * .38}px">${chips.map((x) => `<span class="chip" style="font-size:${S.chip}px;padding:${S.chipPad}">${x}</span>`).join('')}</div>
+  </div>
+  <div style="margin-top:auto">
+    <div class="when" style="grid-template-columns:${F === 'li' ? '1.15fr 1.5fr .7fr' : '1fr 1.35fr'};gap:${S.v * .9}px;padding:${S.v * .8}px 0">
+      <div><span class="k" style="font-size:${S.kv}px">Date</span><span class="v" style="font-size:${S.v}px;margin-top:10px">Monday<br>21 December 2026</span></div>
+      <div><span class="k" style="font-size:${S.kv}px">Venue</span><span class="v" style="font-size:${S.v}px;margin-top:10px">Darent Valley Hospital<br>Education Centre, Dartford</span></div>
+      ${F === 'li' ? '' : '<div style="display:none"></div>'}
+      <div ${F === 'li' ? '' : 'style="grid-column:1 / -1;flex-direction:row;align-items:baseline;gap:22px"'}><span class="k" style="font-size:${S.kv}px">Fee</span><span class="v" style="font-size:${S.v}px;${F === 'li' ? 'margin-top:10px' : ''}">£375${F === 'li' ? '<br>' : ' '}<span class="places" style="font-size:${S.kv * 1.05}px;letter-spacing:.04em;${F === 'li' ? '' : 'margin-left:10px'}">${F === 'li' ? '' : '· '}25 places</span></span></div>
+    </div>
+    <p class="faculty" style="font-size:${S.fac}px;margin-top:${S.v * .9}px">One day, 09:00 to 17:00, hands-on scanning at every station. Mapped to the RCEM curriculum.<br><b>Taught by FAMUS-accredited instructors and RCEM-approved ultrasound supervisors.</b></p>
+    <div class="cta" style="margin-top:${S.v * 1.1}px">
+      <span class="btn" style="font-size:${S.btn}px;padding:${S.btn * .75}px ${S.btn * 1.25}px">Book your place ${arrow}</span>
+      <span class="url" style="font-size:${S.url}px">thewavelength.co.uk</span>
+    </div>
+  </div>`;
+if (F === 'og') {
+  document.getElementById('waves').style.display = 'none';
+  const inn = document.getElementById('in');
+  inn.innerHTML = `
+  <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:56px;height:100%">
+    <div style="display:flex;flex-direction:column">
+      <div class="brand">${logo}<div class="wm"><b>WAVELENGTH</b><small>TUNE IN · GAIN CLARITY</small></div></div>
+      <p class="eyebrow" style="font-size:${S.eye}px;margin-top:auto">Level 1 · Core Emergency Ultrasound</p>
+      <h1 style="font-size:${S.h1}px;margin-top:18px">Scan with confidence<br><em>from day one.</em></h1>
+      <div class="chips" style="gap:10px;margin-top:26px">${chips.map((x) => `<span class="chip" style="font-size:${S.chip}px;padding:${S.chipPad}">${x}</span>`).join('')}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;justify-content:flex-end;border-left:1.5px solid rgba(247,245,240,.16);padding-left:44px">
+      ${[['Date','Monday 21 December 2026'],['Venue','Darent Valley Hospital, Dartford'],['Fee','£375 · 25 places']].map(([k,v]) => `<div style="margin-bottom:22px"><span class="k" style="display:block;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--mist);font-size:${S.kv}px">${k}</span><span style="display:block;font-weight:500;font-size:${S.v}px;margin-top:6px">${v}</span></div>`).join('')}
+      <p class="faculty" style="font-size:${S.fac}px;margin-bottom:26px">FAMUS-accredited instructors and RCEM-approved ultrasound supervisors. Mapped to the RCEM curriculum.</p>
+      <span class="btn" style="font-size:${S.btn}px;padding:15px 26px;align-self:flex-start">Book your place ${arrow}</span>
+    </div>
+  </div>`;
+}
+// Ultrasound-style waves across the card
+const wv = document.getElementById('waves'); if (F !== 'story') wv.style.display = 'none'; const H = S.h * (F === 'story' ? 0.11 : 0.34), wTop = S.h * S.waveY - H / 2;
+wv.style.top = wTop + "px"; wv.setAttribute('width', S.w); wv.setAttribute('height', H); wv.setAttribute('viewBox', `0 0 ${S.w} ${H}`);
+let p = '';
+for (let i = 0; i < 7; i++) {
+  const amp = H * (0.12 + i * 0.045), ph = i * 0.9, fr = 2 * Math.PI * (1.15 + i * 0.12) / S.w; let d = '';
+  for (let x = 0; x <= S.w; x += 8) { const y = H / 2 + amp * Math.sin(x * fr + ph) * Math.sin(Math.PI * x / S.w); d += (x ? 'L' : 'M') + x + ' ' + y.toFixed(1) + ' '; }
+  p += `<path d="${d}" stroke="${i % 2 ? '#7FC4CC' : '#F7F5F0'}" stroke-opacity="${0.05 + i * 0.022}" stroke-width="1.6" fill="none"/>`;
+}
+wv.innerHTML = p;
+document.fonts.ready.then(() => { window.__done = true; });
+</script></body></html>
