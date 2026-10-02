@@ -236,8 +236,8 @@ section{position:relative}
 .cta-band .hero-ctas{justify-content:center;margin:0}
 
 /* Course page */
-.crumbs{display:flex;flex-wrap:wrap;gap:8px;font-size:13px;color:var(--mist);margin-bottom:28px}
-.crumbs a{text-decoration:none;display:inline-block;padding:12px 0}.crumbs a:hover{color:var(--cream)}
+.crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;font-size:13px;color:var(--mist);margin-bottom:28px}
+.crumbs a{text-decoration:none;display:inline-block;padding:12px 0;line-height:1}.crumbs a:hover{color:var(--cream)}
 .facts{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:rgba(247,245,240,.12);border:1px solid rgba(247,245,240,.12);border-radius:var(--radius);overflow:hidden;margin-top:56px}
 @media (min-width:860px){.facts{grid-template-columns:repeat(4,1fr)}}
 .facts div{background:rgba(10,21,38,.55);padding:22px 24px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
