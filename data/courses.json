@@ -173,7 +173,9 @@
         "a": "We provide an invoice and a certificate of attendance to support your study leave application and appraisal."
       }
     ],
-    "dates": [],
+    "dates": [
+      { "date": "2026-12-21", "venue": "Darent Valley Hospital Education Centre", "city": "Dartford, Kent", "places": 25, "price": 375, "stripeLink": "https://book.stripe.com/cNi00i9qybB8gBt4vscs800" }
+    ],
     "accreditation": [
       "EUSEM",
       "RCEM",
