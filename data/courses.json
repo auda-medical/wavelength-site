@@ -4,9 +4,9 @@
     "status": "open",
     "title": "Core Emergency Ultrasound",
     "level": "Level 1",
-    "short": "One day of hands-on scanning in the core emergency ultrasound applications, mapped to the RCEM curriculum. EUSEM accredited and taught by accredited instructors.",
-    "seoTitle": "Core Emergency Ultrasound Course (Level 1), EUSEM accredited",
-    "seoDescription": "One-day Core (Level 1) POCUS course mapped to the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. EUSEM accredited, accredited instructors, small groups.",
+    "short": "One day of hands-on scanning in the core emergency ultrasound applications, mapped to the RCEM curriculum and taught by accredited instructors.",
+    "seoTitle": "Core Emergency Ultrasound Course (Level 1), mapped to the RCEM curriculum",
+    "seoDescription": "One-day Core (Level 1) POCUS course mapped to the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. Accredited instructors, small groups.",
     "duration": "1 day",
     "hours": "09:00 to 17:00",
     "cpd": null,
@@ -19,7 +19,7 @@
     ],
     "overview": [
       "This course gives you the knowledge and the hands-on time to start scanning with confidence. Each module follows the same pattern: a short, focused talk, live demonstration, then supervised scanning on healthy models and simulators.",
-      "The content maps to the core emergency point-of-care ultrasound applications in the RCEM curriculum, and EUSEM accredits the course. Accredited instructors teach every station, including FAMUS instructors. You leave with a certificate, a logbook template and a clear plan for collecting supervised scans and gaining sign-off in your own department."
+      "The content maps to the core emergency point-of-care ultrasound applications in the RCEM curriculum. Accredited instructors teach every station, including FAMUS instructors. You leave with a certificate, a logbook template and a clear plan for collecting supervised scans and gaining sign-off in your own department."
     ],
     "modules": [
       {
@@ -138,10 +138,6 @@
         "a": "No. The course starts from first principles. If you already scan, the structured approach and supervised practice still strengthen your technique."
       },
       {
-        "q": "Is the course accredited?",
-        "a": "Yes. EUSEM accredits the course. The content maps to the RCEM curriculum, and accredited instructors teach every station. Your supervised scans and sign-off take place in your own department, and the course prepares you for them."
-      },
-      {
         "q": "Does this course give me RCEM sign-off?",
         "a": "No single course does. Sign-off comes from supervised scans, reflections and assessment in your own department. This course covers the learning element and shows you how to complete the rest."
       },
@@ -164,8 +160,6 @@
         "stripeLink": "https://book.stripe.com/cNi00i9qybB8gBt4vscs800"
       }
     ],
-    "accreditation": [
-      "EUSEM"
-    ]
+    "accreditation": []
   }
 ]

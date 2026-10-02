@@ -281,7 +281,7 @@ const nextDate = courses.flatMap((c) => upcoming(c).map((d) => ({ c, d }))).sort
 const generalFaqs = [
   { q: 'Who are Wavelength courses for?', a: 'Doctors at every grade in emergency, acute and internal medicine, plus advanced clinical practitioners, physician associates and GPs who work in urgent care.' },
   { q: 'Are the courses mapped to the RCEM curriculum?', a: 'Yes. The core course covers the core emergency applications in the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. We show you how to collect the supervised scans and assessments your department needs for sign-off.' },
-  { q: 'Are the courses accredited?', a: 'Yes. EUSEM accredits the core course, and accredited instructors teach it. We plan separate FAMUS courses, mapped to the FAMUS curriculum.' },
+  { q: 'Who teaches the courses?', a: 'Accredited instructors teach every course. The core course maps to the RCEM curriculum. We plan separate FAMUS courses, mapped to the FAMUS curriculum.' },
   { q: 'How large are the groups?', a: 'Small. We cap numbers so each delegate gets long, supervised time on the probe at every station.' },
   { q: 'How do I pay?', a: 'Online by card through Stripe when you book. If your trust or deanery pays, email us and we will send an invoice.' },
   { q: 'What happens if I need to cancel?', a: 'You can transfer to a later date or cancel under our cancellation policy, which sets out the refund at each stage.' },
@@ -305,7 +305,7 @@ pages['/'] = layout({
       <a class="btn btn-ghost light" href="/courses/core-emergency-ultrasound/#dates">${nextDate ? 'Next date: ' + fmtDate(nextDate.d.date, { day: 'numeric', month: 'long' }) : 'Register interest'}</a>
     </div>
     <div class="hero-meta rise">
-      <div><b>EUSEM accredited</b>Mapped to the RCEM curriculum</div>
+      <div><b>RCEM curriculum</b>Core emergency applications, mapped</div>
       <div><b>Small groups</b>Long, supervised time on the probe</div>
       <div><b>Accredited instructors</b>Consultant-led faculty</div>
     </div>
