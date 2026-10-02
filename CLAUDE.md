@@ -20,6 +20,15 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 - Newsletter form: `newsletter` in `data/site.json`. Empty `action` means the form opens an email to hello@. Fill `action`, `hidden`, field names from the Zoho Campaigns signup form embed code to send sign-ups straight to Zoho. Zoho redirect after sign-up: `/subscribe/thanks/`.
 - Email templates for Zoho Campaigns: `src/email/newsletter/` and `src/email/welcome/` (live at /email/...). Images must use absolute https URLs.
 
+## Volunteer area (hidden)
+- `/volunteer/` is a hidden, password-protected sign-up for scanning-model volunteers. Not linked anywhere, noindex, not in the sitemap.
+- `worker/index.js` runs first for `/volunteer/*` (`run_worker_first` in `wrangler.jsonc`), checks the login cookie, saves sign-ups to D1 (`wavelength-volunteers`, binding `DB`, schema in `migrations/`), and renders `/volunteer/admin/` (list, mark contacted, delete, CSV export).
+- Logins are Worker secrets set in the Cloudflare dashboard: VOLUNTEER_USERNAME, VOLUNTEER_PASSWORD (shared volunteer login), ADMIN_USERNAME, ADMIN_PASSWORD (Firas and Zahra), optional SESSION_SECRET. Without them the area shows "Opening soon".
+- Local test: `.dev.vars` with those four values, `npx wrangler d1 execute wavelength-volunteers --local --file migrations/0001_volunteers.sql`, then `npx wrangler dev --local`.
+
+## Discount codes
+Bookings go through Stripe Payment Links. Discount codes are Stripe promotion codes, switched on per payment link ("Allow promotion codes"). The course page tells people to enter codes on the payment page once any date has a `stripeLink`.
+
 ## Brand
 - Navy #0F1E33, deep navy #0A1526, teal #2A7F8A, light teal #7FC4CC, cream #F7F5F0, sand #EDEAE3.
 - Cormorant Garamond (display) and DM Sans (text), self-hosted in `src/assets/fonts`.

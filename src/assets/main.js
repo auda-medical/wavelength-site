@@ -146,6 +146,9 @@
     });
   });
 
+  // Show form errors passed back in the address (?error=1)
+  if (/[?&]error=1/.test(location.search)) document.querySelectorAll('[data-show-on="error"]').forEach(function (el) { el.hidden = false; });
+
   // Year
   document.querySelectorAll('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
 })();

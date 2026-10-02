@@ -364,3 +364,18 @@ section{position:relative}
 @media (min-width:760px){.post-cta{grid-template-columns:1fr auto;align-items:center}}
 .post-cta h3{font-family:var(--serif);font-size:32px;margin-bottom:6px}
 .post-cta p{margin:0;color:var(--mist)}
+
+/* Volunteer area */
+.vol-login{max-width:440px}
+.form-error{margin:0;padding:14px 16px;border-radius:10px;background:#FBEDEA;color:#8A2A1B;font-size:15px}
+.vol-dates{border:0;padding:0;margin:0;display:grid;gap:12px;min-width:0}
+.vol-dates legend{font-size:14px;font-weight:600;margin-bottom:12px;padding:0}
+.vol-logout{margin-top:32px;font-size:15px}
+.admin-summary{color:var(--slate)}
+.admin-table td{vertical-align:top;font-size:14px;overflow-wrap:anywhere}
+.admin-table tr.done td{opacity:.55}
+.admin-table .actions{display:grid;gap:8px;min-width:150px}
+.admin-table .muted{color:var(--slate);opacity:.7}
+.btn.small{min-height:36px;padding:0 14px;font-size:13px}
+.btn.danger{color:#8A2A1B;border-color:#E6B9B0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

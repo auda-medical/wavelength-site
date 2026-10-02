@@ -1,12 +1,19 @@
 {
   // Cloudflare Workers static site. The build writes the site to dist/, and wrangler serves it.
+  // worker/index.js runs only for /volunteer/* (hidden, password-protected volunteer sign-up).
   "name": "wavelength-site",
+  "main": "./worker/index.js",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": ["/volunteer", "/volunteer/*"]
   },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "wavelength-volunteers", "database_id": "1d2a5805-b54f-4969-b0dc-8decaa5319cf" }
+  ],
   "routes": [
     { "pattern": "thewavelength.co.uk", "custom_domain": true },
     { "pattern": "www.thewavelength.co.uk", "custom_domain": true }

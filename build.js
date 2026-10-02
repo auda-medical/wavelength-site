@@ -23,6 +23,8 @@ const posts = (fs.existsSync(LEARN_DIR) ? fs.readdirSync(LEARN_DIR) : [])
   .filter((p) => SHOW_DRAFTS || (p.draft !== true && p.date <= new Date().toISOString().slice(0, 10)))
   .sort((a, b) => b.date.localeCompare(a.date));
 const BUILD = Date.now().toString(36);
+const crypto = require('crypto');
+const ver = (p) => { try { return p + '?v=' + crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'src', p))).digest('hex').slice(0, 8); } catch { return p; } };
 const TODAY = new Date().toISOString().slice(0, 10);
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -397,7 +399,7 @@ function personEmail(email, d = '2') {
 function directorBlock() {
   const d = site.director;
   return `<div class="director">
-    <div class="portrait reveal${d.photo ? ' has-photo' : ''}">${d.photo ? `<img src="${d.photo}" alt="${esc(d.name)}, ${esc(d.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">Course Director</span></div>
+    <div class="portrait reveal${d.photo ? ' has-photo' : ''}">${d.photo ? `<img src="${ver(d.photo)}" alt="${esc(d.name)}, ${esc(d.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">Course Director</span></div>
     <div>
       <p class="eyebrow reveal">Faculty</p>
       <h2 class="reveal" data-d="1">${esc(d.name)}</h2>
@@ -487,7 +489,7 @@ ${c.curriculum && c.curriculum.length ? `<section class="section sand">
   <div class="wrap">
     <div class="section-head"><p class="eyebrow reveal">Dates and booking</p><h2 class="reveal" data-d="1">Choose your date.</h2></div>
     ${datesBlock(c)}
-    <p class="reveal" style="margin-top:28px;color:var(--slate);font-size:15px">Paying through your trust or deanery? <a class="text-link" href="${mailto(site.bookingsEmail, `Invoice request: ${c.title}`)}">Request an invoice</a>. Bookings follow our <a class="text-link" href="/terms/">booking terms</a> and <a class="text-link" href="/cancellation/">cancellation policy</a>.</p>
+    <p class="reveal" style="margin-top:28px;color:var(--slate);font-size:15px">${list.some((d) => d.stripeLink) ? 'Have a discount code? Enter it on the payment page after you click Book now. ' : ''}Paying through your trust or deanery? <a class="text-link" href="${mailto(site.bookingsEmail, `Invoice request: ${c.title}`)}">Request an invoice</a>. Bookings follow our <a class="text-link" href="/terms/">booking terms</a> and <a class="text-link" href="/cancellation/">cancellation policy</a>.</p>
   </div>
 </section>
 <section class="section sand">
@@ -514,7 +516,7 @@ pages['/faculty/'] = layout({
   body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Our faculty are emergency medicine consultants, FAMUS instructors and experienced ultrasound practitioners. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
 <section class="section"><div class="wrap">${directorBlock()}</div></section>
 ${(site.team || []).map((m) => `<section class="section sand"><div class="wrap"><div class="director">
-  <div class="portrait reveal${m.photo ? ' has-photo' : ''}">${m.photo ? `<img src="${m.photo}" alt="${esc(m.name)}, ${esc(m.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">${esc(m.role)}</span></div>
+  <div class="portrait reveal${m.photo ? ' has-photo' : ''}">${m.photo ? `<img src="${ver(m.photo)}" alt="${esc(m.name)}, ${esc(m.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">${esc(m.role)}</span></div>
   <div><p class="eyebrow reveal">Management</p><h2 class="reveal" data-d="1">${esc(m.name)}</h2><p class="role reveal" data-d="1">${m.title ? esc(m.title) + ' · ' : ''}${esc(m.role)}</p>${m.bio.map((p) => `<p class="reveal" data-d="2">${esc(p)}</p>`).join('')}${personEmail(m.email)}${m.credentials ? `<div class="creds reveal" data-d="3">${m.credentials.map((x) => `<span class="chip dark">${esc(x)}</span>`).join('')}</div>` : ''}</div>
 </div></div></section>`).join('')}
 <section class="section"><div class="wrap"><div class="empty-dates reveal"><div><h3>Join the faculty</h3><p>Experienced in point-of-care ultrasound and keen to teach? We would like to hear from you.</p></div><a class="btn" href="${mailto(site.enquiriesEmail, 'Faculty enquiry')}">Get in touch ${arrow}</a></div></div></section>
@@ -632,16 +634,93 @@ ${subscribeBand('Get the next one <em>by email.</em>')}`,
   });
 }
 
+// Volunteer area (hidden, not linked, not in sitemap). worker/index.js guards every /volunteer/ page.
+const volDates = courses.flatMap((c) => upcoming(c).map((d) => `${c.title}, ${fmtDate(d.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}${d.city ? ', ' + d.city : ''}`));
+const volHero = (title, lede) => pageHero({ eyebrow: 'Volunteers', title, lede });
+const volLogout = '<p class="vol-logout"><a class="text-link" href="/volunteer/logout/">Log out</a></p>';
+pages['/volunteer/login/'] = layout({
+  title: 'Volunteer login',
+  pathname: '/volunteer/login/',
+  noindex: true,
+  body: `${volHero('Volunteer login.', 'Log in with the username and password you received from the Wavelength team.')}
+<section class="section"><div class="wrap">
+  <form class="form vol-login" method="post" action="/volunteer/login/">
+    <p class="form-error" data-show-on="error" hidden>The username or password is not correct. Try again or email <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>.</p>
+    <label>Username<input name="username" autocomplete="username" autocapitalize="none" required></label>
+    <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+    <div><button class="btn" type="submit">Log in ${arrow}</button></div>
+  </form>
+</div></section>`,
+});
+pages['/volunteer/'] = layout({
+  title: 'Volunteer as a scanning model',
+  pathname: '/volunteer/',
+  noindex: true,
+  body: `${volHero('Volunteer as a scanning model.', 'Help clinicians learn point-of-care ultrasound, and see how emergency scanning works from the other side of the probe. Ideal for medical students and anyone interested in ultrasound.')}
+<section class="section"><div class="wrap split">
+  <div>
+    <p class="eyebrow">What it involves</p>
+    <ul class="checklist" style="margin-top:20px">${[
+      'Delegates scan you under direct supervision from our faculty',
+      'Scans cover the abdomen, chest, heart and neck. Wear a two-piece outfit, and expect to expose your abdomen and chest',
+      'A chaperone is available on request, and you may stop or take a break at any time',
+      'You watch expert scanning all day and learn the anatomy on screen',
+    ].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
+    <aside class="callout" style="margin-top:36px"><p class="callout-title">Teaching, not diagnosis</p><p>Course scans are for teaching and are not a medical check-up. If faculty notice something unexpected, they tell you privately and advise you to see your GP. We do not record it.</p></aside>
+    ${volLogout}
+  </div>
+  <form class="form" method="post" action="/volunteer/">
+    <p class="form-error" data-show-on="error" hidden>Please complete the required fields and tick each confirmation.</p>
+    <div class="sub-row"><label>First name<input name="first_name" autocomplete="given-name" required maxlength="80"></label><label>Last name<input name="last_name" autocomplete="family-name" required maxlength="80"></label></div>
+    <div class="sub-row"><label>Email<input name="email" type="email" autocomplete="email" required maxlength="160"></label><label>Mobile<input name="phone" type="tel" autocomplete="tel" maxlength="40"></label></div>
+    <label>I am a<select name="status" required><option value="">Choose one</option>${['Medical student', 'Physician associate student', 'Nursing student', 'Sonography or radiography student', 'Paramedic student', 'Doctor', 'Other healthcare professional', 'Other'].map((r) => `<option>${r}</option>`).join('')}</select></label>
+    <div class="sub-row"><label>University or organisation<input name="organisation" maxlength="160"></label><label>Year of study (if a student)<input name="year" maxlength="40" placeholder="For example, Year 4"></label></div>
+    <fieldset class="vol-dates"><legend>Which dates suit you?</legend>
+      ${volDates.map((d) => `<label class="consent"><input type="checkbox" name="dates" value="${esc(d)}"><span>${esc(d)}</span></label>`).join('')}
+      <label class="consent"><input type="checkbox" name="dates" value="Any date: contact me when dates are set"${volDates.length ? '' : ' checked'}><span>Any date. Contact me when new dates are set.</span></label>
+    </fieldset>
+    <label>Anything else we should know<textarea name="notes" maxlength="1000" placeholder="For example, travel limits or times you are unavailable. Please do not include medical details."></textarea></label>
+    <label class="consent"><input type="checkbox" name="confirm_age" value="yes" required><span>I am aged 18 or over.</span></label>
+    <label class="consent"><input type="checkbox" name="confirm_scan" value="yes" required><span>I agree to be scanned by course delegates under faculty supervision, and I understand I may stop at any time.</span></label>
+    <label class="consent"><input type="checkbox" name="confirm_findings" value="yes" required><span>I understand course scans are for teaching, not diagnosis.</span></label>
+    <label class="consent"><input type="checkbox" name="confirm_privacy" value="yes" required><span>Wavelength may store my details to arrange volunteer sessions, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
+    <label class="consent"><input type="checkbox" name="future_contact" value="yes"><span>Contact me about future volunteer sessions. (Optional)</span></label>
+    <div><button class="btn" type="submit">Sign up to volunteer ${arrow}</button></div>
+  </form>
+</div></section>`,
+});
+pages['/volunteer/thanks/'] = layout({
+  title: 'Thank you for volunteering',
+  pathname: '/volunteer/thanks/',
+  noindex: true,
+  body: `${volHero('Thank you.', 'We have your details. The Wavelength team will email you to confirm a date, timings and the venue.')}
+<section class="section"><div class="wrap"><p><a class="btn" href="/volunteer/">Add another volunteer</a></p>${volLogout}</div></section>`,
+});
+pages['/volunteer/admin/'] = layout({
+  title: 'Volunteer sign-ups',
+  pathname: '/volunteer/admin/',
+  noindex: true,
+  body: `${volHero('Volunteer sign-ups.', 'Private to the Wavelength team. Volunteers never see this page.')}
+<section class="section"><div class="wrap"><div id="admin-root"></div>${volLogout}</div></section>`,
+});
+pages['/volunteer/unavailable/'] = layout({
+  title: 'Volunteer area',
+  pathname: '/volunteer/unavailable/',
+  noindex: true,
+  body: `${volHero('Opening soon.', `The volunteer area is not open yet. Email <a class="text-link" href="mailto:${site.enquiriesEmail}" style="color:inherit">${site.enquiriesEmail}</a> to register your interest.`)}`,
+});
+
 // Legal pages
 const legal = {
   '/privacy/': {
     title: 'Privacy notice',
     body: `<p>This notice explains how ${site.company}, trading as Wavelength ("we"), collects and uses your personal data. We are the data controller for the data described here${site.registeredOffice ? `. Our registered office is ${site.registeredOffice}` : ''}${site.icoNumber ? ` and are registered with the Information Commissioner's Office under number ${site.icoNumber}` : ''}.</p>
-<h2>What we collect</h2><ul><li>Your name, email address, job title, grade and workplace when you book or contact us.</li><li>Your first name, email address and role when you subscribe to our newsletter.</li><li>Payment details, which Stripe processes on our behalf. We never see or store your full card number.</li><li>Dietary or access requirements you choose to tell us, so we can run the day safely.</li></ul>
-<h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To send you our newsletter, where you have subscribed (consent).</li><li>To tell delegates who have booked with us about similar future courses, unless they opted out when booking or later (our legitimate interests, under the soft opt-in rule in the Privacy and Electronic Communications Regulations).</li></ul>
+<h2>What we collect</h2><ul><li>Your name, email address, job title, grade and workplace when you book or contact us.</li><li>Your first name, email address and role when you subscribe to our newsletter.</li><li>Payment details, which Stripe processes on our behalf. We never see or store your full card number.</li><li>Dietary or access requirements you choose to tell us, so we can run the day safely.</li><li>Your name, contact details, role, organisation and availability when you volunteer as a scanning model.</li></ul>
+<h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To send you our newsletter, where you have subscribed (consent).</li><li>To arrange volunteer scanning sessions, where you have signed up as a volunteer.</li><li>To tell delegates who have booked with us about similar future courses, unless they opted out when booking or later (our legitimate interests, under the soft opt-in rule in the Privacy and Electronic Communications Regulations).</li></ul>
 <h2>Our newsletter</h2><p>When you subscribe, we send you an email asking you to confirm. We add you to the list only after you click the confirmation link. Each newsletter carries an unsubscribe link, and you can also unsubscribe by emailing <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. We use your role to send you content relevant to your practice. Our newsletter service records whether you open an email and which links you click, so we can see which content helps clinicians most. We never sell or share your details for others' marketing.</p>
+<h2>Volunteer scanning models</h2><p>We use volunteers' details to arrange scanning sessions on our courses (our legitimate interests in running the course, and your agreement to take part). We do not ask for health information. Scans on our courses are for teaching, not diagnosis. If faculty notice something unexpected, they tell you privately and advise you to see your GP, and we do not record it. We keep volunteer details for up to two years after your last session, or until you ask us to delete them.</p>
 <h2>Who we share it with</h2><p>Stripe for payments, Zoho for our email, newsletter and mailing list, and Cloudflare for our website. Each acts under contract as our processor and protects your data. We do not sell your data.</p>
-<h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies.</p>
+<h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies. The private volunteer area sets one login cookie, which it needs to work, and removes it when you log out or after 12 hours.</p>
 <h2>How long we keep it</h2><p>Booking and attendance records for six years, to meet accounting rules and to confirm attendance for appraisal or revalidation. Newsletter details until you unsubscribe. After you unsubscribe, we keep your email address on a suppression list so we do not email you again.</p>
 <h2>Your rights</h2><p>You have the right to access, correct or delete your data, to object to or restrict its use, to withdraw consent at any time, and to data portability. Email <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. If you are unhappy with our response, you can complain to the Information Commissioner's Office at ico.org.uk.</p>`,
   },
@@ -710,7 +789,7 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisall
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
-    .filter((p) => !p.includes('/thanks/') && !(posts.find((x) => p === `/learn/${x.slug}/` && x.draft === true)))
+    .filter((p) => !p.includes('/thanks/') && !p.startsWith('/volunteer/') && !(posts.find((x) => p === `/learn/${x.slug}/` && x.draft === true)))
     .map((p) => `  <url><loc>${url(p)}</loc><priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );

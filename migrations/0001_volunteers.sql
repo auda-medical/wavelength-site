@@ -1,0 +1,2 @@
+-- Volunteer sign-ups (D1 database: wavelength-volunteers). Already applied.
+CREATE TABLE IF NOT EXISTS volunteers (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')), first_name TEXT NOT NULL, last_name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT, status TEXT, organisation TEXT, year TEXT, dates TEXT, notes TEXT, future_contact INTEGER NOT NULL DEFAULT 0, contacted INTEGER NOT NULL DEFAULT 0);
