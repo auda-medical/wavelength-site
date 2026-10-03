@@ -648,6 +648,18 @@ pages['/subscribe/thanks/'] = layout({
   body: `${pageHero({ eyebrow: 'Newsletter', title: 'Check your inbox.', lede: 'We have sent you an email to confirm your subscription. Click the link inside it to start receiving the Wavelength newsletter. If it does not arrive within a few minutes, check your spam or junk folder.', extra: '<div class="hero-ctas rise"><a class="btn btn-teal" href="/courses/">View courses</a><a class="btn btn-ghost light" href="/">Home</a></div>' })}`,
 });
 
+// Booking confirmation (Stripe redirects here after payment)
+pages['/booked/'] = layout({
+  title: 'Booking confirmed',
+  pathname: '/booked/',
+  noindex: true,
+  body: `${pageHero({ eyebrow: 'Booking confirmed', title: 'Thank you. <em style="font-style:italic;color:var(--teal-light)">See you on the day.</em>', lede: 'Your place is booked. Stripe has emailed your receipt, and your joining instructions follow by email within two working days.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Booking confirmed' }] })}
+<section class="section"><div class="wrap split">
+  <div><p class="eyebrow reveal">What happens next</p><h2 class="display reveal" data-d="1" style="font-size:clamp(34px,4vw,52px);margin-top:20px">Before the course.</h2></div>
+  <ul class="checklist reveal" data-d="1">${['Check your inbox for the Stripe receipt and invoice', 'Joining instructions arrive within two working days, with venue, parking and timings', 'Your pre-course reading pack follows before the day', 'Questions or changes: email <a class="text-link" href="mailto:' + site.bookingsEmail + '">' + site.bookingsEmail + '</a>'].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
+</div></section>`,
+});
+
 // Learn
 pages['/learn/'] = layout({
   title: 'Learn | Point-of-care ultrasound skills',
@@ -835,7 +847,7 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisall
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
-    .filter((p) => !p.includes('/thanks/') && !p.startsWith('/volunteer/') && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => p === `/learn/${x.slug}/` && x.draft === true)))
+    .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => p === `/learn/${x.slug}/` && x.draft === true)))
     .map((p) => `  <url><loc>${url(p)}</loc><priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );
