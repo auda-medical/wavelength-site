@@ -1,5 +1,405 @@
 {
  "modules": {
+  "abdomen": {
+   "slug": "abdomen",
+   "code": "ABD",
+   "title": "Acute abdominal pain: aorta, gallbladder, kidneys and bowel",
+   "cpdHours": 1.5,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "a",
+     "why": "A well-seen aorta under 3 cm from the diaphragm to the bifurcation excludes an aneurysm. Not seeing the appendix is non-diagnostic, no hydronephrosis does not exclude a stone, and late obstruction loses peristalsis.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "b",
+     "why": "An abdominal aorta of 3 cm or more is aneurysmal, the threshold used by the NHS screening programme. 5.5 cm is the usual threshold for considering elective repair, not for diagnosis.",
+     "review": "02-aorta",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "a",
+     "why": "Measuring the lumen alone ignores mural thrombus and underestimates the size. Measure outer wall to outer wall, at right angles to the vessel, along the whole length.",
+     "review": "02-aorta",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "c",
+     "why": "Most ruptured AAAs bleed into the retroperitoneum first. An aneurysm with pain or hypotension is a rupture until proven otherwise, whatever the free fluid scan shows.",
+     "review": "02-aorta",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "a",
+     "why": "The main lobar fissure is a bright line in the liver running from the portal vein to the gallbladder neck. Following it finds the gallbladder even when it is small or contracted.",
+     "review": "03-gallbladder",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "b",
+     "why": "A recent meal, ascites, heart failure, low albumin and hepatitis all thicken the wall. Cholecystitis needs the combination of stones and signs of inflammation in the right clinical context.",
+     "review": "03-gallbladder",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "a",
+     "why": "Follow each black space. A dilated collecting system connects calyces to the pelvis. Parapelvic cysts do not connect. Sinus vessels, not cysts, fill with colour.",
+     "review": "04-kidneys",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "a",
+     "why": "In suspected nephrolithiasis, an ultrasound-first approach reduced cumulative radiation exposure without increasing high-risk diagnoses with complications. CT still has a role when the diagnosis is uncertain.",
+     "review": "04-kidneys",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "b",
+     "why": "An infected, obstructed kidney is a urological emergency. It needs antibiotics, resuscitation and urgent drainage.",
+     "review": "04-kidneys",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "a",
+     "why": "A transition point shows where the blockage lies. Ileus causes generalised dilatation with reduced movement and no transition point.",
+     "review": "05-bowel",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "c",
+     "why": "Wall thickening, fluid between loops and loss of peristalsis in a segment suggest compromised blood supply. To-and-fro movement and the keyboard pattern support obstruction but not strangulation.",
+     "review": "05-bowel",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "a",
+     "why": "An inflamed appendix is wide, rigid and ends blindly. A compressible tube under 6 mm is normal. Peristalsis belongs to bowel. Not seeing the appendix is non-diagnostic.",
+     "review": "06-appendix-intussusception",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "a",
+     "why": "A positive scan reliably supports appendicitis. A negative or non-diagnostic scan does not exclude it. Follow local pathways when the scan does not show the appendix.",
+     "review": "06-appendix-intussusception",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "d",
+     "why": "The target sign shows bowel inside bowel in cross-section. The sandwich or pseudokidney sign shows the same layers in long axis. Seeing both in the same place confirms the diagnosis.",
+     "review": "06-appendix-intussusception",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q15",
+     "correct": "b",
+     "why": "Transient small-bowel intussusceptions are smaller, central or left-sided, lack a lead point and usually reduce on their own. An ileocolic intussusception is larger, right-sided and persists.",
+     "review": "06-appendix-intussusception",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Context: rule in, rarely rule out",
+     "path": "/elearning/abdomen/learn/context/"
+    },
+    "02-aorta": {
+     "title": "The aorta: see the whole length",
+     "path": "/elearning/abdomen/learn/aorta/"
+    },
+    "03-gallbladder": {
+     "title": "The gallbladder: follow the fissure",
+     "path": "/elearning/abdomen/learn/gallbladder/"
+    },
+    "04-kidneys": {
+     "title": "The kidneys and ureteric jets",
+     "path": "/elearning/abdomen/learn/kidneys/"
+    },
+    "05-bowel": {
+     "title": "Small bowel obstruction",
+     "path": "/elearning/abdomen/learn/bowel/"
+    },
+    "06-appendix-intussusception": {
+     "title": "The appendix and intussusception",
+     "path": "/elearning/abdomen/learn/appendix-intussusception/"
+    },
+    "07-cases": {
+     "title": "Cases",
+     "path": "/elearning/abdomen/learn/cases/"
+    }
+   }
+  },
+  "airway": {
+   "slug": "airway",
+   "code": "AWY",
+   "title": "Ultrasound around the airway: stomach, tube, lungs and diaphragm",
+   "cpdHours": 1,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "d",
+     "why": "Waveform capnography remains the standard for tube confirmation. Neck ultrasound shows trachea or oesophagus, not tube depth. Gastric ultrasound informs the aspiration-risk assessment alongside the history and guidance.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "c",
+     "why": "The antrum lies in the epigastrium, just right of the midline, between the left lobe of the liver anteriorly and the great vessels posteriorly. These landmarks keep the view reproducible.",
+     "review": "02-gastric",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "b",
+     "why": "Gravity carries fluid into the dependent antrum when the patient lies right side down. Small volumes only seen in this position are often normal secretions.",
+     "review": "02-gastric",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "b",
+     "why": "The empty antrum is flat with layered walls, often described as a target or bull's-eye. Fluid distends it with black contents. Solid food gives bright, mixed contents.",
+     "review": "02-gastric",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "c",
+     "why": "Air in an intubated oesophagus creates a second air-mucosa interface beside the trachea. Two air shadows side by side mean the tube is in the wrong place.",
+     "review": "03-tube",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "b",
+     "why": "The oesophagus usually sits posterolateral to the trachea on the left. Find it before intubation to know where a second tract would appear.",
+     "review": "03-tube",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "b",
+     "why": "In arrest, little carbon dioxide reaches the lungs, so the trace is low even with a tracheal tube. Ultrasound gives a direct look at tube position. A trace usually appears with effective compressions.",
+     "review": "03-tube",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "d",
+     "why": "A lung pulse shows the lung touches the chest wall, which excludes pneumothorax under the probe. Absent sliding means it is not moving with ventilation, as in a right main bronchus intubation.",
+     "review": "04-lungs",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "b",
+     "why": "Tension pneumothorax in a ventilated patient is a clinical diagnosis. Absent sliding supports it, but decompression must not wait for a lung point or an X-ray.",
+     "review": "04-lungs",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "b",
+     "why": "The probe sits below the diaphragm. On inspiration the diaphragm contracts and moves caudally, towards the probe, which is up on the screen. The M-mode trace rises with each breath in.",
+     "review": "05-diaphragm",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "a",
+     "why": "A paralysed hemidiaphragm cannot contract. A sharp sniff lowers the pressure in the chest and sucks it upwards, away from the probe. This confirms paralysis.",
+     "review": "05-diaphragm",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "d",
+     "why": "Positive pressure displaces the diaphragm whether or not it contracts. Assess movement during spontaneous breaths to judge muscle function.",
+     "review": "05-diaphragm",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Context: four questions around the airway",
+     "path": "/elearning/airway/learn/context/"
+    },
+    "02-gastric": {
+     "title": "The stomach: empty, fluid or solid",
+     "path": "/elearning/airway/learn/gastric/"
+    },
+    "03-tube": {
+     "title": "The tube: one tract or two",
+     "path": "/elearning/airway/learn/tube/"
+    },
+    "04-lungs": {
+     "title": "The lungs after intubation",
+     "path": "/elearning/airway/learn/lungs/"
+    },
+    "05-diaphragm": {
+     "title": "The diaphragm: watch the sniff",
+     "path": "/elearning/airway/learn/diaphragm/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/airway/learn/cases/"
+    }
+   }
+  },
   "cardiac": {
    "slug": "cardiac",
    "code": "FCU",
@@ -440,6 +840,186 @@
     }
    }
   },
+  "eye-scrotum": {
+   "slug": "eye-scrotum",
+   "code": "EYS",
+   "title": "Time-critical small parts: the eye and the scrotum",
+   "cpdHours": 1,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "b",
+     "why": "An irregular pupil after penetrating trauma suggests an open globe. Pressure risks extruding the contents. Protect the eye and refer to ophthalmology urgently.",
+     "review": "02-eye-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "c",
+     "why": "The lens and retina are sensitive to heating and mechanical effects. The limits for the eye, including a mechanical index of 0.23 or less, are far stricter than for other organs.",
+     "review": "02-eye-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "d",
+     "why": "Anchoring your hand on the face controls the probe, and a thick layer of gel gives contact without pressure on the globe. If the eyelid dents, you are pressing.",
+     "review": "02-eye-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "d",
+     "why": "The retina stays anchored at the optic disc, so a detachment is tethered there. It is thicker and stiffer than a posterior vitreous detachment and moves little with eye movement.",
+     "review": "03-eye-findings",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "a",
+     "why": "Emergency physician ultrasound detected retinal detachment well but missed many posterior vitreous detachments. A normal scan does not exclude them, so new floaters need ophthalmology review.",
+     "review": "03-eye-findings",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "b",
+     "why": "Blood in the vitreous gives fine grey echoes which swirl after the eye moves. Turn the gain up to see them, and look carefully for a detachment hidden behind the blood.",
+     "review": "03-eye-findings",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "a",
+     "why": "The normal side gives you settings and a reference for flow. Then scan the painful side with the same settings, and compare the two side by side.",
+     "review": "04-scrotum-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "a",
+     "why": "Blood flow inside the testis is slow, especially in young boys. A high scale shows no colour even in a normal testis. Set the scale low and the gain just below noise.",
+     "review": "04-scrotum-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "a",
+     "why": "The twisted cord forms a round mass with vessels spiralling into it. In the 2018 meta-analysis it had a specificity of 99%, so a whirlpool strongly supports torsion.",
+     "review": "05-torsion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "d",
+     "why": "Partial torsion preserves some arterial flow, and a testis which has untwisted becomes hyperaemic. Normal flow does not exclude torsion. The clinical picture decides referral.",
+     "review": "05-torsion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "c",
+     "why": "Inflammation increases blood flow, so the epididymis looks large and hyperaemic. A straight cord without a twist argues against torsion. A small avascular upper-pole structure suggests a torsed appendage.",
+     "review": "05-torsion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "c",
+     "why": "Torsion is a clinical diagnosis, and salvage falls with time. Refer on clinical grounds. A bedside scan can be done while urology attends, not instead.",
+     "review": "05-torsion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Context: help, never delay",
+     "path": "/elearning/eye-scrotum/learn/context/"
+    },
+    "02-eye-technique": {
+     "title": "The eye: safe technique",
+     "path": "/elearning/eye-scrotum/learn/eye-technique/"
+    },
+    "03-eye-findings": {
+     "title": "The eye: make it move",
+     "path": "/elearning/eye-scrotum/learn/eye-findings/"
+    },
+    "04-scrotum-technique": {
+     "title": "The scrotum: technique",
+     "path": "/elearning/eye-scrotum/learn/scrotum-technique/"
+    },
+    "05-torsion": {
+     "title": "Torsion or epididymo-orchitis: follow the cord",
+     "path": "/elearning/eye-scrotum/learn/torsion/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/eye-scrotum/learn/cases/"
+    }
+   }
+  },
   "lumps": {
    "slug": "lumps",
    "code": "LMP",
@@ -877,6 +1457,186 @@
     "08-cases": {
      "title": "Cases",
      "path": "/elearning/lung/learn/cases/"
+    }
+   }
+  },
+  "msk": {
+   "slug": "msk",
+   "code": "MSK",
+   "title": "Soft tissue and joints: foreign bodies, tendons, the shoulder and the hip",
+   "cpdHours": 1,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "b",
+     "why": "Fibrillar structures reflect the beam back to the probe only when it strikes them at right angles. Tilt the probe and they turn dark. Correcting the angle restores the bright fibres.",
+     "review": "01-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "d",
+     "why": "Normal appearances vary between people. The other side, with the same settings, shows what is normal for this patient. Asymmetry is the key sign for hip effusion and many soft tissue findings.",
+     "review": "01-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "a",
+     "why": "Wood, plastic and thorns are radiolucent. Ultrasound shows them as bright structures with a shadow. Metal, most glass and gravel show well on X-ray.",
+     "review": "02-foreign-body",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "c",
+     "why": "Smooth glass and metal surfaces reflect the beam back and forth, giving bright parallel reverberation lines or a comet tail, often with shadowing.",
+     "review": "02-foreign-body",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "c",
+     "why": "Tissue reaction around a retained object forms a dark rim, often after a day or more. It makes the object easier to find and suggests infection or inflammation.",
+     "review": "02-foreign-body",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "d",
+     "why": "Mapping the object in two planes, with its depth and relation to structures, guides the incision and shows when specialist removal is safer.",
+     "review": "02-foreign-body",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "a",
+     "why": "A tear stays dark whatever the angle. Darkness which disappears when you correct the angle is anisotropy.",
+     "review": "03-tendon",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "c",
+     "why": "A full tear separates the tendon ends, often with fluid between them. Gentle movement shows the ends moving independently.",
+     "review": "03-tendon",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "c",
+     "why": "The posterior view looks from behind. A head lying superficial, closer to the probe, has moved backwards.",
+     "review": "04-shoulder",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "c",
+     "why": "Ultrasound shows the position of the head. Fractures need X-ray when the mechanism, age or examination raises concern.",
+     "review": "04-shoulder",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "d",
+     "why": "ACEP guidance uses over 5 mm, or a difference of more than 2 mm between sides. Comparing sides is the most useful check.",
+     "review": "05-hip",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "c",
+     "why": "Both conditions cause an effusion. Fever, refusal to bear weight and raised inflammatory markers raise concern for septic arthritis, which needs urgent orthopaedic review and aspiration.",
+     "review": "05-hip",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-technique": {
+     "title": "Technique: angle, two planes, the other side",
+     "path": "/elearning/msk/learn/technique/"
+    },
+    "02-foreign-body": {
+     "title": "Foreign bodies: bright, then read the shadow",
+     "path": "/elearning/msk/learn/foreign-body/"
+    },
+    "03-tendon": {
+     "title": "Tendons: tear or anisotropy?",
+     "path": "/elearning/msk/learn/tendon/"
+    },
+    "04-shoulder": {
+     "title": "The shoulder: one posterior view",
+     "path": "/elearning/msk/learn/shoulder/"
+    },
+    "05-hip": {
+     "title": "The hip: compare the capsule",
+     "path": "/elearning/msk/learn/hip/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/msk/learn/cases/"
     }
    }
   }

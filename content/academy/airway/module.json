@@ -1,0 +1,35 @@
+{
+  "slug": "airway",
+  "code": "AWY",
+  "title": "Ultrasound around the airway: stomach, tube, lungs and diaphragm",
+  "short": "Airway and ventilation",
+  "category": "Airway",
+  "summary": "Four quick scans around intubation and ventilation: is the stomach full, is the tube in the trachea, are both lungs ventilated, and is the diaphragm working? Learn what each scan answers, and what it cannot.",
+  "cpdHours": 1,
+  "minutes": 60,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/intubation-double-tract/",
+  "image": "/learn/images/intubation-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-03",
+  "reviewDue": "2028-10-03",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency, acute, critical care and anaesthetic doctors, advanced clinical practitioners and physician associates involved in sedation, intubation or ventilation.",
+  "outcomes": [
+    "Classify gastric contents as empty, clear fluid or solid, and use the result in the aspiration-risk assessment",
+    "Identify tracheal and oesophageal intubation on neck ultrasound, alongside waveform capnography",
+    "Use lung sliding and the lung pulse to detect main bronchus intubation and pneumothorax after intubation",
+    "Assess diaphragm movement and recognise weakness or paralysis",
+    "Document airway ultrasound findings and their limits"
+  ],
+  "lessons": ["01-context", "02-gastric", "03-tube", "04-lungs", "05-diaphragm", "06-cases"],
+  "references": [
+    "Van de Putte P, Perlas A. Ultrasound assessment of gastric content and volume. British Journal of Anaesthesia. 2014.",
+    "Chou HC, et al. Tracheal rapid ultrasound exam (T.R.U.E.) for confirming endotracheal tube placement during emergency intubation. Resuscitation. 2011.",
+    "Chrimes N, et al. Preventing unrecognised oesophageal intubation: a consensus guideline from the Project for Universal Management of Airways and international airway societies. Anaesthesia. 2022.",
+    "Volpicelli G, et al. International evidence-based recommendations for point-of-care lung ultrasound. Intensive Care Medicine. 2012;38:577.",
+    "Boussuges A, et al. Diaphragmatic motion studied by M-mode ultrasonography: methods, reproducibility, and normal values. Chest. 2009.",
+    "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
+  ]
+}

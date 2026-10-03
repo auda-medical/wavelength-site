@@ -1,0 +1,35 @@
+{
+  "slug": "abdomen",
+  "code": "ABD",
+  "title": "Acute abdominal pain: aorta, gallbladder, kidneys and bowel",
+  "short": "Acute abdominal pain",
+  "category": "Abdomen",
+  "summary": "Six focused scans for the patient with abdominal pain: the aorta, the gallbladder, the kidneys and ureteric jets, small bowel obstruction, the appendix and, in children, intussusception. Learn what each scan rules in, what it cannot rule out, and when to escalate.",
+  "cpdHours": 1.5,
+  "minutes": 90,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/appendix-positive-helps/",
+  "image": "/learn/images/appendix-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-03",
+  "reviewDue": "2028-10-03",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency, acute and urgent care doctors, advanced clinical practitioners and physician associates who assess adults and children with abdominal pain.",
+  "outcomes": [
+    "Scan the whole abdominal aorta and recognise an aneurysm of 3 cm or more",
+    "Find the gallbladder using the main lobar fissure and recognise the signs of cholecystitis",
+    "Grade hydronephrosis, separate it from its mimics, and use ureteric jets in suspected renal colic",
+    "Recognise small bowel obstruction and the features of complications",
+    "Recognise appendicitis and intussusception, and act safely on a non-diagnostic scan"
+  ],
+  "lessons": ["01-context", "02-aorta", "03-gallbladder", "04-kidneys", "05-bowel", "06-appendix-intussusception", "07-cases"],
+  "references": [
+    "Smith-Bindman R, et al. Ultrasonography versus computed tomography for suspected nephrolithiasis. New England Journal of Medicine. 2014;371:1100-10.",
+    "Fields JM, et al. Accuracy of point-of-care ultrasonography for diagnosing acute appendicitis: a systematic review and meta-analysis. Academic Emergency Medicine. 2017.",
+    "Lin-Martore M, et al. Diagnostic accuracy of point-of-care ultrasound for intussusception in children presenting to the emergency department: a systematic review and meta-analysis. Western Journal of Emergency Medicine. 2020;21:1008-16.",
+    "NHS Abdominal Aortic Aneurysm Screening Programme. Aneurysm size thresholds and surveillance.",
+    "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
+    "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
+  ]
+}

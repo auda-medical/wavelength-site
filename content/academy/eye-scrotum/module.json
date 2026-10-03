@@ -1,0 +1,34 @@
+{
+  "slug": "eye-scrotum",
+  "code": "EYS",
+  "title": "Time-critical small parts: the eye and the scrotum",
+  "short": "Eye and scrotum",
+  "category": "Small parts",
+  "summary": "Two presentations where minutes matter and the bedside scan helps, if you know its limits: sudden visual symptoms and the acute scrotum. Learn the safe technique, the dynamic signs, and why neither scan should delay the specialist.",
+  "cpdHours": 1,
+  "minutes": 60,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/ocular-make-the-eye-move/",
+  "image": "/learn/images/ocular-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-03",
+  "reviewDue": "2028-10-03",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency, acute and urgent care doctors, advanced clinical practitioners and physician associates who assess eye and scrotal emergencies.",
+  "outcomes": [
+    "Scan the eye safely, within ophthalmic output limits and with no pressure on the globe",
+    "Separate retinal detachment, posterior vitreous detachment and vitreous haemorrhage using after-movements",
+    "Scan the scrotum and spermatic cord in a systematic, side-to-side way",
+    "Recognise the signs of testicular torsion and epididymo-orchitis, and the limits of colour Doppler",
+    "Escalate without delay, whatever the scan shows, when the clinical picture demands it"
+  ],
+  "lessons": ["01-context", "02-eye-technique", "03-eye-findings", "04-scrotum-technique", "05-torsion", "06-cases"],
+  "references": [
+    "Lahham S, et al. Point-of-care ultrasonography in the diagnosis of retinal detachment, vitreous hemorrhage, and vitreous detachment in the emergency department. JAMA Network Open. 2019;2:e192162.",
+    "McDowall J, et al. The ultrasonographic whirlpool sign in testicular torsion: valuable tool or waste of valuable time? A systematic review and meta-analysis. Emergency Radiology. 2018.",
+    "US Food and Drug Administration. Marketing clearance of diagnostic ultrasound systems and transducers (ophthalmic output limits).",
+    "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
+    "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
+  ]
+}

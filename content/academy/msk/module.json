@@ -1,0 +1,34 @@
+{
+  "slug": "msk",
+  "code": "MSK",
+  "title": "Soft tissue and joints: foreign bodies, tendons, the shoulder and the hip",
+  "short": "Soft tissue and joints",
+  "category": "MSK",
+  "summary": "Four musculoskeletal questions you answer at the bedside: is there a retained foreign body, is the tendon torn, is the shoulder in, and is there fluid in the hip? Learn anisotropy, the shadows different materials cast, and the side-to-side comparison which settles most doubts.",
+  "cpdHours": 1,
+  "minutes": 60,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/tendon-tear-or-anisotropy/",
+  "image": "/learn/images/tendon-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-03",
+  "reviewDue": "2028-10-03",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency, acute and urgent care doctors, advanced clinical practitioners, emergency nurse practitioners and physician associates who manage wounds, soft tissue injuries and joint problems.",
+  "outcomes": [
+    "Use probe angle and side-to-side comparison to avoid the commonest musculoskeletal artefacts",
+    "Find and map a retained foreign body, and recognise how wood, glass and metal appear",
+    "Separate a tendon tear from anisotropy",
+    "Confirm shoulder dislocation and reduction from a single posterior view",
+    "Recognise a hip effusion and the limits of ultrasound in suspected septic arthritis"
+  ],
+  "lessons": ["01-technique", "02-foreign-body", "03-tendon", "04-shoulder", "05-hip", "06-cases"],
+  "references": [
+    "US of soft-tissue foreign bodies and associated complications with surgical correlation. RadioGraphics. 2001;21:1251.",
+    "American College of Emergency Physicians. Sonoguide: pediatric hip.",
+    "Kocher MS, et al. Differentiating between septic arthritis and transient synovitis of the hip in children: an evidence-based clinical prediction algorithm. Journal of Bone and Joint Surgery (American). 1999;81:1662-70.",
+    "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
+    "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
+  ]
+}
