@@ -2,9 +2,9 @@
 title: "Shoulder: one posterior view, before and after reduction"
 summary: Put the probe below the scapular spine and the glenoid and humeral head sit side by side. Where the head lies in relation to the glenoid tells you if the shoulder is out, which way, and if it has gone back in.
 category: MSK
-date: 2026-11-30
+date: 2026-10-03
 author: Dr Firas Abou-Auda
-draft: true
+draft: false
 ---
 
 A dislocated shoulder is a common, painful presentation. One ultrasound view from behind the patient shows whether the joint is out, which way it has gone, and whether your reduction has worked, at the bedside and without moving the patient.
