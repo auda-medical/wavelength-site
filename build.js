@@ -274,6 +274,19 @@ function socialIcons() {
   return `<div class="social">${items.map(([k, label]) => `<a href="${site[k]}" rel="me noopener" target="_blank" aria-label="Wavelength on ${label}">${ICONS[k]}</a>`).join('')}</div>`;
 }
 
+function reviewsBand() {
+  const r = site.reviews; if (!r || !(r.items || []).length) return '';
+  const star = '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M10 1.5l2.6 5.5 6 .8-4.4 4.1 1.1 6-5.3-2.9-5.3 2.9 1.1-6L1.4 7.8l6-.8z"/></svg>';
+  const stars = `<span class="stars" aria-label="5 out of 5 stars">${star.repeat(5)}</span>`;
+  return `<section class="section reviews-band on-dark">${mesh}
+  <div class="wrap">
+    <div class="section-head"><p class="eyebrow reveal">Delegate reviews · ${esc(r.rating)} from ${r.count} on Google</p><h2 class="reveal" data-d="1">What delegates say about courses led by our Course Director.</h2></div>
+    <div class="review-grid">${r.items.map((x, i) => `<figure class="review reveal" data-d="${i % 3}">${stars}<blockquote>${esc(x.text)}</blockquote><figcaption>${esc(x.name)} <span>Google review</span></figcaption></figure>`).join('')}</div>
+    <p class="review-note reveal">${esc(r.note || '')} <a class="text-link" href="${r.url}" rel="noopener" target="_blank">Read all reviews on Google</a></p>
+  </div>
+</section>`;
+}
+
 function postCard(p, h = 'h3') {
   return `<a class="post-card reveal" href="/learn/${p.slug}/">
     <p class="eyebrow">${esc(p.category || 'Learn')}${p.draft === true ? ' · Draft' : ''}</p>
@@ -368,6 +381,7 @@ pages['/'] = layout({
 <section class="section sand">
   <div class="wrap">${directorBlock()}</div>
 </section>
+${reviewsBand()}
 
 <section class="section" id="dates">
   <div class="wrap">
@@ -497,6 +511,7 @@ ${c.curriculum && c.curriculum.length ? `<section class="section sand">
     <p class="source">Source: <a class="text-link" href="https://rcemcurriculum.co.uk/wp-content/uploads/2021/06/Appendix-3-PoCUS-for-2021-RCEM-curriculum.pdf" rel="noopener">RCEM curriculum, point-of-care ultrasound appendix</a>. Scan numbers are indicative, not fixed targets. Sign-off also requires e-learning or course attendance, reflections and an entrustment decision in your department.</p></div>
   </div>
 </section>` : ''}
+${reviewsBand()}
 <section class="section" id="dates">
   <div class="wrap">
     <div class="section-head"><p class="eyebrow reveal">Dates and booking</p><h2 class="reveal" data-d="1">Choose your date.</h2></div>

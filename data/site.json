@@ -73,5 +73,30 @@
     "firstNameField": "FIRSTNAME",
     "roleField": "CONTACT_CF1",
     "listName": "Wavelength newsletter"
+  },
+  "reviews": {
+    "_help": "Fixed quotes copied word for word from the Google Business Profile. Only add reviews that exist on Google. rating and count must match Google.",
+    "rating": "5.0",
+    "count": 12,
+    "url": "https://share.google/WkvJDmb6F67PmYOIP",
+    "note": "Reviews from Dr Firas Abou-Auda's earlier courses, written before the rename to Wavelength.",
+    "items": [
+      {
+        "name": "Darmiga T.",
+        "text": "Excellent course, well organised, informative and relevant. Multiple opportunities to practice USS skills under direct supervision with helpful and targeted feedback. Has significantly improved my confidence performing practical procedures. Would highly recommend to anyone looking to improve their USS skills."
+      },
+      {
+        "name": "Parisa J.",
+        "text": "I found this course very useful, I had plenty of chances to practice under the supervision of an expert in the field of ultrasound. I definitely recommend this course to all medical practitioners."
+      },
+      {
+        "name": "Reza D.",
+        "text": "This course was wonderful, gave me great a confidence in using USS in ED. Great job!"
+      },
+      {
+        "name": "Riaz A.",
+        "text": "Great course, well organised with high quality USS machine."
+      }
+    ]
   }
 }
