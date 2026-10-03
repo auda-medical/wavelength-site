@@ -1,0 +1,34 @@
+{
+  "slug": "trunk-blocks",
+  "code": "TRK",
+  "title": "Ultrasound-guided trunk blocks: erector spinae plane and rectus sheath",
+  "short": "Trunk blocks for chest and abdominal wall pain",
+  "category": "Nerve blocks",
+  "summary": "Two plane blocks for the trunk: the erector spinae plane block for rib fractures near the spine and thoracic pain, and the rectus sheath block for the central abdominal wall. Learn the safety system, the sonoanatomy, the needle path, the coverage and the limits of each.",
+  "cpdHours": 1,
+  "minutes": 65,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/erector-spinae-plane-block-bone-muscle/",
+  "image": "/learn/images/esp-block-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-04",
+  "reviewDue": "2028-10-04",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency and acute care doctors and advanced clinical practitioners who perform, or are training to perform, ultrasound-guided regional anaesthesia under their trust's governance.",
+  "outcomes": [
+    "Set up a safe plane block: consent, dose calculation, monitoring, Stop Before You Block and documentation",
+    "Tell a transverse process from a rib on ultrasound and perform the erector spinae plane block",
+    "Identify the rectus sheath layers, the inferior epigastric vessels and the arcuate line, and perform the rectus sheath block",
+    "Choose between chest wall blocks for a rib fracture by its position",
+    "Recognise the limits of each block, including abdominal wall blocks masking intra-abdominal pathology"
+  ],
+  "lessons": ["01-context", "02-safety", "03-esp", "04-rectus", "05-cases"],
+  "references": [
+    "Forero M, Adhikary SD, Lopez H, Tsui C, Chin KJ. The erector spinae plane block: a novel analgesic technique in thoracic neuropathic pain. Regional Anesthesia and Pain Medicine. 2016;41:621-7.",
+    "Partyka C, et al. Serratus anterior plane blocks for early rib fracture pain management: the SABRE randomized clinical trial. JAMA Surgery. 2024;159:810-17.",
+    "Willschke H, Bösenberg A, Marhofer P, et al. Ultrasound-guided rectus sheath block in paediatric anaesthesia: a new approach to an old technique. British Journal of Anaesthesia. 2006;97:244-9.",
+    "Association of Anaesthetists. Management of severe local anaesthetic toxicity. Safety guideline. 2010.",
+    "Regional Anaesthesia UK and the Safe Anaesthesia Liaison Group. Stop Before You Block."
+  ]
+}

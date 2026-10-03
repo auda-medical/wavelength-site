@@ -1,0 +1,38 @@
+{
+  "slug": "hip-blocks",
+  "code": "HIP",
+  "title": "Ultrasound-guided blocks for the hip and femur: femoral, fascia iliaca and PENG",
+  "short": "Blocks for hip and femoral fractures",
+  "category": "Nerve blocks",
+  "summary": "A fractured neck of femur is the commonest serious injury in older people, and a nerve block on arrival is part of good care. Learn the femoral nerve block, the infra-inguinal and supra-inguinal fascia iliaca blocks and the PENG block: the anatomy, the safety system, how to choose between them and the evidence.",
+  "cpdHours": 1.5,
+  "minutes": 90,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/fascia-iliaca-block-infra-inguinal/",
+  "image": "/learn/images/fascia-iliaca-infra-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-04",
+  "reviewDue": "2028-10-04",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency and acute care doctors, advanced clinical practitioners and nurses who perform, or are training to perform, ultrasound-guided blocks for hip and femoral fractures under their trust's governance.",
+  "outcomes": [
+    "Explain why early nerve blocks matter in hip fracture, and summarise the evidence",
+    "Set up a safe block in a frail patient: capacity, dose calculation, monitoring, Stop Before You Block and documentation",
+    "Perform the sonoanatomy and needle path for the femoral nerve, infra-inguinal and supra-inguinal fascia iliaca and PENG blocks",
+    "Choose between the blocks for a given injury and patient",
+    "Recognise the risks of each block, including quadriceps weakness and local anaesthetic toxicity"
+  ],
+  "lessons": ["01-context", "02-safety", "03-femoral", "04-fascia-iliaca", "05-peng", "06-cases"],
+  "references": [
+    "Guay J, Kopp S. Peripheral nerve blocks for hip fractures in adults. Cochrane Database of Systematic Reviews. 2020;11:CD001159.",
+    "Griffiths R, Babu S, Dixon P, et al. Guideline for the management of hip fractures 2020: guideline by the Association of Anaesthetists. Anaesthesia. 2021;76:225-37.",
+    "Royal College of Emergency Medicine. Fascia iliaca block in the emergency department. Best practice guideline.",
+    "Dalens B, Vanneuville G, Tanguy A. Comparison of the fascia iliaca compartment block with the 3-in-1 block in children. Anesthesia and Analgesia. 1989;69:705-13.",
+    "Hebbard P, Ivanusic J, Sha S. Ultrasound-guided supra-inguinal fascia iliaca block: a cadaveric evaluation of a novel approach. Anaesthesia. 2011;66:300-5.",
+    "Desmet M, Vermeylen K, Van Herreweghe I, et al. A longitudinal supra-inguinal fascia iliaca compartment block reduces morphine consumption after total hip arthroplasty. Regional Anesthesia and Pain Medicine. 2017;42:327-33.",
+    "Girón-Arango L, Peng PWH, Chin KJ, Brull R, Perlas A. Pericapsular nerve group (PENG) block for hip fracture. Regional Anesthesia and Pain Medicine. 2018;43:859-63.",
+    "Association of Anaesthetists. Management of severe local anaesthetic toxicity. Safety guideline. 2010.",
+    "Regional Anaesthesia UK and the Safe Anaesthesia Liaison Group. Stop Before You Block."
+  ]
+}

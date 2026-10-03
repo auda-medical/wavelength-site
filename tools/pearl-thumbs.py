@@ -25,6 +25,8 @@ CROP = {
     'sbo-pearl.webp': (0.02, 0.33, 0.51),
     'shoulder-pearl.webp': (0.02, 0.42, 0.52),
     'tendon-pearl.webp': (0.02, 0.33, 0.47),
+    'peng-block-pearl.webp': (0.66, 1.0, 0.12),
+    'radial-block-pearl.webp': (0.66, 1.0, 0.12),
 }
 os.makedirs(OUT, exist_ok=True)
 for f in sorted(glob.glob(os.path.join(SRC, '*-pearl.webp'))):

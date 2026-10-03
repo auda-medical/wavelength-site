@@ -1,0 +1,34 @@
+{
+  "slug": "hand-blocks",
+  "code": "HND",
+  "title": "Ultrasound-guided blocks for the hand: median, ulnar, radial and digital",
+  "short": "Forearm and digital blocks for the hand",
+  "category": "Nerve blocks",
+  "summary": "Hand injuries are among the commonest emergency department procedures. Learn to block the median, ulnar and superficial radial nerves in the forearm and the digital nerves in the finger with ultrasound, using small volumes, after a careful examination and within a safe system.",
+  "cpdHours": 1.5,
+  "minutes": 85,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/median-nerve-block-build-a-halo/",
+  "image": "/learn/images/median-block-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-04",
+  "reviewDue": "2028-10-04",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency and acute care doctors, advanced clinical practitioners and emergency nurse practitioners who perform, or are training to perform, ultrasound-guided blocks for hand procedures under their trust's governance.",
+  "outcomes": [
+    "Examine and document hand nerve and tendon function before any block",
+    "Set up a safe block: consent, dose calculation, monitoring, Stop Before You Block and documentation",
+    "Find the median, ulnar and superficial radial nerves in the forearm and tell them from tendons and vessels",
+    "Choose the right block, or combination, for a wound from the sensory map of the hand",
+    "Perform an ultrasound-guided digital block with small paired deposits"
+  ],
+  "lessons": ["01-context", "02-safety", "03-median", "04-ulnar-radial", "05-digital", "06-cases"],
+  "references": [
+    "Liebmann O, Price D, Mills C, et al. Feasibility of forearm ultrasonography-guided nerve blocks of the radial, ulnar, and median nerves for hand procedures in the emergency department. Annals of Emergency Medicine. 2006;48:558-62.",
+    "McCahon RA, Bedforth NM. Peripheral nerve block at the elbow and wrist. Continuing Education in Anaesthesia, Critical Care and Pain. 2007;7:42-4.",
+    "Lalonde D, Bell M, Benoit P, et al. A multicenter prospective study of 3,110 consecutive cases of elective epinephrine use in the fingers and hand: the Dalhousie Project clinical phase. Journal of Hand Surgery (American). 2005;30:1061-7.",
+    "Association of Anaesthetists. Management of severe local anaesthetic toxicity. Safety guideline. 2010.",
+    "Regional Anaesthesia UK and the Safe Anaesthesia Liaison Group. Stop Before You Block."
+  ]
+}

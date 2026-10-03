@@ -1044,6 +1044,414 @@
     }
    }
   },
+  "hand-blocks": {
+   "slug": "hand-blocks",
+   "code": "HND",
+   "title": "Ultrasound-guided blocks for the hand: median, ulnar, radial and digital",
+   "cpdHours": 1.5,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "d",
+     "why": "The module teaches the safety system, the anatomy, the needle path and the evidence. Competence comes from supervised practice under your trust's governance.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "c",
+     "why": "A block removes sensation. Document the examination first so a nerve or tendon injury is not missed or blamed on the block.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "b",
+     "why": "The superficial branch of the radial nerve supplies the radial side of the back of the hand, the back of the thumb and the first web space.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "d",
+     "why": "Wrong-side blocks often follow a distraction between the earlier checks and the needle. The final check happens with the needle in your hand.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "d",
+     "why": "Early toxicity affects the brain. Seizures and cardiovascular collapse can follow, sometimes with no warning.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "b",
+     "why": "The median nerve runs between the two finger flexor muscles, moving superficial close to the wrist.",
+     "review": "03-median",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "b",
+     "why": "Tendons turn into muscle as you move up. The nerve continues unchanged. Tendons also darken more with probe tilt.",
+     "review": "03-median",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "a",
+     "why": "Nerve swelling and electric pain suggest an intraneural injection. Stop at once and reposition.",
+     "review": "03-median",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "a",
+     "why": "The nerve runs beside the ulnar artery on its ulnar side, covered by flexor carpi ulnaris.",
+     "review": "04-ulnar-radial",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "d",
+     "why": "Block higher in the forearm or add a field block to reach the dorsal cutaneous branch.",
+     "review": "04-ulnar-radial",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "c",
+     "why": "In the mid forearm the nerve runs beside the radial artery under brachioradialis, before becoming subcutaneous above the wrist.",
+     "review": "04-ulnar-radial",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "a",
+     "why": "Each palmar digital nerve runs with its artery on one side of the flexor sheath. Each needs its own deposit.",
+     "review": "05-digital",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "d",
+     "why": "The Dalhousie Project studied 3,110 procedures with adrenaline in the hand and fingers and found no finger loss. Avoid it where circulation is already poor.",
+     "review": "05-digital",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "d",
+     "why": "Small paired deposits beside each nerve give a good block without high pressure.",
+     "review": "05-digital",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Why block the hand, and the examination first",
+     "path": "/elearning/hand-blocks/learn/context/"
+    },
+    "02-safety": {
+     "title": "The safety system: dose, Stop Before You Block and toxicity",
+     "path": "/elearning/hand-blocks/learn/safety/"
+    },
+    "03-median": {
+     "title": "The median nerve in the forearm",
+     "path": "/elearning/hand-blocks/learn/median/"
+    },
+    "04-ulnar-radial": {
+     "title": "The ulnar and superficial radial nerves",
+     "path": "/elearning/hand-blocks/learn/ulnar-radial/"
+    },
+    "05-digital": {
+     "title": "The digital nerve block",
+     "path": "/elearning/hand-blocks/learn/digital/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/hand-blocks/learn/cases/"
+    }
+   }
+  },
+  "hip-blocks": {
+   "slug": "hip-blocks",
+   "code": "HIP",
+   "title": "Ultrasound-guided blocks for the hip and femur: femoral, fascia iliaca and PENG",
+   "cpdHours": 1.5,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "d",
+     "why": "Competence comes from supervised practice under your trust's governance.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "d",
+     "why": "The review found less pain on movement, and lower risks of acute confusion and chest infection.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "c",
+     "why": "The front of the capsule receives branches from these three nerves. The back receives branches from the sciatic nerve and the nerve to quadratus femoris.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "d",
+     "why": "Up to two further boluses can follow at 5-minute intervals, with the infusion doubled to 30 mL/kg/h, to a cumulative maximum of 12 mL/kg.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "d",
+     "why": "The final check of the side happens with the needle in your hand.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "c",
+     "why": "The femoral nerve lies lateral to the artery, outside the femoral sheath, deep to fascia iliaca.",
+     "review": "03-femoral",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "c",
+     "why": "The femoral nerve supplies most of the femur. A femoral block gives fast analgesia for a shaft fracture.",
+     "review": "03-femoral",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "b",
+     "why": "Quadriceps weakness can cause a fall.",
+     "review": "03-femoral",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "c",
+     "why": "Volume blocks bring large doses. Calculate the maximum safe dose for the patient's weight first.",
+     "review": "04-fascia-iliaca",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "d",
+     "why": "The aim is to see the fascia lift off iliacus. Fluid above the fascia will not reach the nerves.",
+     "review": "04-fascia-iliaca",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "a",
+     "why": "The sagittal view shows iliacus, fascia iliaca and the spread towards the head.",
+     "review": "04-fascia-iliaca",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "b",
+     "why": "The articular branches run between the psoas tendon and the ramus. Fluid there lifts the tendon off the bone.",
+     "review": "05-peng",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "a",
+     "why": "The PENG block covers the front of the capsule. The lateral thigh skin belongs to the lateral femoral cutaneous nerve.",
+     "review": "05-peng",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "d",
+     "why": "The PENG block targets the articular branches rather than the main femoral nerve, though high volumes can still spread to it.",
+     "review": "05-peng",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Why the hip fracture patient needs a block",
+     "path": "/elearning/hip-blocks/learn/context/"
+    },
+    "02-safety": {
+     "title": "The safety system: dose, Stop Before You Block and toxicity",
+     "path": "/elearning/hip-blocks/learn/safety/"
+    },
+    "03-femoral": {
+     "title": "The femoral nerve block",
+     "path": "/elearning/hip-blocks/learn/femoral/"
+    },
+    "04-fascia-iliaca": {
+     "title": "The fascia iliaca block: below and above the ligament",
+     "path": "/elearning/hip-blocks/learn/fascia-iliaca/"
+    },
+    "05-peng": {
+     "title": "The PENG block",
+     "path": "/elearning/hip-blocks/learn/peng/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/hip-blocks/learn/cases/"
+    }
+   }
+  },
   "lumps": {
    "slug": "lumps",
    "code": "LMP",
@@ -1897,6 +2305,182 @@
     "06-cases": {
      "title": "Cases",
      "path": "/elearning/nerve-blocks/learn/cases/"
+    }
+   }
+  },
+  "trunk-blocks": {
+   "slug": "trunk-blocks",
+   "code": "TRK",
+   "title": "Ultrasound-guided trunk blocks: erector spinae plane and rectus sheath",
+   "cpdHours": 1,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "d",
+     "why": "Competence comes from supervised practice under your trust's governance.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "d",
+     "why": "Spread needs volume, and volume brings dose. Calculate the maximum for the patient's weight first.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "d",
+     "why": "The SABRE trial showed more patients with a meaningful fall in pain and half the opioid use with a serratus anterior plane block.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "d",
+     "why": "Early toxicity affects the brain. Seizures and cardiovascular collapse can follow, sometimes with no warning.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "b",
+     "why": "Lidocaine is a local anaesthetic and adds to the toxic dose.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "d",
+     "why": "The plane between erector spinae and the transverse process carries the spread over several levels.",
+     "review": "03-esp",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "c",
+     "why": "The flat top is the clue. Rounded bone with pleura between is rib.",
+     "review": "03-esp",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "d",
+     "why": "The block reaches the dorsal rami consistently, but forward spread varies.",
+     "review": "03-esp",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "c",
+     "why": "The anterior cutaneous branches run in this space before turning forward through the muscle.",
+     "review": "04-rectus",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "a",
+     "why": "The posterior sheath ends at the arcuate line, so the peritoneum lies close beneath the muscle.",
+     "review": "04-rectus",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "c",
+     "why": "Colour Doppler finds the inferior epigastric vessels so you can avoid them.",
+     "review": "04-rectus",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "a",
+     "why": "The block reaches the nerves of the abdominal wall only.",
+     "review": "04-rectus",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Plane blocks for the trunk",
+     "path": "/elearning/trunk-blocks/learn/context/"
+    },
+    "02-safety": {
+     "title": "The safety system: dose, Stop Before You Block and toxicity",
+     "path": "/elearning/trunk-blocks/learn/safety/"
+    },
+    "03-esp": {
+     "title": "The erector spinae plane block",
+     "path": "/elearning/trunk-blocks/learn/esp/"
+    },
+    "04-rectus": {
+     "title": "The rectus sheath block",
+     "path": "/elearning/trunk-blocks/learn/rectus/"
+    },
+    "05-cases": {
+     "title": "Cases",
+     "path": "/elearning/trunk-blocks/learn/cases/"
     }
    }
   }
