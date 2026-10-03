@@ -1,0 +1,33 @@
+{
+  "slug": "dvt",
+  "code": "DVT",
+  "title": "Proximal DVT: point-of-care compression ultrasound",
+  "short": "Proximal DVT",
+  "category": "Vascular",
+  "summary": "Answer the question every emergency clinician faces: is there a clot in the proximal leg veins? Learn the anatomy, the two-region compression scan, the mimics, and where the result fits in the NICE pathway.",
+  "cpdHours": 1,
+  "minutes": 60,
+  "passMark": 80,
+  "draft": true,
+  "pearl": "/learn/dvt-compress-dont-admire/",
+  "image": "/learn/images/dvt-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-03",
+  "reviewDue": "2028-10-03",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency, acute and urgent care doctors, advanced clinical practitioners and physician associates, from first scans to supervisors.",
+  "outcomes": [
+    "Place point-of-care compression ultrasound within the NICE pathway for suspected DVT",
+    "Identify the deep veins of the groin and popliteal fossa and how they relate to the arteries",
+    "Perform a two-region compression scan and recognise a non-compressible vein",
+    "Recognise the common mimics and pitfalls, then document and act on the result safely"
+  ],
+  "lessons": ["01-context", "02-anatomy", "03-technique", "04-findings", "05-pitfalls", "06-documentation", "07-cases"],
+  "references": [
+    "National Institute for Health and Care Excellence. Venous thromboembolic diseases: diagnosis, management and thrombophilia testing (NG158). 2020, updated 2023.",
+    "National Institute for Health and Care Excellence. Venous thromboembolism in adults (QS201). 2021.",
+    "Hercz D, et al. Ultrasound performed by emergency physicians for deep vein thrombosis: a systematic review. Western Journal of Emergency Medicine. 2024.",
+    "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
+    "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
+  ]
+}

@@ -19,10 +19,25 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 - `tools/social/ad.html` + `node tools/social/render.mjs <outdir>` render the Instagram post (1080x1350), story (1080x1920), LinkedIn (1200x1200) and link-preview (1200x630) images. The course page uses the link-preview image via `ogImage` in `data/courses.json`; update or remove it when the date passes.
 
 ## Learn and newsletter
-- Learn posts: Markdown files in `content/learn/` (front matter: title, summary, category, date, author, draft). `draft: true` or a future date keeps a post off the live site. Preview drafts with `DRAFTS=1 node build.js`. Images go in `content/learn/images/` and are referenced as `/learn/images/<file>`. The Learn nav link appears once one post is live.
+- Learn posts: Markdown files in `content/learn/` (front matter: title, summary, category, date, author, draft). `draft: true` or a future date keeps a post off the live site. Preview drafts with `DRAFTS=1 node build.js`. Images go in `content/learn/images/` and are referenced as `/learn/images/<file>`. The Pearls nav link appears once one post is live.
 - Newsletter form: `newsletter` in `data/site.json` posts straight to the Zoho Campaigns form "Website newsletter sign-up" (list "Wavelength newsletter", custom field Role = CONTACT_CF1, double opt-in on, redirect to `/subscribe/thanks/`). Empty `action` falls back to emailing hello@.
 - Zoho Campaigns (EU): templates "Wavelength monthly newsletter" and "Wavelength welcome email"; workflow "Newsletter welcome" sends the welcome email when a contact joins the list. Merge tag for first name: `$[LI:FIRSTNAME]$`.
 - Email templates for Zoho Campaigns: `src/email/newsletter/` and `src/email/welcome/` (live at /email/...). Images must use absolute https URLs.
+
+## Wavelength Pearls and tests
+- Pearls are the Learn posts in `content/learn/` (menu label "Pearls", URL /learn/). Each pearl's questions (`?? question`, `- wrong`, `+ correct`, `: explanation`) go on its own test page /learn/<slug>/test/ and the question bank /learn/test/. Options are shuffled at build time with a fixed seed per question (`seededShuffle` in lib/md.js), so write the correct option anywhere.
+- Newsletter issue for a pearl: `src/email/pearl/` (live at /email/pearl/). Answer buttons link to /learn/<slug>/test/?q=1&a=<letter>, which marks that answer on arrival. After editing a pearl's first question, re-check the letters match the test page.
+- Pearl graphics come from ChatGPT. Check anatomy and laterality, remove em dashes, and note "Scan images in the graphic are illustrations, not patient scans" until real scans replace them.
+
+## Wavelength Academy (certified e-learning)
+- Modules live in `content/academy/<slug>/`: `module.json` (title, CPD hours, pass mark, draft, outcomes, references, review date, conflicts), lesson Markdown files listed in `lessons` (front matter: title, minutes; lesson URL drops the number prefix), and `assessment.md` (`?? question`, `@ lesson-file` to review, options, `: explanation`). Case questions inside lessons stay inline.
+- `draft: true` builds the module unlisted and noindex, reachable by link for review. The Academy menu link appears once one module is live. The name sits in `academy.name` in `data/site.json`; `academy.newsletterRequired` makes the newsletter tick compulsory (the Worker also checks; set the var `NEWSLETTER_REQUIRED` to "false" to relax it).
+- The build writes `worker/academy-data.json` (answer key, never in pages). Commit it with content changes.
+- The Worker (`worker/academy.js`) gates /elearning/<slug>/learn/ and /assessment/ behind a learner cookie (signed with `learner_secret` in D1 `settings`, created on first use), marks answers server-side, issues one certificate per learner per module (code WL-<CODE>-XXXX-XXXX), and emails it.
+- Certificate PDF: `worker/cert-template.bin` + `.json` hold the fixed design (logo, fonts, frame). The Worker stamps name, module, score, CPD, date and code by appending a content stream (`worker/cert.js`), under a millisecond. To change the design, edit `tools/certificate/make-template.mjs` and run it (`npm i --no-save pdf-lib@1.17.1 @pdf-lib/fontkit@1.1.1`). Fonts in `worker/fonts/` are TTF copies of the site fonts.
+- Email: Zoho ZeptoMail. Secret `ZEPTOMAIL_TOKEN` (Cloudflare dashboard, Worker settings, Variables and secrets). `MAIL_FROM` etc. in `wrangler.jsonc` vars. Without the token, certificates still issue and download; the admin page lists unsent emails with a button to send them.
+- Admin: /volunteer/admin/academy/ (same admin login): learners, certificates, attempts, feedback, CSV exports.
+- Database: D1 tables in `migrations/0003_academy.sql`, applied to the live database with the Cloudflare tools. Local test: apply all migrations with `--local`, put `ZEPTOMAIL_TOKEN` and a mock `ZEPTOMAIL_API` in `.dev.vars`, run `npx wrangler dev --local`.
 
 ## Volunteer area (hidden)
 - `/volunteer/` is a hidden, password-protected sign-up for scanning-model volunteers. Not linked anywhere, noindex, not in the sitemap.

@@ -50,7 +50,7 @@
       "email": "zahra@thewavelength.co.uk"
     }
   ],
-  "legalUpdated": "2026-10-02",
+  "legalUpdated": "2026-10-03",
   "accreditation": [],
   "newsletter": {
     "_help": "Paste values from the Zoho Campaigns signup form embed code. Leave action empty and the form emails hello@ instead.",
@@ -98,5 +98,11 @@
         "text": "Great course, well organised with high quality USS machine."
       }
     ]
+  },
+  "academy": {
+    "_help": "Wavelength Academy settings. newsletterRequired: true makes the newsletter tick box compulsory when registering for a module.",
+    "name": "Wavelength Academy",
+    "newsletterRequired": true,
+    "passMarkDefault": 80
   }
 }

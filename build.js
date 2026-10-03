@@ -22,6 +22,32 @@ const posts = (fs.existsSync(LEARN_DIR) ? fs.readdirSync(LEARN_DIR) : [])
   })
   .filter((p) => SHOW_DRAFTS || (p.draft !== true && p.date <= new Date().toISOString().slice(0, 10)))
   .sort((a, b) => b.date.localeCompare(a.date));
+// Wavelength Academy modules: content/academy/<slug>/module.json, lesson Markdown files and assessment.md.
+// The assessment answer key goes to worker/academy-data.json for server-side marking, never into pages.
+const ACADEMY_DIR = path.join(ROOT, 'content/academy');
+function parseAssessment(src) {
+  const body = src.replace(/\r\n/g, '\n').replace(/^---\n[\s\S]*?\n---\n?/, '');
+  return body.split(/\n\s*\n/).map((b) => b.trim()).filter((b) => b.startsWith('?? ')).map((b, i) => {
+    const lines = b.split('\n');
+    const q0 = lines[0].slice(3).trim();
+    const opts = md.seededShuffle(lines.filter((l) => /^[-+] /.test(l)).map((l) => ({ ok: l[0] === '+', text: l.slice(2).trim() })), q0).map((o, j) => ({ ...o, id: 'abcdefgh'[j] }));
+    return { id: `q${i + 1}`, q: lines[0].slice(3).trim(), review: (lines.find((l) => l.startsWith('@ ')) || '').slice(2).trim(), options: opts, correct: (opts.find((o) => o.ok) || {}).id, why: lines.filter((l) => /^: /.test(l)).map((l) => l.slice(2).trim()).join(' ') };
+  });
+}
+const modules = (fs.existsSync(ACADEMY_DIR) ? fs.readdirSync(ACADEMY_DIR) : [])
+  .filter((d) => fs.existsSync(path.join(ACADEMY_DIR, d, 'module.json')))
+  .map((d) => {
+    const m = JSON.parse(fs.readFileSync(path.join(ACADEMY_DIR, d, 'module.json'), 'utf8'));
+    m.lessonPages = m.lessons.map((slug) => {
+      const { meta, html } = md.parse(fs.readFileSync(path.join(ACADEMY_DIR, d, slug + '.md'), 'utf8'), { inlineQuiz: true });
+      return { slug: slug.replace(/^\d+-/, ''), file: slug, title: meta.title, minutes: Number(meta.minutes || 0), html, cases: /data-quiz/.test(html) };
+    });
+    m.questions = parseAssessment(fs.readFileSync(path.join(ACADEMY_DIR, d, 'assessment.md'), 'utf8'));
+    return m;
+  });
+// Draft modules are built so the team can review them by link, but stay unlisted, noindex and out of the sitemap.
+const liveModules = modules.filter((m) => m.draft !== true);
+fs.writeFileSync(path.join(ROOT, 'worker/academy-data.json'), JSON.stringify({ modules: Object.fromEntries(modules.map((m) => [m.slug, { slug: m.slug, code: m.code, title: m.title, cpdHours: m.cpdHours, passMark: m.passMark, draft: m.draft === true, questions: m.questions.map((q) => ({ id: q.id, correct: q.correct, why: q.why, review: q.review, options: q.options.map((o) => o.id) })), lessons: Object.fromEntries(m.lessonPages.map((l) => [l.file, { title: l.title, path: `/elearning/${m.slug}/learn/${l.slug}/` }])) }])) }, null, 1) + '\n');
 const BUILD = Date.now().toString(36);
 const crypto = require('crypto');
 const ver = (p) => { try { return p + '?v=' + crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'src', p))).digest('hex').slice(0, 8); } catch { return p; } };
@@ -47,7 +73,8 @@ const anyDates = courses.some((c) => (c.dates || []).some((d) => d.date >= new D
 const BOOK_LABEL = anyDates ? 'Book a course' : 'Register interest';
 const NAV = [
   { href: '/courses/', label: 'Courses' },
-  ...(posts.length ? [{ href: '/learn/', label: 'Learn' }] : []),
+  ...(posts.length ? [{ href: '/learn/', label: 'Pearls' }] : []),
+  ...(liveModules.length ? [{ href: '/elearning/', label: 'Academy' }] : []),
   { href: '/faculty/', label: 'Faculty' },
   { href: '/about/', label: 'About' },
   { href: '/contact/', label: 'Contact' },
@@ -128,7 +155,7 @@ ${body}
         <p class="foot-tag">Consultant-led point-of-care ultrasound courses for emergency and acute clinicians.</p>
       </div>
       <div><h2>Courses</h2><ul>${openCourses.map((c) => `<li><a href="/courses/${c.slug}/">${esc(c.title)}</a></li>`).join('')}<li><a href="/courses/">All courses</a></li></ul></div>
-      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li>${posts.length ? '<li><a href="/learn/">Learn</a></li>' : ''}<li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
+      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}<li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li></ul>${socialIcons()}</div>
     </div>
     <div class="bottom">
@@ -666,8 +693,8 @@ pages['/learn/'] = layout({
   pathname: '/learn/',
   description: 'Practical point-of-care ultrasound skills from the Wavelength faculty: probe technique, views, pitfalls and cases for emergency and acute clinicians.',
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }])],
-  body: `${pageHero({ eyebrow: 'Learn', title: 'From the scanning room.', lede: 'Practical point-of-care ultrasound skills from the Wavelength faculty. One technique, one view or one pitfall at a time.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn' }] })}
-<section class="section sand"><div class="wrap">${posts.some((x) => x.questions.length) ? `<a class="bank-link reveal" href="/learn/test/"><span><span class="eyebrow">Question bank</span><strong>Test yourself on every pearl</strong></span>${arrow}</a>` : ''}${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
+  body: `${pageHero({ eyebrow: 'Wavelength Pearls', title: 'From the scanning room.', lede: 'Free, five-minute point-of-care ultrasound pearls from the Wavelength faculty. One technique, one view or one pitfall at a time, each with a short test.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn' }] })}
+<section class="section sand"><div class="wrap">${liveModules.length ? `<a class="bank-link reveal" href="/elearning/" style="background:var(--teal-ink)"><span><span class="eyebrow" style="color:var(--cream)">Wavelength Academy</span><strong>Go deeper: certified modules with a CPD certificate</strong></span>${arrow}</a>` : ''}${posts.some((x) => x.questions.length) ? `<a class="bank-link reveal" href="/learn/test/"><span><span class="eyebrow">Question bank</span><strong>Test yourself on every pearl</strong></span>${arrow}</a>` : ''}${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
 ${subscribeBand()}`,
 });
 for (const p of posts) {
@@ -729,6 +756,203 @@ if (tested.length) {
 ${subscribeBand('A new pearl and test <em>every month.</em>')}`,
   });
 }
+
+// ---------- Wavelength Academy ----------
+// Public: /elearning/ (hub), /elearning/<slug>/ (module page with registration), /elearning/verify/.
+// Behind registration (worker/index.js checks the login cookie): /elearning/<slug>/learn/<lesson>/ and /elearning/<slug>/assessment/.
+// Rendered by the Worker into built shells: /elearning/certificate/<code>/ and /elearning/account/.
+const AC = Object.assign({ name: 'Wavelength Academy', newsletterRequired: true }, site.academy || {});
+const acCrumbs = (extra = []) => [{ label: 'Home', href: '/' }, { label: 'Academy', href: '/elearning/' }, ...extra];
+const totalMinutes = (m) => m.lessonPages.reduce((n, l) => n + l.minutes, 0);
+const caseCount = (m) => m.lessonPages.reduce((n, l) => n + (l.html.match(/data-quiz/g) || []).length, 0);
+const moduleFacts = (m) => [
+  `${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} CPD`,
+  `${m.lessonPages.filter((l) => !l.cases).length} lessons`,
+  `${caseCount(m)} cases`,
+  `${m.questions.length}-question assessment`,
+  `Pass mark ${m.passMark}%`,
+  'Free',
+];
+const factChips = (m) => `<ul class="ac-facts rise">${moduleFacts(m).map((f) => `<li>${esc(f)}</li>`).join('')}</ul>`;
+const howItWorks = `<ol class="ac-steps">${[
+  ['Register', 'Free. Your name, email and role, and you join the Wavelength newsletter.'],
+  ['Learn', 'Short lessons, the Wavelength Pearl, and clinical cases with explanations.'],
+  ['Pass', `A final assessment, marked instantly. Pass at ${(liveModules[0] || modules[0] || {}).passMark || 80}% and retry as often as you need.`],
+  ['Certificate', 'Emailed to you as a PDF with your name, CPD hours and a verification code.'],
+].map(([h, t], i) => `<li class="reveal" data-d="${i}"><span class="ac-step-n">${i + 1}</span><h3>${h}</h3><p>${t}</p></li>`).join('')}</ol>`;
+
+function moduleCard(m, h = 'h3') {
+  return `<a class="post-card ac-card reveal" href="/elearning/${m.slug}/">
+    <p class="eyebrow">${esc(m.category || 'Academy')}${m.draft === true ? ' · Draft' : ''}</p>
+    <${h}>${esc(m.title)}</${h}>
+    <p>${esc(m.summary)}</p>
+    <span class="meta">${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} CPD · Certificate · Free</span>
+  </a>`;
+}
+
+pages['/elearning/'] = layout({
+  title: `${AC.name} | Certified point-of-care ultrasound e-learning`,
+  pathname: '/elearning/',
+  description: `Free point-of-care ultrasound e-learning modules with a CPD certificate. Lessons, clinical cases and a final assessment, written by consultant emergency physicians.`,
+  noindex: !liveModules.length,
+  jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Academy', href: '/elearning/' }])],
+  body: `${pageHero({ eyebrow: AC.name, title: 'Learn it. Prove it.', lede: 'Certified e-learning for point-of-care ultrasound. Work through the lessons and cases, pass the assessment, and your CPD certificate arrives by email.', crumbs: acCrumbs() })}
+<section class="section sand"><div class="wrap">
+  ${liveModules.length ? `<div class="section-head"><p class="eyebrow reveal">Modules</p></div><div class="post-grid">${liveModules.map((m) => moduleCard(m, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">First module arriving soon</h2><p>Subscribe to the newsletter and hear the day it opens.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}
+</div></section>
+<section class="section"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">How it works</p><h2 class="reveal" data-d="1">Four steps to your certificate.</h2></div>
+  ${howItWorks}
+  <div class="ac-verify reveal"><div><h3>Checking a certificate?</h3><p>Every Academy certificate carries a code. Enter it to confirm it is genuine.</p></div><a class="btn btn-ghost" href="/elearning/verify/">Verify a certificate ${arrow}</a></div>
+</div></section>
+<section class="section sand"><div class="wrap"><a class="bank-link reveal" href="/learn/"><span><span class="eyebrow">Wavelength Pearls</span><strong>Five minutes to spare? Read a pearl.</strong></span>${arrow}</a></div></section>
+${subscribeBand()}`,
+});
+
+function registerCard(m) {
+  const n = site.newsletter || {};
+  const zoho = n.action ? `<form action="${esc(n.action)}" method="post" target="zc-academy" data-zoho-academy hidden>${Object.entries(n.hidden || {}).map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`).join('')}<input type="hidden" name="${esc(n.firstNameField || 'FIRSTNAME')}" data-z="first"><input type="hidden" name="${esc(n.emailField || 'CONTACT_EMAIL')}" data-z="email">${n.roleField ? `<input type="hidden" name="${esc(n.roleField)}" data-z="role">` : ''}</form><iframe name="zc-academy" title="Newsletter sign-up" hidden tabindex="-1" style="display:none"></iframe>` : '';
+  return `<aside class="ac-register" id="register">
+  <div data-ac-guest>
+    <p class="eyebrow">Free registration</p>
+    <h2>Start the module</h2>
+    <p class="form-note">Already registered? Enter the same email and you carry on where you left off.</p>
+    <form class="form" method="post" action="/api/academy/register" data-ac-register>
+      <input type="hidden" name="module" value="${m.slug}">
+      <label>Title (optional)<select name="title" autocomplete="honorific-prefix"><option value="">None</option>${['Dr', 'Prof', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx'].map((t) => `<option>${t}</option>`).join('')}</select></label>
+      <div class="sub-row"><label>First name<input name="first_name" autocomplete="given-name" maxlength="80" required></label><label>Last name<input name="last_name" autocomplete="family-name" maxlength="80" required></label></div>
+      <p class="form-note ac-name-note">Your certificate shows your title and name exactly as you enter them here.</p>
+      <label>Email<input name="email" type="email" autocomplete="email" maxlength="160" required></label>
+      <label>Role<select name="role" required><option value="">Choose your role</option>${ROLES.map((r) => `<option>${r}</option>`).join('')}</select></label>
+      <label>Workplace (optional)<input name="organisation" autocomplete="organization" maxlength="160"></label>
+      <label class="ac-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+      <label class="consent"><input type="checkbox" name="newsletter" value="yes"${AC.newsletterRequired ? ' required' : ''}><span>Send me the Wavelength newsletter: a monthly ultrasound skill, new pearls and modules, and course dates. ${AC.newsletterRequired ? 'Joining the newsletter is part of free Academy registration. ' : ''}I can unsubscribe at any time.</span></label>
+      <label class="consent"><input type="checkbox" name="privacy" value="yes" required><span>Wavelength stores my details to run the Academy, issue and verify my certificate, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
+      <p class="form-error" data-ac-error hidden></p>
+      <div><button class="btn btn-teal" type="submit">Register and start ${arrow}</button></div>
+      <p class="form-note">Confirm your newsletter subscription from the email Zoho sends you.</p>
+    </form>
+    ${zoho}
+  </div>
+  <div data-ac-member hidden>
+    <p class="eyebrow">Welcome back</p>
+    <h2 data-ac-hello>You are registered</h2>
+    <p data-ac-status>Pick up where you left off.</p>
+    <div class="ac-member-actions"><a class="btn btn-teal" href="/elearning/${m.slug}/learn/${m.lessonPages[0].slug}/">Go to the lessons ${arrow}</a><a class="btn btn-ghost" href="/elearning/${m.slug}/assessment/">Final assessment</a></div>
+    <p data-ac-cert hidden></p>
+    <p class="form-note">Not you? <a class="text-link" href="/elearning/logout/">Log out</a></p>
+  </div>
+</aside>`;
+}
+
+function lessonNav(m, current) {
+  return `<nav class="ac-nav" aria-label="Module contents"><p class="eyebrow">${esc(m.short || m.title)}</p><ol>${m.lessonPages.map((l, i) => `<li${l.slug === current ? ' aria-current="step"' : ''}><a href="/elearning/${m.slug}/learn/${l.slug}/"><span class="ac-nav-n">${i + 1}</span><span>${esc(l.title)}<small>${l.minutes} min</small></span></a></li>`).join('')}<li${current === 'assessment' ? ' aria-current="step"' : ''}><a href="/elearning/${m.slug}/assessment/"><span class="ac-nav-n">✓</span><span>Final assessment<small>${m.questions.length} questions</small></span></a></li></ol><ul class="ac-nav-foot"><li><a class="text-link" href="/elearning/${m.slug}/">Module overview</a></li><li><a class="text-link" href="/elearning/account/">My certificates</a></li></ul></nav>`;
+}
+
+for (const m of modules) {
+  const base = `/elearning/${m.slug}/`;
+  pages[base] = layout({
+    title: `${m.title} | ${AC.name}`,
+    pathname: base,
+    description: m.summary,
+    noindex: m.draft === true,
+    jsonld: [
+      { '@context': 'https://schema.org', '@type': 'Course', name: m.title, description: m.summary, provider: { '@id': url('/#org') }, inLanguage: 'en-GB', isAccessibleForFree: true, educationalCredentialAwarded: 'Certificate of completion', timeRequired: `PT${m.cpdHours}H`, hasCourseInstance: { '@type': 'CourseInstance', courseMode: 'online', courseWorkload: `PT${m.cpdHours}H` }, offers: { '@type': 'Offer', price: 0, priceCurrency: 'GBP', category: 'Free' } },
+      breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Academy', href: '/elearning/' }, { label: m.short || m.title, href: base }]),
+    ],
+    body: `${pageHero({ eyebrow: `${AC.name} · ${m.category}${m.draft === true ? ' · Draft, not published' : ''}`, title: esc(m.title), lede: esc(m.summary), crumbs: acCrumbs([{ label: m.short || m.title }]), extra: factChips(m) + `<p class="rise" style="margin-top:28px"><a class="btn btn-teal" href="#register">Register free and start ${arrow}</a></p>` })}
+<section class="section"><div class="wrap ac-landing">
+  <div class="prose">
+    <h2>What you will learn</h2>
+    <ul class="checklist">${m.outcomes.map((o) => `<li>${tick}<span>${esc(o)}</span></li>`).join('')}</ul>
+    <h2>Lessons</h2>
+    <ol class="ac-lessons">${m.lessonPages.map((l) => `<li><span>${esc(l.title)}</span><small>${l.minutes} min</small></li>`).join('')}<li><span>Final assessment: ${m.questions.length} questions, pass mark ${m.passMark}%</span><small>${Math.max(5, Math.round(m.questions.length * 0.6))} min</small></li></ol>
+    <h2>Who it is for</h2>
+    <p>${esc(m.audience)}</p>
+    <h2>Your certificate</h2>
+    <p>Pass the assessment and we email your certificate as a PDF: your name, the module, ${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} of CPD, the date and a code anyone can check at <a class="text-link" href="/elearning/verify/">thewavelength.co.uk/elearning/verify</a>. Upload it to your e-portfolio with a short reflection. The certificate records completed learning. Sign-off to scan independently stays with your department.</p>
+    <h2>About this module</h2>
+    <p><strong>Author.</strong> ${esc(m.author)}.<br><strong>Published.</strong> ${fmtDate(m.published, { month: 'long', year: 'numeric' })}. <strong>Next review.</strong> ${fmtDate(m.reviewDue, { month: 'long', year: 'numeric' })}.<br><strong>Conflicts of interest.</strong> ${esc(m.conflicts)}</p>
+    <h3>References</h3>
+    <ol class="ac-refs">${m.references.map((r) => `<li>${esc(r)}</li>`).join('')}</ol>
+    ${m.pearl ? `<p><a class="text-link" href="${m.pearl}">Read the free Wavelength Pearl on this topic</a></p>` : ''}
+  </div>
+  ${registerCard(m)}
+</div></section>`,
+  });
+
+  m.lessonPages.forEach((l, i) => {
+    const href = `${base}learn/${l.slug}/`;
+    const prev = m.lessonPages[i - 1], next = m.lessonPages[i + 1];
+    pages[href] = layout({
+      title: `${l.title} | ${m.short || m.title}`,
+      pathname: href,
+      description: m.summary,
+      noindex: true,
+      body: `${pageHero({ eyebrow: `Lesson ${i + 1} of ${m.lessonPages.length} · ${l.minutes} min`, title: esc(l.title), crumbs: acCrumbs([{ label: m.short || m.title, href: base }, { label: `Lesson ${i + 1}` }]) })}
+<section class="section"><div class="wrap ac-layout">
+  ${lessonNav(m, l.slug)}
+  <div>
+    <article class="prose post"${l.cases ? ' data-test' : ''}>${l.html}</article>
+    <div class="ac-pager">${prev ? `<a class="btn btn-ghost" href="${base}learn/${prev.slug}/">Previous: ${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="btn" href="${base}learn/${next.slug}/">Next: ${esc(next.title)} ${arrow}</a>` : `<a class="btn btn-teal" href="${base}assessment/">Take the final assessment ${arrow}</a>`}</div>
+  </div>
+</div></section>`,
+    });
+  });
+
+  pages[`${base}assessment/`] = layout({
+    title: `Final assessment | ${m.short || m.title}`,
+    pathname: `${base}assessment/`,
+    description: m.summary,
+    noindex: true,
+    body: `${pageHero({ eyebrow: 'Final assessment', title: esc(m.title), lede: `${m.questions.length} questions. Pass mark ${m.passMark}%: ${Math.ceil((m.passMark / 100) * m.questions.length)} of ${m.questions.length}. When you pass, your certificate is emailed to you straight away. Retry as often as you need.`, crumbs: acCrumbs([{ label: m.short || m.title, href: base }, { label: 'Assessment' }]) })}
+<section class="section"><div class="wrap ac-layout">
+  ${lessonNav(m, 'assessment')}
+  <div>
+    <form class="prose post ac-assess" data-ac-assess data-module="${m.slug}" data-pass="${m.passMark}" data-total="${m.questions.length}" novalidate>
+      <div class="test-progress" aria-live="polite"><span data-progress>0 of ${m.questions.length} answered</span><span class="test-bar"><i data-bar></i></span></div>
+      ${m.questions.map((q, i) => `<fieldset class="quiz ac-q" data-q="${q.id}"><legend class="quiz-q"><span class="quiz-n">Question <span data-qn>${i + 1}</span></span>${esc(q.q)}</legend>
+        <div class="quiz-opts">${q.options.map((o) => `<label class="quiz-opt"><input type="radio" name="${q.id}" value="${o.id}" required><span class="quiz-l">${o.id}</span><span>${esc(o.text)}</span></label>`).join('')}</div>
+        <div class="ac-feedback" data-feedback hidden></div></fieldset>`).join('')}
+      <p class="form-error" data-ac-error hidden></p>
+      <div class="ac-submit"><button class="btn btn-teal" type="submit">Submit my answers ${arrow}</button></div>
+      <noscript><p class="form-error">The assessment needs JavaScript switched on.</p></noscript>
+    </form>
+    <div class="ac-result" data-ac-result hidden></div>
+  </div>
+</div></section>`,
+  });
+}
+
+pages['/elearning/verify/'] = layout({
+  title: 'Verify a certificate',
+  pathname: '/elearning/verify/',
+  description: `Check a ${AC.name} certificate is genuine by entering its code.`,
+  body: `${pageHero({ eyebrow: AC.name, title: 'Verify a certificate.', lede: 'Enter the code printed on the certificate, for example WL-DVT-7K3M-Q9XA.', crumbs: acCrumbs([{ label: 'Verify' }]) })}
+<section class="section"><div class="wrap"><form class="form ac-verify-form" method="get" action="/elearning/verify/">
+  <label>Certificate code<input name="code" required maxlength="40" autocomplete="off" placeholder="WL-DVT-XXXX-XXXX" style="text-transform:uppercase"></label>
+  <div><button class="btn" type="submit">Check certificate ${arrow}</button></div>
+  <p class="form-error" data-show-on="error" hidden>We could not find a certificate with that code. Check it and try again.</p>
+</form></div></section>`,
+});
+
+pages['/elearning/certificate/'] = layout({
+  title: 'Certificate',
+  pathname: '/elearning/certificate/',
+  description: `${AC.name} certificate.`,
+  noindex: true,
+  body: `<section class="hero compact on-dark">${mesh}<div class="wrap hero-inner" style="padding-top:0;padding-bottom:0"><nav class="crumbs rise" aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true">/</span><a href="/elearning/">Academy</a><span aria-hidden="true">/</span><span aria-current="page">Certificate</span></nav><p class="eyebrow rise">${AC.name}</p><h1 class="split-words" style="font-size:clamp(42px,6vw,80px);margin-bottom:12px" id="cert-title">Certificate</h1></div></section>
+<section class="section"><div class="wrap" id="cert-root"></div></section>`,
+});
+
+pages['/elearning/account/'] = layout({
+  title: 'My certificates',
+  pathname: '/elearning/account/',
+  description: `Your ${AC.name} modules and certificates.`,
+  noindex: true,
+  body: `${pageHero({ eyebrow: AC.name, title: 'My certificates.', crumbs: acCrumbs([{ label: 'My certificates' }]) })}
+<section class="section"><div class="wrap" id="account-root"></div></section>`,
+});
 
 // Volunteer area (hidden, not linked, not in sitemap). worker/index.js guards every /volunteer/ page.
 const volDates = courses.flatMap((c) => upcoming(c).map((d) => `${c.title}, ${fmtDate(d.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}${d.city ? ', ' + d.city : ''}`));
@@ -811,12 +1035,13 @@ const legal = {
   '/privacy/': {
     title: 'Privacy notice',
     body: `<p>This notice explains how ${site.company}, trading as Wavelength ("we"), collects and uses your personal data. We are the data controller for the data described here${site.registeredOffice ? `. Our registered office is ${site.registeredOffice}` : ''}${site.icoNumber ? ` and are registered with the Information Commissioner's Office under number ${site.icoNumber}` : ''}.</p>
-<h2>What we collect</h2><ul><li>Your name, email address, phone number, job title, grade and workplace when you book or contact us, and your GMC, NMC or HCPC number if you choose to give it.</li><li>Your first name, email address and role when you subscribe to our newsletter.</li><li>Payment details, which Stripe processes on our behalf. We never see or store your full card number.</li><li>Dietary or access requirements you choose to tell us, so we can run the day safely.</li><li>Your name, contact details, role, organisation and availability when you volunteer as a scanning model.</li></ul>
-<h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To send you our newsletter, where you have subscribed (consent).</li><li>To arrange volunteer scanning sessions, where you have signed up as a volunteer.</li><li>To tell delegates who have booked with us about similar future courses, unless they opted out when booking or later (our legitimate interests, under the soft opt-in rule in the Privacy and Electronic Communications Regulations).</li></ul>
+<h2>What we collect</h2><ul><li>Your name, email address, phone number, job title, grade and workplace when you book or contact us, and your GMC, NMC or HCPC number if you choose to give it.</li><li>Your first name, email address and role when you subscribe to our newsletter.</li><li>Payment details, which Stripe processes on our behalf. We never see or store your full card number.</li><li>Dietary or access requirements you choose to tell us, so we can run the day safely.</li><li>Your name, contact details, role, organisation and availability when you volunteer as a scanning model.</li><li>Your title, name, email address, role and workplace when you register for Wavelength Academy, with your assessment answers, scores, certificates and any feedback you give.</li></ul>
+<h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To send you our newsletter, where you have subscribed (consent).</li><li>To arrange volunteer scanning sessions, where you have signed up as a volunteer.</li><li>To run Wavelength Academy: mark your assessments, and issue, email and verify your certificates (contract, providing the learning you signed up for).</li><li>To tell delegates who have booked with us about similar future courses, unless they opted out when booking or later (our legitimate interests, under the soft opt-in rule in the Privacy and Electronic Communications Regulations).</li></ul>
 <h2>Our newsletter</h2><p>When you subscribe, we send you an email asking you to confirm. We add you to the list only after you click the confirmation link. Each newsletter carries an unsubscribe link, and you can also unsubscribe by emailing <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. We use your role to send you content relevant to your practice. Our newsletter service records whether you open an email and which links you click, so we can see which content helps clinicians most. We never sell or share your details for others' marketing.</p>
 <h2>Volunteer scanning models</h2><p>We use volunteers' details to arrange scanning sessions on our courses (our legitimate interests in running the course, and your agreement to take part). We do not ask for health information. Scans on our courses are for teaching, not diagnosis. If faculty notice something unexpected, they tell you privately and advise you to see your GP, and we do not record it. We keep volunteer details for up to two years after your last session, or until you ask us to delete them.</p>
+<h2>Wavelength Academy</h2><p>Registration for Academy modules is free and includes our newsletter, which you can leave at any time without losing access to your certificates. We email your certificate through Zoho ZeptoMail when you pass. Each certificate carries a code. Anyone who has the code, such as an employer or appraiser you share it with, can see the name, module, score, CPD hours and date on our verification page. We keep Academy records for six years after your last activity, so certificates stay verifiable, unless you ask us to delete them sooner.</p>
 <h2>Who we share it with</h2><p>Stripe for payments, Zoho for our email, newsletter and mailing list, and Cloudflare for our website. Each acts under contract as our processor and protects your data. We do not sell your data.</p>
-<h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies. The private volunteer area sets one login cookie, which it needs to work, and removes it when you log out or after 12 hours.</p>
+<h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies. The private volunteer area sets one login cookie, which it needs to work, and removes it when you log out or after 12 hours. Wavelength Academy sets one login cookie to keep you signed in to your modules, for up to 180 days or until you log out. Academy lesson pages remember which lessons you have opened in your browser's storage, on your device only.</p>
 <h2>How long we keep it</h2><p>Booking and attendance records for six years, to meet accounting rules and to confirm attendance for appraisal or revalidation. Newsletter details until you unsubscribe. After you unsubscribe, we keep your email address on a suppression list so we do not email you again.</p>
 <h2>Your rights</h2><p>You have the right to access, correct or delete your data, to object to or restrict its use, to withdraw consent at any time, and to data portability. Email <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. If you are unhappy with our response, you can complain to the Information Commissioner's Office at ico.org.uk.</p>`,
   },
@@ -885,7 +1110,7 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisall
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
-    .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => (p === `/learn/${x.slug}/` || p === `/learn/${x.slug}/test/`) && x.draft === true)) && !(p === '/learn/test/' && !posts.some((x) => x.draft !== true && x.questions.length)))
+    .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !/^\/elearning\/[^/]+\/(learn|assessment)\//.test(p) && !['/elearning/certificate/', '/elearning/account/'].includes(p) && !(p === '/elearning/' && !liveModules.length) && !modules.some((m) => m.draft === true && p.startsWith(`/elearning/${m.slug}/`)) && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => (p === `/learn/${x.slug}/` || p === `/learn/${x.slug}/test/`) && x.draft === true)) && !(p === '/learn/test/' && !posts.some((x) => x.draft !== true && x.questions.length)))
     .map((p) => `  <url><loc>${url(p)}</loc><priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );

@@ -206,6 +206,137 @@
     }
   });
 
+  // ---------- Wavelength Academy ----------
+  function acPost(url, data) {
+    return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(data) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; return j; }); });
+  }
+  function acEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var acArrow = '<svg class="arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  // Registration: save the learner, join the newsletter through the Zoho form, then go to lesson one.
+  document.querySelectorAll('[data-ac-register]').forEach(function (form) {
+    var err = form.querySelector('[data-ac-error]');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!form.reportValidity()) return;
+      var btn = form.querySelector('button[type="submit"]');
+      var data = {};
+      new FormData(form).forEach(function (v, k) { data[k] = v; });
+      btn.disabled = true; btn.textContent = 'Registering…'; if (err) err.hidden = true;
+      acPost('/api/academy/register', data).then(function (res) {
+        if (!res.ok) throw new Error(res.error || 'Something went wrong. Please try again.');
+        var z = document.querySelector('[data-zoho-academy]');
+        var go = function () { location.href = res.next; };
+        if (!z || !data.newsletter) return go();
+        z.querySelector('[data-z="first"]').value = data.first_name || '';
+        z.querySelector('[data-z="email"]').value = data.email || '';
+        var role = z.querySelector('[data-z="role"]'); if (role) role.value = data.role || '';
+        var frame = document.querySelector('iframe[name="zc-academy"]');
+        var done = false; var finish = function () { if (!done) { done = true; go(); } };
+        if (frame) frame.addEventListener('load', finish);
+        setTimeout(finish, 4000);
+        z.submit();
+      }).catch(function (ex) {
+        btn.disabled = false; btn.innerHTML = 'Register and start ' + acArrow;
+        if (err) { err.textContent = ex.message; err.hidden = false; }
+      });
+    });
+  });
+
+  // Module page: show "welcome back" to a registered learner.
+  var member = document.querySelector('[data-ac-member]');
+  if (member) {
+    var slug = (location.pathname.match(/^\/elearning\/([^/]+)\//) || [])[1];
+    fetch('/api/academy/me', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+      if (!me || !me.loggedIn) { if (/[?&]register=1/.test(location.search)) { var f = document.getElementById('register'); if (f) f.scrollIntoView({ block: 'start' }); } return; }
+      document.querySelector('[data-ac-guest]').hidden = true;
+      member.hidden = false;
+      member.querySelector('[data-ac-hello]').textContent = 'Welcome back, ' + me.firstName + '.';
+      var cert = (me.certificates || []).filter(function (c) { return c.module === slug; })[0];
+      if (cert) {
+        member.querySelector('[data-ac-status]').textContent = 'You passed this module. Your certificate is ready.';
+        var p = member.querySelector('[data-ac-cert]'); p.hidden = false;
+        p.innerHTML = '<a class="text-link" href="/elearning/certificate/' + acEsc(cert.code) + '/">View your certificate</a>';
+      }
+    }).catch(function () {});
+  }
+
+  // Lesson contents: tick lessons already opened on this device.
+  try {
+    var nav = document.querySelector('.ac-nav');
+    if (nav) {
+      var seen = JSON.parse(localStorage.getItem('wl_seen') || '[]');
+      if (seen.indexOf(location.pathname) < 0) { seen.push(location.pathname); localStorage.setItem('wl_seen', JSON.stringify(seen.slice(-200))); }
+      nav.querySelectorAll('li').forEach(function (li) { var a = li.querySelector('a'); if (a && seen.indexOf(a.getAttribute('href')) >= 0 && !li.hasAttribute('aria-current')) li.classList.add('is-done'); });
+    }
+  } catch (e) {}
+
+  // Final assessment: shuffle, submit for marking, show the result.
+  document.querySelectorAll('[data-ac-assess]').forEach(function (form) {
+    var qs = [].slice.call(form.querySelectorAll('[data-q]'));
+    var total = qs.length, mod = form.getAttribute('data-module');
+    var progress = form.querySelector('[data-progress]'), bar = form.querySelector('[data-bar]');
+    var err = form.querySelector('[data-ac-error]'), result = document.querySelector('[data-ac-result]');
+    var anchor = form.querySelector('.ac-submit');
+    for (var i = qs.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = qs[i]; qs[i] = qs[j]; qs[j] = t; }
+    qs.forEach(function (q, n) { form.insertBefore(q, err); q.querySelector('[data-qn]').textContent = n + 1; });
+    function count() {
+      var n = qs.filter(function (q) { return q.querySelector('input:checked'); }).length;
+      progress.textContent = n + ' of ' + total + ' answered'; bar.style.width = (100 * n / total) + '%';
+      return n;
+    }
+    form.addEventListener('change', function (e) { var q = e.target.closest('[data-q]'); if (q) q.classList.remove('is-unanswered'); count(); });
+    function reset() {
+      form.reset(); form.classList.remove('is-marked');
+      qs.forEach(function (q) { q.disabled = false; q.classList.remove('is-unanswered'); var f = q.querySelector('[data-feedback]'); f.hidden = true; f.className = 'ac-feedback'; f.innerHTML = ''; });
+      result.hidden = true; result.innerHTML = ''; anchor.hidden = false; count();
+      window.scrollTo({ top: form.getBoundingClientRect().top + window.scrollY - 120, behavior: 'smooth' });
+    }
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var answers = {}, missing = [];
+      qs.forEach(function (q) { var c = q.querySelector('input:checked'); if (c) answers[q.getAttribute('data-q')] = c.value; else { missing.push(q); q.classList.add('is-unanswered'); } });
+      if (missing.length) { err.textContent = 'Answer every question before you submit. ' + missing.length + ' to go.'; err.hidden = false; missing[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      err.hidden = true;
+      var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Marking…';
+      acPost('/api/academy/submit', { module: mod, answers: answers }).then(function (res) {
+        btn.disabled = false; btn.innerHTML = 'Submit my answers ' + acArrow;
+        if (res._status === 401) { location.href = '/elearning/' + mod + '/?register=1#register'; return; }
+        if (!res.ok) throw new Error(res.error || 'We could not mark your answers. Please try again.');
+        form.classList.add('is-marked'); anchor.hidden = true;
+        qs.forEach(function (q) {
+          var r = res.results[q.getAttribute('data-q')]; if (!r) return;
+          q.disabled = true;
+          var f = q.querySelector('[data-feedback]'); f.hidden = false;
+          f.className = 'ac-feedback ' + (r.correct ? 'ok' : 'no');
+          f.innerHTML = '<p><strong>' + (r.correct ? 'Correct.' : 'Not this time.') + '</strong> ' + (r.why ? acEsc(r.why) : (r.review ? 'Review <a class="text-link" href="' + acEsc(r.review.path) + '">' + acEsc(r.review.title) + '</a>.' : '')) + '</p>';
+        });
+        var html = '<div class="test-score"><p class="eyebrow">' + (res.passed ? 'Passed' : 'Not passed yet') + '</p><p class="test-result">' + res.score + '%</p><p>' + res.right + ' of ' + res.total + ' correct. Pass mark ' + res.passMark + '%.</p>';
+        if (res.passed) {
+          html += '<p>' + (res.emailed ? 'Your certificate is on its way to ' + acEsc(res.email) + '. Check your junk folder if it has not arrived in a few minutes.' : 'Your certificate is ready below.') + '</p><div class="test-actions"><a class="btn btn-teal" href="/elearning/certificate/' + acEsc(res.code) + '/">View your certificate ' + acArrow + '</a><a class="btn" href="/elearning/certificate/' + acEsc(res.code) + '.pdf" download>Download PDF</a></div></div>';
+          html += '<div class="ac-panel"><h3>Two minutes of feedback</h3><p>Help us improve this module. Your answers are anonymous in our reports.</p><form class="form" data-ac-feedback><input type="hidden" name="module" value="' + acEsc(mod) + '">' +
+            ['useful|How useful was this module?', 'practice|Will it change how you scan?'].map(function (x) { var p = x.split('|'); return '<fieldset><legend style="font-weight:600;font-size:14px;margin-bottom:8px">' + p[1] + '</legend><div class="ac-rating">' + [1, 2, 3, 4, 5].map(function (n) { return '<label><input type="radio" name="' + p[0] + '" value="' + n + '" required> ' + n + '</label>'; }).join('') + '</div></fieldset>'; }).join('') +
+            '<label>Anything to add? (optional)<textarea name="comment" maxlength="1000"></textarea></label><div><button class="btn" type="submit">Send feedback</button></div></form></div>';
+        } else {
+          var rv = {}; Object.keys(res.results).forEach(function (k) { var r = res.results[k]; if (!r.correct && r.review) rv[r.review.path] = r.review.title; });
+          html += '<p>Each question shows whether you were right. Review these lessons, then try again. The explanations appear when you pass.</p><ul class="ac-review">' + Object.keys(rv).map(function (h) { return '<li><a class="text-link" href="' + acEsc(h) + '">' + acEsc(rv[h]) + '</a></li>'; }).join('') + '</ul><div class="test-actions" style="margin-top:20px"><button type="button" class="btn btn-teal" data-ac-retry>Try again</button></div></div>';
+        }
+        result.innerHTML = html; result.hidden = false;
+        var retry = result.querySelector('[data-ac-retry]'); if (retry) retry.addEventListener('click', reset);
+        var fb = result.querySelector('[data-ac-feedback]');
+        if (fb) fb.addEventListener('submit', function (ev) {
+          ev.preventDefault(); var d = {}; new FormData(fb).forEach(function (v, k) { d[k] = v; });
+          acPost('/api/academy/feedback', d).then(function () { fb.outerHTML = '<p><strong>Thank you.</strong> Your feedback shapes the next module.</p>'; });
+        });
+        setTimeout(function () { result.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
+      }).catch(function (ex) { btn.disabled = false; btn.innerHTML = 'Submit my answers ' + acArrow; err.textContent = ex.message; err.hidden = false; });
+    });
+  });
+
+  // Certificate page: print the reflection.
+  document.querySelectorAll('[data-print]').forEach(function (b) { b.addEventListener('click', function () { window.print(); }); });
+
   // Year
   document.querySelectorAll('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
 })();

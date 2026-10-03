@@ -1,0 +1,224 @@
+{
+ "modules": {
+  "dvt": {
+   "slug": "dvt",
+   "code": "DVT",
+   "title": "Proximal DVT: point-of-care compression ultrasound",
+   "cpdHours": 1,
+   "passMark": 80,
+   "draft": true,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "a",
+     "why": "For a Wells score of 2 or more, NICE NG158 advises a proximal leg vein scan within 4 hours. If the scan is not available in 4 hours, take a D-dimer, start interim therapeutic anticoagulation and scan within 24 hours.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "a",
+     "why": "With DVT unlikely and a negative D-dimer, NICE advises thinking about other diagnoses. A scan is offered when the D-dimer is positive. Interim anticoagulation applies when a scan or D-dimer result is delayed.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "c",
+     "why": "An alternative diagnosis at least as likely as DVT subtracts 2 points. Previous DVT adds 1 point. Age and varicose veins are not part of the score. Collateral superficial veins score, but only when they are not varicose.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "d",
+     "why": "The review pooled 15 studies with 2,511 scans: sensitivity 90%, specificity 95%. Three-point compression was more sensitive than two-point, and experienced scanners were more accurate than trainees. Compression, not Doppler, made the diagnosis.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "d",
+     "why": "The great saphenous vein joins the common femoral vein medially at the saphenofemoral junction. The femoral and deep femoral veins are the branches of the common femoral vein below the junction. The external iliac vein continues the common femoral vein above the inguinal ligament.",
+     "review": "02-anatomy",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "a",
+     "why": "\"Superficial femoral vein\" is the old name for the femoral vein, which is a deep vein. Clot in it is a DVT and needs treatment. The great saphenous vein is the main superficial vein of the leg.",
+     "review": "02-anatomy",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "b",
+     "why": "From behind, the popliteal vein lies between the skin and the popliteal artery, so it is the first deep vessel on the screen. The deep femoral vein runs in the thigh. The anterior tibial vein lies at the front of the leg, below the knee.",
+     "review": "02-anatomy",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "d",
+     "why": "Raising the head of the bed by 10° to 30° lets gravity fill the leg veins. A full vein is easier to find, and its collapse under pressure is easier to see. It does not change embolic risk or the depth of the popliteal vein.",
+     "review": "03-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "d",
+     "why": "If the artery has not deformed, the pressure is not yet enough to judge the vein. Press harder. Only a vein which stays open while the artery dents is non-compressible. Compression in longitudinal gives false reassurance. Colour Doppler does not replace compression.",
+     "review": "03-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "b",
+     "why": "Compress in transverse. In longitudinal, a small sideways slip takes the vein out of the beam and mimics collapse. In transverse, you keep both vessels on screen and watch the vein walls meet.",
+     "review": "03-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "a",
+     "why": "Normal flow in the common femoral vein varies with breathing. A flat, continuous signal suggests obstruction between the groin and the heart, in the iliac veins or the IVC. The compression scan does not reach these, so arrange formal imaging.",
+     "review": "03-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "d",
+     "why": "A vein which does not close completely under enough pressure contains thrombus, even if it narrows. Partial compression means non-occlusive clot. Report it as a positive scan.",
+     "review": "04-findings",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "a",
+     "why": "When the scan cannot answer the question, record it as indeterminate and arrange a formal scan. An indeterminate scan is not a negative scan. Calling it positive or negative without a clear view risks harm.",
+     "review": "04-findings",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "b",
+     "why": "A structure which ends after a short distance and has a bright fatty hilum is a lymph node. A vein runs on as a tube. Sweep up and down to tell them apart. An aneurysm is a dilated artery with pulsation and colour flow.",
+     "review": "05-pitfalls",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q15",
+     "correct": "d",
+     "why": "A proximal compression scan answers whether there is clot in the segments scanned. It does not assess the calf veins, the iliac veins or the IVC, and it does not exclude pulmonary embolism. With a positive D-dimer, NICE advises a repeat proximal scan in 6 to 8 days.",
+     "review": "06-documentation",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "The clinical question and the pathway",
+     "path": "/elearning/dvt/learn/context/"
+    },
+    "02-anatomy": {
+     "title": "The anatomy you need",
+     "path": "/elearning/dvt/learn/anatomy/"
+    },
+    "03-technique": {
+     "title": "Technique: the two-region compression scan",
+     "path": "/elearning/dvt/learn/technique/"
+    },
+    "04-findings": {
+     "title": "Normal and abnormal findings",
+     "path": "/elearning/dvt/learn/findings/"
+    },
+    "05-pitfalls": {
+     "title": "Pitfalls and mimics",
+     "path": "/elearning/dvt/learn/pitfalls/"
+    },
+    "06-documentation": {
+     "title": "Documenting and acting on the result",
+     "path": "/elearning/dvt/learn/documentation/"
+    },
+    "07-cases": {
+     "title": "Cases",
+     "path": "/elearning/dvt/learn/cases/"
+    }
+   }
+  }
+ }
+}

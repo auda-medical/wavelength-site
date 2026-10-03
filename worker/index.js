@@ -1,6 +1,8 @@
 // Wavelength Worker. Static pages are served from dist/ as normal.
-// This script only runs for /volunteer/* (see run_worker_first in wrangler.jsonc):
-// a hidden, password-protected volunteer sign-up area with a private admin list.
+// This script runs first only for the paths in run_worker_first (wrangler.jsonc):
+//   /volunteer/*  a hidden, password-protected volunteer sign-up area with a private admin list
+//   /elearning/*, /api/*  Wavelength Academy (worker/academy.js)
+import { handleAcademy, sendCertificate } from './academy.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
 // admin_hash, session_secret). Passwords are stored as PBKDF2 hashes, never in plain text.
@@ -122,9 +124,9 @@ async function adminPage(env, req) {
       <form method="post" onsubmit="return confirm('Delete ${esc(r.first_name)} ${esc(r.last_name)} permanently?')"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="delete"><button class="btn btn-ghost small danger" type="submit">Delete</button></form>
     </td></tr>`).join('');
   const table = results.length
-    ? `<p class="admin-summary">${results.length} volunteer${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/volunteer/admin/export.csv">Download as spreadsheet (CSV)</a></p>
+    ? `<p class="admin-summary">${results.length} volunteer${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/volunteer/admin/export.csv">Download as spreadsheet (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a></p>
        <div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Signed up</th><th scope="col">Name and contact</th><th scope="col">Role</th><th scope="col">Dates</th><th scope="col">Notes</th><th scope="col">Future contact</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>`
-    : '<div class="empty-dates"><div><h3>No volunteers yet</h3><p>Sign-ups appear here as soon as someone submits the form.</p></div></div>';
+    : '<div class="empty-dates"><div><h3>No volunteers yet</h3><p>Sign-ups appear here as soon as someone submits the form. <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a></p></div></div>';
   const s = await settings(env);
   const pw = (who, label) => `<form class="form pw-form" method="post"><input type="hidden" name="action" value="password_${who}"><label>${label}<input name="new_password" type="password" minlength="10" autocomplete="new-password" required></label><button class="btn btn-ghost small" type="submit">Change</button></form>`;
   const msg = { ok: 'Password changed.', short: 'Use at least 10 characters.' }[new URL(req.url).searchParams.get('pw')] || '';
@@ -144,10 +146,42 @@ async function exportCsv(env) {
   return withHeaders(new Response('﻿' + csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="wavelength-volunteers-${new Date().toISOString().slice(0, 10)}.csv"` } }));
 }
 
+const csvCell = (v) => { const s = String(v == null ? '' : v); return /^[=+\-@]/.test(s) ? `"'${s.replace(/"/g, '""')}"` : `"${s.replace(/"/g, '""')}"`; };
+function csvResponse(rows, cols, name) {
+  const csv = [cols.join(','), ...rows.map((r) => cols.map((c) => csvCell(r[c])).join(','))].join('\r\n');
+  return withHeaders(new Response('\ufeff' + csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}-${new Date().toISOString().slice(0, 10)}.csv"` } }));
+}
+
+async function academyAdmin(env, req) {
+  const db = env.DB;
+  const [learners, certs, attempts, fb] = await Promise.all([
+    db.prepare('SELECT l.*, (SELECT COUNT(*) FROM certificates c WHERE c.learner_id = l.id) AS certs FROM learners l ORDER BY l.created_at DESC LIMIT 500').all(),
+    db.prepare('SELECT * FROM certificates ORDER BY created_at DESC LIMIT 500').all(),
+    db.prepare('SELECT module, COUNT(*) AS n, SUM(passed) AS passed, ROUND(AVG(score)) AS avg FROM attempts GROUP BY module').all(),
+    db.prepare('SELECT module, COUNT(*) AS n, ROUND(AVG(useful), 1) AS useful, ROUND(AVG(practice), 1) AS practice FROM feedback GROUP BY module').all(),
+  ]);
+  const L = learners.results || [], C = certs.results || [];
+  const pending = C.filter((c) => !c.emailed_at).length;
+  const msg = { 1: 'Certificate emails sent.', 0: 'Some emails could not be sent. See the email column.' }[new URL(req.url).searchParams.get('sent')] || '';
+  const stats = (attempts.results || []).map((a) => { const f = (fb.results || []).find((x) => x.module === a.module); return `<li><b>${esc(a.module)}</b>: ${a.n} attempts, ${a.passed} passes, average score ${a.avg}%${f ? `. Feedback from ${f.n}: useful ${f.useful}/5, changes practice ${f.practice}/5` : ''}</li>`; }).join('');
+  const html = `<h2 class="display" style="font-size:34px;margin:0 0 8px">Academy</h2>
+  <p class="admin-summary">${L.length} learner${L.length === 1 ? '' : 's'}, ${L.filter((l) => l.newsletter).length} ticked the newsletter. ${C.length} certificate${C.length === 1 ? '' : 's'} issued. <a class="text-link" href="/volunteer/admin/academy/learners.csv">Learners (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/certificates.csv">Certificates (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/feedback.csv">Feedback (CSV)</a> · <a class="text-link" href="/volunteer/admin/">Volunteers</a></p>
+  ${stats ? `<ul class="admin-summary">${stats}</ul>` : ''}
+  ${msg ? `<p class="form-note" style="font-weight:600">${msg}</p>` : ''}
+  ${pending ? `<form method="post"><input type="hidden" name="action" value="send_pending"><button class="btn btn-ghost small" type="submit">Email the ${pending} certificate${pending === 1 ? '' : 's'} not yet sent</button></form>` : ''}
+  <h3 style="margin:36px 0 10px">Certificates</h3>
+  ${C.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Issued</th><th scope="col">Name</th><th scope="col">Module</th><th scope="col">Score</th><th scope="col">Code</th><th scope="col">Email</th></tr></thead><tbody>${C.map((c) => `<tr><td>${esc(c.issued_on)}</td><td>${esc(c.name)}</td><td>${esc(c.module)}</td><td>${c.score}%</td><td><a class="text-link" href="/elearning/certificate/${esc(c.code)}/">${esc(c.code)}</a></td><td>${c.emailed_at ? 'Sent ' + esc(c.emailed_at.slice(0, 16)) : `<span class="muted">${esc(c.email_error || 'Pending')}</span>`}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No certificates yet.</p>'}
+  <h3 style="margin:36px 0 10px">Learners</h3>
+  ${L.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Registered</th><th scope="col">Name and email</th><th scope="col">Role</th><th scope="col">Newsletter</th><th scope="col">Certificates</th></tr></thead><tbody>${L.map((l) => `<tr><td>${esc(l.created_at.slice(0, 10))}</td><td><b>${esc(l.first_name)} ${esc(l.last_name)}</b><br><a class="text-link" href="mailto:${esc(l.email)}">${esc(l.email)}</a></td><td>${esc(l.role)}${l.organisation ? `<br>${esc(l.organisation)}` : ''}</td><td>${l.newsletter ? 'Yes' : 'No'}</td><td>${l.certs}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No learners yet.</p>'}`;
+  const shell = await env.ASSETS.fetch(new Request(new URL('/volunteer/admin/', req.url).toString()));
+  return withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(html, { html: true }); } }).transform(shell));
+}
+
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     let p = url.pathname;
+    if (p.startsWith('/elearning/') || p.startsWith('/api/')) return handleAcademy(req, env, ctx);
     if (!p.startsWith('/volunteer')) return env.ASSETS.fetch(req);
     if (p === '/volunteer') return redirect('/volunteer/');
     if (!p.endsWith('/') && !p.endsWith('.csv')) p += '/';
@@ -184,6 +218,22 @@ export default {
     if (p.startsWith('/volunteer/admin')) {
       if (role !== 'a') return redirect('/volunteer/');
       if (p === '/volunteer/admin/export.csv') return exportCsv(env);
+      if (p === '/volunteer/admin/academy/learners.csv') return csvResponse((await env.DB.prepare('SELECT * FROM learners ORDER BY created_at DESC').all()).results || [], ['created_at', 'title', 'first_name', 'last_name', 'email', 'role', 'organisation', 'newsletter', 'last_seen'], 'wavelength-academy-learners');
+      if (p === '/volunteer/admin/academy/certificates.csv') return csvResponse((await env.DB.prepare('SELECT * FROM certificates ORDER BY created_at DESC').all()).results || [], ['issued_on', 'code', 'name', 'module', 'module_title', 'score', 'cpd_hours', 'emailed_at', 'email_error'], 'wavelength-academy-certificates');
+      if (p === '/volunteer/admin/academy/feedback.csv') return csvResponse((await env.DB.prepare('SELECT created_at, module, useful, practice, comment FROM feedback ORDER BY created_at DESC').all()).results || [], ['created_at', 'module', 'useful', 'practice', 'comment'], 'wavelength-academy-feedback');
+      if (p === '/volunteer/admin/academy/') {
+        if (req.method === 'POST') {
+          const f = await req.formData();
+          if (f.get('action') === 'send_pending') {
+            const { results = [] } = await env.DB.prepare('SELECT c.*, l.email, l.title, l.first_name, l.last_name FROM certificates c JOIN learners l ON l.id = c.learner_id WHERE c.emailed_at IS NULL LIMIT 25').all();
+            let ok = true;
+            for (const c of results) ok = (await sendCertificate(env, c, c)) && ok;
+            return redirect(`/volunteer/admin/academy/?sent=${ok ? 1 : 0}`);
+          }
+          return redirect('/volunteer/admin/academy/');
+        }
+        return academyAdmin(env, req);
+      }
       if (req.method === 'POST') {
         const f = await req.formData();
         const id = Number(f.get('id'));
