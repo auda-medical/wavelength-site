@@ -11,6 +11,8 @@ You have found the bat, watched the pleural line, and seen no sliding. Many clin
 
 ![Wavelength Pearl: lung scan. B-lines and lung pulse rule out pneumothorax under the probe. A lung point confirms it.](/learn/images/lung-pearl.webp)
 
+*Scan images in the graphic are illustrations, not patient scans.*
+
 ## Where to look
 
 In a supine patient, free air rises to the front of the chest. Start with the linear or curvilinear probe in the second to fourth intercostal spaces in the mid-clavicular line, probe head to foot across two ribs. Scan both sides.
@@ -41,8 +43,6 @@ Place the M-mode line across the pleural line. A moving lung gives a grainy patt
 
 Read the first step in [Lung: find the bat before you judge sliding](/learn/lung-find-the-bat/).
 
-## Test yourself
-
 ?? A ventilated patient has no lung sliding on the left. You see a lung pulse at several points on the left anterior chest. What is the most likely explanation?
 - Left pneumothorax
 + Right main bronchus intubation
@@ -63,3 +63,17 @@ Read the first step in [Lung: find the bat before you judge sliding](/learn/lung
 - Supraclavicular fossa
 - Mid-axillary line at the level of the diaphragm
 : Free air rises to the least dependent part of the chest, which in a supine patient is the anterior chest. Start there and move laterally to look for a lung point. The lung bases and the mid-axillary line suit fluid, which collects in dependent areas. The supraclavicular fossa gives a small, awkward window.
+
+?? You place the M-mode line across the pleural line. The trace shows flat horizontal lines above and below the pleural line. What is this pattern called?
++ The barcode sign
+- The seashore sign
+- The sinusoid sign
+- The quad sign
+: Flat lines all the way down mean nothing moves at the pleural line, the barcode or stratosphere sign. The seashore sign has a grainy pattern below the pleural line and shows sliding. The sinusoid sign and the quad sign describe a pleural effusion.
+
+?? A patient with a previous right pleurodesis has no lung sliding on the right anterior chest. What is the best next step?
++ Look for B-lines, a lung pulse or a lung point before deciding
+- Diagnose a right pneumothorax
+- Diagnose a right main bronchus intubation
+- Stop, because absent sliding is normal after pleurodesis
+: Pleurodesis sticks the two layers of pleura together, so the lung stops sliding even when it touches the chest wall. Absent sliding here does not separate adhesions from a pneumothorax. B-lines or a lung pulse rule out pneumothorax at that spot, and a lung point confirms it. A right main bronchus intubation affects the left lung.

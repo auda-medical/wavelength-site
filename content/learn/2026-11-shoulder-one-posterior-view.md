@@ -11,6 +11,8 @@ A dislocated shoulder is a common, painful presentation. One ultrasound view fro
 
 ![Wavelength Pearl: shoulder POCUS. One posterior transverse view shows alignment before and after reduction.](/learn/images/shoulder-pearl.webp)
 
+*Scan images in the graphic are illustrations, not patient scans.*
+
 ## The scan
 
 1. Sit the patient up and stand behind them.
@@ -34,8 +36,6 @@ A dislocated shoulder is a common, painful presentation. One ultrasound view fro
 
 Ultrasound shows position. It does not rule out a fracture of the greater tuberosity, the glenoid rim or the humeral neck. Follow your department's imaging policy, and X-ray when the mechanism, the patient's age or your examination raises concern for a fracture.
 
-## Test yourself
-
 ?? You scan the posterior shoulder in transverse, just below the scapular spine. Which structure lies on the medial side of the screen?
 + The glenoid
 - The humeral head
@@ -50,9 +50,23 @@ Ultrasound shows position. It does not rule out a fracture of the greater tubero
 - Rotator cuff tear
 : An anterior dislocation moves the head forward, away from a probe on the back of the shoulder, so it lies deep. A posterior dislocation brings the head closer to the probe. In normal alignment the head sits level with the glenoid rim. A rotator cuff tear changes the tendon, not the position of the head.
 
-?? After reduction, the humeral head lies level with the glenoid and turns as you rotate the arm. What does the scan not tell you?
-+ Whether a fracture is present
-- Whether the joint has reduced
-- Whether the head moves within the joint
-- Which way the shoulder was dislocated before
-: The scan confirms position and movement. It does not exclude a fracture, such as a greater tuberosity or glenoid rim fracture. Use your local imaging policy and the clinical picture to decide on an X-ray. The pre-reduction scan has already shown the direction of the dislocation.
+?? After reduction, the humeral head lies level with the glenoid and turns as you rotate the arm. Which problem still needs assessment by another route?
++ A fracture of the greater tuberosity or glenoid rim
+- A persistent dislocation
+- Loss of movement of the humeral head in the joint
+- The direction of the original dislocation
+: The scan confirms position and movement, so it answers the other three. It does not reliably show a fracture of the greater tuberosity, the glenoid rim or the humeral neck. Use your local imaging policy and the clinical picture to decide on an X-ray. The pre-reduction scan has already shown the direction of the dislocation.
+
+?? Where do you place the probe for the posterior shoulder view?
++ Transverse, just below and parallel to the scapular spine
+- Over the front of the shoulder, below the coracoid process
+- Longitudinal over the deltoid on the outer arm
+- Above the clavicle, pointing down into the joint
+: The posterior window lies below the scapular spine, where the probe looks straight at the back of the glenohumeral joint with the glenoid and humeral head side by side. An anterior window works but is harder to reach in a guarding patient. The outer arm and the supraclavicular fossa do not show the joint line.
+
+?? After reduction, you gently rotate the arm in and out while scanning. What confirms a reduced joint?
++ The humeral head turns smoothly beside the glenoid, level with its rim
+- The glenoid moves away from the probe with each rotation
+- Fluid appears in the joint as the arm moves
+- The humeral head stays still while the arm rotates
+: A reduced head sits level with the glenoid rim and turns in place as the arm rotates. The glenoid is part of the scapula, so it stays still. A small joint effusion does not confirm reduction. A head which does not turn with the arm suggests it is not sitting in the joint.

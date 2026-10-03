@@ -422,3 +422,29 @@ section{position:relative}
 .rating-badge .stars{display:flex;gap:3px;color:#E9C46A}
 .rating-badge .stars svg{width:22px;height:22px}
 .rating-badge:hover{background:rgba(233,196,106,.1)}
+
+/* Learn tests */
+.test-cta{display:grid;gap:20px;margin-top:56px;max-width:72ch;padding:32px 36px;border-radius:var(--radius);background:var(--white);border:1px solid var(--line);border-left:4px solid var(--teal)}
+@media (min-width:760px){.test-cta{grid-template-columns:1fr auto;align-items:center}}
+.test-cta .eyebrow{color:var(--teal-ink);margin:0 0 6px}
+.test-cta h3{font-family:var(--serif);font-size:30px;margin:0 0 6px}
+.test-cta p{margin:0;color:var(--slate)}
+.test-cta .btn-teal{--bg:var(--teal);--fg:var(--white)}
+.test-back{margin:0 0 18px;font-size:15px}
+.test-progress{display:flex;flex-direction:column;gap:8px;margin:0 0 8px;font-size:14px;color:var(--slate);position:sticky;top:76px;z-index:2;background:var(--cream);padding:10px 0}
+.test-bar{display:block;height:6px;border-radius:99px;background:var(--sand);overflow:hidden}
+.test-bar i{display:block;height:100%;width:0;background:var(--teal);transition:width .4s var(--ease)}
+.test-score{margin:36px 0 0;padding:32px 34px;border-radius:var(--radius);background:var(--navy-deep);color:var(--cream)}
+.test-score .eyebrow{color:var(--teal-light);margin:0 0 6px}
+.test-result{font-family:var(--serif);font-size:56px;line-height:1;margin:0 0 10px;color:var(--cream)}
+.test-score p{color:var(--mist);margin:0 0 20px}
+.test-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.test-score .btn{--bg:var(--cream);--fg:var(--navy)}
+.test-score .btn-teal{--bg:var(--teal-light);--fg:var(--navy)}
+.test-score .test-retry{background:none;border:0;font:inherit;font-size:15px;color:var(--teal-light);cursor:pointer;padding:8px 4px}
+.bank-link{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 28px;padding:22px 28px;border-radius:var(--radius);background:var(--navy-deep);color:var(--cream);text-decoration:none}
+.bank-link>span{display:flex;flex-direction:column;gap:4px}
+.bank-link .eyebrow{color:var(--teal-light);margin:0}
+.bank-link strong{font-family:var(--serif);font-size:26px;font-weight:500}
+.bank-link svg{flex:none}
+@media (max-width:700px){.test-progress{position:static}}

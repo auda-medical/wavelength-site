@@ -162,18 +162,48 @@
     if (frame) frame.addEventListener('load', function () { if (sent) { sent = false; location.href = '/subscribe/thanks/'; } });
   });
 
-  // Learn quizzes: first click marks the answer and opens the explanation
-  document.querySelectorAll('[data-quiz]').forEach(function (quiz) {
-    quiz.addEventListener('click', function (e) {
-      var btn = e.target.closest('.quiz-opt');
-      if (!btn || quiz.classList.contains('is-done')) return;
+  // Learn tests: first click marks the answer, opens the explanation and updates the score.
+  // A link like /learn/<slug>/test/?q=1&a=b answers question 1 with option b (used by newsletter buttons).
+  document.querySelectorAll('[data-test]').forEach(function (test) {
+    var quizzes = [].slice.call(test.querySelectorAll('[data-quiz]'));
+    var total = quizzes.length, done = 0, right = 0;
+    var progress = test.querySelector('[data-progress]'), bar = test.querySelector('[data-bar]'), score = test.querySelector('[data-score]');
+    function update() {
+      if (progress) progress.textContent = done + ' of ' + total + ' answered';
+      if (bar) bar.style.width = (100 * done / total) + '%';
+      if (done === total && score) {
+        score.hidden = false;
+        score.querySelector('[data-right]').textContent = right;
+        score.querySelector('[data-message]').textContent = right === total ? 'Full marks. This pearl has stuck.' : right >= total - 1 ? 'Nearly there. Reread the explanation you missed.' : 'Worth another look. Read the pearl again, then retry.';
+      }
+    }
+    function answer(quiz, btn) {
+      if (quiz.classList.contains('is-done')) return;
       quiz.classList.add('is-done');
-      if (!btn.hasAttribute('data-correct')) btn.classList.add('is-wrong');
-      var right = quiz.querySelector('[data-correct]');
-      if (right) right.classList.add('is-right');
+      var ok = btn.hasAttribute('data-correct');
+      if (!ok) btn.classList.add('is-wrong');
+      var r = quiz.querySelector('[data-correct]');
+      if (r) r.classList.add('is-right');
       var why = quiz.querySelector('.quiz-why');
       if (why) why.open = true;
+      done++; if (ok) right++;
+      update();
+      if (done === total && score) setTimeout(function () { score.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 500);
+    }
+    quizzes.forEach(function (quiz) {
+      quiz.addEventListener('click', function (e) { var btn = e.target.closest('.quiz-opt'); if (btn) answer(quiz, btn); });
     });
+    var retry = test.querySelector('[data-retry]');
+    if (retry) retry.addEventListener('click', function () {
+      quizzes.forEach(function (q) { q.classList.remove('is-done'); q.querySelectorAll('.quiz-opt').forEach(function (b) { b.classList.remove('is-right', 'is-wrong'); }); var w = q.querySelector('.quiz-why'); if (w) w.open = false; });
+      done = 0; right = 0; score.hidden = true; update();
+      quizzes[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    var m = location.search.match(/[?&]q=(\d+)&a=([a-h])/);
+    if (m && quizzes[+m[1] - 1]) {
+      var q = quizzes[+m[1] - 1], btn = q.querySelectorAll('.quiz-opt')['abcdefgh'.indexOf(m[2])];
+      if (btn) { answer(q, btn); setTimeout(function () { q.scrollIntoView({ block: 'center' }); }, 300); }
+    }
   });
 
   // Year

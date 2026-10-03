@@ -11,6 +11,8 @@ A suspected proximal deep vein thrombosis (DVT, a clot in the deep veins of the 
 
 ![Wavelength Pearl: DVT scan. Compress the common femoral vein, its bifurcation and the popliteal vein in transverse.](/learn/images/dvt-pearl.webp)
 
+*Scan images in the graphic are illustrations, not patient scans.*
+
 ## The scan
 
 1. Lie the patient supine with the head of the bed raised, the hip turned out and the knee slightly bent. Raising the head fills the leg veins and makes them easier to see.
@@ -18,7 +20,7 @@ A suspected proximal deep vein thrombosis (DVT, a clot in the deep veins of the 
 3. Start at the groin, at or just below the inguinal ligament. Find the common femoral artery (CFA) and the common femoral vein (CFV), which sits medial to it.
 4. Press straight down until the vein walls meet. Release, slide the probe 1 to 2 cm down the leg, and press again.
 5. Keep going past the great saphenous vein junction and the CFV bifurcation, where it divides into the femoral and deep femoral veins.
-6. Move to the popliteal fossa, with the patient prone or on their side. The popliteal vein lies closest to the probe, above the artery. Compress it down to where it divides in the upper calf.
+6. Move to the popliteal fossa, with the patient prone or on their side. The popliteal vein lies between the probe and the popliteal artery. Compress it down to where it divides in the upper calf.
 
 ## The aha
 
@@ -34,8 +36,6 @@ Press until the artery starts to change shape. Then you know you have used enoug
 - Groin lymph nodes look round and dark in one still frame. Sweep up and down: a vessel runs on, a node ends.
 - Some patients have two femoral veins. Compress both.
 - A negative point-of-care scan covers the segments you scanned, not the calf. Follow your local DVT pathway, which usually combines the Wells score, D-dimer and a repeat or formal scan within a week.
-
-## Test yourself
 
 ?? You scan the right groin in transverse. Where does the common femoral vein lie in relation to the common femoral artery?
 - Lateral to the artery
@@ -57,3 +57,17 @@ Press until the artery starts to change shape. Then you know you have used enoug
 - Transverse views show clot as bright echoes
 - Longitudinal pressure damages the vein valves
 : In longitudinal, a small sideways slip takes the vein out of the beam, and the screen shows what looks like a collapsed vein. In transverse you keep the artery and vein on screen together and watch the walls meet. Fresh clot is often black on screen, so its appearance does not decide the plane.
+
+?? With the patient prone, you scan the popliteal fossa in transverse. Which deep vessel lies closest to the probe?
++ The popliteal vein
+- The popliteal artery
+- The anterior tibial artery
+- The deep femoral vein
+: Behind the knee the order flips compared with the groin. The popliteal vein sits between the skin and the popliteal artery, so you meet it first and compress it against the artery. The anterior tibial artery leaves below the knee, at the front of the leg. The deep femoral vein runs in the thigh.
+
+?? A patient with a Wells score of 2 or more has a negative proximal leg vein ultrasound and a positive D-dimer. What does NICE guidance recommend next?
++ Stop interim anticoagulation and repeat the proximal scan 6 to 8 days later
+- Discharge with no further imaging
+- Arrange CT venography the same day
+- Start three months of full anticoagulation
+: A negative proximal scan does not exclude a calf clot which then extends upwards. NICE (NG158) advises stopping interim anticoagulation and repeating the proximal ultrasound 6 to 8 days later when the D-dimer is positive. Discharge without review misses this group. CT venography is not the routine next step. Full treatment without a diagnosis exposes the patient to bleeding risk.

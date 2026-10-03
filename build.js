@@ -16,9 +16,9 @@ const LEARN_DIR = path.join(ROOT, 'content/learn');
 const posts = (fs.existsSync(LEARN_DIR) ? fs.readdirSync(LEARN_DIR) : [])
   .filter((f) => f.endsWith('.md'))
   .map((f) => {
-    const { meta, html } = md.parse(fs.readFileSync(path.join(LEARN_DIR, f), 'utf8'));
+    const { meta, html, questions } = md.parse(fs.readFileSync(path.join(LEARN_DIR, f), 'utf8'));
     const slug = meta.slug || f.replace(/\.md$/, '').replace(/^\d{4}-\d{2}(-\d{2})?-/, '');
-    return { ...meta, slug, html, date: String(meta.date || '') };
+    return { ...meta, slug, html, questions, date: String(meta.date || '') };
   })
   .filter((p) => SHOW_DRAFTS || (p.draft !== true && p.date <= new Date().toISOString().slice(0, 10)))
   .sort((a, b) => b.date.localeCompare(a.date));
@@ -311,7 +311,7 @@ function postCard(p, h = 'h3') {
     <p class="eyebrow">${esc(p.category || 'Learn')}${p.draft === true ? ' · Draft' : ''}</p>
     <${h}>${esc(p.title)}</${h}>
     <p>${esc(p.summary || '')}</p>
-    <span class="meta">${p.date ? fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</span>
+    <span class="meta">${p.date ? fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}${p.questions && p.questions.length ? ` · ${p.questions.length} questions` : ''}</span>
   </a>`;
 }
 
@@ -667,7 +667,7 @@ pages['/learn/'] = layout({
   description: 'Practical point-of-care ultrasound skills from the Wavelength faculty: probe technique, views, pitfalls and cases for emergency and acute clinicians.',
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }])],
   body: `${pageHero({ eyebrow: 'Learn', title: 'From the scanning room.', lede: 'Practical point-of-care ultrasound skills from the Wavelength faculty. One technique, one view or one pitfall at a time.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn' }] })}
-<section class="section sand"><div class="wrap">${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
+<section class="section sand"><div class="wrap">${posts.some((x) => x.questions.length) ? `<a class="bank-link reveal" href="/learn/test/"><span><span class="eyebrow">Question bank</span><strong>Test yourself on every pearl</strong></span>${arrow}</a>` : ''}${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
 ${subscribeBand()}`,
 });
 for (const p of posts) {
@@ -685,10 +685,48 @@ for (const p of posts) {
     ],
     body: `${pageHero({ eyebrow: (p.category || 'Learn') + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: esc(p.summary || ''), crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title }], extra: `<p class="byline rise">${esc(p.author || site.director.name)}${p.date ? ' · ' + fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</p>` })}
 <section class="section"><div class="wrap"><article class="prose post reveal">${p.html}</article>
+${p.questions.length ? `<div class="test-cta reveal"><div><p class="eyebrow">Test yourself</p><h3>${p.questions.length} questions on this pearl</h3><p>Answer at your own pace. Each answer comes with a short explanation. About ${Math.max(2, Math.round(p.questions.length * 0.6))} minutes.</p></div><a class="btn btn-teal" href="/learn/${p.slug}/test/">Take the test ${arrow}</a></div>` : ''}
 <div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Small groups, FAMUS instructors and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
 </div></section>
 ${others.length ? `<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">More to learn</p></div><div class="post-grid">${others.map((o) => postCard(o)).join('')}</div></div></section>` : ''}
 ${subscribeBand('Get the next one <em>by email.</em>')}`,
+  });
+}
+
+// Learn tests: one page per post with questions, plus a question bank listing them all
+const tested = posts.filter((p) => p.questions.length);
+for (const p of tested) {
+  const href = `/learn/${p.slug}/test/`;
+  const i = tested.indexOf(p);
+  const next = tested[(i + 1) % tested.length];
+  pages[href] = layout({
+    title: `Test yourself: ${p.title}`,
+    pathname: href,
+    description: `${p.questions.length} questions on ${p.title}, with an explanation for every answer.`,
+    noindex: p.draft === true,
+    jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title, href: `/learn/${p.slug}/` }, { label: 'Test yourself', href }])],
+    body: `${pageHero({ eyebrow: 'Test yourself' + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: `${p.questions.length} questions. Pick an answer to see whether you are right and why. Your score appears at the end.`, crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title, href: `/learn/${p.slug}/` }, { label: 'Test' }] })}
+<section class="section"><div class="wrap"><div class="prose post test" data-test data-total="${p.questions.length}">
+<p class="test-back"><a class="text-link" href="/learn/${p.slug}/">Read the pearl first</a></p>
+<div class="test-progress" aria-live="polite"><span data-progress>0 of ${p.questions.length} answered</span><span class="test-bar"><i data-bar></i></span></div>
+${p.questions.join('\n')}
+<div class="test-score" data-score hidden><p class="eyebrow">Your score</p><p class="test-result"><span data-right>0</span> of ${p.questions.length}</p><p data-message></p>
+<div class="test-actions"><a class="btn" href="/learn/${p.slug}/">Back to the pearl</a>${next && next !== p ? `<a class="btn btn-teal" href="/learn/${next.slug}/test/">Next test ${arrow}</a>` : ''}<button type="button" class="text-link test-retry" data-retry>Try again</button></div></div>
+</div>
+<div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Small groups, FAMUS instructors and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
+</div></section>
+${subscribeBand('A new pearl and test <em>every month.</em>')}`,
+  });
+}
+if (tested.length) {
+  pages['/learn/test/'] = layout({
+    title: 'Question bank | Point-of-care ultrasound',
+    pathname: '/learn/test/',
+    description: 'Test your point-of-care ultrasound knowledge, one Wavelength Pearl at a time. Every answer comes with an explanation.',
+    jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: 'Question bank', href: '/learn/test/' }])],
+    body: `${pageHero({ eyebrow: 'Question bank', title: 'Test yourself.', lede: 'Short tests on each Wavelength Pearl. Read the pearl, then check what stuck. Every answer comes with an explanation.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: 'Question bank' }] })}
+<section class="section sand"><div class="wrap"><div class="post-grid">${tested.map((p) => `<a class="post-card reveal" href="/learn/${p.slug}/test/"><p class="eyebrow">${esc(p.category || 'Learn')}${p.draft === true ? ' · Draft' : ''}</p><h2>${esc(p.title)}</h2><p>${esc(p.summary || '')}</p><span class="meta">${p.questions.length} questions · Start the test</span></a>`).join('')}</div></div></section>
+${subscribeBand('A new pearl and test <em>every month.</em>')}`,
   });
 }
 
@@ -847,7 +885,7 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisall
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
-    .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => p === `/learn/${x.slug}/` && x.draft === true)))
+    .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => (p === `/learn/${x.slug}/` || p === `/learn/${x.slug}/test/`) && x.draft === true)) && !(p === '/learn/test/' && !posts.some((x) => x.draft !== true && x.questions.length)))
     .map((p) => `  <url><loc>${url(p)}</loc><priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );
