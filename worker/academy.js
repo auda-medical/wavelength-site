@@ -259,9 +259,8 @@ async function certificatePage(env, req, code) {
     <dl>
       <dt>Awarded to</dt><dd class="ac-cert-name">${esc(cert.name)}</dd>
       <dt>Module</dt><dd>${esc(cert.module_title)}</dd>
-${owner ? `      <dt>Score</dt><dd>${cert.score}%, passed</dd>
-` : '      <dt>Result</dt><dd>Passed</dd>
-'}      <dt>CPD</dt><dd>${hours} of self-directed learning</dd>
+${owner ? `<dt>Score</dt><dd>${cert.score}%, passed</dd>` : '<dt>Result</dt><dd>Passed</dd>'}
+      <dt>CPD</dt><dd>${hours} of self-directed learning</dd>
       <dt>Completed</dt><dd>${fmtDate(cert.issued_on)}</dd>
       <dt>Certificate number</dt><dd>${esc(cert.code)}</dd>
     </dl>
