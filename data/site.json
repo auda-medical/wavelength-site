@@ -104,5 +104,65 @@
     "name": "Wavelength Academy",
     "newsletterRequired": false,
     "passMarkDefault": 80
+  },
+  "learnTopics": {
+    "_help": "Topic groups for the Pearls and Academy pages, in display order. Each pearl and module joins the topic whose categories list its category. A category not listed here shows under \"More pearls\". Add a topic by copying one object and giving it a new slug.",
+    "topics": [
+      {
+        "slug": "fundamentals",
+        "label": "Fundamentals",
+        "intro": "Set up the machine and the image before you look for pathology.",
+        "categories": [
+          "Core skills"
+        ]
+      },
+      {
+        "slug": "heart",
+        "label": "Heart and vessels",
+        "intro": "Cardiac views, the venous system, the aorta and the leg veins.",
+        "categories": [
+          "Cardiac",
+          "Vascular",
+          "Aorta"
+        ]
+      },
+      {
+        "slug": "lung",
+        "label": "Lung and airway",
+        "intro": "Pneumothorax, consolidation, effusion, the diaphragm and tube position.",
+        "categories": [
+          "Lung",
+          "Airway"
+        ]
+      },
+      {
+        "slug": "abdomen",
+        "label": "Abdomen and pelvis",
+        "intro": "Free fluid, the gallbladder, kidneys, stomach and bowel, in adults and children.",
+        "categories": [
+          "Abdomen",
+          "Renal",
+          "eFAST"
+        ]
+      },
+      {
+        "slug": "soft-tissue",
+        "label": "Soft tissue and joints",
+        "intro": "Collections, foreign bodies, tendons and joint effusions.",
+        "categories": [
+          "Soft tissue",
+          "MSK"
+        ]
+      },
+      {
+        "slug": "eye-scrotum",
+        "label": "Eye and scrotum",
+        "intro": "Time-critical small parts, scanned safely.",
+        "categories": [
+          "Eye",
+          "Small parts"
+        ]
+      }
+    ]
   }
 }

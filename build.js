@@ -48,6 +48,17 @@ const modules = (fs.existsSync(ACADEMY_DIR) ? fs.readdirSync(ACADEMY_DIR) : [])
   });
 // Draft modules are built so the team can review them by link, but stay unlisted, noindex and out of the sitemap.
 const liveModules = modules.filter((m) => m.draft !== true);
+
+// Topic groups (data/site.json learnTopics) shared by the Pearls and Academy pages.
+const TOPICS = ((site.learnTopics || {}).topics || []).concat([{ slug: 'more', label: 'More pearls', intro: 'Further techniques from the Wavelength faculty.', categories: [] }]);
+const topicOf = (cat) => TOPICS.find((t) => t.categories.includes(cat)) || TOPICS[TOPICS.length - 1];
+const topicIndex = (cat) => TOPICS.indexOf(topicOf(cat));
+liveModules.sort((a, b) => topicIndex(a.category) - topicIndex(b.category));
+// Card image: a 16:10 thumbnail of the pearl graphic (tools/pearl-thumbs.py writes content/learn/images/thumbs/).
+const thumbFor = (img) => (img && fs.existsSync(path.join(LEARN_DIR, 'images/thumbs', img)) ? `/learn/images/thumbs/${img}` : null);
+const pearlThumb = (p) => thumbFor(((String(p.html).match(/\/learn\/images\/([a-z0-9-]+-pearl\.webp)/) || [])[1]));
+const cardImg = (src) => (src ? `<span class="card-img"><img src="${src}" alt="" loading="lazy" decoding="async" width="720" height="450"></span>` : '');
+const readMins = (html) => Math.max(2, Math.round(String(html).replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length / 200));
 fs.writeFileSync(path.join(ROOT, 'worker/academy-data.json'), JSON.stringify({ modules: Object.fromEntries(modules.map((m) => [m.slug, { slug: m.slug, code: m.code, title: m.title, cpdHours: m.cpdHours, passMark: m.passMark, draft: m.draft === true, questions: m.questions.map((q) => ({ id: q.id, correct: q.correct, why: q.why, review: q.review, options: q.options.map((o) => o.id) })), lessons: Object.fromEntries(m.lessonPages.map((l) => [l.file, { title: l.title, path: `/elearning/${m.slug}/learn/${l.slug}/` }])) }])) }, null, 1) + '\n');
 const BUILD = Date.now().toString(36);
 const crypto = require('crypto');
@@ -349,13 +360,45 @@ function learnSwitch(active) {
   return `<nav class="learn-switch" aria-label="Learn"><div class="wrap">${tab('pearls', '/learn/', 'Wavelength Pearls', `${posts.length} free pearls with tests`)}${tab('academy', '/elearning/', 'Wavelength Academy', `${liveModules.length} certified ${liveModules.length === 1 ? 'module' : 'modules'} with CPD`)}</div></nav>`;
 }
 
-function postCard(p, h = 'h3') {
-  return `<a class="post-card reveal" href="/learn/${p.slug}/">
+function postCard(p, h = 'h3', { topicView = false } = {}) {
+  const meta = topicView
+    ? `${readMins(p.html)} min read${p.questions && p.questions.length ? ` · ${p.questions.length} questions` : ''}`
+    : `${p.date ? fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}${p.questions && p.questions.length ? ` · ${p.questions.length} questions` : ''}`;
+  const search = topicView ? ` data-search="${esc([p.title, p.summary, p.category, topicOf(p.category).label].join(' ').toLowerCase())}"` : '';
+  const img = pearlThumb(p);
+  return `<a class="post-card reveal${img ? ' has-img' : ''}" href="/learn/${p.slug}/"${search}>${cardImg(img)}
     <p class="eyebrow">${esc(p.category || 'Learn')}${p.draft === true ? ' · Draft' : ''}</p>
     <${h}>${esc(p.title)}</${h}>
     <p>${esc(p.summary || '')}</p>
-    <span class="meta">${p.date ? fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}${p.questions && p.questions.length ? ` · ${p.questions.length} questions` : ''}</span>
+    <span class="meta">${meta}</span>
   </a>`;
+}
+
+// Academy link at the foot of a topic group and of a pearl.
+function moduleStrip(m) {
+  return `<a class="topic-module reveal" href="/elearning/${m.slug}/"><span class="topic-module-text"><span class="eyebrow">Wavelength Academy · Go deeper</span><strong>${esc(m.short || m.title)}</strong><span class="topic-module-meta">${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} CPD · Certificate · Free</span></span>${arrow}</a>`;
+}
+
+// Pearls index: topic filter bar, search, and one section per topic.
+function pearlTopics() {
+  const groups = TOPICS.map((t) => ({ t, items: posts.filter((p) => topicOf(p.category) === t), mods: liveModules.filter((m) => topicOf(m.category) === t) })).filter((g) => g.items.length);
+  const chip = (slug, label, n, active) => `<a class="topic-chip${active ? ' is-active' : ''}" href="${slug === 'all' ? '#pearls' : '#topic-' + slug}" data-topic="${slug}"${active ? ' aria-current="true"' : ''}>${esc(label)}<span>${n}</span></a>`;
+  const search = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="m15.5 15.5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+  return `<div class="topic-bar" id="pearls" data-topic-bar>
+  <div class="wrap topic-bar-inner">
+    <nav class="topic-chips" aria-label="Pearl topics">${chip('all', 'All', posts.length, true)}${groups.map((g) => chip(g.t.slug, g.t.label, g.items.length)).join('')}</nav>
+    <label class="topic-search">${search}<span class="sr-only">Search the pearls</span><input type="search" placeholder="Search a sign or condition" autocomplete="off" data-topic-search></label>
+  </div>
+</div>
+<section class="section sand topic-index"><div class="wrap">
+  <div class="topic-summary reveal"><p>${posts.length} pearls in ${groups.length} topics. Each teaches one technique and ends with a short test.</p>${posts.some((x) => x.questions.length) ? `<a class="text-link" href="/learn/test/">Open the question bank</a>` : ''}</div>
+  ${groups.map((g, i) => `<section class="topic-group" id="topic-${g.t.slug}" data-group="${g.t.slug}" aria-labelledby="th-${g.t.slug}">
+    <header class="topic-head reveal"><span class="topic-n" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span><div><h2 id="th-${g.t.slug}">${esc(g.t.label)}</h2><p>${esc(g.t.intro)}</p></div><span class="topic-count">${g.items.length} ${g.items.length === 1 ? 'pearl' : 'pearls'}</span></header>
+    <div class="post-grid">${g.items.map((p) => postCard(p, 'h3', { topicView: true })).join('')}</div>
+    ${g.mods.length ? `<div class="topic-modules">${g.mods.map(moduleStrip).join('')}</div>` : ''}
+  </section>`).join('')}
+  <div class="topic-empty" data-topic-empty hidden><h2>No pearls match your search.</h2><p>Try a shorter word, such as "lung" or "abscess", or <button type="button" class="text-link" data-topic-reset>show all pearls</button>.</p></div>
+</div></section>`;
 }
 
 // ---------- Pages ----------
@@ -768,13 +811,15 @@ pages['/learn/'] = layout({
   description: 'Practical point-of-care ultrasound skills from the Wavelength faculty: probe technique, views, pitfalls and cases for emergency and acute clinicians.',
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }])],
   body: `${pageHero({ eyebrow: 'Wavelength Pearls', title: 'From the scanning room.', lede: 'Free, five-minute point-of-care ultrasound pearls from the Wavelength faculty. One technique, one view or one pitfall at a time, each with a short test.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn' }] })}
-${learnSwitch('pearls')}<section class="section sand"><div class="wrap">${liveModules.length ? `<a class="bank-link reveal" href="/elearning/" style="background:var(--teal-ink)"><span><span class="eyebrow" style="color:var(--cream)">Wavelength Academy</span><strong>Go deeper: free modules with a Wavelength certificate</strong></span>${arrow}</a>` : ''}${posts.some((x) => x.questions.length) ? `<a class="bank-link reveal" href="/learn/test/"><span><span class="eyebrow">Question bank</span><strong>Test yourself on every pearl</strong></span>${arrow}</a>` : ''}${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
+${learnSwitch('pearls')}${posts.length ? pearlTopics() : `<section class="section sand"><div class="wrap"><div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div></div></section>`}
 ${subscribeBand()}`,
 });
 function nextReview(p) { const d = new Date((p.reviewed || p.date) + 'T00:00:00Z'); d.setUTCFullYear(d.getUTCFullYear() + 2); return d.toISOString().slice(0, 10); }
 for (const p of posts) {
   const href = `/learn/${p.slug}/`;
-  const others = posts.filter((o) => o.slug !== p.slug).slice(0, 2);
+  const sameTopic = posts.filter((o) => o.slug !== p.slug && topicOf(o.category) === topicOf(p.category));
+  const others = sameTopic.concat(posts.filter((o) => o.slug !== p.slug && !sameTopic.includes(o))).slice(0, 3);
+  const topicMods = liveModules.filter((m) => topicOf(m.category) === topicOf(p.category));
   pages[href] = layout({
     title: p.title,
     pathname: href,
@@ -790,7 +835,7 @@ for (const p of posts) {
 ${p.questions.length ? `<div class="test-cta reveal"><div><p class="eyebrow">Test yourself</p><h3>${p.questions.length} questions on this pearl</h3><p>Answer at your own pace. Each answer comes with a short explanation. About ${Math.max(2, Math.round(p.questions.length * 0.6))} minutes.</p></div><a class="btn btn-teal" href="/learn/${p.slug}/test/">Take the test ${arrow}</a></div>` : ''}
 <div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Four or five delegates per instructor, FAMUS-accredited faculty and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
 </div></section>
-${others.length ? `<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">More to learn</p></div><div class="post-grid">${others.map((o) => postCard(o)).join('')}</div></div></section>` : ''}
+${others.length || topicMods.length ? `<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">More on ${esc(topicOf(p.category).label.toLowerCase())}</p></div>${others.length ? `<div class="post-grid">${others.map((o) => postCard(o, 'h3', { topicView: true })).join('')}</div>` : ''}${topicMods.length ? `<div class="topic-modules">${topicMods.map(moduleStrip).join('')}</div>` : ''}<p class="reveal" style="margin-top:32px"><a class="text-link" href="/learn/#topic-${topicOf(p.category).slug}">All ${esc(topicOf(p.category).label.toLowerCase())} pearls</a></p></div></section>` : ''}
 ${subscribeBand('Get the next one <em>by email.</em>')}`,
   });
 }
@@ -857,8 +902,9 @@ const howItWorks = `<ol class="ac-steps">${[
 ].map(([h, t], i) => `<li class="reveal" data-d="${i}"><span class="ac-step-n">${i + 1}</span><h3>${h}</h3><p>${t}</p></li>`).join('')}</ol>`;
 
 function moduleCard(m, h = 'h3') {
-  return `<a class="post-card ac-card reveal" href="/elearning/${m.slug}/">
-    <p class="eyebrow">${esc(m.category || 'Academy')}${m.draft === true ? ' · Draft' : ''}</p>
+  const img = thumbFor(path.basename(m.image || ""));
+  return `<a class="post-card ac-card reveal${img ? ' has-img' : ''}" href="/elearning/${m.slug}/">${cardImg(img)}
+    <p class="eyebrow">${esc(topicOf(m.category).label)}${m.draft === true ? ' · Draft' : ''}</p>
     <${h}>${esc(m.title)}</${h}>
     <p>${esc(m.summary)}</p>
     <span class="meta">${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} CPD · Wavelength certificate · Free</span>
