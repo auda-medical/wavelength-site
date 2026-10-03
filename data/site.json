@@ -100,9 +100,9 @@
     ]
   },
   "academy": {
-    "_help": "Wavelength Academy settings. newsletterRequired: true makes the newsletter tick box compulsory when registering for a module.",
+    "_help": "Wavelength Academy settings. newsletterRequired: keep false. Marketing consent must stay optional, so the newsletter box is unticked and not required for Academy registration.",
     "name": "Wavelength Academy",
-    "newsletterRequired": true,
+    "newsletterRequired": false,
     "passMarkDefault": 80
   }
 }

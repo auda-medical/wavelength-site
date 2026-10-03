@@ -75,7 +75,7 @@ const NAV = [
   { href: '/courses/', label: 'Courses' },
   ...(posts.length || liveModules.length ? [{ href: '/learn/', label: 'Learn', match: ['/learn/', '/elearning/'], children: [
     ...(posts.length ? [{ href: '/learn/', label: 'Wavelength Pearls', short: 'Pearls', text: 'Free five-minute pearls, each with a short test.' }] : []),
-    ...(liveModules.length ? [{ href: '/elearning/', label: 'Wavelength Academy', short: 'Academy', text: 'Certified modules with a CPD certificate.' }] : []),
+    ...(liveModules.length ? [{ href: '/elearning/', label: 'Wavelength Academy', short: 'Academy', text: 'Free modules with a Wavelength certificate and CPD hours.' }] : []),
   ] }] : []),
   { href: '/faculty/', label: 'Faculty' },
   { href: '/about/', label: 'About' },
@@ -167,7 +167,7 @@ ${body}
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li></ul>${socialIcons()}</div>
     </div>
     <div class="bottom">
-      <span>© <span data-year>${new Date().getFullYear()}</span> ${site.company}${site.companyNumber ? `, registered in England and Wales no. ${site.companyNumber}` : ''}. Wavelength is a trading name of ${site.company}.${site.registeredOffice ? ` Registered office: ${esc(site.registeredOffice)}.` : ''}</span>
+      <span>© <span data-year>${new Date().getFullYear()}</span> ${site.company}${site.companyNumber ? `, registered in England and Wales no. ${site.companyNumber}` : ''}. Wavelength is a trading name of ${site.company}.${site.registeredOffice ? ` Registered office: ${esc(site.registeredOffice)}.` : ''} Wavelength is an independent education provider. It is not run or endorsed by the NHS, Dartford and Gravesham NHS Trust, RCEM, FAMUS or EUSEM.${site.icoNumber ? ` ICO registration ${esc(site.icoNumber)}.` : ''}</span>
       <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Booking terms</a> · <a href="/cancellation/">Cancellations</a></span>
     </div>
   </div>
@@ -281,7 +281,7 @@ function faqHtml(faqs) {
   return `<div class="faq">${faqs.map((f) => `<details class="reveal"><summary>${esc(f.q)}<span class="pm" aria-hidden="true"></span></summary><div class="a">${esc(f.a)}</div></details>`).join('')}</div>`;
 }
 
-function ctaBand(title = 'Tune in. <em>Gain clarity.</em>', text = 'Small groups, consultant faculty and hands-on scanning from the first hour.') {
+function ctaBand(title = 'Tune in. <em>Gain clarity.</em>', text = 'Consultant faculty, one instructor to every four or five delegates, and hands-on scanning from the first hour.') {
   return `<section class="cta-band">${mesh}
   <div class="wrap">
     <h2 class="reveal">${title}</h2>
@@ -366,7 +366,7 @@ const generalFaqs = [
   { q: 'Who are Wavelength courses for?', a: 'Doctors at every grade in emergency, acute and internal medicine, plus advanced clinical practitioners, physician associates and GPs who work in urgent care.' },
   { q: 'Are the courses mapped to the RCEM curriculum?', a: 'Yes. The core course covers the core emergency applications in the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. We show you how to collect the supervised scans and assessments your department needs for sign-off.' },
   { q: 'Who teaches the courses?', a: 'Senior clinicians with years of scanning and teaching experience: FAMUS-accredited instructors and RCEM-approved ultrasound supervisors. The core course maps to the RCEM curriculum.' },
-  { q: 'How large are the groups?', a: 'Small. We cap numbers so each delegate gets long, supervised time on the probe at every station.' },
+  { q: 'How large are the groups?', a: 'We teach in groups of four or five delegates, each with its own instructor, so you spend most of the day on the probe. A course day takes up to 25 delegates.' },
   { q: 'How do I pay?', a: 'Online by card through Stripe when you book. If your trust or deanery pays, email us and we will send an invoice.' },
   { q: 'What happens if I need to cancel?', a: 'You can transfer to a later date or cancel under our cancellation policy, which sets out the refund at each stage.' },
 ];
@@ -392,7 +392,7 @@ pages['/'] = layout({
       <div><b>RCEM curriculum</b>Core emergency applications, mapped</div>
       <div><b>FAMUS-accredited instructors</b>Senior clinicians, years of experience</div>
       <div><b>RCEM-approved supervisors</b>Consultant-led faculty</div>
-      <div><b>Small groups</b>Long, supervised time on the probe</div>
+      <div><b>Four or five per instructor</b>Long, supervised time on the probe</div>
     </div>
   </div>
   <div class="scroll-cue" aria-hidden="true"></div>
@@ -457,7 +457,7 @@ ${reviewsBand()}
     ${faqHtml(generalFaqs)}
   </div>
 </section>
-${posts.length ? `<section class="section"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">Learn</p><h2 class="reveal" data-d="1">From the scanning room.</h2></div><div class="post-grid">${posts.slice(0, 3).map((p) => postCard(p)).join('')}</div><p class="reveal" style="margin-top:32px"><a class="text-link" href="/learn/">All Learn posts</a></p></div></section>` : ''}
+${posts.length ? `<section class="section"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">Learn</p><h2 class="reveal" data-d="1">From the scanning room.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:640px">Free five-minute Wavelength Pearls, each with a short test${liveModules.length ? ', and Wavelength Academy modules with a certificate of completion' : ''}.</p></div>${liveModules.length ? `<a class="bank-link reveal" href="/elearning/" style="background:var(--teal-ink)"><span><span class="eyebrow" style="color:var(--cream)">Wavelength Academy</span><strong>Free modules with a Wavelength certificate. Start with ${esc(liveModules[0].title.split(':')[0])}.</strong></span>${arrow}</a>` : ''}<div class="post-grid">${posts.slice(0, 3).map((p) => postCard(p)).join('')}</div><p class="reveal" style="margin-top:32px"><a class="text-link" href="/learn/">All ${posts.length} pearls</a></p></div></section>` : ''}
 ${subscribeBand()}
 ${ctaBand()}
 `,
@@ -531,7 +531,7 @@ for (const c of openCourses) {
     description: c.seoDescription || c.short,
     jsonld: [courseLd(c), ...eventsLd(c), faqLd(c.faqs), breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Courses', href: '/courses/' }, { label: c.title, href: p }])],
     body: `${pageHero({
-      eyebrow: `${c.level} course`,
+      eyebrow: `Core course · ${c.level} content`,
       title: esc(c.title),
       lede: esc(c.short),
       crumbs: [{ label: 'Home', href: '/' }, { label: 'Courses', href: '/courses/' }, { label: c.title }],
@@ -567,8 +567,8 @@ for (const c of openCourses) {
 </section>
 ${c.curriculum && c.curriculum.length ? `<section class="section sand">
   <div class="wrap split">
-    <div><p class="eyebrow reveal">Curriculum</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,60px);margin-top:20px">Mapped to RCEM.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">The course covers the core emergency applications in the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. The table shows the training phase in which RCEM introduces each application and the indicative number of supervised logbook scans before sign-off.</p></div>
-    <div class="table-wrap reveal" data-d="1"><table class="table"><thead><tr><th scope="col">Application</th><th scope="col">Introduced in</th><th scope="col">Indicative scans</th></tr></thead><tbody>${c.curriculum.map((r) => `<tr><td><b>${esc(r.application)}</b></td><td>${esc(r.stage)}</td><td>${esc(r.scans)}</td></tr>`).join('')}</tbody></table>
+    <div><p class="eyebrow reveal">Curriculum</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,60px);margin-top:20px">Mapped to RCEM.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">The course covers the core emergency applications in the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. The table shows the training phase in which RCEM introduces each application and the indicative number of supervised logbook scans before sign-off.</p><p class="reveal" data-d="2" style="margin-top:20px;padding:18px 22px;border-left:3px solid var(--teal);background:var(--sand)"><strong>A guide, not a target.</strong> RCEM sign-off rests on an entrustment decision by your supervisor, using your logbook, reflections and observed scans. Reaching a number does not by itself mean sign-off.</p></div>
+    <div class="table-wrap reveal" data-d="1"><table class="table"><thead><tr><th scope="col">Application</th><th scope="col">Introduced in</th><th scope="col">Indicative scans (guide only)</th></tr></thead><tbody>${c.curriculum.map((r) => `<tr><td><b>${esc(r.application)}</b></td><td>${esc(r.stage)}</td><td>${esc(r.scans)}</td></tr>`).join('')}</tbody></table>
     <p class="source">Source: <a class="text-link" href="https://rcemcurriculum.co.uk/wp-content/uploads/2021/06/Appendix-3-PoCUS-for-2021-RCEM-curriculum.pdf" rel="noopener">RCEM curriculum, point-of-care ultrasound appendix</a>. Scan numbers are indicative, not fixed targets. Sign-off also requires e-learning or course attendance, reflections and an entrustment decision in your department.</p></div>
   </div>
 </section>` : ''}
@@ -601,11 +601,12 @@ pages['/faculty/'] = layout({
     { '@context': 'https://schema.org', '@type': 'Person', name: site.director.name, jobTitle: site.director.title, worksFor: { '@id': url('/#org') }, description: site.director.bio[0], ...(site.director.email ? { email: site.director.email } : {}) },
     ...(site.team || []).map((m) => ({ '@context': 'https://schema.org', '@type': 'Person', name: m.name, jobTitle: m.role, worksFor: { '@id': url('/#org') }, description: m.bio[0], ...(m.email ? { email: m.email } : {}), ...(m.photo ? { image: url(m.photo) } : {}) })),
   ],
-  body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Our faculty are senior emergency medicine consultants, FAMUS-accredited instructors, RCEM-approved ultrasound supervisors and experienced ultrasound practitioners. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
+  body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Every course is led by our Course Director and taught by emergency medicine clinicians who are FAMUS-accredited instructors and RCEM-approved ultrasound supervisors. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
 <section class="section"><div class="wrap">${directorBlock()}</div></section>
-${(site.team || []).map((m) => `<section class="section sand"><div class="wrap"><div class="director">
+<section class="section"><div class="wrap"><div class="empty-dates reveal"><div><h3>Teaching faculty</h3><p>Each course runs with one instructor to every four or five delegates. We name the faculty for your date in your joining instructions${(site.faculty || []).length ? '' : ', and add instructor profiles to this page as each one confirms'}.</p></div></div></div></section>
+${[...(site.faculty || []).map((m) => ({ ...m, group: 'Teaching faculty' })), ...(site.team || [])].map((m) => `<section class="section sand"><div class="wrap"><div class="director">
   <div class="portrait reveal${m.photo ? ' has-photo' : ''}">${m.photo ? `<img src="${ver(m.photo)}" alt="${esc(m.name)}, ${esc(m.role)}" width="840" height="1050" loading="lazy" decoding="async">` : mark({ size: 200, ring: '#F7F5F0' })}<span class="cap">${esc(m.role)}</span></div>
-  <div><p class="eyebrow reveal">Management</p><h2 class="reveal" data-d="1">${esc(m.name)}</h2><p class="role reveal" data-d="1">${m.title ? esc(m.title) + ' · ' : ''}${esc(m.role)}</p>${m.bio.map((p) => `<p class="reveal" data-d="2">${esc(p)}</p>`).join('')}${personEmail(m.email)}${m.credentials ? `<div class="creds reveal" data-d="3">${m.credentials.map((x) => `<span class="chip dark">${esc(x)}</span>`).join('')}</div>` : ''}</div>
+  <div><p class="eyebrow reveal">${esc(m.group || 'Management')}</p><h2 class="reveal" data-d="1">${esc(m.name)}</h2><p class="role reveal" data-d="1">${m.title ? esc(m.title) + ' · ' : ''}${esc(m.role)}</p>${m.bio.map((p) => `<p class="reveal" data-d="2">${esc(p)}</p>`).join('')}${personEmail(m.email)}${m.credentials ? `<div class="creds reveal" data-d="3">${m.credentials.map((x) => `<span class="chip dark">${esc(x)}</span>`).join('')}</div>` : ''}</div>
 </div></div></section>`).join('')}
 <section class="section"><div class="wrap"><div class="empty-dates reveal"><div><h3>Join the faculty</h3><p>Experienced in point-of-care ultrasound and keen to teach? We would like to hear from you.</p></div><a class="btn" href="${mailto(site.enquiriesEmail, 'Faculty enquiry')}">Get in touch ${arrow}</a></div></div></section>
 ${ctaBand()}`,
@@ -630,7 +631,7 @@ pages['/about/'] = layout({
 </section>
 <section class="section sand"><div class="wrap">
   <div class="pillars">
-    <div class="pillar reveal"><div class="num">01</div><h3>Small groups</h3><p>We cap numbers so everyone gets long, supervised time at every station.</p></div>
+    <div class="pillar reveal"><div class="num">01</div><h3>Four or five per instructor</h3><p>Every group has its own instructor, so everyone gets long, supervised time at every station.</p></div>
     <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>Clinical focus</h3><p>Every module answers a bedside question, from free fluid in trauma to the arrest that needs a cause.</p></div>
     <div class="pillar reveal" data-d="2"><div class="num">03</div><h3>Beyond the day</h3><p>Logbook templates, sign-off guidance and a route to supervised practice in your own department.</p></div>
   </div>
@@ -709,9 +710,10 @@ pages['/learn/'] = layout({
   description: 'Practical point-of-care ultrasound skills from the Wavelength faculty: probe technique, views, pitfalls and cases for emergency and acute clinicians.',
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }])],
   body: `${pageHero({ eyebrow: 'Wavelength Pearls', title: 'From the scanning room.', lede: 'Free, five-minute point-of-care ultrasound pearls from the Wavelength faculty. One technique, one view or one pitfall at a time, each with a short test.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn' }] })}
-${learnSwitch('pearls')}<section class="section sand"><div class="wrap">${liveModules.length ? `<a class="bank-link reveal" href="/elearning/" style="background:var(--teal-ink)"><span><span class="eyebrow" style="color:var(--cream)">Wavelength Academy</span><strong>Go deeper: certified modules with a CPD certificate</strong></span>${arrow}</a>` : ''}${posts.some((x) => x.questions.length) ? `<a class="bank-link reveal" href="/learn/test/"><span><span class="eyebrow">Question bank</span><strong>Test yourself on every pearl</strong></span>${arrow}</a>` : ''}${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
+${learnSwitch('pearls')}<section class="section sand"><div class="wrap">${liveModules.length ? `<a class="bank-link reveal" href="/elearning/" style="background:var(--teal-ink)"><span><span class="eyebrow" style="color:var(--cream)">Wavelength Academy</span><strong>Go deeper: free modules with a Wavelength certificate</strong></span>${arrow}</a>` : ''}${posts.some((x) => x.questions.length) ? `<a class="bank-link reveal" href="/learn/test/"><span><span class="eyebrow">Question bank</span><strong>Test yourself on every pearl</strong></span>${arrow}</a>` : ''}${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
 ${subscribeBand()}`,
 });
+function nextReview(p) { const d = new Date((p.reviewed || p.date) + 'T00:00:00Z'); d.setUTCFullYear(d.getUTCFullYear() + 2); return d.toISOString().slice(0, 10); }
 for (const p of posts) {
   const href = `/learn/${p.slug}/`;
   const others = posts.filter((o) => o.slug !== p.slug).slice(0, 2);
@@ -722,13 +724,13 @@ for (const p of posts) {
     ogType: 'article',
     noindex: p.draft === true,
     jsonld: [
-      { '@context': 'https://schema.org', '@type': 'Article', headline: p.title, description: p.summary, datePublished: p.date, author: { '@type': 'Person', name: p.author || site.director.name }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), inLanguage: 'en-GB' },
+      { '@context': 'https://schema.org', '@type': 'Article', headline: p.title, description: p.summary, datePublished: p.date, dateModified: p.reviewed || p.date, author: { '@type': 'Person', name: p.author || site.director.name }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), inLanguage: 'en-GB' },
       breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title, href }]),
     ],
-    body: `${pageHero({ eyebrow: (p.category || 'Learn') + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: esc(p.summary || ''), crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title }], extra: `<p class="byline rise">${esc(p.author || site.director.name)}${p.date ? ' · ' + fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</p>` })}
+    body: `${pageHero({ eyebrow: (p.category || 'Learn') + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: esc(p.summary || ''), crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title }], extra: `<p class="byline rise">${esc(p.author || site.director.name)}${p.date ? ' · ' + fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}${p.date ? ` · Reviewed ${fmtDate(p.reviewed || p.date, { month: 'long', year: 'numeric' })}, next review ${fmtDate(nextReview(p), { month: 'long', year: 'numeric' })}` : ''}</p>` })}
 <section class="section"><div class="wrap"><article class="prose post reveal">${p.html}</article>
 ${p.questions.length ? `<div class="test-cta reveal"><div><p class="eyebrow">Test yourself</p><h3>${p.questions.length} questions on this pearl</h3><p>Answer at your own pace. Each answer comes with a short explanation. About ${Math.max(2, Math.round(p.questions.length * 0.6))} minutes.</p></div><a class="btn btn-teal" href="/learn/${p.slug}/test/">Take the test ${arrow}</a></div>` : ''}
-<div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Small groups, FAMUS instructors and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
+<div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Four or five delegates per instructor, FAMUS-accredited faculty and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
 </div></section>
 ${others.length ? `<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">More to learn</p></div><div class="post-grid">${others.map((o) => postCard(o)).join('')}</div></div></section>` : ''}
 ${subscribeBand('Get the next one <em>by email.</em>')}`,
@@ -755,7 +757,7 @@ ${p.questions.join('\n')}
 <div class="test-score" data-score hidden><p class="eyebrow">Your score</p><p class="test-result"><span data-right>0</span> of ${p.questions.length}</p><p data-message></p>
 <div class="test-actions"><a class="btn" href="/learn/${p.slug}/">Back to the pearl</a>${next && next !== p ? `<a class="btn btn-teal" href="/learn/${next.slug}/test/">Next test ${arrow}</a>` : ''}<button type="button" class="text-link test-retry" data-retry>Try again</button></div></div>
 </div>
-<div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Small groups, FAMUS instructors and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
+<div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Four or five delegates per instructor, FAMUS-accredited faculty and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
 </div></section>
 ${subscribeBand('A new pearl and test <em>every month.</em>')}`,
   });
@@ -776,7 +778,7 @@ ${subscribeBand('A new pearl and test <em>every month.</em>')}`,
 // Public: /elearning/ (hub), /elearning/<slug>/ (module page with registration), /elearning/verify/.
 // Behind registration (worker/index.js checks the login cookie): /elearning/<slug>/learn/<lesson>/ and /elearning/<slug>/assessment/.
 // Rendered by the Worker into built shells: /elearning/certificate/<code>/ and /elearning/account/.
-const AC = Object.assign({ name: 'Wavelength Academy', newsletterRequired: true }, site.academy || {});
+const AC = Object.assign({ name: 'Wavelength Academy', newsletterRequired: false }, site.academy || {});
 const acCrumbs = (extra = []) => [{ label: 'Home', href: '/' }, { label: 'Academy', href: '/elearning/' }, ...extra];
 const totalMinutes = (m) => m.lessonPages.reduce((n, l) => n + l.minutes, 0);
 const caseCount = (m) => m.lessonPages.reduce((n, l) => n + (l.html.match(/data-quiz/g) || []).length, 0);
@@ -790,7 +792,7 @@ const moduleFacts = (m) => [
 ];
 const factChips = (m) => `<ul class="ac-facts rise">${moduleFacts(m).map((f) => `<li>${esc(f)}</li>`).join('')}</ul>`;
 const howItWorks = `<ol class="ac-steps">${[
-  ['Register', 'Free. Your name, email and role, and you join the Wavelength newsletter.'],
+  ['Register', 'Free. Your name, email and role. The newsletter is optional.'],
   ['Learn', 'Short lessons, the Wavelength Pearl, and clinical cases with explanations.'],
   ['Pass', `A final assessment, marked instantly. Pass at ${(liveModules[0] || modules[0] || {}).passMark || 80}% and retry as often as you need.`],
   ['Certificate', 'Emailed to you as a PDF with your name, CPD hours and a verification code.'],
@@ -801,17 +803,17 @@ function moduleCard(m, h = 'h3') {
     <p class="eyebrow">${esc(m.category || 'Academy')}${m.draft === true ? ' · Draft' : ''}</p>
     <${h}>${esc(m.title)}</${h}>
     <p>${esc(m.summary)}</p>
-    <span class="meta">${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} CPD · Certificate · Free</span>
+    <span class="meta">${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} CPD · Wavelength certificate · Free</span>
   </a>`;
 }
 
 pages['/elearning/'] = layout({
   title: `${AC.name} | Certified point-of-care ultrasound e-learning`,
   pathname: '/elearning/',
-  description: `Free point-of-care ultrasound e-learning modules with a CPD certificate. Lessons, clinical cases and a final assessment, written by consultant emergency physicians.`,
+  description: `Free point-of-care ultrasound e-learning modules with a Wavelength certificate of completion and CPD hours. Lessons, clinical cases and a final assessment, written by consultant emergency physicians.`,
   noindex: !liveModules.length,
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Academy', href: '/elearning/' }])],
-  body: `${pageHero({ eyebrow: AC.name, title: 'Learn it. Prove it.', lede: 'Certified e-learning for point-of-care ultrasound. Work through the lessons and cases, pass the assessment, and your CPD certificate arrives by email.', crumbs: acCrumbs() })}
+  body: `${pageHero({ eyebrow: AC.name, title: 'Learn it. Prove it.', lede: 'Certified e-learning for point-of-care ultrasound. Work through the lessons and cases, pass the assessment, and your certificate arrives by email.', crumbs: acCrumbs() })}
 ${learnSwitch('academy')}<section class="section sand"><div class="wrap">
   ${liveModules.length ? `<div class="section-head"><p class="eyebrow reveal">Modules</p></div><div class="post-grid">${liveModules.map((m) => moduleCard(m, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">First module arriving soon</h2><p>Subscribe to the newsletter and hear the day it opens.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}
 </div></section>
@@ -845,7 +847,7 @@ function registerCard(m) {
       <label class="consent"><input type="checkbox" name="privacy" value="yes" required><span>Wavelength stores my details to run the Academy, issue and verify my certificate, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
       <p class="form-error" data-ac-error hidden></p>
       <div><button class="btn btn-teal" type="submit">Register and start ${arrow}</button></div>
-      <p class="form-note">Confirm your newsletter subscription from the email Zoho sends you.</p>
+      <p class="form-note">If you tick the newsletter box, confirm your subscription from the email we send you.</p>
     </form>
     ${zoho}
   </div>
@@ -885,7 +887,7 @@ for (const m of modules) {
     <h2>Who it is for</h2>
     <p>${esc(m.audience)}</p>
     <h2>Your certificate</h2>
-    <p>Pass the assessment and we email your certificate as a PDF: your name, the module, ${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} of CPD, the date and a code anyone can check at <a class="text-link" href="/elearning/verify/">thewavelength.co.uk/elearning/verify</a>. Upload it to your e-portfolio with a short reflection. The certificate records completed learning. Sign-off to scan independently stays with your department.</p>
+    <p>Pass the assessment and we email your certificate as a PDF: your name, the module, ${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} of CPD, the date and a code anyone can check at <a class="text-link" href="/elearning/verify/">thewavelength.co.uk/elearning/verify</a>. Upload it to your e-portfolio with a short reflection. Wavelength issues the certificate itself. It is not accredited by an external body, so record the hours as self-directed CPD under your own college or regulator's rules. The certificate records completed learning. Sign-off to scan independently stays with your department.</p>
     <h2>About this module</h2>
     <p><strong>Author.</strong> ${esc(m.author)}.<br><strong>Published.</strong> ${fmtDate(m.published, { month: 'long', year: 'numeric' })}. <strong>Next review.</strong> ${fmtDate(m.reviewDue, { month: 'long', year: 'numeric' })}.<br><strong>Conflicts of interest.</strong> ${esc(m.conflicts)}</p>
     <h3>References</h3>
@@ -1054,7 +1056,7 @@ const legal = {
 <h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To send you our newsletter, where you have subscribed (consent).</li><li>To arrange volunteer scanning sessions, where you have signed up as a volunteer.</li><li>To run Wavelength Academy: mark your assessments, and issue, email and verify your certificates (contract, providing the learning you signed up for).</li><li>To tell delegates who have booked with us about similar future courses, unless they opted out when booking or later (our legitimate interests, under the soft opt-in rule in the Privacy and Electronic Communications Regulations).</li></ul>
 <h2>Our newsletter</h2><p>When you subscribe, we send you an email asking you to confirm. We add you to the list only after you click the confirmation link. Each newsletter carries an unsubscribe link, and you can also unsubscribe by emailing <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. We use your role to send you content relevant to your practice. Our newsletter service records whether you open an email and which links you click, so we can see which content helps clinicians most. We never sell or share your details for others' marketing.</p>
 <h2>Volunteer scanning models</h2><p>We use volunteers' details to arrange scanning sessions on our courses (our legitimate interests in running the course, and your agreement to take part). We do not ask for health information. Scans on our courses are for teaching, not diagnosis. If faculty notice something unexpected, they tell you privately and advise you to see your GP, and we do not record it. We keep volunteer details for up to two years after your last session, or until you ask us to delete them.</p>
-<h2>Wavelength Academy</h2><p>Registration for Academy modules is free and includes our newsletter, which you can leave at any time without losing access to your certificates. We email your certificate through Zoho ZeptoMail when you pass. Each certificate carries a code. Anyone who has the code, such as an employer or appraiser you share it with, can see the name, module, score, CPD hours and date on our verification page. We keep Academy records for six years after your last activity, so certificates stay verifiable, unless you ask us to delete them sooner.</p>
+<h2>Wavelength Academy</h2><p>Registration for Academy modules is free. Joining our newsletter is optional: tick the box if you want it, and leave at any time without losing access to your certificates. We email your certificate through Zoho ZeptoMail when you pass. Each certificate carries a code. Anyone who has the code, such as an employer or appraiser you share it with, can see the name, module, CPD hours and date on our verification page. Your score stays private to you. We keep Academy records for six years after your last activity, so certificates stay verifiable, unless you ask us to delete them sooner.</p>
 <h2>Who we share it with</h2><p>Stripe for payments, Zoho for our email, newsletter and mailing list, and Cloudflare for our website. Each acts under contract as our processor and protects your data. We do not sell your data.</p>
 <h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies. The private volunteer area sets one login cookie, which it needs to work, and removes it when you log out or after 12 hours. Wavelength Academy sets one login cookie to keep you signed in to your modules, for up to 180 days or until you log out. Academy lesson pages remember which lessons you have opened in your browser's storage, on your device only.</p>
 <h2>How long we keep it</h2><p>Booking and attendance records for six years, to meet accounting rules and to confirm attendance for appraisal or revalidation. Newsletter details until you unsubscribe. After you unsubscribe, we keep your email address on a suppression list so we do not email you again.</p>
@@ -1132,6 +1134,6 @@ fs.writeFileSync(
 fs.writeFileSync(path.join(DIST, 'site.webmanifest'), JSON.stringify({ name: site.name, short_name: site.name, start_url: '/', icons: [{ src: '/assets/logo-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/logo-512.png', sizes: '512x512', type: 'image/png' }], theme_color: '#0A1526', background_color: '#0A1526', display: 'standalone' }));
 fs.writeFileSync(
   path.join(DIST, '_headers'),
-  `/assets/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/assets/*\n  Cache-Control: public, max-age=86400\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
+  `/assets/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/assets/*\n  Cache-Control: public, max-age=86400\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
 );
 console.log(`Built ${Object.keys(pages).length} pages to dist/`);

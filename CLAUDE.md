@@ -19,7 +19,7 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 - `tools/social/ad.html` + `node tools/social/render.mjs <outdir>` render the Instagram post (1080x1350), story (1080x1920), LinkedIn (1200x1200) and link-preview (1200x630) images. The course page uses the link-preview image via `ogImage` in `data/courses.json`; update or remove it when the date passes.
 
 ## Learn and newsletter
-- Learn posts: Markdown files in `content/learn/` (front matter: title, summary, category, date, author, draft). `draft: true` or a future date keeps a post off the live site. Preview drafts with `DRAFTS=1 node build.js`. Images go in `content/learn/images/` and are referenced as `/learn/images/<file>`. The Pearls nav link appears once one post is live.
+- Learn posts: Markdown files in `content/learn/` (front matter: title, summary, category, date, author, draft, optional reviewed). The byline shows the review date (reviewed, or date) and a next review two years later; set `reviewed` when you update a pearl. `draft: true` or a future date keeps a post off the live site. Preview drafts with `DRAFTS=1 node build.js`. Images go in `content/learn/images/` and are referenced as `/learn/images/<file>`. The Pearls nav link appears once one post is live.
 - Newsletter form: `newsletter` in `data/site.json` posts straight to the Zoho Campaigns form "Website newsletter sign-up" (list "Wavelength newsletter", custom field Role = CONTACT_CF1, double opt-in on, redirect to `/subscribe/thanks/`). Empty `action` falls back to emailing hello@.
 - Zoho Campaigns (EU): templates "Wavelength monthly newsletter" and "Wavelength welcome email"; workflow "Newsletter welcome" sends the welcome email when a contact joins the list. Merge tag for first name: `$[LI:FIRSTNAME]$`.
 - Email templates for Zoho Campaigns: `src/email/newsletter/` and `src/email/welcome/` (live at /email/...). Images must use absolute https URLs.
@@ -31,7 +31,7 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 
 ## Wavelength Academy (certified e-learning)
 - Modules live in `content/academy/<slug>/`: `module.json` (title, CPD hours, pass mark, draft, outcomes, references, review date, conflicts), lesson Markdown files listed in `lessons` (front matter: title, minutes; lesson URL drops the number prefix), and `assessment.md` (`?? question`, `@ lesson-file` to review, options, `: explanation`). Case questions inside lessons stay inline.
-- `draft: true` builds the module unlisted and noindex, reachable by link for review. The Academy menu link appears once one module is live. The name sits in `academy.name` in `data/site.json`; `academy.newsletterRequired` makes the newsletter tick compulsory (the Worker also checks; set the var `NEWSLETTER_REQUIRED` to "false" to relax it).
+- `draft: true` builds the module unlisted and noindex, reachable by link for review. The Academy menu link appears once one module is live. The name sits in `academy.name` in `data/site.json`; the newsletter box at Academy registration is optional and unticked (`academy.newsletterRequired` false, Worker var `NEWSLETTER_REQUIRED` "false"). Keep it optional: marketing consent must not be a condition of access.
 - The build writes `worker/academy-data.json` (answer key, never in pages). Commit it with content changes.
 - The Worker (`worker/academy.js`) gates /elearning/<slug>/learn/ and /assessment/ behind a learner cookie (signed with `learner_secret` in D1 `settings`, created on first use), marks answers server-side, issues one certificate per learner per module (code WL-<CODE>-XXXX-XXXX), and emails it.
 - Certificate PDF: `worker/cert-template.bin` + `.json` hold the fixed design (logo, fonts, frame). The Worker stamps name, module, score, CPD, date and code by appending a content stream (`worker/cert.js`), under a millisecond. To change the design, edit `tools/certificate/make-template.mjs` and run it (`npm i --no-save pdf-lib@1.17.1 @pdf-lib/fontkit@1.1.1`). Fonts in `worker/fonts/` are TTF copies of the site fonts.
@@ -47,6 +47,13 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 
 ## Discount codes
 Bookings go through Stripe Payment Links. Discount codes are Stripe promotion codes, switched on per payment link ("Allow promotion codes"). The course page tells people to enter codes on the payment page once any date has a `stripeLink`.
+
+## Compliance wording
+- USB drive: sell it as built for ultrasound machines, always alongside "check your trust's removable media and information governance policy" and the anonymisation teaching. Never claim images are anonymous by default.
+- Footer carries the independence statement (not run or endorsed by the NHS, Dartford and Gravesham NHS Trust, RCEM, FAMUS or EUSEM). Edit it when EUSEM endorsement is confirmed in writing. `icoNumber` in `data/site.json` shows in the footer once filled.
+- Group size: say "one instructor to every four or five delegates", not bare "small groups".
+- Academy certificates are Wavelength's own, not externally accredited. Public verification and the PDF show pass, not the score.
+- Teaching faculty: add instructors to a `faculty` array in `data/site.json` (same fields as `team`) and they render on /faculty/.
 
 ## Brand
 - Navy #0F1E33, deep navy #0A1526, teal #2A7F8A, light teal #7FC4CC, cream #F7F5F0, sand #EDEAE3.

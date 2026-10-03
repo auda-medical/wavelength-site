@@ -40,7 +40,7 @@ export function stampCertificate(template, meta, d) {
   const stream = [
     place(meta, 'name', d.name),
     place(meta, 'module', d.module),
-    place(meta, 'scoreLine', `and passed the final assessment with a score of ${d.score}%.`),
+    place(meta, 'scoreLine', 'and passed the final assessment.'),
     place(meta, 'cpd', `${unit(hours, 'hour', 'hours')} · ${unit(hours, 'credit', 'credits')}`),
     place(meta, 'date', date),
     place(meta, 'code', d.code),

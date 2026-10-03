@@ -20,7 +20,7 @@ const enc = new TextEncoder();
 const SITE = 'https://thewavelength.co.uk';
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
-const HEAD = { 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store', 'Referrer-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff' };
+const HEAD = { 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store', 'Referrer-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; object-src 'none'", 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' };
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...HEAD, ...extra } });
 const redirect = (to, extra = {}) => new Response(null, { status: 303, headers: { Location: to, ...HEAD, ...extra } });
 const withHead = (res, extra = {}) => { const r = new Response(res.body, res); for (const [k, v] of Object.entries({ ...HEAD, ...extra })) r.headers.set(k, v); return r; };
@@ -160,7 +160,7 @@ async function register(env, req) {
   if (!p.first || !p.last) return fail('Enter your first and last name.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) return fail('Enter a valid email address.');
   if (!d.privacy) return fail('Tick the privacy box to register.');
-  if (env.NEWSLETTER_REQUIRED !== 'false' && !p.news) return fail('Academy registration includes the Wavelength newsletter. Tick the newsletter box to continue.');
+  if (env.NEWSLETTER_REQUIRED === 'true' && !p.news) return fail('Academy registration includes the Wavelength newsletter. Tick the newsletter box to continue.');
   await env.DB.prepare(`INSERT INTO learners (email, title, first_name, last_name, role, organisation, newsletter, last_seen) VALUES (?,?,?,?,?,?,?,datetime('now'))
     ON CONFLICT(email) DO UPDATE SET title = excluded.title, first_name = excluded.first_name, last_name = excluded.last_name, role = excluded.role, organisation = COALESCE(NULLIF(excluded.organisation, ''), learners.organisation), newsletter = MAX(learners.newsletter, excluded.newsletter), last_seen = datetime('now')`)
     .bind(p.email, p.title, p.first, p.last, p.role, p.org, p.news).run();
@@ -259,8 +259,9 @@ async function certificatePage(env, req, code) {
     <dl>
       <dt>Awarded to</dt><dd class="ac-cert-name">${esc(cert.name)}</dd>
       <dt>Module</dt><dd>${esc(cert.module_title)}</dd>
-      <dt>Score</dt><dd>${cert.score}%, passed</dd>
-      <dt>CPD</dt><dd>${hours} of self-directed learning</dd>
+${owner ? `      <dt>Score</dt><dd>${cert.score}%, passed</dd>
+` : '      <dt>Result</dt><dd>Passed</dd>
+'}      <dt>CPD</dt><dd>${hours} of self-directed learning</dd>
       <dt>Completed</dt><dd>${fmtDate(cert.issued_on)}</dd>
       <dt>Certificate number</dt><dd>${esc(cert.code)}</dd>
     </dl>
