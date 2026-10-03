@@ -1,0 +1,2 @@
+jsPDF 2.5.2 (MIT, James Hall and yWorks) and jspdf-autotable 3.8.4 (MIT, Simon Bengtsson).
+Loaded only when a learner exports a PDF.

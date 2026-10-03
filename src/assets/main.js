@@ -225,6 +225,7 @@
       new FormData(form).forEach(function (v, k) { data[k] = v; });
       btn.disabled = true; btn.textContent = 'Registering…'; if (err) err.hidden = true;
       acPost('/api/academy/register', data).then(function (res) {
+        if (res.login) { location.href = res.login; return; }
         if (!res.ok) throw new Error(res.error || 'Something went wrong. Please try again.');
         var z = document.querySelector('[data-zoho-academy]');
         var go = function () { location.href = res.next; };

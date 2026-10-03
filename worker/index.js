@@ -3,6 +3,7 @@
 //   /volunteer/*  a hidden, password-protected volunteer sign-up area with a private admin list
 //   /elearning/*, /api/*  Wavelength Academy (worker/academy.js)
 import { handleAcademy, sendCertificate } from './academy.js';
+import { handleApp } from './app.js';
 import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
 import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
 //
@@ -197,6 +198,7 @@ export default {
       if (!env.DB) return redirect('/training/?error=1#enquire');
       return redirect(await enquireTraining(env, req, ctx));
     }
+    if (p.startsWith('/api/app/')) return handleApp(req, env, ctx);
     if (p.startsWith('/elearning/') || p.startsWith('/api/')) return handleAcademy(req, env, ctx);
     if (!p.startsWith('/volunteer')) return env.ASSETS.fetch(req);
     if (p === '/volunteer') return redirect('/volunteer/');

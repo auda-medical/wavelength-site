@@ -42,13 +42,13 @@ async function secret(env) {
 }
 const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' }[c]));
 const unb64u = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
-async function cookieFor(env, id) {
+export async function cookieFor(env, id) {
   const exp = Date.now() + DAYS * 864e5;
   const sig = b64u(await crypto.subtle.sign('HMAC', await secret(env), enc.encode(`${id}.${exp}`)));
   return `${COOKIE}=${id}.${exp}.${sig}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${DAYS * 86400}`;
 }
-const clearCookie = `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
-async function learner(env, req) {
+export const clearCookie = `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+export async function learner(env, req) {
   const m = (req.headers.get('Cookie') || '').match(new RegExp(COOKIE + '=(\\d+)\\.(\\d+)\\.([A-Za-z0-9_-]+)'));
   if (!m || Number(m[2]) < Date.now()) return null;
   let ok = false;
@@ -140,6 +140,26 @@ export async function sendCertificate(env, cert, person) {
   }
 }
 
+// Plain branded email (password resets and other app messages). Returns true when sent.
+export async function sendMail(env, { to, toName, subject, heading, paragraphs = [], button, text }) {
+  if (!env.ZEPTOMAIL_TOKEN) return false;
+  const p = 'margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#33404F;';
+  const btn = button ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 8px 0;"><tr><td align="center" bgcolor="#0F1E33" style="background:#0F1E33;border-radius:999px;"><a href="${esc(button.href)}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#F7F5F0;text-decoration:none;">${esc(button.label)}</a></td></tr></table>` : '';
+  const html = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(subject)}</title></head><body style="margin:0;padding:0;background:#EDEAE3;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EDEAE3"><tr><td align="center" style="padding:32px 12px;"><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;">
+<tr><td align="center" bgcolor="#0F1E33" style="background:#0F1E33;padding:34px 24px;border-radius:14px 14px 0 0;"><img src="${SITE}/assets/email/logo-header.png" width="300" height="56" alt="Wavelength" style="display:block;border:0;width:300px;height:56px;"></td></tr>
+<tr><td height="4" bgcolor="#2A7F8A" style="background:#2A7F8A;height:4px;line-height:4px;font-size:0;">&nbsp;</td></tr>
+<tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;padding:44px 48px 36px 48px;font-family:Arial,Helvetica,sans-serif;border-radius:0 0 14px 14px;"><h1 style="margin:0 0 22px 0;font-family:Georgia,serif;font-weight:normal;font-size:30px;color:#0F1E33;">${esc(heading)}</h1>${paragraphs.map((x) => `<p style="${p}">${esc(x)}</p>`).join('')}${btn}<p style="margin:24px 0 0 0;font-size:11px;line-height:1.6;color:#8796A8;">Wavelength is a trading name of Auda Medical Ltd, company number 08487817.</p></td></tr></table></td></tr></table></body></html>`;
+  const tok = env.ZEPTOMAIL_TOKEN.replace(/^Zoho-enczapikey\s+/i, '');
+  try {
+    const res = await fetch(env.ZEPTOMAIL_API || 'https://api.zeptomail.eu/v1.1/email', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Zoho-enczapikey ${tok}` },
+      body: JSON.stringify({ from: { address: env.APP_MAIL_FROM || env.MAIL_FROM || 'academy@thewavelength.co.uk', name: 'Wavelength' }, to: [{ email_address: { address: to, name: toName || to } }], reply_to: [{ address: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', name: 'Wavelength' }], subject, htmlbody: html, textbody: text || paragraphs.join('\n\n'), track_clicks: false, track_opens: false }),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
 // ---------- API ----------
 async function body(req) {
   const type = req.headers.get('Content-Type') || '';
@@ -161,6 +181,12 @@ async function register(env, req) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) return fail('Enter a valid email address.');
   if (!d.privacy) return fail('Tick the privacy box to register.');
   if (env.NEWSLETTER_REQUIRED === 'true' && !p.news) return fail('Academy registration includes the Wavelength newsletter. Tick the newsletter box to continue.');
+  // A learner who set a password in the Wavelength app must log in with it, not just their email.
+  const existing = await env.DB.prepare('SELECT id, password_hash FROM learners WHERE email = ?').bind(p.email).first().catch(() => null);
+  if (existing && existing.password_hash) {
+    const back = `/app/?login=${encodeURIComponent(p.email)}&next=${encodeURIComponent(Object.values(mod.lessons)[0].path)}`;
+    return isJson ? json({ ok: false, error: 'This email has a Wavelength account with a password. Log in to continue.', login: back }, 409) : redirect(back);
+  }
   await env.DB.prepare(`INSERT INTO learners (email, title, first_name, last_name, role, organisation, newsletter, last_seen) VALUES (?,?,?,?,?,?,?,datetime('now'))
     ON CONFLICT(email) DO UPDATE SET title = excluded.title, first_name = excluded.first_name, last_name = excluded.last_name, role = excluded.role, organisation = COALESCE(NULLIF(excluded.organisation, ''), learners.organisation), newsletter = MAX(learners.newsletter, excluded.newsletter), last_seen = datetime('now')`)
     .bind(p.email, p.title, p.first, p.last, p.role, p.org, p.news).run();

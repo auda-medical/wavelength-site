@@ -1,0 +1,204 @@
+{
+  "_help": "Logbook pathways for the Wavelength app (/app/). Scan types define the findings form. Pathways group scan types into modules with targets. Match keys: 'f.<field>' reads a finding, other keys read the entry (overall, setting, supervision). Check targets against each body's current curriculum pack and update 'checked' when you do.",
+  "settings": ["Emergency department", "Acute medical unit", "Intensive care", "Ward", "Pre-hospital", "Clinic", "Course or simulation", "Healthy volunteer"],
+  "ageBands": ["Under 16", "16 to 30", "31 to 50", "51 to 70", "Over 70"],
+  "supervision": [
+    { "id": "direct", "label": "Directly supervised", "help": "A supervisor or mentor watched you scan." },
+    { "id": "mentored", "label": "Independent, reviewed by mentor", "help": "You scanned alone and a mentor reviewed your images later." },
+    { "id": "independent", "label": "Independent", "help": "Your own scan, not reviewed." }
+  ],
+  "confirmation": ["CT", "Formal ultrasound or echo", "Surgery or procedure", "Clinical course", "Other imaging", "None", "Awaited"],
+  "types": [
+    { "id": "aaa", "label": "Abdominal aorta (AAA)", "short": "AAA", "learn": "/elearning/abdomen/", "fields": [
+      { "id": "visualised", "label": "Aorta visualised", "type": "choice", "options": ["Whole length", "Partially", "Not seen"] },
+      { "id": "diameter", "label": "Maximum diameter", "type": "number", "unit": "mm" },
+      { "id": "aaa", "label": "Aneurysm (3 cm or more)", "type": "choice", "options": ["Yes", "No", "Indeterminate"] }
+    ] },
+    { "id": "efast", "label": "eFAST or FAFF", "short": "eFAST", "learn": "/learn/", "fields": [
+      { "id": "ruq", "label": "Right upper quadrant", "type": "choice", "options": ["No free fluid", "Free fluid", "Not seen"] },
+      { "id": "luq", "label": "Left upper quadrant", "type": "choice", "options": ["No free fluid", "Free fluid", "Not seen"] },
+      { "id": "pelvis", "label": "Pelvis", "type": "choice", "options": ["No free fluid", "Free fluid", "Not seen"] },
+      { "id": "pericardium", "label": "Pericardium", "type": "choice", "options": ["No effusion", "Effusion", "Not seen"] },
+      { "id": "ptx", "label": "Pneumothorax", "type": "choice", "options": ["None", "Right", "Left", "Both", "Not assessed"] },
+      { "id": "pleural", "label": "Pleural fluid", "type": "choice", "options": ["None", "Right", "Left", "Both", "Not assessed"] }
+    ] },
+    { "id": "els", "label": "Echo in life support (ELS)", "short": "ELS", "learn": "/elearning/cardiac/", "fields": [
+      { "id": "context", "label": "Context", "type": "choice", "options": ["Cardiac arrest, PEA", "Cardiac arrest, asystole", "Peri-arrest"] },
+      { "id": "activity", "label": "Cardiac activity", "type": "choice", "options": ["Coordinated", "Uncoordinated", "None"] },
+      { "id": "pericardial", "label": "Pericardial effusion", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "rv", "label": "RV dilated", "type": "choice", "options": ["Yes", "No", "Not assessed"] },
+      { "id": "pause", "label": "Image captured within a 10-second pause", "type": "choice", "options": ["Yes", "No"] }
+    ] },
+    { "id": "shock", "label": "Shock assessment", "short": "Shock", "learn": "/elearning/cardiac/", "fields": [
+      { "id": "lv", "label": "LV function", "type": "choice", "options": ["Hyperdynamic", "Normal", "Reduced", "Severely reduced"] },
+      { "id": "rv", "label": "RV dilated", "type": "choice", "options": ["Yes", "No", "Not assessed"] },
+      { "id": "pericardial", "label": "Pericardial effusion", "type": "choice", "options": ["None", "Effusion", "Tamponade physiology"] },
+      { "id": "ivc", "label": "IVC", "type": "choice", "options": ["Small, collapsing", "Normal", "Plethoric", "Not seen"] },
+      { "id": "lungs", "label": "Lungs", "type": "choice", "options": ["A-lines", "Diffuse B-lines", "Pneumothorax", "Effusion", "Not assessed"] },
+      { "id": "fluid", "label": "Abdominal free fluid", "type": "choice", "options": ["No", "Yes", "Not assessed"] },
+      { "id": "aorta", "label": "Aorta", "type": "choice", "options": ["Normal", "Aneurysm", "Not assessed"] },
+      { "id": "type", "label": "Shock type suggested", "type": "choice", "options": ["Hypovolaemic", "Distributive", "Cardiogenic", "Obstructive", "Mixed", "Unclear"] }
+    ] },
+    { "id": "cardiac", "label": "Focused cardiac ultrasound", "short": "Heart", "learn": "/elearning/cardiac/", "fields": [
+      { "id": "views", "label": "Views obtained", "type": "multi", "options": ["PLAX", "PSAX", "A4C", "Subcostal", "IVC"] },
+      { "id": "lv", "label": "LV function", "type": "choice", "options": ["Hyperdynamic", "Normal", "Reduced", "Severely reduced"] },
+      { "id": "rv", "label": "RV dilated", "type": "choice", "options": ["Yes", "No", "Not assessed"] },
+      { "id": "pericardial", "label": "Pericardial effusion", "type": "choice", "options": ["None", "Effusion", "Tamponade physiology"] },
+      { "id": "ivc", "label": "IVC", "type": "choice", "options": ["Small, collapsing", "Normal", "Plethoric", "Not seen"] }
+    ] },
+    { "id": "lung", "label": "Lung and pleura", "short": "Lung", "learn": "/elearning/lung/", "fields": [
+      { "id": "zones", "label": "Zones scanned", "type": "choice", "options": ["6", "8", "12", "Focused"] },
+      { "id": "sliding", "label": "Lung sliding", "type": "choice", "options": ["Present throughout", "Absent in places", "Not assessed"] },
+      { "id": "blines", "label": "B-lines", "type": "choice", "options": ["None", "Focal", "Diffuse"] },
+      { "id": "consolidation", "label": "Consolidation or collapse", "type": "choice", "options": ["No", "Yes"] },
+      { "id": "effusion", "label": "Pleural effusion", "type": "choice", "options": ["None", "Small", "Moderate", "Large"] },
+      { "id": "marked", "label": "Site marked for a procedure", "type": "choice", "options": ["No", "Yes"] },
+      { "id": "ptx", "label": "Pneumothorax", "type": "choice", "options": ["No", "Yes", "Not assessed"] }
+    ] },
+    { "id": "abdo", "label": "Abdomen and renal tract", "short": "Abdo/renal", "learn": "/elearning/abdomen/", "fields": [
+      { "id": "fluid", "label": "Peritoneal free fluid", "type": "choice", "options": ["None", "Small", "Moderate", "Large"] },
+      { "id": "marked", "label": "Site marked for a procedure", "type": "choice", "options": ["No", "Yes"] },
+      { "id": "hydro", "label": "Hydronephrosis", "type": "choice", "options": ["None", "Mild", "Moderate", "Severe"] },
+      { "id": "side", "label": "Side", "type": "choice", "options": ["Right", "Left", "Both", "Not applicable"] },
+      { "id": "bladder", "label": "Bladder", "type": "choice", "options": ["Empty", "Normal", "Distended", "Not seen"] },
+      { "id": "volume", "label": "Bladder volume", "type": "number", "unit": "mL" }
+    ] },
+    { "id": "dvt", "label": "DVT (compression)", "short": "DVT", "learn": "/elearning/dvt/", "fields": [
+      { "id": "side", "label": "Leg", "type": "choice", "options": ["Right", "Left", "Both"] },
+      { "id": "method", "label": "Method", "type": "choice", "options": ["2-point", "3-point", "Whole leg"] },
+      { "id": "cfv", "label": "Common femoral vein", "type": "choice", "options": ["Compressible", "Not compressible", "Not seen"] },
+      { "id": "pop", "label": "Popliteal vein", "type": "choice", "options": ["Compressible", "Not compressible", "Not seen"] },
+      { "id": "dvt", "label": "DVT", "type": "choice", "options": ["No", "Yes", "Indeterminate"] }
+    ] },
+    { "id": "cvc", "label": "Central venous access", "short": "CVC", "learn": "/learn/", "fields": [
+      { "id": "site", "label": "Site", "type": "choice", "options": ["Internal jugular", "Femoral", "Axillary or subclavian"] },
+      { "id": "side", "label": "Side", "type": "choice", "options": ["Right", "Left"] },
+      { "id": "attempts", "label": "Needle passes", "type": "number" },
+      { "id": "tip", "label": "Needle tip seen throughout", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "success", "label": "Successful", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "complication", "label": "Complication", "type": "text" }
+    ] },
+    { "id": "picc", "label": "PICC or midline", "short": "PICC", "learn": "/learn/", "fields": [
+      { "id": "vein", "label": "Vein", "type": "choice", "options": ["Basilic", "Brachial", "Cephalic", "Other"] },
+      { "id": "attempts", "label": "Needle passes", "type": "number" },
+      { "id": "success", "label": "Successful", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "complication", "label": "Complication", "type": "text" }
+    ] },
+    { "id": "pva", "label": "Peripheral vascular access", "short": "PIV", "learn": "/learn/", "fields": [
+      { "id": "site", "label": "Site", "type": "choice", "options": ["Antecubital fossa", "Upper arm", "Forearm", "Pedal", "Other"] },
+      { "id": "artery", "label": "Artery and vein told apart", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "tip", "label": "Needle tip seen in the vein", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "attempts", "label": "Needle passes", "type": "number" },
+      { "id": "success", "label": "Successful", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "sim", "label": "On a simulation arm", "type": "choice", "options": ["No", "Yes"] }
+    ] },
+    { "id": "fib", "label": "Fascia iliaca block", "short": "FIB", "learn": "/learn/", "fields": [
+      { "id": "approach", "label": "Approach", "type": "choice", "options": ["Supra-inguinal", "Infra-inguinal"] },
+      { "id": "side", "label": "Side", "type": "choice", "options": ["Right", "Left"] },
+      { "id": "agent", "label": "Agent and volume", "type": "text" },
+      { "id": "spread", "label": "Spread seen under fascia", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "complication", "label": "Complication", "type": "text" }
+    ] },
+    { "id": "block", "label": "Other nerve block", "short": "Block", "learn": "/learn/", "fields": [
+      { "id": "block", "label": "Block", "type": "text" },
+      { "id": "side", "label": "Side", "type": "choice", "options": ["Right", "Left", "Midline", "Bilateral"] },
+      { "id": "agent", "label": "Agent and volume", "type": "text" },
+      { "id": "complication", "label": "Complication", "type": "text" }
+    ] },
+    { "id": "lp", "label": "Ultrasound-assisted LP", "short": "LP", "learn": "/learn/", "fields": [
+      { "id": "habitus", "label": "Body habitus", "type": "choice", "options": ["Slim", "Average", "Raised BMI", "Difficult landmarks"] },
+      { "id": "landmarks", "label": "Midline and interspace identified", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "marked", "label": "Site marked", "type": "choice", "options": ["Yes", "No"] },
+      { "id": "lp", "label": "LP result", "type": "choice", "options": ["Successful", "Unsuccessful", "Not performed"] },
+      { "id": "manikin", "label": "On a manikin", "type": "choice", "options": ["No", "Yes"] }
+    ] },
+    { "id": "msk", "label": "Soft tissue and musculoskeletal", "short": "MSK", "learn": "/elearning/msk/", "fields": [
+      { "id": "region", "label": "Region", "type": "text" },
+      { "id": "diagnosis", "label": "Ultrasound diagnosis", "type": "text" }
+    ] },
+    { "id": "ocular", "label": "Ocular", "short": "Eye", "learn": "/elearning/eye-scrotum/", "fields": [
+      { "id": "finding", "label": "Finding", "type": "choice", "options": ["Normal", "Retinal detachment", "Vitreous haemorrhage or detachment", "Raised ONSD", "Other"] },
+      { "id": "onsd", "label": "Optic nerve sheath diameter", "type": "number", "unit": "mm" }
+    ] },
+    { "id": "other", "label": "Other application", "short": "Other", "learn": "/learn/", "fields": [
+      { "id": "application", "label": "Application", "type": "text" },
+      { "id": "diagnosis", "label": "Ultrasound diagnosis", "type": "text" }
+    ] }
+  ],
+  "pathways": [
+    {
+      "id": "rcem", "label": "RCEM", "name": "Royal College of Emergency Medicine PoCUS",
+      "source": "RCEM PoCUS curriculum (2021 curriculum, Appendix 3). Indicative minimum scans and reflective notes. Sign-off is by DOPS.",
+      "checked": "2026-10-04",
+      "windowFrom": null,
+      "modules": [
+        { "id": "rcem-aaa", "label": "AAA", "types": ["aaa"], "total": 25, "reflections": 5 },
+        { "id": "rcem-efast", "label": "eFAST or FAFF", "types": ["efast"], "total": 25, "reflections": 5 },
+        { "id": "rcem-els", "label": "Echo in life support", "types": ["els"], "total": 10, "reflections": 5 },
+        { "id": "rcem-shock", "label": "Shock assessment", "types": ["shock"], "total": 25, "reflections": 5 },
+        { "id": "rcem-va", "label": "Vascular access", "types": ["cvc", "picc", "pva"], "total": 5, "reflections": 5 },
+        { "id": "rcem-fib", "label": "Fascia iliaca block", "types": ["fib"], "total": 10, "reflections": 5 }
+      ]
+    },
+    {
+      "id": "famus", "label": "FAMUS", "name": "Focused Acute Medicine Ultrasound (Society for Acute Medicine)",
+      "source": "FAMUS curriculum packs: Thoracic (v1, 2023), DVT (v1.1, 2025), Peripheral access (v1.3), Ultrasound-assisted LP (v1.4), Abdominal-renal (v2.0). Training completes within 2 years of the first supervised scan.",
+      "checked": "2026-10-04",
+      "windowFrom": "firstSupervised", "windowDays": 730,
+      "modules": [
+        { "id": "famus-thoracic", "label": "Thoracic", "types": ["lung"], "total": 40, "supervised": 10, "minDays": 183, "rules": [
+          { "label": "Consolidation", "min": 5, "match": { "f.consolidation": ["Yes"] } },
+          { "label": "Increased lung water", "min": 5, "match": { "f.blines": ["Diffuse"] } },
+          { "label": "Pleural effusion", "min": 20, "match": { "f.effusion": ["Small", "Moderate", "Large"] } },
+          { "label": "Effusion site marked", "min": 5, "match": { "f.marked": ["Yes"] } }
+        ] },
+        { "id": "famus-abdo", "label": "Abdominal-renal", "types": ["abdo"], "total": 40, "supervised": 10, "minDays": 122, "rules": [
+          { "label": "Free fluid", "min": 10, "match": { "f.fluid": ["Small", "Moderate", "Large"] } },
+          { "label": "Free fluid site marked", "min": 5, "match": { "f.marked": ["Yes"] } },
+          { "label": "Hydronephrosis", "min": 5, "match": { "f.hydro": ["Mild", "Moderate", "Severe"] } },
+          { "label": "Distended bladder", "min": 5, "match": { "f.bladder": ["Distended"] } }
+        ] },
+        { "id": "famus-dvt", "label": "DVT", "types": ["dvt"], "total": 10, "supervised": 5, "minDays": 30, "rules": [
+          { "label": "DVT seen", "min": 1, "match": { "f.dvt": ["Yes"] } }
+        ] },
+        { "id": "famus-pva", "label": "Peripheral access", "types": ["pva"], "total": 5, "supervised": 3, "rules": [
+          { "label": "On a simulation arm (1 at most)", "max": 1, "match": { "f.sim": ["Yes"] } }
+        ] },
+        { "id": "famus-lp", "label": "Ultrasound-assisted LP", "types": ["lp"], "total": 10, "supervised": 10, "minDays": 91, "rules": [
+          { "label": "Successful LP", "min": 1, "match": { "f.lp": ["Successful"] } },
+          { "label": "On a manikin (2 at most)", "max": 2, "match": { "f.manikin": ["Yes"] } }
+        ] }
+      ]
+    },
+    {
+      "id": "fusic", "label": "FUSIC", "name": "Focused Ultrasound in Intensive Care (Intensive Care Society)",
+      "source": "ICS FUSIC Heart training pack (2024) and FUSIC training details (2019) for the other modules. Logbook collection within 12 months, accreditation within 24 months.",
+      "checked": "2026-10-04",
+      "windowFrom": "firstScan", "windowDays": 365,
+      "modules": [
+        { "id": "fusic-heart", "label": "Heart", "types": ["cardiac"], "total": 50, "supervised": 10, "rules": [
+          { "label": "Healthy volunteers (10% at most)", "max": 5, "match": { "setting": ["Healthy volunteer"] } }
+        ] },
+        { "id": "fusic-lung", "label": "Lung", "types": ["lung"], "total": 30, "supervised": 10, "rules": [
+          { "label": "Normal scans (10 at most)", "max": 10, "match": { "overall": ["Normal"] } }
+        ] },
+        { "id": "fusic-abdo", "label": "Abdomen", "types": ["abdo"], "total": 25, "supervised": 10, "rules": [
+          { "label": "Normal scans (15 at most)", "max": 15, "match": { "overall": ["Normal"] } }
+        ] },
+        { "id": "fusic-dvt", "label": "DVT", "types": ["dvt"], "total": 10, "supervised": 5, "rules": [
+          { "label": "DVT seen", "min": 1, "match": { "f.dvt": ["Yes"] } }
+        ] },
+        { "id": "fusic-cvc", "label": "Vascular access: CVC", "types": ["cvc"], "total": 5, "supervised": 3 },
+        { "id": "fusic-picc", "label": "Vascular access: PICC or midline", "types": ["picc"], "total": 3, "supervised": 1 },
+        { "id": "fusic-pva", "label": "Vascular access: peripheral", "types": ["pva"], "total": 2, "supervised": 1 }
+      ]
+    },
+    {
+      "id": "general", "label": "General", "name": "General logbook",
+      "source": "No external targets. Log any application and set your own targets.",
+      "checked": "2026-10-04",
+      "windowFrom": null,
+      "modules": []
+    }
+  ]
+}

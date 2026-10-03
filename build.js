@@ -10,6 +10,7 @@ const fill = (s) => String(s).replace(/\{scanYears\}/g, yearsSince(2008)).replac
 const siteRaw = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/site.json'), 'utf8'));
 const site = JSON.parse(JSON.stringify(siteRaw), (k, v) => (typeof v === 'string' ? fill(v) : v));
 const courses = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/courses.json'), 'utf8'));
+const logbook = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/logbook.json'), 'utf8'));
 const FACULTY_FORM = JSON.parse(fs.readFileSync(path.join(ROOT, 'worker/faculty-form.json'), 'utf8'));
 const DEPT_FORM = JSON.parse(fs.readFileSync(path.join(ROOT, 'worker/department-form.json'), 'utf8'));
 const md = require('./lib/md.js');
@@ -93,6 +94,7 @@ const NAV = [
     ...(posts.length ? [{ href: '/learn/', label: 'Wavelength Pearls', short: 'Pearls', text: 'Free five-minute pearls, each with a short test.' }] : []),
     ...(liveModules.length ? [{ href: '/elearning/', label: 'Wavelength Academy', short: 'Academy', text: 'Free modules with a Wavelength certificate and CPD hours.' }] : []),
   ] }] : []),
+  { href: '/app/get/', label: 'App', match: ['/app/'] },
   { href: '/faculty/', label: 'Faculty' },
   { href: '/about/', label: 'About' },
   { href: '/contact/', label: 'Contact' },
@@ -179,7 +181,7 @@ ${body}
         <p class="foot-tag">Point-of-care ultrasound education for emergency and acute clinicians: hands-on courses, free Pearls and Wavelength Academy.</p>
       </div>
       <div><h2>Courses</h2><ul>${openCourses.map((c) => `<li><a href="/courses/${c.slug}/">${esc(c.title)}</a></li>`).join('')}<li><a href="/courses/">All courses</a></li></ul></div>
-      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">For departments</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}<li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
+      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">For departments</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}<li><a href="/app/get/">Wavelength app</a></li><li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li></ul>${socialIcons()}</div>
     </div>
     <div class="bottom">
@@ -480,8 +482,10 @@ pages['/'] = layout({
     <div class="pillars">
       <a class="pillar reveal" href="/courses/" style="text-decoration:none;color:inherit"><div class="num">Courses</div><h3>Hands-on scanning days</h3><p>Consultant-led courses with one instructor to every four or five delegates, mapped to the RCEM curriculum.</p><span class="text-link">See courses</span></a>
       ${posts.length ? `<a class="pillar reveal" data-d="1" href="/learn/" style="text-decoration:none;color:inherit"><div class="num">Pearls</div><h3>Five-minute techniques</h3><p>${posts.length} free Wavelength Pearls, one view or pitfall at a time, each with a short test.</p><span class="text-link">Read the Pearls</span></a>` : ''}
-      ${liveModules.length ? `<a class="pillar reveal" data-d="2" href="/elearning/" style="text-decoration:none;color:inherit"><div class="num">Academy</div><h3>Certified e-learning</h3><p>Free modules with lessons, clinical cases, an assessment and a Wavelength certificate.</p><span class="text-link">Start a module</span></a>` : ''}
+      ${liveModules.length ? `<a class="pillar reveal" data-d="2" href="/elearning/" style="text-decoration:none;color:inherit"><div class="num">Academy</div><h3>Certified e-learning</h3><p>Free modules with lessons, clinical cases, an assessment and a CPD certificate anyone can verify online.</p><span class="text-link">Start a module</span></a>` : ''}
     </div>
+    <a class="bank-link reveal" href="/app/get/" style="margin-top:28px;background:var(--navy)"><span><span class="eyebrow" style="color:var(--teal-l)">The Wavelength app</span><strong>Your ultrasound logbook: log scans, track RCEM, FAMUS and FUSIC targets, get signed off. Free.</strong></span>${arrow}</a>
+    ${liveModules.length ? `<div class="ac-verify reveal" style="margin-top:28px"><div><h3>Certificates you can prove</h3><p>Every Academy certificate shows your name, CPD hours and a unique code. Your educational supervisor, appraiser or employer checks it online in seconds.</p></div><a class="btn btn-ghost" href="/elearning/verify/">Verify a certificate ${arrow}</a></div>` : ''}
   </div>
 </section>
 
@@ -1007,7 +1011,7 @@ pages['/elearning/'] = layout({
   description: `Free point-of-care ultrasound e-learning modules with a Wavelength certificate of completion and CPD hours. Lessons, clinical cases and a final assessment, written by consultant emergency physicians.`,
   noindex: !liveModules.length,
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Academy', href: '/elearning/' }])],
-  body: `${pageHero({ eyebrow: AC.name, title: 'Learn it. Prove it.', lede: 'Certified e-learning for point-of-care ultrasound. Work through the lessons and cases, pass the assessment, and your certificate arrives by email.', crumbs: acCrumbs() })}
+  body: `${pageHero({ eyebrow: AC.name, title: 'Learn it. Prove it.', lede: 'Certified e-learning for point-of-care ultrasound. Work through the lessons and cases, pass the assessment, and your CPD certificate arrives by email with a code anyone can verify online.', crumbs: acCrumbs() })}
 ${learnSwitch('academy')}${liveModules.length ? topicIndex({
     items: liveModules, noun: 'module', nouns: 'modules', ariaLabel: 'Academy topics', placeholder: 'Search a module or condition',
     card: (m) => moduleCard(m, 'h3'),
@@ -1019,7 +1023,7 @@ ${learnSwitch('academy')}${liveModules.length ? topicIndex({
   ${howItWorks}
   <div class="ac-verify reveal"><div><h3>Checking a certificate?</h3><p>Every Academy certificate carries a code. Enter it to confirm it is genuine.</p></div><a class="btn btn-ghost" href="/elearning/verify/">Verify a certificate ${arrow}</a></div>
 </div></section>
-<section class="section sand"><div class="wrap"><a class="bank-link reveal" href="/learn/"><span><span class="eyebrow">Wavelength Pearls</span><strong>Five minutes to spare? Read a pearl.</strong></span>${arrow}</a></div></section>
+<section class="section sand"><div class="wrap"><a class="bank-link reveal" href="/learn/"><span><span class="eyebrow">Wavelength Pearls</span><strong>Five minutes to spare? Read a pearl.</strong></span>${arrow}</a><a class="bank-link reveal" href="/app/get/" style="margin-top:16px;background:var(--navy)"><span><span class="eyebrow" style="color:var(--teal-l)">Wavelength app</span><strong>Keep your certificates and your scan logbook in one place.</strong></span>${arrow}</a></div></section>
 ${subscribeBand()}`,
 });
 
@@ -1244,21 +1248,95 @@ pages['/volunteer/unavailable/'] = layout({
   body: `${volHero('Opening soon.', `The volunteer area is not open yet. Email <a class="text-link" href="mailto:${site.enquiriesEmail}" style="color:inherit">${site.enquiriesEmail}</a> to register your interest.`)}`,
 });
 
+// Wavelength app landing page (/app/get/). The app itself is static in src/app/.
+{
+  const f = (icon, t, d) => `<div class="pillar reveal"><div class="num">${icon}</div><h3>${t}</h3><p>${d}</p></div>`;
+  const appFaqs = [
+    { q: 'Is it free?', a: 'Yes. The logbook, progress tracking, sign-off, exports and backups are free.' },
+    { q: 'Does Wavelength see my scan photos?', a: 'No. Photos stay on your phone and in backup files you save to your own iCloud Drive, Google Drive or OneDrive. Only the written record syncs to your account, and it must never contain patient identifiers.' },
+    { q: 'Which pathways does it track?', a: 'RCEM PoCUS, FAMUS (thoracic, abdominal-renal, DVT, peripheral access, LP) and FUSIC (heart, lung, abdomen, DVT, vascular access), plus a general logbook for any application with targets you set. One scan counts towards every pathway it fits.' },
+    { q: 'Will my college or accrediting body accept it?', a: 'The logbook records what the published curricula ask for and exports to PDF and Excel for your portfolio. Your supervisor and the accrediting body decide what they accept, so check with them.' },
+    { q: 'Is it in the App Store?', a: 'Not yet. You install it from this website in two taps and it works like any app, including offline. App Store and Google Play versions follow.' },
+    { q: 'What about my Academy certificates?', a: 'Log in with the same email and your Wavelength Academy certificates appear in the app, ready to share or verify.' },
+  ];
+  let html = layout({
+    title: 'Wavelength app | Free ultrasound logbook with RCEM, FAMUS and FUSIC targets',
+    pathname: '/app/get/',
+    description: 'A free point-of-care ultrasound logbook. Log scans, track RCEM, FAMUS and FUSIC targets in colour, get signed off by your supervisor, and export to PDF or Excel. Photos stay on your phone.',
+    jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'App', href: '/app/get/' }]), faqLd(appFaqs), { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Wavelength', applicationCategory: 'MedicalApplication', operatingSystem: 'iOS, Android, web', offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' }, url: url('/app/get/') }],
+    body: `<section class="hero on-dark">${mesh}<div class="wrap hero-inner app-hero">
+  <div>
+    <p class="eyebrow rise">The Wavelength app</p>
+    <h1 class="split-words">Your logbook. <em>In your pocket.</em></h1>
+    <p class="lede rise">Log every scan in seconds, watch your RCEM, FAMUS and FUSIC targets fill up in colour, and get signed off by your supervisor. Free, and your photos never leave your phone.</p>
+    <div class="hero-ctas rise app-ctas">
+      <button class="app-dl" type="button" data-app-install><span class="app-dl-ico">${mark({ size: 30, ring: '#7FC4CC' })}</span><span><small>Free for iPhone and Android</small><b>Download the app</b></span></button>
+      <a class="btn btn-ghost light" href="/app/">Open in your browser</a>
+    </div>
+    <div class="app-ios rise" data-app-ios hidden><b>On iPhone:</b> tap Share in Safari, then <b>Add to Home Screen</b>. Wavelength then opens full screen like any app.</div>
+  </div>
+  <div class="phone rise" aria-hidden="true"><div class="phone-screen">
+    <div class="ph-top"><span>WAVELENGTH</span><i></i></div>
+    <div class="ph-hero"><b>Good evening, Sam.</b><small>38 scans in your logbook.</small><div class="ph-stats"><span><b>38</b>Scans</span><span><b>9</b>This month</span><span><b>24</b>Signed</span></div></div>
+    <div class="ph-card"><p>FAMUS</p>${[['Thoracic', 31, 40], ['Abdominal-renal', 14, 40], ['DVT', 10, 10]].map(([l, n, t]) => { const fr = n / t; const c = fr >= 1 ? '#2E7D5B' : fr >= 1 / 3 ? '#B7791F' : '#B4453A'; return `<div class="ph-bar"><span>${l}<b>${n} / ${t}</b></span><i><em style="width:${Math.min(100, fr * 100)}%;background:${c}"></em></i></div>`; }).join('')}</div>
+    <div class="ph-card"><p>RCEM</p>${[['eFAST', 19, 25], ['AAA', 6, 25]].map(([l, n, t]) => { const fr = n / t; const c = fr >= 1 ? '#2E7D5B' : fr >= 1 / 3 ? '#B7791F' : '#B4453A'; return `<div class="ph-bar"><span>${l}<b>${n} / ${t}</b></span><i><em style="width:${fr * 100}%;background:${c}"></em></i></div>`; }).join('')}</div>
+    <div class="ph-tabs"><i></i><i></i><em>+</em><i></i><i></i></div>
+  </div></div>
+</div></section>
+<section class="section"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">Built by ultrasound supervisors</p><h2 class="reveal" data-d="1">Everything your logbook should have been.</h2></div>
+  <div class="pillars app-pillars">
+    ${f('Targets', 'Every pathway, one scan', 'Choose RCEM, FAMUS, FUSIC or your own targets. A lung scan counts towards FAMUS thoracic and FUSIC lung at once, with pathology quotas, supervised counts and training windows tracked for you.')}
+    ${f('Colour', 'See what is left', 'Red, amber, green. Each module shows exactly how many scans, supervised scans, reflections and pathologies you still need.')}
+    ${f('Privacy', 'Photos stay on your phone', 'Take a photo of the screen, crop it, black out identifiers, and save. Hidden photo data is stripped. Images never reach our servers.')}
+    ${f('Sign-off', 'Signed in seconds', 'Hand your phone to your supervisor to sign with a finger, or send a secure link. Each sign-off gets a code anyone can verify.')}
+    ${f('Export', 'Portfolio-ready', 'PDF with a summary of training, scan log, reflections and sign-off register. Excel and CSV too.')}
+    ${f('Backup', 'Your cloud, your copy', 'One tap saves your photos to iCloud Drive, Google Drive or OneDrive. Restore on a new phone in seconds.')}
+    ${f('Guard', 'Identifier check', 'The app warns you before saving text that looks like an NHS number, a hospital number, a date of birth or a name.')}
+    ${f('Learn', 'Linked to learning', 'Every scan type links to free Pearls and certified Academy modules. Your CPD certificates sit in the same app.')}
+    ${f('Offline', 'Works without signal', 'Log in the basement resus room. Entries sync when you reconnect.')}
+  </div>
+</div></section>
+<section class="section sand"><div class="wrap split">
+  <div><p class="eyebrow reveal">Good to know</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,64px);margin-top:20px">Questions.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">Read the <a class="text-link" href="/app-terms/">logbook terms of use</a> and <a class="text-link" href="/privacy/">privacy notice</a>.</p></div>
+  ${faqHtml(appFaqs)}
+</div></section>
+${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open it on your phone and add it to your home screen.')}`,
+  });
+  html = html.replace('<link rel="manifest" href="/site.webmanifest">', '<link rel="manifest" href="/app/manifest.webmanifest">')
+    .replace('</body>', `<script>(function(){var e=null,b=document.querySelector('[data-app-install]'),ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);if('serviceWorker' in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app/'}).catch(function(){});addEventListener('beforeinstallprompt',function(x){x.preventDefault();e=x;});if(b)b.addEventListener('click',function(){if(e){e.prompt();e.userChoice.then(function(c){if(c.outcome==='accepted')location.href='/app/';});}else if(ios){document.querySelector('[data-app-ios]').hidden=false;}else{location.href='/app/';}});})();</script>\n</body>`);
+  pages['/app/get/'] = html;
+}
+
 // Legal pages
 const legal = {
   '/privacy/': {
     title: 'Privacy notice',
     body: `<p>This notice explains how ${site.company}, trading as Wavelength ("we"), collects and uses your personal data. We are the data controller for the data described here${site.registeredOffice ? `. Our registered office is ${site.registeredOffice}` : ''}${site.icoNumber ? ` and are registered with the Information Commissioner's Office under number ${site.icoNumber}` : ''}.</p>
-<h2>What we collect</h2><ul><li>Your name, email address, phone number, job title, grade and workplace when you book or contact us, and your GMC, NMC or HCPC number if you choose to give it.</li><li>Your first name, email address and role when you subscribe to our newsletter.</li><li>Payment details, which Stripe processes on our behalf. We never see or store your full card number.</li><li>Dietary or access requirements you choose to tell us, so we can run the day safely.</li><li>Your name, contact details, role, organisation and availability when you volunteer as a scanning model.</li><li>Your title, name, email address, role and workplace when you register for Wavelength Academy, with your assessment answers, scores, certificates and any feedback you give.</li></ul>
+<h2>What we collect</h2><ul><li>Your name, email address, phone number, job title, grade and workplace when you book or contact us, and your GMC, NMC or HCPC number if you choose to give it.</li><li>Your first name, email address and role when you subscribe to our newsletter.</li><li>Payment details, which Stripe processes on our behalf. We never see or store your full card number.</li><li>Dietary or access requirements you choose to tell us, so we can run the day safely.</li><li>Your name, contact details, role, organisation and availability when you volunteer as a scanning model.</li><li>Your title, name, email address, role and workplace when you register for Wavelength Academy, with your assessment answers, scores, certificates and any feedback you give.</li><li>If you use the Wavelength app: your account details, a securely hashed password, the pathways and targets you choose, the written entries in your scan logbook, and supervisor sign-offs (the supervisor's name, role, any registration number, email and signature they give).</li></ul>
 <h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To send you our newsletter, where you have subscribed (consent).</li><li>To arrange volunteer scanning sessions, where you have signed up as a volunteer.</li><li>To run Wavelength Academy: mark your assessments, and issue, email and verify your certificates (contract, providing the learning you signed up for).</li><li>To tell delegates who have booked with us about similar future courses, unless they opted out when booking or later (our legitimate interests, under the soft opt-in rule in the Privacy and Electronic Communications Regulations).</li></ul>
 <h2>Our newsletter</h2><p>When you subscribe, we send you an email asking you to confirm. We add you to the list only after you click the confirmation link. Each newsletter carries an unsubscribe link, and you can also unsubscribe by emailing <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. We use your role to send you content relevant to your practice. Our newsletter service records whether you open an email and which links you click, so we can see which content helps clinicians most. We never sell or share your details for others' marketing.</p>
 <h2>Volunteer scanning models</h2><p>We use volunteers' details to arrange scanning sessions on our courses (our legitimate interests in running the course, and your agreement to take part). We do not ask for health information. Scans on our courses are for teaching, not diagnosis. If faculty notice something unexpected, they tell you privately and advise you to see your GP, and we do not record it. We keep volunteer details for up to two years after your last session, or until you ask us to delete them.</p>
 <h2>Department training enquiries</h2><p>If you ask about training for your department, we store your name, work contact details, role, organisation and the details of your enquiry. We use them only to answer your enquiry and plan any training you book (legitimate interests). We keep enquiries for two years, then delete them, unless they lead to a booking, when we keep them with our booking records.</p><h2>Faculty applications</h2><p>If you apply to teach with us, we store your name, contact details, professional registration number if you give it, and the ultrasound experience and credentials you describe. We use them only to consider your application and contact you about faculty work (legitimate interests). We keep applications for two years, then delete them, unless you join the faculty or ask us to delete them sooner.</p>
 <h2>Wavelength Academy</h2><p>Registration for Academy modules is free. Joining our newsletter is optional: tick the box if you want it, and leave at any time without losing access to your certificates. We email your certificate through Zoho ZeptoMail when you pass. Each certificate carries a code. Anyone who has the code, such as an employer or appraiser you share it with, can see the name, module, CPD hours and date on our verification page. Your score stays private to you. We keep Academy records for six years after your last activity, so certificates stay verifiable, unless you ask us to delete them sooner.</p>
+<h2>Wavelength app and logbook</h2><p>We store your account and the written entries in your logbook so they sync between your devices and your supervisor can sign them off (contract, providing the service you signed up for). <b>Scan photos never reach us.</b> They stay on your device and in backup files you save to your own storage, such as iCloud Drive, Google Drive or OneDrive, which you control. The logbook must not contain patient-identifiable information. You are responsible for what you enter and photograph, as set out in the <a class="text-link" href="/app-terms/">logbook terms of use</a>. When a supervisor signs off scans, we keep their details with the sign-off so anyone with the sign-off code can confirm it: the code shows the learner's name, supervisor's name and role, the date and the scan types and dates, never findings or images. We keep logbook data while your account is open. You can export it at any time and delete your account from the app, which deletes your logbook and sign-offs.</p>
 <h2>Who we share it with</h2><p>Stripe for payments, Zoho for our email, newsletter and mailing list, and Cloudflare for our website. Each acts under contract as our processor and protects your data. We do not sell your data.</p>
-<h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies. The private volunteer area sets one login cookie, which it needs to work, and removes it when you log out or after 12 hours. Wavelength Academy sets one login cookie to keep you signed in to your modules, for up to 180 days or until you log out. Academy lesson pages remember which lessons you have opened in your browser's storage, on your device only. Cloudflare, which protects this website, sets a short-lived security cookie on some visits to tell people from automated traffic. All of these are strictly necessary to run the service you ask for, so UK and EU law does not require a cookie consent banner. If we ever add analytics or marketing cookies, we will ask for your consent first. Stripe sets its own cookies on its payment pages, under Stripe's privacy policy.</p>
+<h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies. The private volunteer area sets one login cookie, which it needs to work, and removes it when you log out or after 12 hours. Wavelength Academy and the Wavelength app share one login cookie to keep you signed in, for up to 180 days or until you log out. The app stores your logbook, photos and settings in your browser's storage on your device so it works offline. Academy lesson pages remember which lessons you have opened in your browser's storage, on your device only. Cloudflare, which protects this website, sets a short-lived security cookie on some visits to tell people from automated traffic. All of these are strictly necessary to run the service you ask for, so UK and EU law does not require a cookie consent banner. If we ever add analytics or marketing cookies, we will ask for your consent first. Stripe sets its own cookies on its payment pages, under Stripe's privacy policy.</p>
 <h2>How long we keep it</h2><p>Booking and attendance records for six years, to meet accounting rules and to confirm attendance for appraisal or revalidation. Newsletter details until you unsubscribe. After you unsubscribe, we keep your email address on a suppression list so we do not email you again.</p>
 <h2>Your rights</h2><p>You have the right to access, correct or delete your data, to object to or restrict its use, to withdraw consent at any time, and to data portability. Email <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. If you are unhappy with our response, you can complain to the Information Commissioner's Office at ico.org.uk.</p>`,
+  },
+  '/app-terms/': {
+    title: 'Logbook terms of use',
+    body: `<p>These terms apply to the Wavelength app and its ultrasound logbook, provided free by ${site.company}, trading as Wavelength. By creating an account you accept them.</p>
+<h2>What the logbook is</h2><p>A personal record of your ultrasound practice, with progress shown against targets drawn from published curricula (RCEM, FAMUS and FUSIC). Targets come from each body's published documents on the date shown in the app. Curricula change, so confirm requirements with your supervisor and the accrediting body. Wavelength is independent and is not run or endorsed by RCEM, the Society for Acute Medicine, the Intensive Care Society or any other body. Logging a scan, meeting a target in the app or receiving a sign-off does not by itself confer competence or accreditation.</p>
+<h2>No patient-identifiable information</h2><p>You must never enter or photograph patient-identifiable information, including names, dates of birth, NHS or hospital numbers, addresses, postcodes, or any detail that identifies a person alone or with other information. Before you save a photo, crop or cover every identifier. The app removes hidden photo data (such as location) when it saves an image and warns you if text looks like an identifier, but these checks do not replace your own.</p>
+<h2>Your responsibility</h2><p>You are responsible for everything you store, photograph, export or share from your logbook, and for following the policies of your employer on clinical photography, personal devices, removable media and information governance. Some employers require patient consent for clinical photographs or do not allow photographs of screens. Where that applies, log the scan without a photo. If you find identifiable information in your logbook, delete it at once. Wavelength accepts no liability for identifiable information that you enter, photograph, store, export or share, to the extent the law allows.</p>
+<h2>Where your data lives</h2><p>Your written entries sync to your Wavelength account. Photos stay on your device and in backup files you choose to make. We never receive your photos, so we cannot recover them if you lose your device without a backup. Back up regularly.</p>
+<h2>Sign-off</h2><p>Supervisors sign off in person on your device or through a link you send. You must send links only to the supervisor concerned. Each sign-off has a code that anyone can use on our verification page to confirm who signed, when, and the scan types and dates covered. Editing a signed entry voids its sign-off.</p>
+<h2>Acceptable use</h2><p>Do not misuse the service, record scans you did not perform, or forge or misrepresent a sign-off. We may suspend accounts that do.</p>
+<h2>Availability and changes</h2><p>We aim to keep the app available but do not guarantee it. We may change features or these terms and will tell you of significant changes in the app. Keep your own exports.</p>
+<h2>Ending your account</h2><p>Delete your account in the app at any time. This deletes your logbook entries and sign-offs from our servers. Export first if you want a copy.</p>
+<h2>Contact</h2><p><a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></p>`,
   },
   '/terms/': {
     title: 'Booking terms',
@@ -1320,8 +1398,18 @@ function copyDir(src, dst) {
 }
 copyDir(path.join(ROOT, 'src'), DIST);
 if (fs.existsSync(path.join(LEARN_DIR, 'images'))) copyDir(path.join(LEARN_DIR, 'images'), path.join(DIST, 'learn/images'));
+// Wavelength app: config from data/logbook.json, upcoming courses, newsletter form, and cache-busting version.
+{
+  const appCourses = courses.filter((c) => c.status !== 'hidden').flatMap((c) => upcoming(c).map((d) => ({ slug: c.slug, title: c.title, date: d.date, venue: d.venue, city: d.city }))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+  const { _help, ...lb } = logbook;
+  const nl = site.newsletter && site.newsletter.action ? { action: site.newsletter.action, hidden: site.newsletter.hidden, emailField: site.newsletter.emailField, firstNameField: site.newsletter.firstNameField, roleField: site.newsletter.roleField } : null;
+  fs.writeFileSync(path.join(DIST, 'app/config.js'), `window.WL_LOGBOOK = ${JSON.stringify({ ...lb, courses: appCourses, newsletter: nl })};\n`);
+  const appDir = path.join(DIST, 'app');
+  const files = ['index.html', 'sw.js', 'sign/index.html', 'verify/index.html'];
+  for (const f of files) { const p = path.join(appDir, f); fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/__V__/g, BUILD)); }
+}
 
-fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /email/\nDisallow: /subscribe/thanks/\n\nSitemap: ${url('/sitemap.xml')}\n`);
+fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /email/\nDisallow: /subscribe/thanks/\nDisallow: /app/sign/\nAllow: /app/get/\n\nSitemap: ${url('/sitemap.xml')}\n`);
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
@@ -1332,6 +1420,6 @@ fs.writeFileSync(
 fs.writeFileSync(path.join(DIST, 'site.webmanifest'), JSON.stringify({ name: site.name, short_name: site.name, start_url: '/', icons: [{ src: '/assets/logo-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/logo-512.png', sizes: '512x512', type: 'image/png' }], theme_color: '#0A1526', background_color: '#0A1526', display: 'standalone' }));
 fs.writeFileSync(
   path.join(DIST, '_headers'),
-  `/assets/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/assets/*\n  Cache-Control: public, max-age=86400\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
+  `/assets/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/assets/*\n  Cache-Control: public, max-age=86400\n/app/sw.js\n  Cache-Control: no-cache\n/app/\n  Cache-Control: no-cache\n/app/vendor/*\n  Cache-Control: public, max-age=2592000\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
 );
 console.log(`Built ${Object.keys(pages).length} pages to dist/`);
