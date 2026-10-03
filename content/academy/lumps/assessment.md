@@ -8,7 +8,7 @@ title: Final assessment
 - Ultrasound diagnoses the causative organism
 - Fluctuance is always present in an abscess
 - Ultrasound replaces the need for antibiotics
-: Fluctuance is unreliable, especially in deep, small or indurated collections. A 2020 meta-analysis found ultrasound diagnosed abscess with a sensitivity of about 95%, outperforming examination alone.
+: Fluctuance is unreliable, especially in deep, small or indurated collections. A 2020 meta-analysis found ultrasound diagnosed abscess with a sensitivity of 94.6% and a specificity of 85.4%.
 
 ?? Which patient's groin lump needs colour Doppler before any needle?
 @ 01-context

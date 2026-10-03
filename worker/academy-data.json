@@ -6,7 +6,7 @@
    "title": "Focused cardiac ultrasound in the breathless or shocked patient",
    "cpdHours": 1.5,
    "passMark": 80,
-   "draft": true,
+   "draft": false,
    "questions": [
     {
      "id": "q1",
@@ -446,12 +446,12 @@
    "title": "The hot or pulsatile lump: cellulitis, abscess, haematoma or pseudoaneurysm",
    "cpdHours": 1,
    "passMark": 80,
-   "draft": true,
+   "draft": false,
    "questions": [
     {
      "id": "q1",
      "correct": "b",
-     "why": "Fluctuance is unreliable, especially in deep, small or indurated collections. A 2020 meta-analysis found ultrasound diagnosed abscess with a sensitivity of about 95%, outperforming examination alone.",
+     "why": "Fluctuance is unreliable, especially in deep, small or indurated collections. A 2020 meta-analysis found ultrasound diagnosed abscess with a sensitivity of 94.6% and a specificity of 85.4%.",
      "review": "01-context",
      "options": [
       "a",
@@ -662,7 +662,7 @@
    "title": "Lung ultrasound in the breathless patient",
    "cpdHours": 1.5,
    "passMark": 80,
-   "draft": true,
+   "draft": false,
    "questions": [
     {
      "id": "q1",

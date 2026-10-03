@@ -14,7 +14,7 @@ Examination often cannot tell them apart. Fluctuance is unreliable, especially i
 
 ## The evidence
 
-A 2020 meta-analysis found point-of-care ultrasound diagnosed abscess with a sensitivity of about 95% and specificity of about 85%, outperforming examination alone. Ultrasound changed management in a meaningful proportion of patients, either finding a collection which examination missed or showing there was nothing to drain.
+A 2020 meta-analysis found point-of-care ultrasound diagnosed abscess with a sensitivity of 94.6% and a specificity of 85.4%. Examination alone misses collections, especially deep or small ones, and ultrasound shows when there is nothing to drain.
 
 ## Who is at risk of a vascular lump
 

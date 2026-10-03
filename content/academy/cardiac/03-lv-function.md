@@ -9,7 +9,7 @@ At the bedside you are sorting the LV into three groups: hyperdynamic, normal or
 
 Watch the LV in at least two views. Look at three things:
 
-- **Wall thickening.** Healthy muscle thickens by about a third in systole.
+- **Wall thickening.** Healthy muscle thickens by a third or more in systole.
 - **Inward movement.** The walls move towards the centre of the cavity.
 - **Change in cavity size.** The cavity gets clearly smaller in systole.
 
@@ -31,7 +31,7 @@ Without M-mode, freeze the loop on the frame where the leaflet opens widest in e
 - **About 7 mm or less.** Normal.
 - **Above about 7 mm.** Supports reduced LV systolic function. The wider the gap, the weaker the ventricle tends to be.
 
-McKaigney and colleagues found emergency physicians' EPSS measurements tracked ejection fraction closely, with a gap above 7 mm pointing to reduced function.
+In McKaigney and colleagues' emergency department study, an EPSS above 7 mm was 100% sensitive but only about 52% specific for severely reduced ejection fraction. A normal EPSS makes severe LV impairment unlikely. A raised EPSS needs the rest of the picture before you call the ventricle weak.
 
 > **The aha** Measure the gap, then look at the whole ventricle. The number supports your eye, it does not replace it.
 

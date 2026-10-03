@@ -8,7 +8,7 @@
   "cpdHours": 1,
   "minutes": 60,
   "passMark": 80,
-  "draft": true,
+  "draft": false,
   "pearl": "/learn/pseudoaneurysm-find-the-neck/",
   "image": "/learn/images/pseudoaneurysm-pearl.webp",
   "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
@@ -25,9 +25,9 @@
   ],
   "lessons": ["01-context", "02-technique", "03-cellulitis-abscess", "04-vascular-lumps", "05-safe-drainage", "06-cases"],
   "references": [
-    "Gottlieb M, et al. Point-of-care ultrasonography for the diagnosis of skin and soft tissue abscesses: a systematic review and meta-analysis. Annals of Emergency Medicine. 2020;76:67.",
-    "Subramaniam S, et al. Point-of-care ultrasound for diagnosis of abscess in skin and soft tissue infections. Academic Emergency Medicine. 2016;23:1298.",
-    "Webber GW, et al. Contemporary management of postcatheterization pseudoaneurysms. Circulation. 2007;115:2666.",
+    "Gottlieb M, et al. Point-of-care ultrasonography for the diagnosis of skin and soft tissue abscesses: a systematic review and meta-analysis. Annals of Emergency Medicine. 2020.",
+    "Subramaniam S, et al. Point-of-care ultrasound for diagnosis of abscess in skin and soft tissue infections. Academic Emergency Medicine. 2016.",
+    "Webber GW, et al. Contemporary management of postcatheterization pseudoaneurysms. Circulation. 2007;115:2666-74.",
     "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
     "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
   ]

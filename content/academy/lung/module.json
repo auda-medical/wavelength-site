@@ -8,7 +8,7 @@
   "cpdHours": 1.5,
   "minutes": 90,
   "passMark": 80,
-  "draft": true,
+  "draft": false,
   "pearl": "/learn/lung-absent-sliding-not-enough/",
   "image": "/learn/images/lung-pearl.webp",
   "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
@@ -26,7 +26,7 @@
   "lessons": ["01-context", "02-technique", "03-pneumothorax", "04-b-lines", "05-consolidation", "06-effusion", "07-documentation", "08-cases"],
   "references": [
     "Volpicelli G, et al. International evidence-based recommendations for point-of-care lung ultrasound. Intensive Care Medicine. 2012;38:577.",
-    "Lichtenstein DA, Mezière GA. Relevance of lung ultrasound in the diagnosis of acute respiratory failure: the BLUE protocol. Chest. 2008;134:117.",
+    "Lichtenstein DA, Mezière GA. Relevance of lung ultrasound in the diagnosis of acute respiratory failure: the BLUE protocol. Chest. 2008;134:117-25.",
     "Roberts ME, et al. British Thoracic Society guideline for pleural disease. Thorax. 2023;78(Suppl 3):s1.",
     "Intensive Care Society. Focused Ultrasound for Intensive Care (FUSIC) Lung accreditation pathway.",
     "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",

@@ -8,7 +8,7 @@
   "cpdHours": 1.5,
   "minutes": 90,
   "passMark": 80,
-  "draft": true,
+  "draft": false,
   "pearl": "/learn/pericardial-or-pleural-descending-aorta/",
   "image": "/learn/images/pericardial-pleural-pearl.webp",
   "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
@@ -25,9 +25,9 @@
   ],
   "lessons": ["01-context", "02-views", "03-lv-function", "04-pericardium", "05-right-heart-venous", "06-pitfalls-documentation", "07-cases"],
   "references": [
-    "Via G, et al. International evidence-based recommendations for focused cardiac ultrasound. Journal of the American Society of Echocardiography. 2014;27:683.",
+    "Via G, et al. International evidence-based recommendations for focused cardiac ultrasound. Journal of the American Society of Echocardiography. 2014;27:683.e1-683.e33.",
     "Spencer KT, et al. Focused cardiac ultrasound: recommendations from the American Society of Echocardiography. Journal of the American Society of Echocardiography. 2013;26:567.",
-    "McKaigney CJ, et al. E-point septal separation: a bedside tool for emergency physician assessment of left ventricular ejection fraction. American Journal of Emergency Medicine. 2014;32:493.",
+    "McKaigney CJ, et al. E-point septal separation: a bedside tool for emergency physician assessment of left ventricular ejection fraction. American Journal of Emergency Medicine. 2014;32:493-7.",
     "Intensive Care Society. Focused Ultrasound for Intensive Care (FUSIC) Heart accreditation pathway.",
     "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
     "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
