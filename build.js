@@ -73,8 +73,10 @@ const anyDates = courses.some((c) => (c.dates || []).some((d) => d.date >= new D
 const BOOK_LABEL = anyDates ? 'Book a course' : 'Register interest';
 const NAV = [
   { href: '/courses/', label: 'Courses' },
-  ...(posts.length ? [{ href: '/learn/', label: 'Pearls' }] : []),
-  ...(liveModules.length ? [{ href: '/elearning/', label: 'Academy' }] : []),
+  ...(posts.length || liveModules.length ? [{ href: '/learn/', label: 'Learn', match: ['/learn/', '/elearning/'], children: [
+    ...(posts.length ? [{ href: '/learn/', label: 'Wavelength Pearls', short: 'Pearls', text: 'Free five-minute pearls, each with a short test.' }] : []),
+    ...(liveModules.length ? [{ href: '/elearning/', label: 'Wavelength Academy', short: 'Academy', text: 'Certified modules with a CPD certificate.' }] : []),
+  ] }] : []),
   { href: '/faculty/', label: 'Faculty' },
   { href: '/about/', label: 'About' },
   { href: '/contact/', label: 'Contact' },
@@ -100,7 +102,13 @@ function layout({ title, description, pathname, body, jsonld = [], ogType = 'web
     },
     ...jsonld,
   ];
-  const navLinks = NAV.map((n) => `<a href="${n.href}"${pathname.startsWith(n.href) ? ' aria-current="page"' : ''}>${n.label}</a>`).join('');
+  const isCurrent = (n) => (n.match || [n.href]).some((h) => pathname.startsWith(h));
+  const navLinks = NAV.map((n) => n.children && n.children.length > 1
+    ? `<div class="nav-drop"><a href="${n.href}" class="nav-drop-link"${isCurrent(n) ? ' aria-current="page"' : ''} aria-haspopup="true" aria-expanded="false">${n.label}<svg class="nav-caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></a><div class="nav-panel">${n.children.map((c) => `<a href="${c.href}"${pathname.startsWith(c.href) ? ' aria-current="page"' : ''}><b>${c.label}</b><span>${c.text}</span></a>`).join('')}</div></div>`
+    : `<a href="${n.href}"${isCurrent(n) ? ' aria-current="page"' : ''}>${n.label}</a>`).join('');
+  const mobileLinks = NAV.map((n) => n.children && n.children.length > 1
+    ? `<a href="${n.href}">${n.label}</a><span class="mm-sub">${n.children.map((c) => `<a href="${c.href}">${c.short}</a>`).join('')}</span>`
+    : `<a href="${n.href}">${n.label}</a>`).join('');
   return `<!doctype html>
 <html lang="en-GB">
 <head>
@@ -141,7 +149,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : '<meta name="robots" cont
   </div>
 </header>
 <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
-  <a href="/">Home</a>${NAV.map((n) => `<a href="${n.href}">${n.label}</a>`).join('')}
+  <a href="/">Home</a>${mobileLinks}
   <a class="btn btn-teal" href="/courses/core-emergency-ultrasound/#dates">${BOOK_LABEL} ${arrow}</a>
 </div>
 <main id="main">
@@ -331,6 +339,13 @@ function reviewsBand() {
     <p class="review-note reveal">${esc(r.note || '')} <a class="text-link" href="${r.url}" rel="noopener" target="_blank">Read all reviews on Google</a></p>
   </div>
 </section>`;
+}
+
+// Tabs at the top of /learn/ and /elearning/ so visitors move between Pearls and Academy.
+function learnSwitch(active) {
+  if (!posts.length || !liveModules.length) return '';
+  const tab = (key, href, label, note) => `<a class="learn-tab${active === key ? ' is-active' : ''}" href="${href}"${active === key ? ' aria-current="page"' : ''}><b>${label}</b><span>${note}</span></a>`;
+  return `<nav class="learn-switch" aria-label="Learn"><div class="wrap">${tab('pearls', '/learn/', 'Wavelength Pearls', `${posts.length} free pearls with tests`)}${tab('academy', '/elearning/', 'Wavelength Academy', `${liveModules.length} certified ${liveModules.length === 1 ? 'module' : 'modules'} with CPD`)}</div></nav>`;
 }
 
 function postCard(p, h = 'h3') {
@@ -694,7 +709,7 @@ pages['/learn/'] = layout({
   description: 'Practical point-of-care ultrasound skills from the Wavelength faculty: probe technique, views, pitfalls and cases for emergency and acute clinicians.',
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }])],
   body: `${pageHero({ eyebrow: 'Wavelength Pearls', title: 'From the scanning room.', lede: 'Free, five-minute point-of-care ultrasound pearls from the Wavelength faculty. One technique, one view or one pitfall at a time, each with a short test.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn' }] })}
-<section class="section sand"><div class="wrap">${liveModules.length ? `<a class="bank-link reveal" href="/elearning/" style="background:var(--teal-ink)"><span><span class="eyebrow" style="color:var(--cream)">Wavelength Academy</span><strong>Go deeper: certified modules with a CPD certificate</strong></span>${arrow}</a>` : ''}${posts.some((x) => x.questions.length) ? `<a class="bank-link reveal" href="/learn/test/"><span><span class="eyebrow">Question bank</span><strong>Test yourself on every pearl</strong></span>${arrow}</a>` : ''}${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
+${learnSwitch('pearls')}<section class="section sand"><div class="wrap">${liveModules.length ? `<a class="bank-link reveal" href="/elearning/" style="background:var(--teal-ink)"><span><span class="eyebrow" style="color:var(--cream)">Wavelength Academy</span><strong>Go deeper: certified modules with a CPD certificate</strong></span>${arrow}</a>` : ''}${posts.some((x) => x.questions.length) ? `<a class="bank-link reveal" href="/learn/test/"><span><span class="eyebrow">Question bank</span><strong>Test yourself on every pearl</strong></span>${arrow}</a>` : ''}${posts.length ? `<div class="post-grid">${posts.map((p) => postCard(p, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
 ${subscribeBand()}`,
 });
 for (const p of posts) {
@@ -797,7 +812,7 @@ pages['/elearning/'] = layout({
   noindex: !liveModules.length,
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Academy', href: '/elearning/' }])],
   body: `${pageHero({ eyebrow: AC.name, title: 'Learn it. Prove it.', lede: 'Certified e-learning for point-of-care ultrasound. Work through the lessons and cases, pass the assessment, and your CPD certificate arrives by email.', crumbs: acCrumbs() })}
-<section class="section sand"><div class="wrap">
+${learnSwitch('academy')}<section class="section sand"><div class="wrap">
   ${liveModules.length ? `<div class="section-head"><p class="eyebrow reveal">Modules</p></div><div class="post-grid">${liveModules.map((m) => moduleCard(m, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">First module arriving soon</h2><p>Subscribe to the newsletter and hear the day it opens.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}
 </div></section>
 <section class="section"><div class="wrap">

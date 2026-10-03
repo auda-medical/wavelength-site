@@ -337,6 +337,19 @@
   // Certificate page: print the reflection.
   document.querySelectorAll('[data-print]').forEach(function (b) { b.addEventListener('click', function () { window.print(); }); });
 
+  // Learn menu: first tap opens the panel on touch screens, second tap follows the link.
+  document.querySelectorAll('.nav-drop').forEach(function (drop) {
+    var link = drop.querySelector('.nav-drop-link');
+    link.addEventListener('click', function (e) {
+      if (window.matchMedia('(hover: hover)').matches) return;
+      if (!drop.classList.contains('open')) { e.preventDefault(); drop.classList.add('open'); link.setAttribute('aria-expanded', 'true'); }
+    });
+    drop.addEventListener('mouseenter', function () { link.setAttribute('aria-expanded', 'true'); });
+    drop.addEventListener('mouseleave', function () { drop.classList.remove('open'); link.setAttribute('aria-expanded', 'false'); });
+    document.addEventListener('click', function (e) { if (!drop.contains(e.target)) { drop.classList.remove('open'); link.setAttribute('aria-expanded', 'false'); } });
+    drop.addEventListener('keydown', function (e) { if (e.key === 'Escape') { drop.classList.remove('open'); link.setAttribute('aria-expanded', 'false'); link.focus(); } });
+  });
+
   // Year
   document.querySelectorAll('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
 })();

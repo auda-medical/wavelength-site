@@ -544,3 +544,29 @@ label.quiz-opt:has(input:focus-visible){outline:2px solid var(--teal);outline-of
 .ac-nav .ac-nav-foot a:hover{background:none}
 @media (max-width:999px){.ac-nav .ac-nav-foot{display:flex;gap:16px;border:0;padding:8px 0 0;margin:0}}
 .ac-panel fieldset{border:0;padding:0;margin:0}
+
+/* Learn menu: Pearls and Academy */
+.nav-drop{position:relative}
+.nav-drop-link{display:inline-flex;align-items:center;gap:6px}
+.nav-caret{transition:transform .3s var(--ease)}
+.nav-panel{position:absolute;top:calc(100% + 14px);left:50%;width:300px;transform:translate(-50%,8px);padding:10px;border-radius:var(--radius);background:var(--white);color:var(--navy);box-shadow:0 24px 60px -24px rgba(10,21,38,.45);border:1px solid var(--line);opacity:0;visibility:hidden;transition:opacity .25s,transform .25s var(--ease),visibility .25s;z-index:60}
+.nav-panel::before{content:"";position:absolute;left:0;right:0;top:-16px;height:16px}
+.nav-drop:hover .nav-panel,.nav-drop:focus-within .nav-panel,.nav-drop.open .nav-panel{opacity:1;visibility:visible;transform:translate(-50%,0)}
+.nav-drop:hover .nav-caret,.nav-drop.open .nav-caret{transform:rotate(180deg)}
+.nav .nav-panel a{display:grid;gap:2px;padding:12px 14px;border-radius:10px;color:var(--navy)}
+.nav .nav-panel a::after{display:none}
+.nav .nav-panel a:hover,.nav .nav-panel a[aria-current="page"]{background:var(--cream)}
+.nav-panel b{font-family:var(--serif);font-size:21px;font-weight:600}
+.nav-panel span{font-size:13px;color:var(--slate);font-weight:400}
+.mm-sub{display:flex;gap:22px;margin:-4px 0 10px 2px}
+.mobile-menu .mm-sub a{font-family:var(--sans);font-size:17px;color:var(--teal-light);padding:4px 0}
+.menu-open .mobile-menu .mm-sub a{opacity:1;transform:none}
+.learn-switch{background:var(--navy-deep);border-top:1px solid rgba(127,196,204,.18)}
+.learn-switch .wrap{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.learn-tab{display:grid;gap:2px;padding:18px 20px;text-decoration:none;color:var(--mist);border-bottom:3px solid transparent;transition:color .3s,border-color .3s}
+.learn-tab b{font-family:var(--serif);font-size:24px;font-weight:500;color:var(--cream)}
+.learn-tab span{font-size:13px}
+.learn-tab:hover{color:var(--cream)}
+.learn-tab.is-active{border-bottom-color:var(--teal-light)}
+.learn-tab:not(.is-active) b{opacity:.75}
+@media (max-width:600px){.learn-tab{padding:14px 10px}.learn-tab b{font-size:19px}.learn-tab span{font-size:12px}}
