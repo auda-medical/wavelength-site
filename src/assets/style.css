@@ -321,7 +321,7 @@ section{position:relative}
 .js .hero .rise:nth-child(5){animation-delay:.8s}
 .js .hero .rise:nth-child(6){animation-delay:.95s}
 @keyframes rise{to{opacity:1;transform:none}}
-.split-words .w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.2em;margin-bottom:-.12em}
+.split-words .w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.32em;margin-bottom:-.24em}
 .split-words .w>span{display:inline-block;transform:translateY(105%);animation:word 1.1s var(--ease) forwards}
 @keyframes word{to{transform:none}}
 
