@@ -162,6 +162,20 @@
     if (frame) frame.addEventListener('load', function () { if (sent) { sent = false; location.href = '/subscribe/thanks/'; } });
   });
 
+  // Learn quizzes: first click marks the answer and opens the explanation
+  document.querySelectorAll('[data-quiz]').forEach(function (quiz) {
+    quiz.addEventListener('click', function (e) {
+      var btn = e.target.closest('.quiz-opt');
+      if (!btn || quiz.classList.contains('is-done')) return;
+      quiz.classList.add('is-done');
+      if (!btn.hasAttribute('data-correct')) btn.classList.add('is-wrong');
+      var right = quiz.querySelector('[data-correct]');
+      if (right) right.classList.add('is-right');
+      var why = quiz.querySelector('.quiz-why');
+      if (why) why.open = true;
+    });
+  });
+
   // Year
   document.querySelectorAll('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
 })();

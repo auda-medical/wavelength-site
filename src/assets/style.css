@@ -364,6 +364,22 @@ section{position:relative}
 .callout{margin:36px 0;padding:24px 28px;border-left:3px solid var(--teal);background:var(--sand);border-radius:0 var(--radius) var(--radius) 0}
 .callout p{margin:0;color:var(--navy)}
 .callout .callout-title{font-size:12px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--teal-ink);margin-bottom:8px}
+.quiz{margin:28px 0;padding:24px 26px;border:1px solid var(--line);border-radius:var(--radius);background:var(--white)}
+.quiz-q{margin:0 0 14px;color:var(--navy);font-weight:500}
+.quiz-n{display:block;font-size:12px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--teal-ink);margin-bottom:6px}
+.post .quiz-opts{list-style:none;padding:0;margin:0 0 14px;display:grid;gap:8px}
+.post .quiz-opts li{margin:0}
+.quiz-opt{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;font:inherit;font-size:16px;line-height:1.5;color:var(--navy);background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .2s var(--ease),background .2s var(--ease)}
+.quiz-opt:hover{border-color:var(--teal)}
+.quiz-opt:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.quiz-l{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:600;background:var(--sand);color:var(--teal-ink);text-transform:lowercase}
+.quiz-opt.is-right{border-color:var(--teal);background:#E3F1F2}
+.quiz-opt.is-right .quiz-l{background:var(--teal);color:var(--white)}
+.quiz-opt.is-wrong{border-color:#B4413C;background:#F8E9E7}
+.quiz-opt.is-wrong .quiz-l{background:#B4413C;color:var(--white)}
+.quiz.is-done .quiz-opt{cursor:default}
+.quiz-why summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--teal-ink)}
+.quiz-why p{margin:10px 0 0;font-size:16px}
 .post-cta{display:grid;gap:20px;margin-top:64px;max-width:72ch;padding:36px;border-radius:var(--radius);background:var(--navy-deep);color:var(--cream)}
 @media (min-width:760px){.post-cta{grid-template-columns:1fr auto;align-items:center}}
 .post-cta h3{font-family:var(--serif);font-size:32px;margin-bottom:6px}
