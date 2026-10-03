@@ -1,0 +1,39 @@
+{
+  "slug": "nerve-blocks",
+  "code": "NBK",
+  "title": "Ultrasound-guided nerve blocks in the emergency department: head, chest wall and shoulder",
+  "short": "Nerve blocks for emergency analgesia",
+  "category": "Nerve blocks",
+  "summary": "Four blocks which change a patient's emergency department stay: the greater occipital nerve block for headache, the serratus anterior plane block for rib fractures, and the superior trunk and SHAC blocks for the shoulder. Learn the safety system first, then the sonoanatomy, the needle path and the evidence for each block.",
+  "cpdHours": 1.5,
+  "minutes": 90,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/serratus-plane-block-see-the-rib/",
+  "image": "/learn/images/serratus-block-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-03",
+  "reviewDue": "2028-10-03",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency and acute care doctors and advanced clinical practitioners who perform, or are training to perform, ultrasound-guided regional anaesthesia under their trust's governance.",
+  "outcomes": [
+    "Set up a safe block: consent, dose calculation, monitoring, Stop Before You Block and documentation",
+    "Recognise local anaesthetic systemic toxicity early and manage it with lipid emulsion",
+    "Perform the sonoanatomy and needle path for the greater occipital nerve, serratus anterior plane, superior trunk and SHAC blocks",
+    "Choose between the shoulder blocks, and recognise who should not have each one",
+    "Summarise the evidence for each block in emergency care, and its limits"
+  ],
+  "lessons": ["01-context", "02-safety", "03-occipital", "04-serratus", "05-shoulder", "06-cases"],
+  "references": [
+    "Association of Anaesthetists. Management of severe local anaesthetic toxicity. Safety guideline. 2010.",
+    "Regional Anaesthesia UK and the Safe Anaesthesia Liaison Group. Stop Before You Block.",
+    "Friedman BW, et al. A randomized, sham-controlled trial of bilateral greater occipital nerve blocks with bupivacaine for acute migraine patients refractory to standard emergency department treatment with metoclopramide. Headache. 2018;58:1427-34.",
+    "Greher M, et al. Sonographic visualization and ultrasound-guided blockade of the greater occipital nerve: a comparison of two selective techniques confirmed by anatomical dissection. British Journal of Anaesthesia. 2010;104:637-42.",
+    "Blanco R, et al. Serratus plane block: a novel ultrasound-guided thoracic wall nerve block. Anaesthesia. 2013;68:1107-13.",
+    "Partyka C, et al. Serratus anterior plane blocks for early rib fracture pain management: the SABRE randomized clinical trial. JAMA Surgery. 2024;159:810-17.",
+    "Kim DH, et al. Superior trunk block: a phrenic-sparing alternative to the interscalene block. A randomized controlled trial. Anesthesiology. 2019;131:521-33.",
+    "da Cunha DF, et al. Incidence of hemidiaphragmatic paralysis in superior trunk versus interscalene block upper limb surgeries: a systematic review, meta-analysis, and trial sequential analysis. Anesthesia and Pain Medicine. 2026.",
+    "Schöll, et al. Feasibility and adoption of low-volume ultrasound-guided superior trunk block for shoulder reduction in the emergency department. Journal of Clinical Medicine. 2026;15:6245.",
+    "Galluccio F, et al. Evaluation of interfascial plane and pericapsular nerve blocks to the shoulder joint: a preliminary analysis of shoulder anterior capsular block. Pain and Therapy. 2021;10:1741-54."
+  ]
+}

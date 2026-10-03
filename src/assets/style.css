@@ -623,3 +623,5 @@ label.quiz-opt:has(input:focus-visible){outline:2px solid var(--teal);outline-of
 .card-img{display:block;margin:0 -32px 8px;aspect-ratio:16/10;overflow:hidden;background:var(--sand);border-bottom:1px solid var(--line)}
 .card-img img{width:100%;height:100%;object-fit:cover;transition:transform 1.2s var(--ease)}
 .post-card:hover .card-img img{transform:scale(1.04)}
+.topic-related{margin:20px 0 0}
+.topic-index .ac-card h3{font-size:26px}

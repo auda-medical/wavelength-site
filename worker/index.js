@@ -4,6 +4,7 @@
 //   /elearning/*, /api/*  Wavelength Academy (worker/academy.js)
 import { handleAcademy, sendCertificate } from './academy.js';
 import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
+import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
 // admin_hash, session_secret). Passwords are stored as PBKDF2 hashes, never in plain text.
@@ -125,9 +126,9 @@ async function adminPage(env, req) {
       <form method="post" onsubmit="return confirm('Delete ${esc(r.first_name)} ${esc(r.last_name)} permanently?')"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="delete"><button class="btn btn-ghost small danger" type="submit">Delete</button></form>
     </td></tr>`).join('');
   const table = results.length
-    ? `<p class="admin-summary">${results.length} volunteer${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/volunteer/admin/export.csv">Download as spreadsheet (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a></p>
+    ? `<p class="admin-summary">${results.length} volunteer${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/volunteer/admin/export.csv">Download as spreadsheet (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a> · <a class="text-link" href="/volunteer/admin/departments/">Department enquiries</a></p>
        <div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Signed up</th><th scope="col">Name and contact</th><th scope="col">Role</th><th scope="col">Dates</th><th scope="col">Notes</th><th scope="col">Future contact</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>`
-    : '<div class="empty-dates"><div><h3>No volunteers yet</h3><p>Sign-ups appear here as soon as someone submits the form. <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a></p></div></div>';
+    : '<div class="empty-dates"><div><h3>No volunteers yet</h3><p>Sign-ups appear here as soon as someone submits the form. <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a> · <a class="text-link" href="/volunteer/admin/departments/">Department enquiries</a></p></div></div>';
   const s = await settings(env);
   const pw = (who, label) => `<form class="form pw-form" method="post"><input type="hidden" name="action" value="password_${who}"><label>${label}<input name="new_password" type="password" minlength="10" autocomplete="new-password" required></label><button class="btn btn-ghost small" type="submit">Change</button></form>`;
   const msg = { ok: 'Password changed.', short: 'Use at least 10 characters.' }[new URL(req.url).searchParams.get('pw')] || '';
@@ -166,7 +167,7 @@ async function academyAdmin(env, req) {
   const msg = { 1: 'Certificate emails sent.', 0: 'Some emails could not be sent. See the email column.' }[new URL(req.url).searchParams.get('sent')] || '';
   const stats = (attempts.results || []).map((a) => { const f = (fb.results || []).find((x) => x.module === a.module); return `<li><b>${esc(a.module)}</b>: ${a.n} attempts, ${a.passed} passes, average score ${a.avg}%${f ? `. Feedback from ${f.n}: useful ${f.useful}/5, changes practice ${f.practice}/5` : ''}</li>`; }).join('');
   const html = `<h2 class="display" style="font-size:34px;margin:0 0 8px">Academy</h2>
-  <p class="admin-summary">${L.length} learner${L.length === 1 ? '' : 's'}, ${L.filter((l) => l.newsletter).length} ticked the newsletter. ${C.length} certificate${C.length === 1 ? '' : 's'} issued. <a class="text-link" href="/volunteer/admin/academy/learners.csv">Learners (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/certificates.csv">Certificates (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/feedback.csv">Feedback (CSV)</a> · <a class="text-link" href="/volunteer/admin/">Volunteers</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a></p>
+  <p class="admin-summary">${L.length} learner${L.length === 1 ? '' : 's'}, ${L.filter((l) => l.newsletter).length} ticked the newsletter. ${C.length} certificate${C.length === 1 ? '' : 's'} issued. <a class="text-link" href="/volunteer/admin/academy/learners.csv">Learners (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/certificates.csv">Certificates (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/feedback.csv">Feedback (CSV)</a> · <a class="text-link" href="/volunteer/admin/">Volunteers</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a> · <a class="text-link" href="/volunteer/admin/departments/">Department enquiries</a></p>
   ${stats ? `<ul class="admin-summary">${stats}</ul>` : ''}
   ${msg ? `<p class="form-note" style="font-weight:600">${msg}</p>` : ''}
   ${pending ? `<form method="post"><input type="hidden" name="action" value="send_pending"><button class="btn btn-ghost small" type="submit">Email the ${pending} certificate${pending === 1 ? '' : 's'} not yet sent</button></form>` : ''}
@@ -188,6 +189,13 @@ export default {
       if (origin && origin !== url.origin) return withHeaders(new Response('Forbidden', { status: 403 }));
       if (!env.DB) return redirect('/faculty/join/?error=1');
       return redirect(await applyFaculty(env, req, ctx));
+    }
+    if (p === '/api/training/enquire') {
+      if (req.method !== 'POST') return redirect('/training/');
+      const origin = req.headers.get('Origin');
+      if (origin && origin !== url.origin) return withHeaders(new Response('Forbidden', { status: 403 }));
+      if (!env.DB) return redirect('/training/?error=1#enquire');
+      return redirect(await enquireTraining(env, req, ctx));
     }
     if (p.startsWith('/elearning/') || p.startsWith('/api/')) return handleAcademy(req, env, ctx);
     if (!p.startsWith('/volunteer')) return env.ASSETS.fetch(req);
@@ -230,6 +238,13 @@ export default {
       if (p === '/volunteer/admin/academy/certificates.csv') return csvResponse((await env.DB.prepare('SELECT * FROM certificates ORDER BY created_at DESC').all()).results || [], ['issued_on', 'code', 'name', 'module', 'module_title', 'score', 'cpd_hours', 'emailed_at', 'email_error'], 'wavelength-academy-certificates');
       if (p === '/volunteer/admin/academy/feedback.csv') return csvResponse((await env.DB.prepare('SELECT created_at, module, useful, practice, comment FROM feedback ORDER BY created_at DESC').all()).results || [], ['created_at', 'module', 'useful', 'practice', 'comment'], 'wavelength-academy-feedback');
       if (p === '/volunteer/admin/faculty/applications.csv') return csvResponse((await env.DB.prepare('SELECT * FROM faculty_applications ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'profession', 'specialty', 'organisation', 'registration', 'experience', 'credentials', 'applications', 'interests', 'details', 'contacted'], 'wavelength-faculty-applications');
+      if (p === '/volunteer/admin/departments/enquiries.csv') return csvResponse((await env.DB.prepare('SELECT * FROM department_enquiries ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'role', 'organisation', 'setting', 'training', 'topics', 'group_size', 'timing', 'details', 'contacted'], 'wavelength-department-enquiries');
+      if (p === '/volunteer/admin/departments/') {
+        if (req.method === 'POST') { await departmentsAdminPost(env, req); return redirect('/volunteer/admin/departments/'); }
+        const shell = await env.ASSETS.fetch(new Request(new URL('/volunteer/admin/', req.url).toString()));
+        const html = await departmentsAdminHtml(env);
+        return withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(html, { html: true }); } }).transform(shell));
+      }
       if (p === '/volunteer/admin/faculty/') {
         if (req.method === 'POST') { await facultyAdminPost(env, req); return redirect('/volunteer/admin/faculty/'); }
         const shell = await env.ASSETS.fetch(new Request(new URL('/volunteer/admin/', req.url).toString()));

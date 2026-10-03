@@ -4,9 +4,9 @@
   "title": "The hot or pulsatile lump: cellulitis, abscess, haematoma or pseudoaneurysm",
   "short": "Lumps and collections",
   "category": "Soft tissue",
-  "summary": "A red, swollen or pulsatile lump raises one question before anyone reaches for a blade: what is inside it? Learn to separate cellulitis from abscess, make a collection swirl, find the neck of a pseudoaneurysm, and drain safely under ultrasound.",
+  "summary": "A red, swollen or pulsatile lump raises one question before anyone reaches for a blade: what is inside it? Learn to separate cellulitis from abscess, make a collection swirl, spot the warning signs of necrotising fasciitis, find the neck of a pseudoaneurysm, and drain safely under ultrasound.",
   "cpdHours": 1,
-  "minutes": 60,
+  "minutes": 70,
   "passMark": 80,
   "draft": false,
   "pearl": "/learn/pseudoaneurysm-find-the-neck/",
@@ -19,14 +19,17 @@
   "outcomes": [
     "Scan a superficial swelling with the right probe, settings and comparison views",
     "Separate cellulitis from abscess, and recognise a collection by its swirl",
+    "Recognise the ultrasound features which raise concern for necrotising fasciitis, and escalate without delay",
     "Use colour and pulsed-wave Doppler to identify haematoma, pseudoaneurysm and true aneurysm",
     "Recognise the lumps which must not be incised, and plan ultrasound-guided drainage safely",
     "Document findings and refer appropriately"
   ],
-  "lessons": ["01-context", "02-technique", "03-cellulitis-abscess", "04-vascular-lumps", "05-safe-drainage", "06-cases"],
+  "lessons": ["01-context", "02-technique", "03-cellulitis-abscess", "07-necrotising-fasciitis", "04-vascular-lumps", "05-safe-drainage", "06-cases"],
   "references": [
     "Gottlieb M, et al. Point-of-care ultrasonography for the diagnosis of skin and soft tissue abscesses: a systematic review and meta-analysis. Annals of Emergency Medicine. 2020.",
     "Subramaniam S, et al. Point-of-care ultrasound for diagnosis of abscess in skin and soft tissue infections. Academic Emergency Medicine. 2016.",
+    "Castleberg E, Jenson N, Dinh VA. Diagnosis of necrotizing faciitis with bedside ultrasound: the STAFF exam. Western Journal of Emergency Medicine. 2014;15:111-13.",
+    "Yen ZS, et al. Ultrasonographic screening of clinically-suspected necrotizing fasciitis. Academic Emergency Medicine. 2002;9:1448-51.",
     "Webber GW, et al. Contemporary management of postcatheterization pseudoaneurysms. Circulation. 2007;115:2666-74.",
     "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
     "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."

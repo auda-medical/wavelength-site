@@ -121,3 +121,19 @@ title: Final assessment
 - An arteriovenous fistula
 - A true aneurysm
 : A haematoma is blood outside the vessels, with no flow inside and no connection to an artery. A pseudoaneurysm, a fistula and a true aneurysm all show flow. Monitor its size and the skin over it.
+
+?? Which ultrasound finding raises the most concern for necrotising fasciitis in a red, painful leg?
+@ 07-necrotising-fasciitis
++ Fluid more than 4 mm deep along the deep fascia
+- Cobblestoning in the subcutaneous fat
+- A thickened, bright layer of fat
+- A round collection which swirls under pressure
+: Cobblestoning and thickened fat occur in simple cellulitis. Fluid tracking along the deep fascia suggests infection spreading in the fascial plane. A swirling collection is an abscess.
+
+?? A patient with suspected necrotising fasciitis has a normal ultrasound. What do you do?
+@ 07-necrotising-fasciitis
++ Escalate to the surgical team on clinical grounds, as ultrasound does not exclude it
+- Discharge, as the normal scan excludes it
+- Wait 24 hours and rescan
+- Treat as an abscess and drain
+: Ultrasound misses early disease. Clinical suspicion drives surgical review, antibiotics and resuscitation.

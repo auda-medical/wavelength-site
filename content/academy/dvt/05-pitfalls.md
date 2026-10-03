@@ -11,6 +11,8 @@ Groin lymph nodes look like round, dark structures in a single frame, and they d
 
 A fluid-filled cyst on the medial side of the popliteal fossa, between the medial head of gastrocnemius and the semimembranosus tendon. It is anechoic, often comma-shaped, with a neck towards the joint. It does not run up and down the leg like a vein. A ruptured cyst causes calf pain and swelling which mimics DVT. A cyst and a DVT also occur together, so always compress the popliteal vein.
 
+When a cyst ruptures, its lower end turns pointed or irregular and a thin layer of fluid tracks down the medial calf, between gastrocnemius and soleus. Follow it down. Bruising around the ankle can follow. A round structure behind the knee with flow inside on colour Doppler is a popliteal artery aneurysm, not a cyst. The Wavelength Pearl [Calf swelling: look behind the knee](/learn/bakers-cyst-look-behind-the-knee/) shows each step.
+
 ## Duplicated veins
 
 Two femoral or popliteal veins beside one artery. If you compress one and miss the other, you miss the clot. Compress both.

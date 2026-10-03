@@ -162,6 +162,14 @@
           "Eye",
           "Small parts"
         ]
+      },
+      {
+        "slug": "nerve-blocks",
+        "label": "Nerve blocks",
+        "intro": "Ultrasound-guided regional anaesthesia for pain in the emergency department.",
+        "categories": [
+          "Nerve blocks"
+        ]
       }
     ]
   }

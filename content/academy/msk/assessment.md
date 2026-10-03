@@ -97,3 +97,19 @@ title: Final assessment
 - Where the femoral vessels lie
 - Which side is affected
 : Both conditions cause an effusion. Fever, refusal to bear weight and raised inflammatory markers raise concern for septic arthritis, which needs urgent orthopaedic review and aspiration.
+
+?? Squeezing the calf of a prone patient moves the Achilles tendon above a gap but not below it. What is the diagnosis?
+@ 07-tendon-ruptures
++ A complete Achilles tendon rupture
+- A normal Achilles tendon
+- Anisotropy
+- Achilles tendinopathy without a tear
+: In a complete rupture, movement from the calf does not pass across the gap. In a normal tendon or tendinopathy, the whole tendon moves as one.
+
+?? Why can a scan which stops at the elbow crease miss a complete distal biceps rupture?
+@ 07-tendon-ruptures
++ An intact lacertus fibrosus can hold the torn tendon near its normal position
+- The distal biceps always tears at the shoulder
+- The tendon is invisible on ultrasound
+- Colour Doppler is needed to see the tendon
+: The bicipital aponeurosis limits retraction. Only following the tendon to the radial tuberosity shows whether it still inserts on the bone.

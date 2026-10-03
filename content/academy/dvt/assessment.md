@@ -121,3 +121,11 @@ title: Final assessment
 - The scan excludes pulmonary embolism
 - The D-dimer result no longer matters
 : A proximal compression scan answers whether there is clot in the segments scanned. It does not assess the calf veins, the iliac veins or the IVC, and it does not exclude pulmonary embolism. With a positive D-dimer, NICE advises a repeat proximal scan in 6 to 8 days.
+
+?? A round, dark structure behind the knee shows flow inside on colour Doppler. What is it?
+@ 05-pitfalls
++ A popliteal artery aneurysm
+- A Baker's cyst
+- A ruptured Baker's cyst
+- A normal popliteal vein under compression
+: A Baker's cyst holds fluid with no flow. Flow inside a round structure behind the knee means a vessel, and a dilated popliteal artery is an aneurysm. It needs vascular referral, not aspiration.

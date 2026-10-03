@@ -121,3 +121,11 @@ title: Final assessment
 - A lymph node
 - An appendicolith
 : Transient small-bowel intussusceptions are smaller, central or left-sided, lack a lead point and usually reduce on their own. An ileocolic intussusception is larger, right-sided and persists.
+
+?? A patient with renal colic has a temperature of 39°C and hydronephrosis with a fluid-debris level. What is the priority after resuscitation and antibiotics?
+@ 04-kidneys
++ Urgent urology referral for decompression of the kidney
+- A repeat scan in 48 hours
+- Medical expulsive therapy and discharge
+- A urology clinic appointment within two weeks
+: Debris layering in a dilated system in a septic patient suggests pyonephrosis. The kidney needs drainage by nephrostomy or ureteric stent, as well as antibiotics.

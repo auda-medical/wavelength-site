@@ -11,6 +11,7 @@ const siteRaw = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/site.json'), 'u
 const site = JSON.parse(JSON.stringify(siteRaw), (k, v) => (typeof v === 'string' ? fill(v) : v));
 const courses = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/courses.json'), 'utf8'));
 const FACULTY_FORM = JSON.parse(fs.readFileSync(path.join(ROOT, 'worker/faculty-form.json'), 'utf8'));
+const DEPT_FORM = JSON.parse(fs.readFileSync(path.join(ROOT, 'worker/department-form.json'), 'utf8'));
 const md = require('./lib/md.js');
 const SHOW_DRAFTS = process.env.DRAFTS === '1';
 const LEARN_DIR = path.join(ROOT, 'content/learn');
@@ -52,8 +53,8 @@ const liveModules = modules.filter((m) => m.draft !== true);
 // Topic groups (data/site.json learnTopics) shared by the Pearls and Academy pages.
 const TOPICS = ((site.learnTopics || {}).topics || []).concat([{ slug: 'more', label: 'More pearls', intro: 'Further techniques from the Wavelength faculty.', categories: [] }]);
 const topicOf = (cat) => TOPICS.find((t) => t.categories.includes(cat)) || TOPICS[TOPICS.length - 1];
-const topicIndex = (cat) => TOPICS.indexOf(topicOf(cat));
-liveModules.sort((a, b) => topicIndex(a.category) - topicIndex(b.category));
+const topicRank = (cat) => TOPICS.indexOf(topicOf(cat));
+liveModules.sort((a, b) => topicRank(a.category) - topicRank(b.category));
 // Card image: a 16:10 thumbnail of the pearl graphic (tools/pearl-thumbs.py writes content/learn/images/thumbs/).
 const thumbFor = (img) => (img && fs.existsSync(path.join(LEARN_DIR, 'images/thumbs', img)) ? `/learn/images/thumbs/${img}` : null);
 const pearlThumb = (p) => thumbFor(((String(p.html).match(/\/learn\/images\/([a-z0-9-]+-pearl\.webp)/) || [])[1]));
@@ -84,7 +85,10 @@ const mesh = `<div class="mesh" aria-hidden="true"><i></i><i></i><i></i><i></i><
 const anyDates = courses.some((c) => (c.dates || []).some((d) => d.date >= new Date().toISOString().slice(0, 10)));
 const BOOK_LABEL = anyDates ? 'Book a course' : 'Register interest';
 const NAV = [
-  { href: '/courses/', label: 'Courses' },
+  { href: '/courses/', label: 'Courses', match: ['/courses/', '/training/'], children: [
+    { href: '/courses/', label: 'Ultrasound courses', short: 'Courses', text: 'Open courses with dates and online booking.' },
+    { href: '/training/', label: 'Training for your department', short: 'For departments', text: 'A closed course or focused sessions for your team.' },
+  ] },
   ...(posts.length || liveModules.length ? [{ href: '/learn/', label: 'Learn', match: ['/learn/', '/elearning/'], children: [
     ...(posts.length ? [{ href: '/learn/', label: 'Wavelength Pearls', short: 'Pearls', text: 'Free five-minute pearls, each with a short test.' }] : []),
     ...(liveModules.length ? [{ href: '/elearning/', label: 'Wavelength Academy', short: 'Academy', text: 'Free modules with a Wavelength certificate and CPD hours.' }] : []),
@@ -175,7 +179,7 @@ ${body}
         <p class="foot-tag">Point-of-care ultrasound education for emergency and acute clinicians: hands-on courses, free Pearls and Wavelength Academy.</p>
       </div>
       <div><h2>Courses</h2><ul>${openCourses.map((c) => `<li><a href="/courses/${c.slug}/">${esc(c.title)}</a></li>`).join('')}<li><a href="/courses/">All courses</a></li></ul></div>
-      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}<li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
+      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">For departments</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}<li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li></ul>${socialIcons()}</div>
     </div>
     <div class="bottom">
@@ -379,26 +383,34 @@ function moduleStrip(m) {
   return `<a class="topic-module reveal" href="/elearning/${m.slug}/"><span class="topic-module-text"><span class="eyebrow">Wavelength Academy · Go deeper</span><strong>${esc(m.short || m.title)}</strong><span class="topic-module-meta">${m.cpdHours} ${m.cpdHours === 1 ? 'hour' : 'hours'} CPD · Certificate · Free</span></span>${arrow}</a>`;
 }
 
-// Pearls index: topic filter bar, search, and one section per topic.
-function pearlTopics() {
-  const groups = TOPICS.map((t) => ({ t, items: posts.filter((p) => topicOf(p.category) === t), mods: liveModules.filter((m) => topicOf(m.category) === t) })).filter((g) => g.items.length);
-  const chip = (slug, label, n, active) => `<a class="topic-chip${active ? ' is-active' : ''}" href="${slug === 'all' ? '#pearls' : '#topic-' + slug}" data-topic="${slug}"${active ? ' aria-current="true"' : ''}>${esc(label)}<span>${n}</span></a>`;
-  const search = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="m15.5 15.5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
-  return `<div class="topic-bar" id="pearls" data-topic-bar>
+// Topic index used by /learn/ (Pearls) and /elearning/ (Academy): filter bar, search, and one section per topic.
+function topicIndex({ items, card, noun, nouns, ariaLabel, placeholder, summary, foot = () => '' }) {
+  const groups = TOPICS.map((t) => ({ t, items: items.filter((x) => topicOf(x.category) === t) })).filter((g) => g.items.length);
+  const chip = (slug, label, n, active) => `<a class="topic-chip${active ? ' is-active' : ''}" href="${slug === 'all' ? '#topics' : '#topic-' + slug}" data-topic="${slug}"${active ? ' aria-current="true"' : ''}>${esc(label)}<span>${n}</span></a>`;
+  const icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="m15.5 15.5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+  return `<div class="topic-bar" id="topics" data-topic-bar>
   <div class="wrap topic-bar-inner">
-    <nav class="topic-chips" aria-label="Pearl topics">${chip('all', 'All', posts.length, true)}${groups.map((g) => chip(g.t.slug, g.t.label, g.items.length)).join('')}</nav>
-    <label class="topic-search">${search}<span class="sr-only">Search the pearls</span><input type="search" placeholder="Search a sign or condition" autocomplete="off" data-topic-search></label>
+    <nav class="topic-chips" aria-label="${esc(ariaLabel)}">${chip('all', 'All', items.length, true)}${groups.map((g) => chip(g.t.slug, g.t.label, g.items.length)).join('')}</nav>
+    <label class="topic-search">${icon}<span class="sr-only">Search the ${esc(nouns)}</span><input type="search" placeholder="${esc(placeholder)}" autocomplete="off" data-topic-search></label>
   </div>
 </div>
 <section class="section sand topic-index"><div class="wrap">
-  <div class="topic-summary reveal"><p>${posts.length} pearls in ${groups.length} topics. Each teaches one technique and ends with a short test.</p>${posts.some((x) => x.questions.length) ? `<a class="text-link" href="/learn/test/">Open the question bank</a>` : ''}</div>
+  <div class="topic-summary reveal">${summary(groups.length)}</div>
   ${groups.map((g, i) => `<section class="topic-group" id="topic-${g.t.slug}" data-group="${g.t.slug}" aria-labelledby="th-${g.t.slug}">
-    <header class="topic-head reveal"><span class="topic-n" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span><div><h2 id="th-${g.t.slug}">${esc(g.t.label)}</h2><p>${esc(g.t.intro)}</p></div><span class="topic-count">${g.items.length} ${g.items.length === 1 ? 'pearl' : 'pearls'}</span></header>
-    <div class="post-grid">${g.items.map((p) => postCard(p, 'h3', { topicView: true })).join('')}</div>
-    ${g.mods.length ? `<div class="topic-modules">${g.mods.map(moduleStrip).join('')}</div>` : ''}
+    <header class="topic-head reveal"><span class="topic-n" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span><div><h2 id="th-${g.t.slug}">${esc(g.t.label)}</h2><p>${esc(g.t.intro)}</p></div><span class="topic-count">${g.items.length} ${g.items.length === 1 ? noun : nouns}</span></header>
+    <div class="post-grid">${g.items.map(card).join('')}</div>
+    ${foot(g.t)}
   </section>`).join('')}
-  <div class="topic-empty" data-topic-empty hidden><h2>No pearls match your search.</h2><p>Try a shorter word, such as "lung" or "abscess", or <button type="button" class="text-link" data-topic-reset>show all pearls</button>.</p></div>
+  <div class="topic-empty" data-topic-empty hidden><h2>Nothing matches your search.</h2><p>Try a shorter word, such as "lung" or "abscess", or <button type="button" class="text-link" data-topic-reset>show everything</button>.</p></div>
 </div></section>`;
+}
+function pearlTopics() {
+  return topicIndex({
+    items: posts, noun: 'pearl', nouns: 'pearls', ariaLabel: 'Pearl topics', placeholder: 'Search a sign or condition',
+    card: (p) => postCard(p, 'h3', { topicView: true }),
+    summary: (n) => `<p>${posts.length} pearls in ${n} topics. Each teaches one technique and ends with a short test.</p>${posts.some((x) => x.questions.length) ? `<a class="text-link" href="/learn/test/">Open the question bank</a>` : ''}`,
+    foot: (t) => { const mods = liveModules.filter((m) => topicOf(m.category) === t); return mods.length ? `<div class="topic-modules">${mods.map(moduleStrip).join('')}</div>` : ''; },
+  });
 }
 
 // ---------- Pages ----------
@@ -457,7 +469,7 @@ pages['/'] = layout({
     <div class="pillars">
       <div class="pillar reveal"><div class="num">01</div><h3>Scan, don't sit</h3><p>Most of the day sits on the probe, with healthy models, simulators and vascular phantoms at every station.</p></div>
       <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>Built for sign-off</h3><p>Content mapped to the RCEM curriculum, with logbook templates and guidance on supervised scans and assessments.</p></div>
-      <div class="pillar reveal" data-d="2"><div class="num">03</div><h3>Led by a clinician</h3><p>Every course is led by an emergency medicine consultant and ultrasound lead who teaches the way he practises.</p></div>
+      <div class="pillar reveal" data-d="2"><div class="num">03</div><h3>Led by a clinician</h3><p>Every course is led by an emergency medicine consultant and ultrasound lead who teaches the way they practise.</p></div>
     </div>
   </div>
 </section>
@@ -563,6 +575,7 @@ pages['/courses/'] = layout({
   ],
   body: `${pageHero({ eyebrow: 'Courses', title: 'Ultrasound courses', lede: 'Start with the core course. Specialist courses follow, each built on the same small-group, hands-on approach.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Courses' }] })}
 <section class="section sand"><div class="wrap" style="display:grid;gap:32px">${openCourses.map((c) => courseCard(c, 'h2')).join('')}
+  <div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">Training for your department</h2><p>Run the core course or focused sessions for your team only, at your site, on dates that fit your rota.</p></div><a class="btn btn-teal" href="/training/">Ask for a proposal ${arrow}</a></div>
   <div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">Specialist courses</h2><p>Further courses are in development. Tell us what you want to learn and we will let you know first.</p></div><a class="btn" href="${mailto(site.enquiriesEmail, 'Specialist courses: keep me informed')}">Keep me informed ${arrow}</a></div>
 </div></section>
 ${ctaBand()}`,
@@ -704,6 +717,82 @@ pages['/faculty/join/'] = layout({
   </form>
 </div></section>`,
 });
+const TRAINING_FAQS = [
+  { q: 'Where does the training take place?', a: 'At your education centre or simulation suite, or at a venue we arrange near you. We need a room for teaching and space for scanning stations.' },
+  { q: 'Do we need to provide ultrasound machines?', a: 'We agree machines and scanning models with you when we plan the day. Teaching on the machines your team uses every shift helps learning transfer to practice.' },
+  { q: 'How much does it cost?', a: 'We quote a fixed price for the group, based on the format, the number of delegates and the faculty needed. We invoice your trust, deanery or department.' },
+  { q: 'Is the course accredited?', a: 'The core course is mapped to the RCEM curriculum. It is taught by FAMUS-accredited instructors and RCEM-approved ultrasound supervisors. Each delegate receives a certificate of attendance for their portfolio and appraisal.' },
+  { q: 'Can delegates of different grades attend together?', a: 'Yes. Mixed groups of doctors, advanced clinical practitioners and physician associates work well. Tell us the mix and we set the stations to match.' },
+  { q: 'How far ahead should we book?', a: 'Three months ahead gives time to plan rotas and study leave. Ask anyway if you need sooner, as we can sometimes fit a shorter lead time.' },
+];
+// Training for your department: in-house courses for departments and trusts. Enquiries go to worker/departments.js.
+pages['/training/'] = layout({
+  title: 'Training for your department | Point-of-care ultrasound for your team',
+  pathname: '/training/',
+  description: 'Point-of-care ultrasound training for your emergency department, urgent treatment centre or acute unit: the core course or focused sessions for your team, on dates that fit your rota.',
+  jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Training for your department', href: '/training/' }])],
+  body: `${pageHero({ eyebrow: 'For departments and trusts', title: 'Training for your department.', lede: 'Bring Wavelength to your team. We run the core course or focused scanning sessions for your staff only, at your education centre or a venue we arrange, on dates that fit your rota.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Training for your department' }], extra: `<div class="hero-ctas rise"><a class="btn btn-teal" href="#enquire">Ask for a proposal ${arrow}</a><a class="btn btn-ghost light" href="#options">See the options</a></div>` })}
+<section class="section" id="options"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">What we offer</p><h2 class="reveal" data-d="1">Built around your team.</h2></div>
+  <div class="pillars">
+    <div class="pillar reveal"><div class="num">01</div><h3>The core course, for your team</h3><p>Our full-day core emergency ultrasound course, mapped to the RCEM curriculum, run for your staff only. Your team learns together and leaves with a shared standard.</p></div>
+    <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>Focused sessions</h3><p>Shorter, hands-on sessions on the scans your department needs most, such as lung, focused cardiac or proximal DVT. Ideal for a teaching day or a new service.</p></div>
+    <div class="pillar reveal" data-d="2"><div class="num">03</div><h3>Regional and deanery groups</h3><p>Courses for trainees, advanced clinical practitioners or physician associates across a region, with one point of contact and one invoice.</p></div>
+  </div>
+</div></section>
+<section class="section sand"><div class="wrap split">
+  <div><p class="eyebrow reveal">Every booking includes</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,56px);margin-top:20px">The same standard as our open courses.</h2></div>
+  <ul class="checklist reveal" data-d="1">${[
+    'Teaching by FAMUS-accredited instructors and RCEM-approved ultrasound supervisors',
+    'One instructor to every four or five delegates, with most of the day on the probe',
+    'Content mapped to the RCEM curriculum and matched to your department',
+    'Free Wavelength Academy modules for your team before and after the day, with a certificate for each module passed',
+    'A certificate of attendance for every delegate, and an attendance and feedback summary for your education lead',
+    'A fixed quote for the group and an invoice to your trust, deanery or department',
+  ].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
+</div></section>
+<section class="section"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">How it works</p><h2 class="reveal" data-d="1">From enquiry to teaching day.</h2></div>
+  <ol class="ac-steps">${[
+    ['Tell us what you need', 'Your team, its experience, the scans you want and your preferred dates. The form below takes two minutes.'],
+    ['Agree a plan', 'We reply within five working days with a programme, faculty numbers and a fixed quote.'],
+    ['Set up the day', 'We agree the venue, ultrasound machines and scanning models with you, then send joining instructions to your delegates.'],
+    ['Teach and follow up', 'We run the day, issue certificates, and send your summary with suggested Academy modules for your team.'],
+  ].map(([h, t], i) => `<li class="reveal" data-d="${i}"><span class="ac-step-n">${i + 1}</span><h3>${h}</h3><p>${t}</p></li>`).join('')}</ol>
+</div></section>
+<section class="section sand" id="enquire"><div class="wrap split">
+  <div>
+    <p class="eyebrow reveal">Ask for a proposal</p>
+    <h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,56px);margin:20px 0 24px">Tell us about your team.</h2>
+    <p class="lede reveal" data-d="2">There is no obligation. We read every enquiry and reply within five working days.</p>
+    <aside class="callout reveal" style="margin-top:36px"><p class="callout-title">Questions first?</p><p>Email <a class="text-link" href="${mailto(site.enquiriesEmail, 'Training for our department')}">${site.enquiriesEmail}</a> and we reply within two working days.</p></aside>
+  </div>
+  <form class="form" method="post" action="/api/training/enquire">
+    <p class="form-error" data-show-on="error" hidden>Please complete the required fields and tick the privacy box.</p>
+    <div class="sub-row"><label>First name<input name="first_name" autocomplete="given-name" required maxlength="80"></label><label>Last name<input name="last_name" autocomplete="family-name" required maxlength="80"></label></div>
+    <div class="sub-row"><label>Work email<input name="email" type="email" autocomplete="email" required maxlength="160"></label><label>Phone (optional)<input name="phone" type="tel" autocomplete="tel" maxlength="40"></label></div>
+    <div class="sub-row"><label>Your role<select name="role"><option value="">Choose one</option>${DEPT_FORM.roles.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label><label>Setting<select name="setting"><option value="">Choose one</option>${DEPT_FORM.settings.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label></div>
+    <label>Trust, hospital or organisation<input name="organisation" autocomplete="organization" required maxlength="200"></label>
+    <fieldset class="vol-dates"><legend>What are you looking for?</legend>${boxes('training', DEPT_FORM.training)}</fieldset>
+    <fieldset class="vol-dates"><legend>Scans your team wants to learn (optional)</legend>${boxes('topics', DEPT_FORM.topics)}</fieldset>
+    <div class="sub-row"><label>Number of staff<select name="group_size" required><option value="">Choose one</option>${DEPT_FORM.sizes.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label><label>Preferred dates (optional)<input name="timing" maxlength="200" placeholder="For example, March 2027, weekdays"></label></div>
+    <label>Anything else we should know (optional)<textarea name="details" maxlength="3000" rows="5" placeholder="Your team's experience, the machines you have, a service you are setting up, or a budget to work to."></textarea></label>
+    <label class="ac-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+    <label class="consent"><input type="checkbox" name="confirm_privacy" value="yes" required><span>Wavelength stores my details to answer this enquiry, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
+    <div><button class="btn btn-teal" type="submit">Send my enquiry ${arrow}</button></div>
+  </form>
+</div></section>
+<section class="section"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">Questions</p><h2 class="reveal" data-d="1">Before you ask.</h2></div>
+  ${faqHtml(TRAINING_FAQS)}
+</div></section>`,
+});
+pages['/training/thanks/'] = layout({
+  title: 'Enquiry received',
+  pathname: '/training/thanks/',
+  noindex: true,
+  body: `${pageHero({ eyebrow: 'Training for your department', title: 'Thank you.', lede: 'We have your enquiry. A member of the faculty replies within five working days with a plan and a quote.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Training for your department', href: '/training/' }, { label: 'Thank you' }], extra: '<div class="hero-ctas rise"><a class="btn btn-teal" href="/elearning/">Explore the Academy</a><a class="btn btn-ghost light" href="/">Home</a></div>' })}`,
+});
 pages['/faculty/join/thanks/'] = layout({
   title: 'Application received',
   pathname: '/faculty/join/thanks/',
@@ -752,6 +841,7 @@ pages['/contact/'] = layout({
       <a class="contact-card reveal" href="mailto:${site.bookingsEmail}"><p class="eyebrow">Bookings and invoices</p><h2>${site.bookingsEmail}</h2><p>Places, payments, invoices and transfers.</p><span class="text-link">Email bookings</span></a>
       <a class="contact-card reveal" data-d="1" href="mailto:${site.enquiriesEmail}"><p class="eyebrow">General enquiries</p><h2>${site.enquiriesEmail}</h2><p>Course content, group bookings, faculty and partnerships.</p><span class="text-link">Email us</span></a>
     </div>
+    <div class="empty-dates reveal" style="margin-top:40px"><div><h3>Training for your team?</h3><p>We run the core course or focused sessions for departments, trusts and deaneries.</p></div><a class="btn btn-teal" href="/training/">Ask for a proposal ${arrow}</a></div>
     <div class="empty-dates reveal" style="margin-top:40px"><div><h3>Want to teach with us?</h3><p>Tell us about your ultrasound experience and credentials, and we will be in touch.</p></div><a class="btn" href="/faculty/join/">Apply to join the faculty ${arrow}</a></div>
   </div>
 </section>
@@ -903,7 +993,7 @@ const howItWorks = `<ol class="ac-steps">${[
 
 function moduleCard(m, h = 'h3') {
   const img = thumbFor(path.basename(m.image || ""));
-  return `<a class="post-card ac-card reveal${img ? ' has-img' : ''}" href="/elearning/${m.slug}/">${cardImg(img)}
+  return `<a class="post-card ac-card reveal${img ? ' has-img' : ''}" href="/elearning/${m.slug}/" data-search="${esc([m.title, m.short, m.summary, m.category, topicOf(m.category).label].join(' ').toLowerCase())}">${cardImg(img)}
     <p class="eyebrow">${esc(topicOf(m.category).label)}${m.draft === true ? ' · Draft' : ''}</p>
     <${h}>${esc(m.title)}</${h}>
     <p>${esc(m.summary)}</p>
@@ -918,10 +1008,13 @@ pages['/elearning/'] = layout({
   noindex: !liveModules.length,
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Academy', href: '/elearning/' }])],
   body: `${pageHero({ eyebrow: AC.name, title: 'Learn it. Prove it.', lede: 'Certified e-learning for point-of-care ultrasound. Work through the lessons and cases, pass the assessment, and your certificate arrives by email.', crumbs: acCrumbs() })}
-${learnSwitch('academy')}<section class="section sand"><div class="wrap">
-  ${liveModules.length ? `<div class="section-head"><p class="eyebrow reveal">Modules</p></div><div class="post-grid">${liveModules.map((m) => moduleCard(m, 'h2')).join('')}</div>` : `<div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">First module arriving soon</h2><p>Subscribe to the newsletter and hear the day it opens.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}
-</div></section>
-<section class="section"><div class="wrap">
+${learnSwitch('academy')}${liveModules.length ? topicIndex({
+    items: liveModules, noun: 'module', nouns: 'modules', ariaLabel: 'Academy topics', placeholder: 'Search a module or condition',
+    card: (m) => moduleCard(m, 'h3'),
+    summary: (n) => `<p>${liveModules.length} certified modules in ${n} topics, ${liveModules.reduce((a, m) => a + Number(m.cpdHours || 0), 0)} hours of CPD in all. Each is free, with a Wavelength certificate when you pass.</p><a class="text-link" href="#how">How it works</a>`,
+    foot: (t) => { const n = posts.filter((p) => topicOf(p.category) === t).length; return n ? `<p class="topic-related reveal"><a class="text-link" href="/learn/#topic-${t.slug}">${n} free ${esc(t.label.toLowerCase())} ${n === 1 ? 'pearl' : 'pearls'}</a></p>` : ''; },
+  }) : `<section class="section sand"><div class="wrap"><div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">First module arriving soon</h2><p>Subscribe to the newsletter and hear the day it opens.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div></div></section>`}
+<section class="section" id="how"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal">How it works</p><h2 class="reveal" data-d="1">Four steps to your certificate.</h2></div>
   ${howItWorks}
   <div class="ac-verify reveal"><div><h3>Checking a certificate?</h3><p>Every Academy certificate carries a code. Enter it to confirm it is genuine.</p></div><a class="btn btn-ghost" href="/elearning/verify/">Verify a certificate ${arrow}</a></div>
@@ -1160,7 +1253,7 @@ const legal = {
 <h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To send you our newsletter, where you have subscribed (consent).</li><li>To arrange volunteer scanning sessions, where you have signed up as a volunteer.</li><li>To run Wavelength Academy: mark your assessments, and issue, email and verify your certificates (contract, providing the learning you signed up for).</li><li>To tell delegates who have booked with us about similar future courses, unless they opted out when booking or later (our legitimate interests, under the soft opt-in rule in the Privacy and Electronic Communications Regulations).</li></ul>
 <h2>Our newsletter</h2><p>When you subscribe, we send you an email asking you to confirm. We add you to the list only after you click the confirmation link. Each newsletter carries an unsubscribe link, and you can also unsubscribe by emailing <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. We use your role to send you content relevant to your practice. Our newsletter service records whether you open an email and which links you click, so we can see which content helps clinicians most. We never sell or share your details for others' marketing.</p>
 <h2>Volunteer scanning models</h2><p>We use volunteers' details to arrange scanning sessions on our courses (our legitimate interests in running the course, and your agreement to take part). We do not ask for health information. Scans on our courses are for teaching, not diagnosis. If faculty notice something unexpected, they tell you privately and advise you to see your GP, and we do not record it. We keep volunteer details for up to two years after your last session, or until you ask us to delete them.</p>
-<h2>Faculty applications</h2><p>If you apply to teach with us, we store your name, contact details, professional registration number if you give it, and the ultrasound experience and credentials you describe. We use them only to consider your application and contact you about faculty work (legitimate interests). We keep applications for two years, then delete them, unless you join the faculty or ask us to delete them sooner.</p>
+<h2>Department training enquiries</h2><p>If you ask about training for your department, we store your name, work contact details, role, organisation and the details of your enquiry. We use them only to answer your enquiry and plan any training you book (legitimate interests). We keep enquiries for two years, then delete them, unless they lead to a booking, when we keep them with our booking records.</p><h2>Faculty applications</h2><p>If you apply to teach with us, we store your name, contact details, professional registration number if you give it, and the ultrasound experience and credentials you describe. We use them only to consider your application and contact you about faculty work (legitimate interests). We keep applications for two years, then delete them, unless you join the faculty or ask us to delete them sooner.</p>
 <h2>Wavelength Academy</h2><p>Registration for Academy modules is free. Joining our newsletter is optional: tick the box if you want it, and leave at any time without losing access to your certificates. We email your certificate through Zoho ZeptoMail when you pass. Each certificate carries a code. Anyone who has the code, such as an employer or appraiser you share it with, can see the name, module, CPD hours and date on our verification page. Your score stays private to you. We keep Academy records for six years after your last activity, so certificates stay verifiable, unless you ask us to delete them sooner.</p>
 <h2>Who we share it with</h2><p>Stripe for payments, Zoho for our email, newsletter and mailing list, and Cloudflare for our website. Each acts under contract as our processor and protects your data. We do not sell your data.</p>
 <h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies. The private volunteer area sets one login cookie, which it needs to work, and removes it when you log out or after 12 hours. Wavelength Academy sets one login cookie to keep you signed in to your modules, for up to 180 days or until you log out. Academy lesson pages remember which lessons you have opened in your browser's storage, on your device only. Cloudflare, which protects this website, sets a short-lived security cookie on some visits to tell people from automated traffic. All of these are strictly necessary to run the service you ask for, so UK and EU law does not require a cookie consent banner. If we ever add analytics or marketing cookies, we will ask for your consent first. Stripe sets its own cookies on its payment pages, under Stripe's privacy policy.</p>

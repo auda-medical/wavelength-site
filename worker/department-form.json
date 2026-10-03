@@ -1,0 +1,8 @@
+{
+  "_help": "Option lists for the department training enquiry form at /training/. Shared by build.js (the form) and worker/departments.js (validation). Edit here, then rebuild.",
+  "roles": ["Clinical lead or consultant", "Education or training lead", "Practice educator or ACP lead", "Service or operational manager", "Deanery or regional training team", "Other"],
+  "settings": ["Emergency department", "Urgent treatment centre", "Acute medical unit", "Critical care", "Other"],
+  "training": ["Core emergency ultrasound course for our team", "Focused session on one or two scans", "Course for a regional or deanery training group", "Not sure yet, we would like advice"],
+  "topics": ["Focused cardiac ultrasound", "Lung ultrasound", "eFAST and trauma", "Proximal DVT", "Abdominal aorta", "Kidneys and bladder", "Soft tissue and joints", "Ultrasound-guided nerve blocks", "Vascular access"],
+  "sizes": ["Under 10", "10 to 20", "21 to 30", "More than 30"]
+}

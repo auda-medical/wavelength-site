@@ -187,6 +187,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q16",
+     "correct": "a",
+     "why": "Debris layering in a dilated system in a septic patient suggests pyonephrosis. The kidney needs drainage by nephrostomy or ureteric stent, as well as antibiotics.",
+     "review": "04-kidneys",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -807,6 +819,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q16",
+     "correct": "d",
+     "why": "A Baker's cyst holds fluid with no flow. Flow inside a round structure behind the knee means a vessel, and a dilated popliteal artery is an aneurysm. It needs vascular referral, not aspiration.",
+     "review": "05-pitfalls",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -1207,6 +1231,30 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q16",
+     "correct": "c",
+     "why": "Cobblestoning and thickened fat occur in simple cellulitis. Fluid tracking along the deep fascia suggests infection spreading in the fascial plane. A swirling collection is an abscess.",
+     "review": "07-necrotising-fasciitis",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q17",
+     "correct": "b",
+     "why": "Ultrasound misses early disease. Clinical suspicion drives surgical review, antibiotics and resuscitation.",
+     "review": "07-necrotising-fasciitis",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -1221,6 +1269,10 @@
     "03-cellulitis-abscess": {
      "title": "Cellulitis or abscess: make it swirl",
      "path": "/elearning/lumps/learn/cellulitis-abscess/"
+    },
+    "07-necrotising-fasciitis": {
+     "title": "Necrotising fasciitis: look below the cobblestones",
+     "path": "/elearning/lumps/learn/necrotising-fasciitis/"
     },
     "04-vascular-lumps": {
      "title": "Vascular lumps: find the neck",
@@ -1464,7 +1516,7 @@
    "slug": "msk",
    "code": "MSK",
    "title": "Soft tissue and joints: foreign bodies, tendons, the shoulder and the hip",
-   "cpdHours": 1,
+   "cpdHours": 1.25,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -1611,6 +1663,30 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q13",
+     "correct": "a",
+     "why": "In a complete rupture, movement from the calf does not pass across the gap. In a normal tendon or tendinopathy, the whole tendon moves as one.",
+     "review": "07-tendon-ruptures",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "d",
+     "why": "The bicipital aponeurosis limits retraction. Only following the tendon to the radial tuberosity shows whether it still inserts on the bone.",
+     "review": "07-tendon-ruptures",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -1626,6 +1702,10 @@
      "title": "Tendons: tear or anisotropy?",
      "path": "/elearning/msk/learn/tendon/"
     },
+    "07-tendon-ruptures": {
+     "title": "Tendon ruptures: the Achilles and the distal biceps",
+     "path": "/elearning/msk/learn/tendon-ruptures/"
+    },
     "04-shoulder": {
      "title": "The shoulder: one posterior view",
      "path": "/elearning/msk/learn/shoulder/"
@@ -1637,6 +1717,186 @@
     "06-cases": {
      "title": "Cases",
      "path": "/elearning/msk/learn/cases/"
+    }
+   }
+  },
+  "nerve-blocks": {
+   "slug": "nerve-blocks",
+   "code": "NBK",
+   "title": "Ultrasound-guided nerve blocks in the emergency department: head, chest wall and shoulder",
+   "cpdHours": 1.5,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "d",
+     "why": "The module teaches the safety system, the anatomy, the needle path and the evidence. Competence comes from supervised practice on patients under your trust's governance.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "d",
+     "why": "Wrong-side blocks often follow a distraction between the earlier checks and the needle. The final check of the side happens with the needle in your hand.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "d",
+     "why": "Early toxicity affects the brain: tingling around the mouth, a metallic taste, tinnitus, light-headedness and agitation. Seizures and cardiovascular collapse can follow, sometimes with no warning.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "d",
+     "why": "The Association of Anaesthetists guideline gives 1.5 mL/kg over 1 minute, then 15 mL/kg/h. Up to two further boluses can follow at 5-minute intervals, with the infusion doubled to 30 mL/kg/h, to a cumulative maximum of 12 mL/kg.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "b",
+     "why": "Sharp pain and high pressure suggest the tip is in or against a nerve. Injecting into a nerve risks injury. Stop, withdraw slightly and reposition.",
+     "review": "02-safety",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "d",
+     "why": "At the superior nuchal line, the nerve lies close to the occipital artery, usually medial to it. Colour Doppler finds the artery and guides you to the nerve.",
+     "review": "03-occipital",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "b",
+     "why": "A thunderclap onset raises concern for subarachnoid haemorrhage. A block could mask the pain without treating the cause.",
+     "review": "03-occipital",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "b",
+     "why": "The pleura lies deeper, between the ribs. Keeping the tip on or just above the rib protects against pneumothorax.",
+     "review": "04-serratus",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "c",
+     "why": "Fascial plane blocks rely on volume. Large volumes bring the total dose close to the maximum, so calculate the safe dose for the patient's weight before you start.",
+     "review": "04-serratus",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "a",
+     "why": "The phrenic nerve runs on anterior scalene close to the C5 root. Moving the injection down to the superior trunk increases the distance, and a meta-analysis found about 90% less complete hemidiaphragmatic paralysis.",
+     "review": "05-shoulder",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "a",
+     "why": "The block can still affect the phrenic nerve on the injected side. With the other diaphragm already paralysed, the patient could lose both.",
+     "review": "05-shoulder",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "a",
+     "why": "The axillary artery, axillary vein and brachial plexus run medial to the coracoid. Staying lateral to it keeps the needle away from them.",
+     "review": "05-shoulder",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Why blocks belong in the emergency department",
+     "path": "/elearning/nerve-blocks/learn/context/"
+    },
+    "02-safety": {
+     "title": "The safety system: dose, Stop Before You Block and toxicity",
+     "path": "/elearning/nerve-blocks/learn/safety/"
+    },
+    "03-occipital": {
+     "title": "Greater occipital nerve block for headache",
+     "path": "/elearning/nerve-blocks/learn/occipital/"
+    },
+    "04-serratus": {
+     "title": "Serratus anterior plane block for rib fractures",
+     "path": "/elearning/nerve-blocks/learn/serratus/"
+    },
+    "05-shoulder": {
+     "title": "The shoulder: superior trunk and SHAC blocks",
+     "path": "/elearning/nerve-blocks/learn/shoulder/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/nerve-blocks/learn/cases/"
     }
    }
   }
