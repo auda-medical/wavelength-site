@@ -401,3 +401,8 @@ section{position:relative}
 .review figcaption span{display:block;font-weight:400;font-size:13px;letter-spacing:.06em;color:var(--mist);margin-top:2px}
 .review-note{margin-top:28px;font-size:15px;color:var(--mist)}
 .reviews-band .text-link{color:var(--teal-light)}
+
+.rating-badge{display:inline-flex;width:fit-content;justify-self:start;align-self:start;white-space:nowrap;align-items:center;gap:14px;margin-top:28px;padding:12px 22px;border:1px solid rgba(233,196,106,.45);border-radius:999px;color:var(--cream);text-decoration:none;font-weight:600;font-size:17px}
+.rating-badge .stars{display:flex;gap:3px;color:#E9C46A}
+.rating-badge .stars svg{width:22px;height:22px}
+.rating-badge:hover{background:rgba(233,196,106,.1)}

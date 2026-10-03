@@ -280,7 +280,7 @@ function reviewsBand() {
   const stars = `<span class="stars" aria-label="5 out of 5 stars">${star.repeat(5)}</span>`;
   return `<section class="section reviews-band on-dark">${mesh}
   <div class="wrap">
-    <div class="section-head"><p class="eyebrow reveal">Delegate reviews · ${esc(r.rating)} from ${r.count} on Google</p><h2 class="reveal" data-d="1">What delegates say about courses led by our Course Director.</h2></div>
+    <div class="section-head"><p class="eyebrow reveal">Delegate reviews</p><h2 class="reveal" data-d="1">What delegates say about courses led by our Course Director.</h2><a class="rating-badge reveal" data-d="2" href="${r.url}" rel="noopener" target="_blank">${stars}<span>Rated 5 stars on Google</span></a></div>
     <div class="review-grid">${r.items.map((x, i) => `<figure class="review reveal" data-d="${i % 3}">${stars}<blockquote>${esc(x.text)}</blockquote><figcaption>${esc(x.name)} <span>Google review</span></figcaption></figure>`).join('')}</div>
     <p class="review-note reveal">${esc(r.note || '')} <a class="text-link" href="${r.url}" rel="noopener" target="_blank">Read all reviews on Google</a></p>
   </div>
