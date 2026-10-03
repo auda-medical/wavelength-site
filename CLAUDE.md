@@ -45,6 +45,12 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 - Logins live in the D1 `settings` table (volunteer_username "volunteer", admin_username "wavelength", PBKDF2 password hashes, session_secret). Never commit passwords. The admin page changes either password, and a change logs everyone out. Without settings the area shows "Opening soon".
 - Local test: apply both files in `migrations/` with `npx wrangler d1 execute wavelength-volunteers --local --file ...`, insert test settings, then `npx wrangler dev --local`.
 
+## Teach with us (faculty applications)
+- Public form /faculty/join/ posts to /api/faculty/apply (`worker/faculty.js`), saves to D1 `faculty_applications` (`migrations/0004_faculty.sql`, applied to live), and emails hello@ through ZeptoMail with the applicant as reply-to. Option lists live in `worker/faculty-form.json`, shared by the build and the Worker. Admin list: /volunteer/admin/faculty/ (admin login), with CSV, mark contacted and delete. Linked from the faculty page, contact page and footer. Privacy notice keeps applications two years.
+
+## Positioning
+- Wavelength is a point-of-care ultrasound education provider (courses, Pearls, Academy), not only a course seller. Keep the homepage "Ways to learn" section and education-first wording in titles and descriptions.
+
 ## Discount codes
 Bookings go through Stripe Payment Links. Discount codes are Stripe promotion codes, switched on per payment link ("Allow promotion codes"). The course page tells people to enter codes on the payment page once any date has a `stripeLink`.
 

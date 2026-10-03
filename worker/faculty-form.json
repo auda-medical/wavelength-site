@@ -1,0 +1,44 @@
+{
+  "professions": [
+    "Consultant",
+    "Specialty or SAS doctor",
+    "Registrar or specialty trainee",
+    "Advanced clinical practitioner",
+    "Sonographer",
+    "GP",
+    "Other"
+  ],
+  "experience": [
+    "Less than 2 years",
+    "2 to 5 years",
+    "5 to 10 years",
+    "More than 10 years"
+  ],
+  "credentials": [
+    "FAMUS accredited",
+    "FAMUS instructor or supervisor",
+    "RCEM-approved ultrasound supervisor",
+    "RCEM core (Level 1) ultrasound sign-off",
+    "Postgraduate ultrasound qualification (for example PgCert, CASE)",
+    "Sonographer registration",
+    "Instructor on other courses (for example ALS, ATLS)"
+  ],
+  "applications": [
+    "eFAST",
+    "Abdominal aorta",
+    "Echo in life support",
+    "Vascular access",
+    "Lung",
+    "DVT",
+    "Focused echo",
+    "Nerve blocks",
+    "Musculoskeletal",
+    "Paediatric"
+  ],
+  "interests": [
+    "Teach on courses",
+    "Help run courses",
+    "Write Pearls or Academy content",
+    "Something else"
+  ]
+}
