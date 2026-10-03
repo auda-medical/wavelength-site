@@ -1,0 +1,34 @@
+{
+  "slug": "lumps",
+  "code": "LMP",
+  "title": "The hot or pulsatile lump: cellulitis, abscess, haematoma or pseudoaneurysm",
+  "short": "Lumps and collections",
+  "category": "Soft tissue",
+  "summary": "A red, swollen or pulsatile lump raises one question before anyone reaches for a blade: what is inside it? Learn to separate cellulitis from abscess, make a collection swirl, find the neck of a pseudoaneurysm, and drain safely under ultrasound.",
+  "cpdHours": 1,
+  "minutes": 60,
+  "passMark": 80,
+  "draft": true,
+  "pearl": "/learn/pseudoaneurysm-find-the-neck/",
+  "image": "/learn/images/pseudoaneurysm-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-03",
+  "reviewDue": "2028-10-03",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency, acute and urgent care doctors, advanced clinical practitioners and physician associates who assess skin and soft tissue swellings or drain abscesses.",
+  "outcomes": [
+    "Scan a superficial swelling with the right probe, settings and comparison views",
+    "Separate cellulitis from abscess, and recognise a collection by its swirl",
+    "Use colour and pulsed-wave Doppler to identify haematoma, pseudoaneurysm and true aneurysm",
+    "Recognise the lumps which must not be incised, and plan ultrasound-guided drainage safely",
+    "Document findings and refer appropriately"
+  ],
+  "lessons": ["01-context", "02-technique", "03-cellulitis-abscess", "04-vascular-lumps", "05-safe-drainage", "06-cases"],
+  "references": [
+    "Gottlieb M, et al. Point-of-care ultrasonography for the diagnosis of skin and soft tissue abscesses: a systematic review and meta-analysis. Annals of Emergency Medicine. 2020;76:67.",
+    "Subramaniam S, et al. Point-of-care ultrasound for diagnosis of abscess in skin and soft tissue infections. Academic Emergency Medicine. 2016;23:1298.",
+    "Webber GW, et al. Contemporary management of postcatheterization pseudoaneurysms. Circulation. 2007;115:2666.",
+    "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
+    "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
+  ]
+}

@@ -2,9 +2,9 @@
 title: "EPSS: when the mitral valve misses the septum"
 summary: In a strong heart, the anterior mitral leaflet swings open almost to the septum. In a weak heart, it falls short. Measure the gap in the parasternal long-axis view for a quick, objective clue to left ventricular function.
 category: Cardiac
-date: 2026-11-30
+date: 2026-10-03
 author: Dr Firas Abou-Auda
-draft: true
+draft: false
 ---
 
 Judging left ventricular (LV) function by eye takes practice. E-point septal separation (EPSS) gives new scanners a number to anchor that judgement. It measures how close the anterior mitral leaflet comes to the interventricular septum when the valve opens in early diastole.

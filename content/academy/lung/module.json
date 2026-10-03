@@ -1,0 +1,35 @@
+{
+  "slug": "lung",
+  "code": "LUS",
+  "title": "Lung ultrasound in the breathless patient",
+  "short": "Lung ultrasound",
+  "category": "Lung",
+  "summary": "Use the probe to answer the questions a chest X-ray answers slowly or not at all: is there a pneumothorax, is the lung wet, is it consolidated, and is there fluid at the base? Learn the bat sign, sliding and its mimics, B-lines, consolidation and the spine sign.",
+  "cpdHours": 1.5,
+  "minutes": 90,
+  "passMark": 80,
+  "draft": true,
+  "pearl": "/learn/lung-absent-sliding-not-enough/",
+  "image": "/learn/images/lung-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-03",
+  "reviewDue": "2028-10-03",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency, acute and urgent care doctors, advanced clinical practitioners and physician associates, from first scans to supervisors.",
+  "outcomes": [
+    "Place lung ultrasound within the assessment of the breathless patient, and explain how artefacts carry the diagnosis",
+    "Find the pleural line between two rib shadows and judge lung sliding",
+    "Confirm or exclude pneumothorax under the probe with sliding, B-lines, lung pulse and the lung point",
+    "Recognise interstitial syndrome, consolidation and pleural effusion",
+    "Document findings by zone and act on them safely"
+  ],
+  "lessons": ["01-context", "02-technique", "03-pneumothorax", "04-b-lines", "05-consolidation", "06-effusion", "07-documentation", "08-cases"],
+  "references": [
+    "Volpicelli G, et al. International evidence-based recommendations for point-of-care lung ultrasound. Intensive Care Medicine. 2012;38:577.",
+    "Lichtenstein DA, Mezière GA. Relevance of lung ultrasound in the diagnosis of acute respiratory failure: the BLUE protocol. Chest. 2008;134:117.",
+    "Roberts ME, et al. British Thoracic Society guideline for pleural disease. Thorax. 2023;78(Suppl 3):s1.",
+    "Intensive Care Society. Focused Ultrasound for Intensive Care (FUSIC) Lung accreditation pathway.",
+    "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
+    "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
+  ]
+}

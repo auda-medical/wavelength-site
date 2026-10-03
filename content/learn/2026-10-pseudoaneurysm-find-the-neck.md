@@ -2,9 +2,9 @@
 title: "Pseudoaneurysm: find the neck"
 summary: A pulsatile lump after a femoral puncture is a haematoma, an abscess or a pseudoaneurysm. The swirling sac catches your eye, but the neck makes the diagnosis. Find the channel to the artery and sample it.
 category: Vascular
-date: 2026-11-16
+date: 2026-10-03
 author: Dr Firas Abou-Auda
-draft: true
+draft: false
 ---
 
 A groin swelling after angiography, a femoral line or injecting drug use is a common emergency department problem. A haematoma, an abscess and a pseudoaneurysm all look alike from the outside. Treat a pseudoaneurysm as an abscess and a needle goes into an artery. Ultrasound with colour Doppler separates them at the bedside.

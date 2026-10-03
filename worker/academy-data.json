@@ -1,5 +1,225 @@
 {
  "modules": {
+  "cardiac": {
+   "slug": "cardiac",
+   "code": "FCU",
+   "title": "Focused cardiac ultrasound in the breathless or shocked patient",
+   "cpdHours": 1.5,
+   "passMark": 80,
+   "draft": true,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "d",
+     "why": "Focused cardiac ultrasound answers a few yes or no questions. A normal RV makes massive pulmonary embolism less likely in a shocked patient, but a smaller embolism leaves the heart looking normal. The same applies to aortic dissection and acute coronary syndrome. Follow your usual pathway.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "c",
+     "why": "Focused cardiac ultrasound covers LV function, pericardial effusion, RV size, volume status and cardiac activity. Grading valve disease needs a formal echocardiogram with Doppler measurements by a trained echocardiographer.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "a",
+     "why": "Rotating 90° clockwise from PLAX turns the beam across the LV, which then appears round. Tilting moves the slice between the mitral valve, papillary muscle and apical levels. The apex beat is the window for the apical four-chamber view.",
+     "review": "02-views",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "a",
+     "why": "The heart sits above and behind the costal margin. A flat probe sends the beam under the ribs to the heart. Pressing harder causes pain and tenses the abdomen. An upright probe points the beam at the spine. Deeper settings help, not shallower.",
+     "review": "02-views",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "d",
+     "why": "EPSS measures how close the anterior mitral leaflet comes to the septum in early diastole. The parasternal long-axis view shows both in line with the beam, and M-mode through the leaflet tip records the E-point clearly.",
+     "review": "03-lv-function",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "a",
+     "why": "An EPSS above about 7 mm supports reduced LV systolic function, and 15 mm is well above this. In a hyperdynamic heart the leaflet comes very close to the septum. Confirm the finding with your visual assessment of the whole ventricle.",
+     "review": "03-lv-function",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "a",
+     "why": "A regurgitant aortic jet strikes the anterior mitral leaflet in diastole and stops it opening fully, so the gap to the septum widens without LV impairment. Mitral stenosis does the same. A thick septum makes EPSS read falsely low.",
+     "review": "03-lv-function",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "a",
+     "why": "The pericardium wraps the heart in front of the descending aorta, so pericardial fluid runs between the heart and the aorta. Pleural fluid lies outside the pericardium and behind the aorta.",
+     "review": "04-pericardium",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "d",
+     "why": "Epicardial fat sits in front of the heart and moves with it. Free pericardial fluid collects behind the heart first in a supine patient. A stripe in front only is more likely fat. Confirm in a second view.",
+     "review": "04-pericardium",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "b",
+     "why": "Right ventricular collapse in diastole shows the pericardial pressure exceeds the filling pressure of the RV. Effusion size does not decide tamponade: a small effusion which builds quickly can cause it. A large IVC supports tamponade but is common in other conditions.",
+     "review": "04-pericardium",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "b",
+     "why": "The RV is normally smaller than two thirds of the LV in the apical four-chamber view. An RV equal to or larger than the LV is dilated. When the RV is under pressure, the septum bows towards the LV, making a D shape in short axis.",
+     "review": "05-right-heart-venous",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "c",
+     "why": "The IVC is the vessel which enters the right atrium. Thick, bright, pulsatile walls and branches running forwards, the coeliac trunk and superior mesenteric artery, belong to the aorta.",
+     "review": "05-right-heart-venous",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "d",
+     "why": "Below the top of the column, blood fills the vein. Above it, the vein is empty and its walls meet. The collapse point is the ultrasound equivalent of the top of the visible pulsation in a clinical JVP. Vein width varies with position, probe pressure and breathing.",
+     "review": "05-right-heart-venous",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "d",
+     "why": "Ultrasound must not lengthen pauses in compressions. Position the probe in the subcostal view beforehand, record no more than 10 seconds, and interpret the clip once compressions restart. Ultrasound findings alone do not decide when to stop resuscitation.",
+     "review": "06-pitfalls-documentation",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q15",
+     "correct": "d",
+     "why": "Documenting the views obtained and not obtained shows the limits of your scan to the next clinician. Recording a structure as normal when you did not see it well is the most common cause of a confident wrong report.",
+     "review": "06-pitfalls-documentation",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Context: the focused questions",
+     "path": "/elearning/cardiac/learn/context/"
+    },
+    "02-views": {
+     "title": "The four views",
+     "path": "/elearning/cardiac/learn/views/"
+    },
+    "03-lv-function": {
+     "title": "Left ventricular function: by eye and by EPSS",
+     "path": "/elearning/cardiac/learn/lv-function/"
+    },
+    "04-pericardium": {
+     "title": "The pericardium: effusion, pleural fluid and tamponade",
+     "path": "/elearning/cardiac/learn/pericardium/"
+    },
+    "05-right-heart-venous": {
+     "title": "The right heart, the IVC and the ultrasound JVP",
+     "path": "/elearning/cardiac/learn/right-heart-venous/"
+    },
+    "06-pitfalls-documentation": {
+     "title": "Pitfalls, documentation and safe practice",
+     "path": "/elearning/cardiac/learn/pitfalls-documentation/"
+    },
+    "07-cases": {
+     "title": "Cases",
+     "path": "/elearning/cardiac/learn/cases/"
+    }
+   }
+  },
   "dvt": {
    "slug": "dvt",
    "code": "DVT",
@@ -217,6 +437,446 @@
     "07-cases": {
      "title": "Cases",
      "path": "/elearning/dvt/learn/cases/"
+    }
+   }
+  },
+  "lumps": {
+   "slug": "lumps",
+   "code": "LMP",
+   "title": "The hot or pulsatile lump: cellulitis, abscess, haematoma or pseudoaneurysm",
+   "cpdHours": 1,
+   "passMark": 80,
+   "draft": true,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "b",
+     "why": "Fluctuance is unreliable, especially in deep, small or indurated collections. A 2020 meta-analysis found ultrasound diagnosed abscess with a sensitivity of about 95%, outperforming examination alone.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "b",
+     "why": "Any groin lump sits close to the femoral artery. Pseudoaneurysms occur after puncture, after injecting drug use and after trauma, and they do not always pulsate or have a bruit. Colour Doppler takes seconds.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "d",
+     "why": "Fat thickness and brightness vary between patients and areas. Scanning normal tissue first gives you a baseline, so you can judge whether the tissue over the swelling is abnormal.",
+     "review": "02-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "a",
+     "why": "A high colour scale misses slow flow, such as in a partly clotted pseudoaneurysm sac. A low scale picks it up. Firm pressure can stop slow flow altogether.",
+     "review": "02-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "c",
+     "why": "Dark strands of fluid between thickened fat lobules make the cobblestone pattern. It fits cellulitis, but heart failure, lymphoedema and venous disease cause it too. It is not a collection.",
+     "review": "03-cellulitis-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "a",
+     "why": "Thick pus looks solid on a still image. Gentle pressure and release makes liquid contents swirl. This separates an abscess from solid tissue or phlegmon.",
+     "review": "03-cellulitis-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "c",
+     "why": "Fluid tracking along the deep fascia and gas in the tissues suggest necrotising infection, a surgical emergency. Ultrasound does not exclude it, so clinical suspicion drives urgent surgical review.",
+     "review": "03-cellulitis-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "d",
+     "why": "The to-and-fro waveform shows flow into the sac in systole and back to the artery in diastole through the neck. Swirl shows moving blood but not the connection. Clot occurs in haematomas and in partly thrombosed sacs.",
+     "review": "04-vascular-lumps",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "c",
+     "why": "From medial to lateral: vein, artery, nerve. Find the artery in transverse, with the vein medial to it, then follow it to the swelling.",
+     "review": "04-vascular-lumps",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "b",
+     "why": "A true aneurysm is a widening of the whole artery. A pseudoaneurysm is a leak through the wall, held by surrounding tissue, joined to the artery by a narrow neck. Both can contain clot and both show flow.",
+     "review": "04-vascular-lumps",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "a",
+     "why": "Limb ischaemia, rapid growth, skin necrosis and active bleeding all need urgent vascular review. A small sac with a long, narrow neck is often suitable for thrombin injection or observation.",
+     "review": "04-vascular-lumps",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "c",
+     "why": "Flow inside a collection means it is not a simple abscess. Vessels in the needle or blade path risk bleeding. Colour Doppler over and around the collection takes seconds and prevents both.",
+     "review": "05-safe-drainage",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "d",
+     "why": "Phlegmon is inflamed tissue without a collection. Incision finds nothing to drain. A collection can form over 24 to 48 hours, so rescan if the area does not improve.",
+     "review": "05-safe-drainage",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "b",
+     "why": "In-plane guidance shows the full length of the needle, including the tip, as it enters the collection. Out-of-plane shows only a dot where the needle crosses the beam, which can be the shaft rather than the tip.",
+     "review": "05-safe-drainage",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q15",
+     "correct": "b",
+     "why": "A haematoma is blood outside the vessels, with no flow inside and no connection to an artery. A pseudoaneurysm, a fistula and a true aneurysm all show flow. Monitor its size and the skin over it.",
+     "review": "04-vascular-lumps",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Context: what is inside the lump?",
+     "path": "/elearning/lumps/learn/context/"
+    },
+    "02-technique": {
+     "title": "Technique: the superficial scan",
+     "path": "/elearning/lumps/learn/technique/"
+    },
+    "03-cellulitis-abscess": {
+     "title": "Cellulitis or abscess: make it swirl",
+     "path": "/elearning/lumps/learn/cellulitis-abscess/"
+    },
+    "04-vascular-lumps": {
+     "title": "Vascular lumps: find the neck",
+     "path": "/elearning/lumps/learn/vascular-lumps/"
+    },
+    "05-safe-drainage": {
+     "title": "Safe drainage and documentation",
+     "path": "/elearning/lumps/learn/safe-drainage/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/lumps/learn/cases/"
+    }
+   }
+  },
+  "lung": {
+   "slug": "lung",
+   "code": "LUS",
+   "title": "Lung ultrasound in the breathless patient",
+   "cpdHours": 1.5,
+   "passMark": 80,
+   "draft": true,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "b",
+     "why": "A-lines are bright horizontal lines repeating at equal distances below the pleural line. The beam bounces between the pleura and the probe because air lies below the pleura. They appear in normal lung and in pneumothorax.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "b",
+     "why": "Lung ultrasound sees only changes which reach the pleura. Aerated lung blocks the beam, so a central consolidation stays hidden. A normal scan does not exclude a central pneumonia.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "c",
+     "why": "A probe lying along a rib shows the rib surface and its shadow. A rib never slides. Turn the probe head to foot across two ribs and find the pleural line between the rib shadows, the bat sign.",
+     "review": "02-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "c",
+     "why": "In the barcode, or stratosphere, sign, flat lines run all the way down because nothing moves below the pleural line. Moving lung produces the grainy seashore pattern. Barcode on its own does not prove pneumothorax.",
+     "review": "02-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "b",
+     "why": "B-lines start at the lung surface. If you see them, the lung is touching the chest wall, so there is no air between the pleural layers at that spot. Absent sliding here has another cause, such as adhesions.",
+     "review": "03-pneumothorax",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "c",
+     "why": "The lung point is where sliding and no sliding meet as the edge of the collapsed lung moves with breathing. Absent sliding, A-lines and the barcode sign all occur in other conditions, such as apnoea or adhesions.",
+     "review": "03-pneumothorax",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "c",
+     "why": "A lung pulse shows the lung is against the chest wall, which excludes pneumothorax under the probe. A non-ventilating left lung with a beating heart beneath it fits a tube in the right main bronchus.",
+     "review": "03-pneumothorax",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "d",
+     "why": "A B-line starts at the pleural line, reaches the bottom of the screen without fading, erases A-lines and moves with sliding. Short vertical lines which fade are comet tails and are normal.",
+     "review": "04-b-lines",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "a",
+     "why": "Cardiogenic oedema gives diffuse, even B-lines on both sides, with a normal pleural line. ARDS and pneumonitis give a patchy pattern with an irregular pleura. Focal B-lines suggest pneumonia or contusion.",
+     "review": "04-b-lines",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "b",
+     "why": "Dynamic air bronchograms show air still flowing through an open airway inside consolidated lung. This strongly supports pneumonia. Static air bronchograms occur in resorptive atelectasis and in some pneumonias.",
+     "review": "05-consolidation",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "c",
+     "why": "Consolidation which does not fill a whole lobe has an irregular, shredded deep border where it meets aerated lung. This helps separate consolidation from liver or spleen, which have smooth edges.",
+     "review": "05-consolidation",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "a",
+     "why": "Air scatters ultrasound, so aerated lung hides everything behind it. When fluid or consolidation replaces the air, the beam reaches the spine above the diaphragm, giving the spine sign.",
+     "review": "06-effusion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "a",
+     "why": "Septations, strands and swirling echoes suggest an exudate. In a febrile patient this raises the question of a complex parapneumonic effusion or empyema, which needs sampling and specialist input.",
+     "review": "06-effusion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "b",
+     "why": "The BTS guideline advises ultrasound guidance for pleural procedures. Marking the site in the procedure position, measuring the depth to fluid and checking for intercostal vessels with colour Doppler reduce complications.",
+     "review": "06-effusion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q15",
+     "correct": "d",
+     "why": "Lung findings vary from zone to zone. A zone-by-zone record shows what you looked at, what you did not, and gives a baseline for repeat scans. Ultrasound does not measure pneumothorax size reliably.",
+     "review": "07-documentation",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Context: reading artefacts",
+     "path": "/elearning/lung/learn/context/"
+    },
+    "02-technique": {
+     "title": "Technique: find the bat, then the zones",
+     "path": "/elearning/lung/learn/technique/"
+    },
+    "03-pneumothorax": {
+     "title": "Pneumothorax: absent sliding is not enough",
+     "path": "/elearning/lung/learn/pneumothorax/"
+    },
+    "04-b-lines": {
+     "title": "B-lines and interstitial syndrome",
+     "path": "/elearning/lung/learn/b-lines/"
+    },
+    "05-consolidation": {
+     "title": "Consolidation: watch the air bronchograms breathe",
+     "path": "/elearning/lung/learn/consolidation/"
+    },
+    "06-effusion": {
+     "title": "Pleural effusion: find the spine above the diaphragm",
+     "path": "/elearning/lung/learn/effusion/"
+    },
+    "07-documentation": {
+     "title": "Putting it together and documenting",
+     "path": "/elearning/lung/learn/documentation/"
+    },
+    "08-cases": {
+     "title": "Cases",
+     "path": "/elearning/lung/learn/cases/"
     }
    }
   }
