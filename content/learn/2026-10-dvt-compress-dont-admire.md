@@ -2,9 +2,9 @@
 title: "DVT: compress, don't admire"
 summary: Fresh clot is often black on screen, so a vein full of thrombus looks like a normal vein. The test is whether the walls meet when you press, in transverse, at every site.
 category: Vascular
-date: 2026-11-16
+date: 2026-10-03
 author: Dr Firas Abou-Auda
-draft: true
+draft: false
 ---
 
 A suspected proximal deep vein thrombosis (DVT, a clot in the deep veins of the thigh or behind the knee) is one of the most common reasons to pick up a probe in the emergency department. New scanners often spend their time looking for clot. Fresh clot is often anechoic, black like flowing blood, so you rarely see it. You find it by pressing.

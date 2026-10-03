@@ -2,9 +2,9 @@
 title: "Lung: absent sliding is not enough"
 summary: No sliding means look harder, not pneumothorax. B-lines or a lung pulse rule it out under the probe, and a lung point rules it in.
 category: Lung
-date: 2026-11-23
+date: 2026-10-03
 author: Dr Firas Abou-Auda
-draft: true
+draft: false
 ---
 
 You have found the bat, watched the pleural line, and seen no sliding. Many clinicians stop here and call a pneumothorax. Absent sliding tells you something is wrong. It does not tell you what.
@@ -40,8 +40,6 @@ Each sign answers one question: are the two layers of pleura touching under the 
 Place the M-mode line across the pleural line. A moving lung gives a grainy pattern below the line, the seashore sign. No movement gives flat horizontal lines all the way down, the barcode sign. At the lung point, the trace switches between the two with breathing.
 
 > **Pitfall** A large pneumothorax with a fully collapsed lung has no lung point, because the lung edge never reaches the chest wall. In a patient with signs of tension, treat the patient. Do not delay decompression to look for a lung point.
-
-Read the first step in [Lung: find the bat before you judge sliding](/learn/lung-find-the-bat/).
 
 ?? A ventilated patient has no lung sliding on the left. You see a lung pulse at several points on the left anterior chest. What is the most likely explanation?
 - Left pneumothorax
