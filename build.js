@@ -189,6 +189,25 @@ function datesBlock(c) {
     .join('')}</div>`;
 }
 
+function eventsLd(c) {
+  const [h0, h1] = (c.hours || '09:00 to 17:00').split(' to ');
+  return upcoming(c).map((d) => ({
+    '@context': 'https://schema.org',
+    '@type': 'EducationEvent',
+    name: `${c.title} (${c.level}), ${d.city ? d.city.split(',')[0] : site.region}`,
+    description: c.seoDescription || c.short,
+    startDate: `${d.date}T${h0}:00+00:00`,
+    endDate: `${d.endDate || d.date}T${h1}:00+00:00`,
+    eventStatus: 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    image: [url(c.ogImage || '/assets/og.png')],
+    url: url(`/courses/${c.slug}/`),
+    location: { '@type': 'Place', name: d.venue, address: { '@type': 'PostalAddress', ...(d.street ? { streetAddress: d.street } : {}), addressLocality: (d.city || '').split(',')[0], ...(d.city && d.city.includes(',') ? { addressRegion: d.city.split(',')[1].trim() } : {}), ...(d.postcode ? { postalCode: d.postcode } : {}), addressCountry: 'GB' } },
+    organizer: { '@type': 'Organization', name: site.name, url: url('/') },
+    ...(d.price ? { offers: { '@type': 'Offer', price: String(d.price), priceCurrency: 'GBP', availability: (d.soldOut || d.places === 0) ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock', url: d.stripeLink || url(`/courses/${c.slug}/`), validFrom: '2026-10-01' } } : {}),
+  }));
+}
+
 function courseLd(c) {
   const list = upcoming(c);
   const ld = {
@@ -468,7 +487,7 @@ for (const c of openCourses) {
     pathname: p,
     ...(c.ogImage ? { ogImage: c.ogImage } : {}),
     description: c.seoDescription || c.short,
-    jsonld: [courseLd(c), faqLd(c.faqs), breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Courses', href: '/courses/' }, { label: c.title, href: p }])],
+    jsonld: [courseLd(c), ...eventsLd(c), faqLd(c.faqs), breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Courses', href: '/courses/' }, { label: c.title, href: p }])],
     body: `${pageHero({
       eyebrow: `${c.level} course`,
       title: esc(c.title),
