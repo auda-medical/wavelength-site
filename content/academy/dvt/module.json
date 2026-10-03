@@ -8,7 +8,7 @@
   "cpdHours": 1,
   "minutes": 60,
   "passMark": 80,
-  "draft": true,
+  "draft": false,
   "pearl": "/learn/dvt-compress-dont-admire/",
   "image": "/learn/images/dvt-pearl.webp",
   "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",

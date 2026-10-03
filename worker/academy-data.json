@@ -6,7 +6,7 @@
    "title": "Proximal DVT: point-of-care compression ultrasound",
    "cpdHours": 1,
    "passMark": 80,
-   "draft": true,
+   "draft": false,
    "questions": [
     {
      "id": "q1",
