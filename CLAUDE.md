@@ -26,6 +26,7 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 
 ## Wavelength Pearls and tests
 - Pearls are the Learn posts in `content/learn/` (menu label "Pearls", URL /learn/). Each pearl's questions (`?? question`, `- wrong`, `+ correct`, `: explanation`) go on its own test page /learn/<slug>/test/ and the question bank /learn/test/. Options are shuffled at build time with a fixed seed per question (`seededShuffle` in lib/md.js), so write the correct option anywhere.
+- Newsletter cadence (agreed October 2026): one Pearl issue a week. A weekly scheduled task drafts the next issue from the next unsent pearl and tells Firas; sent issues are logged in `data/newsletter-log.json`. Every sign-up route (/subscribe/, Academy registration, app sign-up, and the optional box on verify pages) feeds the Zoho Campaigns list "Wavelength newsletter" with double opt-in. Verification never needs an account, and marketing consent is never a condition of anything.
 - Newsletter issue for a pearl: `src/email/pearl/` (live at /email/pearl/). Answer buttons link to /learn/<slug>/test/?q=1&a=<letter>, which marks that answer on arrival. After editing a pearl's first question, re-check the letters match the test page.
 - Pearl graphics come from ChatGPT. Check anatomy and laterality, remove em dashes, and note "Scan images in the graphic are illustrations, not patient scans" until real scans replace them.
 

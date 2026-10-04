@@ -1,0 +1,8 @@
+{
+  "_help": "Weekly Pearl newsletter log. One entry per issue. status: drafted (template ready in src/email/pearl/), sent (Firas has sent it from Zoho Campaigns). The weekly scheduled task picks the next pearl not listed here, mixing topics so consecutive issues differ, and avoids nerve blocks two weeks running.",
+  "cadence": "weekly",
+  "sendDay": "Tuesday morning",
+  "issues": [
+    { "slug": "dvt-compress-dont-admire", "status": "drafted", "drafted": "2026-10-04" }
+  ]
+}

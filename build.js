@@ -332,7 +332,7 @@ function subscribeForm({ id = 'sub', dark = false } = {}) {
   </form>${live ? `<iframe name="zc-${id}" title="Newsletter sign-up" hidden tabindex="-1" style="display:none"></iframe>` : ''}`;
 }
 
-function subscribeBand(title = 'Ultrasound skills, <em>in your inbox.</em>', text = 'One email a month: a practical scanning skill, new Learn posts and course dates before they go public.') {
+function subscribeBand(title = 'Ultrasound skills, <em>in your inbox.</em>', text = 'One email a week: a practical scanning skill, new Learn posts and course dates before they go public.') {
   return `<section class="section sub-band"><div class="wrap split">
     <div><p class="eyebrow reveal">Newsletter</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,60px);margin-top:20px">${title}</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">${text}</p></div>
     <div class="reveal" data-d="1">${subscribeForm()}</div>
@@ -871,9 +871,9 @@ pages['/contact/'] = layout({
 pages['/subscribe/'] = layout({
   title: 'Newsletter | Ultrasound skills by email',
   pathname: '/subscribe/',
-  description: 'Subscribe to the Wavelength newsletter: one practical point-of-care ultrasound skill a month, new Learn posts and early access to course dates.',
+  description: 'Subscribe to the Wavelength newsletter: one practical point-of-care ultrasound skill a week, new Learn posts and early access to course dates.',
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Newsletter', href: '/subscribe/' }])],
-  body: `${pageHero({ eyebrow: 'Newsletter', title: 'Ultrasound skills, <em style="font-style:italic;color:var(--teal-light)">monthly.</em>', lede: 'One email a month from the Wavelength faculty. A practical scanning skill, new Learn posts, and course dates before they go public.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Newsletter' }] })}
+  body: `${pageHero({ eyebrow: 'Newsletter', title: 'Ultrasound skills, <em style="font-style:italic;color:var(--teal-light)">weekly.</em>', lede: 'One email a week from the Wavelength faculty. A practical scanning Pearl with a short test, new Academy modules, and course dates before they go public.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Newsletter' }] })}
 <section class="section"><div class="wrap split">
   <div>
     <p class="eyebrow reveal">What you receive</p>
@@ -1047,7 +1047,7 @@ function registerCard(m) {
       <label>Role<select name="role" required><option value="">Choose your role</option>${ROLES.map((r) => `<option>${r}</option>`).join('')}</select></label>
       <label>Workplace (optional)<input name="organisation" autocomplete="organization" maxlength="160"></label>
       <label class="ac-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
-      <label class="consent"><input type="checkbox" name="newsletter" value="yes"${AC.newsletterRequired ? ' required' : ''}><span>Send me the Wavelength newsletter: a monthly ultrasound skill, new pearls and modules, and course dates. ${AC.newsletterRequired ? 'Joining the newsletter is part of free Academy registration. ' : ''}I can unsubscribe at any time.</span></label>
+      <label class="consent"><input type="checkbox" name="newsletter" value="yes"${AC.newsletterRequired ? ' required' : ''}><span>Send me the Wavelength newsletter: a weekly ultrasound Pearl, new modules, and course dates. ${AC.newsletterRequired ? 'Joining the newsletter is part of free Academy registration. ' : ''}I can unsubscribe at any time.</span></label>
       <label class="consent"><input type="checkbox" name="privacy" value="yes" required><span>Wavelength stores my details to run the Academy, issue and verify my certificate, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
       <p class="form-error" data-ac-error hidden></p>
       <div><button class="btn btn-teal" type="submit">Register and start ${arrow}</button></div>
@@ -1154,7 +1154,7 @@ pages['/elearning/verify/'] = layout({
   <label>Certificate code<input name="code" required maxlength="40" autocomplete="off" placeholder="WL-DVT-XXXX-XXXX" style="text-transform:uppercase"></label>
   <div><button class="btn" type="submit">Check certificate ${arrow}</button></div>
   <p class="form-error" data-show-on="error" hidden>We could not find a certificate with that code. Check it and try again.</p>
-</form></div></section>`,
+</form></div></section>${subscribeBand('Supervising or appraising? <em>Get the weekly Pearl.</em>', 'One free email a week: a practical scanning skill with a short test, new Academy modules and course dates. Optional. No account needed to verify.')}`,
 });
 
 // One place to check any Wavelength code: WL- certificates, SO- sign-offs, EV- verified summaries.
@@ -1175,6 +1175,7 @@ pages['/verify/'] = layout({
 </div>
 <p style="margin-top:32px;color:var(--slate)">Scanning the QR code on a certificate or export opens the same check. Wavelength holds no patient identifiers, and checks never show findings or images.</p>
 </div></section>
+${subscribeBand('Supervising or appraising? <em>Get the weekly Pearl.</em>', 'One free email a week: a practical scanning skill with a short test, new Academy modules and course dates. Optional. No account needed to verify.')}
 <script>(function(){var go=function(v){v=String(v||'').toUpperCase().replace(/\\s+/g,'');if(/^WL-/.test(v))return '/elearning/verify/?code='+encodeURIComponent(v);if(/^(SO|EV)-/.test(v))return '/app/verify/?code='+encodeURIComponent(v);return null;};var q=new URLSearchParams(location.search).get('code');if(q){var u=go(q);if(u){location.replace(u);return;}document.getElementById('verr').hidden=false;document.getElementById('vcode').value=q;}document.getElementById('vform').addEventListener('submit',function(e){e.preventDefault();var u=go(document.getElementById('vcode').value);if(u)location.href=u;else document.getElementById('verr').hidden=false;});})();</script>`,
 });
 

@@ -29,6 +29,7 @@
       '<p class="small muted">Counts and sign-offs come from the server copy of the learner\'s logbook at the time shown, not from the exported file. Wavelength holds no patient identifiers and no scan images. Supervisor accreditation is as each supervisor stated it. The accrediting body or training programme decides what evidence it accepts.</p>';
   }
 
+var PEARL_CTA = '<div class="card"><h3 style="margin-bottom:6px">One ultrasound Pearl a week</h3><p class="small muted" style="margin-bottom:12px">Free practical scanning tips for clinicians who scan, supervise or teach. Optional, and you can leave at any time.</p><a class="btn ghost block" href="/subscribe/?utm_source=verify&amp;utm_medium=web">Get the weekly Pearl</a></div>';
   if (document.body.dataset.page === 'verify') {
     var code = new URLSearchParams(location.search).get('code') || '';
     lede.textContent = 'Check a supervisor sign-off (SO-) or a verified logbook summary (EV-) from a Wavelength export.';
@@ -36,10 +37,10 @@
     if (!code) { root.innerHTML = form; return; }
     fetch('/api/app/verify?code=' + encodeURIComponent(code)).then(function (r) { return r.json(); }).then(function (res) {
       if (!res.ok) { root.innerHTML = '<div class="err">' + esc(res.error) + '</div>' + form; return; }
-      if (res.kind === 'evidence') { document.getElementById('h').textContent = 'Verified summary'; lede.textContent = ''; root.innerHTML = evidenceHtml(res) + form; return; }
+      if (res.kind === 'evidence') { document.getElementById('h').textContent = 'Verified summary'; lede.textContent = ''; root.innerHTML = evidenceHtml(res) + PEARL_CTA + form; return; }
       root.innerHTML = '<div class="ok"><b>Genuine sign-off.</b> This record exists in the Wavelength logbook.</div><div class="card"><div class="detail"><dl><dt>Code</dt><dd>' + esc(res.code) + '</dd><dt>Learner</dt><dd>' + esc(res.learner) + '</dd><dt>Signed by</dt><dd>' + esc(res.supervisor) + (res.role ? ', ' + esc(res.role) : '') + '</dd>' + (res.accreditation ? '<dt>Accreditation stated</dt><dd>' + esc(res.accreditation) + '</dd>' : '') + '<dt>Method</dt><dd>' + (res.method === 'in-person' ? 'In person, signed on the learner\'s device' : 'By secure link') + (res.handSigned ? ', signed by hand' : '') + '</dd>' + (res.basis ? '<dt>Basis</dt><dd>' + ({ witnessed: 'Witnessed the scan', reviewed: 'Reviewed the images', both: 'Witnessed the scan and reviewed the images' })[res.basis] + '</dd>' : '') + '<dt>Signed</dt><dd>' + esc(fmt(res.signedAt)) + '</dd><dt>Scans confirmed</dt><dd>' + res.confirmed + ' of ' + res.entries.length + '</dd></dl></div></div>' +
         '<div class="card"><h3 style="margin-bottom:8px">Scans in this sign-off</h3>' + res.entries.map(function (e) { return '<div class="row" style="padding:6px 0;border-top:1px solid var(--line);font-size:14px"><span class="grow">' + esc((TYPES[e.type] || {}).label || e.type) + ', ' + esc(fmt(e.date)) + '</span><span class="chip ' + (e.decision === 'confirmed' ? 'green' : 'amber') + '">' + (e.decision === 'confirmed' ? 'Confirmed' : e.decision === 'query' ? 'Queried' : 'Not reviewed') + '</span></div>'; }).join('') + '</div>' +
-        '<p class="small muted">Wavelength records who signed and when. The supervisor\'s accreditation is as they stated it. The logbook holds no patient identifiers.</p>' + form;
+        '<p class="small muted">Wavelength records who signed and when. The supervisor\'s accreditation is as they stated it. The logbook holds no patient identifiers.</p>' + PEARL_CTA + form;
     });
     return;
   }
@@ -113,7 +114,7 @@
       post('/api/app/signoff/complete', d).then(function (r) {
         if (!r.ok) throw new Error(r.error || 'Could not submit.');
         lede.textContent = '';
-        root.innerHTML = '<div class="ok"><b>Thank you.</b> Your sign-off is recorded with code ' + esc(r.code) + '. The learner sees it in their logbook straight away.</div><p class="small muted">Anyone can check it at thewavelength.co.uk/verify.</p><a class="btn ghost block" href="/">Visit Wavelength</a>';
+        root.innerHTML = '<div class="ok"><b>Thank you.</b> Your sign-off is recorded with code ' + esc(r.code) + '. The learner sees it in their logbook straight away.</div><p class="small muted">Anyone can check it at thewavelength.co.uk/verify.</p>' + PEARL_CTA + '<a class="btn ghost block" href="/">Visit Wavelength</a>';
       }).catch(function (ex) { b.disabled = false; b.textContent = 'Submit sign-off'; err.textContent = ex.message; err.hidden = false; });
     });
   });
