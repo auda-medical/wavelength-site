@@ -1,213 +1,3093 @@
 {
-  "_help": "Logbook pathways for the Wavelength app (/app/). Scan types define the findings form. Pathways group scan types into modules with targets. Match keys: 'f.<field>' reads a finding, other keys read the entry (overall, setting, supervision). Check targets against each body's current curriculum pack and update 'checked' when you do.",
-  "settings": ["Emergency department", "Acute medical unit", "Intensive care", "Ward", "Pre-hospital", "Clinic", "Course or simulation", "Healthy volunteer"],
-  "ageBands": ["Under 16", "16 to 30", "31 to 50", "51 to 70", "Over 70"],
-  "supervision": [
-    { "id": "direct", "label": "Directly supervised", "help": "A supervisor or mentor watched you scan." },
-    { "id": "mentored", "label": "Independent, reviewed by mentor", "help": "You scanned alone and a mentor reviewed your images later." },
-    { "id": "independent", "label": "Independent", "help": "Your own scan, not reviewed." }
+  "_help": "Logbook pathways for the Wavelength app (/app/). Scan types define the findings form. Pathways group scan types into modules with targets. Match keys: 'f.<field>' reads a finding, other keys read the entry (overall, setting, supervision). Check targets against each body's current curriculum pack and update 'checked' when you do. Pathways may carry 'desc' and 'region' (shown when choosing), rule 'any' (one of several matches) and 'not' (excluded entries), and module 'assessments' (structured assessments recorded in the app, counted by kind and outcome). Module 'filter' (a rule object) limits which entries count, and 'topics' lists curriculum topics for reference.",
+  "settings": [
+    "Emergency department",
+    "Acute medical unit",
+    "Intensive care",
+    "Ward",
+    "Pre-hospital",
+    "Clinic",
+    "Course or simulation",
+    "Healthy volunteer"
   ],
-  "confirmation": ["CT", "Formal ultrasound or echo", "Surgery or procedure", "Clinical course", "Other imaging", "None", "Awaited"],
+  "ageBands": [
+    "Under 16",
+    "16 to 30",
+    "31 to 50",
+    "51 to 70",
+    "Over 70"
+  ],
+  "supervision": [
+    {
+      "id": "direct",
+      "label": "Directly supervised",
+      "help": "A supervisor or mentor watched you scan."
+    },
+    {
+      "id": "mentored",
+      "label": "Independent, reviewed by mentor",
+      "help": "You scanned alone and a mentor reviewed your images later."
+    },
+    {
+      "id": "independent",
+      "label": "Independent",
+      "help": "Your own scan, not reviewed."
+    }
+  ],
+  "confirmation": [
+    "CT",
+    "Formal ultrasound or echo",
+    "Surgery or procedure",
+    "Clinical course",
+    "Other imaging",
+    "None",
+    "Awaited"
+  ],
   "types": [
-    { "id": "aaa", "label": "Abdominal aorta (AAA)", "short": "AAA", "learn": "/elearning/abdomen/", "fields": [
-      { "id": "visualised", "label": "Aorta visualised", "type": "choice", "options": ["Whole length", "Partially", "Not seen"] },
-      { "id": "diameter", "label": "Maximum diameter", "type": "number", "unit": "mm" },
-      { "id": "aaa", "label": "Aneurysm (3 cm or more)", "type": "choice", "options": ["Yes", "No", "Indeterminate"] }
-    ] },
-    { "id": "efast", "label": "eFAST or FAFF", "short": "eFAST", "learn": "/learn/", "fields": [
-      { "id": "ruq", "label": "Right upper quadrant", "type": "choice", "options": ["No free fluid", "Free fluid", "Not seen"] },
-      { "id": "luq", "label": "Left upper quadrant", "type": "choice", "options": ["No free fluid", "Free fluid", "Not seen"] },
-      { "id": "pelvis", "label": "Pelvis", "type": "choice", "options": ["No free fluid", "Free fluid", "Not seen"] },
-      { "id": "pericardium", "label": "Pericardium", "type": "choice", "options": ["No effusion", "Effusion", "Not seen"] },
-      { "id": "ptx", "label": "Pneumothorax", "type": "choice", "options": ["None", "Right", "Left", "Both", "Not assessed"] },
-      { "id": "pleural", "label": "Pleural fluid", "type": "choice", "options": ["None", "Right", "Left", "Both", "Not assessed"] }
-    ] },
-    { "id": "els", "label": "Echo in life support (ELS)", "short": "ELS", "learn": "/elearning/cardiac/", "fields": [
-      { "id": "context", "label": "Context", "type": "choice", "options": ["Cardiac arrest, PEA", "Cardiac arrest, asystole", "Peri-arrest"] },
-      { "id": "activity", "label": "Cardiac activity", "type": "choice", "options": ["Coordinated", "Uncoordinated", "None"] },
-      { "id": "pericardial", "label": "Pericardial effusion", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "rv", "label": "RV dilated", "type": "choice", "options": ["Yes", "No", "Not assessed"] },
-      { "id": "pause", "label": "Image captured within a 10-second pause", "type": "choice", "options": ["Yes", "No"] }
-    ] },
-    { "id": "shock", "label": "Shock assessment", "short": "Shock", "learn": "/elearning/cardiac/", "fields": [
-      { "id": "lv", "label": "LV function", "type": "choice", "options": ["Hyperdynamic", "Normal", "Reduced", "Severely reduced"] },
-      { "id": "rv", "label": "RV dilated", "type": "choice", "options": ["Yes", "No", "Not assessed"] },
-      { "id": "pericardial", "label": "Pericardial effusion", "type": "choice", "options": ["None", "Effusion", "Tamponade physiology"] },
-      { "id": "ivc", "label": "IVC", "type": "choice", "options": ["Small, collapsing", "Normal", "Plethoric", "Not seen"] },
-      { "id": "lungs", "label": "Lungs", "type": "choice", "options": ["A-lines", "Diffuse B-lines", "Pneumothorax", "Effusion", "Not assessed"] },
-      { "id": "fluid", "label": "Abdominal free fluid", "type": "choice", "options": ["No", "Yes", "Not assessed"] },
-      { "id": "aorta", "label": "Aorta", "type": "choice", "options": ["Normal", "Aneurysm", "Not assessed"] },
-      { "id": "type", "label": "Shock type suggested", "type": "choice", "options": ["Hypovolaemic", "Distributive", "Cardiogenic", "Obstructive", "Mixed", "Unclear"] }
-    ] },
-    { "id": "cardiac", "label": "Focused cardiac ultrasound", "short": "Heart", "learn": "/elearning/cardiac/", "fields": [
-      { "id": "views", "label": "Views obtained", "type": "multi", "options": ["PLAX", "PSAX", "A4C", "Subcostal", "IVC"] },
-      { "id": "lv", "label": "LV function", "type": "choice", "options": ["Hyperdynamic", "Normal", "Reduced", "Severely reduced"] },
-      { "id": "rv", "label": "RV dilated", "type": "choice", "options": ["Yes", "No", "Not assessed"] },
-      { "id": "pericardial", "label": "Pericardial effusion", "type": "choice", "options": ["None", "Effusion", "Tamponade physiology"] },
-      { "id": "ivc", "label": "IVC", "type": "choice", "options": ["Small, collapsing", "Normal", "Plethoric", "Not seen"] }
-    ] },
-    { "id": "lung", "label": "Lung and pleura", "short": "Lung", "learn": "/elearning/lung/", "fields": [
-      { "id": "zones", "label": "Zones scanned", "type": "choice", "options": ["6", "8", "12", "Focused"] },
-      { "id": "sliding", "label": "Lung sliding", "type": "choice", "options": ["Present throughout", "Absent in places", "Not assessed"] },
-      { "id": "blines", "label": "B-lines", "type": "choice", "options": ["None", "Focal", "Diffuse"] },
-      { "id": "consolidation", "label": "Consolidation or collapse", "type": "choice", "options": ["No", "Yes"] },
-      { "id": "effusion", "label": "Pleural effusion", "type": "choice", "options": ["None", "Small", "Moderate", "Large"] },
-      { "id": "marked", "label": "Site marked for a procedure", "type": "choice", "options": ["No", "Yes"] },
-      { "id": "ptx", "label": "Pneumothorax", "type": "choice", "options": ["No", "Yes", "Not assessed"] }
-    ] },
-    { "id": "abdo", "label": "Abdomen and renal tract", "short": "Abdo/renal", "learn": "/elearning/abdomen/", "fields": [
-      { "id": "fluid", "label": "Peritoneal free fluid", "type": "choice", "options": ["None", "Small", "Moderate", "Large"] },
-      { "id": "marked", "label": "Site marked for a procedure", "type": "choice", "options": ["No", "Yes"] },
-      { "id": "hydro", "label": "Hydronephrosis", "type": "choice", "options": ["None", "Mild", "Moderate", "Severe"] },
-      { "id": "side", "label": "Side", "type": "choice", "options": ["Right", "Left", "Both", "Not applicable"] },
-      { "id": "bladder", "label": "Bladder", "type": "choice", "options": ["Empty", "Normal", "Distended", "Not seen"] },
-      { "id": "volume", "label": "Bladder volume", "type": "number", "unit": "mL" }
-    ] },
-    { "id": "dvt", "label": "DVT (compression)", "short": "DVT", "learn": "/elearning/dvt/", "fields": [
-      { "id": "side", "label": "Leg", "type": "choice", "options": ["Right", "Left", "Both"] },
-      { "id": "method", "label": "Method", "type": "choice", "options": ["2-point", "3-point", "Whole leg"] },
-      { "id": "cfv", "label": "Common femoral vein", "type": "choice", "options": ["Compressible", "Not compressible", "Not seen"] },
-      { "id": "pop", "label": "Popliteal vein", "type": "choice", "options": ["Compressible", "Not compressible", "Not seen"] },
-      { "id": "dvt", "label": "DVT", "type": "choice", "options": ["No", "Yes", "Indeterminate"] }
-    ] },
-    { "id": "cvc", "label": "Central venous access", "short": "CVC", "learn": "/learn/", "fields": [
-      { "id": "site", "label": "Site", "type": "choice", "options": ["Internal jugular", "Femoral", "Axillary or subclavian"] },
-      { "id": "side", "label": "Side", "type": "choice", "options": ["Right", "Left"] },
-      { "id": "attempts", "label": "Needle passes", "type": "number" },
-      { "id": "tip", "label": "Needle tip seen throughout", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "success", "label": "Successful", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "complication", "label": "Complication", "type": "text" }
-    ] },
-    { "id": "picc", "label": "PICC or midline", "short": "PICC", "learn": "/learn/", "fields": [
-      { "id": "vein", "label": "Vein", "type": "choice", "options": ["Basilic", "Brachial", "Cephalic", "Other"] },
-      { "id": "attempts", "label": "Needle passes", "type": "number" },
-      { "id": "success", "label": "Successful", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "complication", "label": "Complication", "type": "text" }
-    ] },
-    { "id": "pva", "label": "Peripheral vascular access", "short": "PIV", "learn": "/learn/", "fields": [
-      { "id": "site", "label": "Site", "type": "choice", "options": ["Antecubital fossa", "Upper arm", "Forearm", "Pedal", "Other"] },
-      { "id": "artery", "label": "Artery and vein told apart", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "tip", "label": "Needle tip seen in the vein", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "attempts", "label": "Needle passes", "type": "number" },
-      { "id": "success", "label": "Successful", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "sim", "label": "On a simulation arm", "type": "choice", "options": ["No", "Yes"] }
-    ] },
-    { "id": "fib", "label": "Fascia iliaca block", "short": "FIB", "learn": "/learn/", "fields": [
-      { "id": "approach", "label": "Approach", "type": "choice", "options": ["Supra-inguinal", "Infra-inguinal"] },
-      { "id": "side", "label": "Side", "type": "choice", "options": ["Right", "Left"] },
-      { "id": "agent", "label": "Agent and volume", "type": "text" },
-      { "id": "spread", "label": "Spread seen under fascia", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "complication", "label": "Complication", "type": "text" }
-    ] },
-    { "id": "block", "label": "Other nerve block", "short": "Block", "learn": "/learn/", "fields": [
-      { "id": "block", "label": "Block", "type": "text" },
-      { "id": "side", "label": "Side", "type": "choice", "options": ["Right", "Left", "Midline", "Bilateral"] },
-      { "id": "agent", "label": "Agent and volume", "type": "text" },
-      { "id": "complication", "label": "Complication", "type": "text" }
-    ] },
-    { "id": "lp", "label": "Ultrasound-assisted LP", "short": "LP", "learn": "/learn/", "fields": [
-      { "id": "habitus", "label": "Body habitus", "type": "choice", "options": ["Slim", "Average", "Raised BMI", "Difficult landmarks"] },
-      { "id": "landmarks", "label": "Midline and interspace identified", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "marked", "label": "Site marked", "type": "choice", "options": ["Yes", "No"] },
-      { "id": "lp", "label": "LP result", "type": "choice", "options": ["Successful", "Unsuccessful", "Not performed"] },
-      { "id": "manikin", "label": "On a manikin", "type": "choice", "options": ["No", "Yes"] }
-    ] },
-    { "id": "msk", "label": "Soft tissue and musculoskeletal", "short": "MSK", "learn": "/elearning/msk/", "fields": [
-      { "id": "region", "label": "Region", "type": "text" },
-      { "id": "diagnosis", "label": "Ultrasound diagnosis", "type": "text" }
-    ] },
-    { "id": "ocular", "label": "Ocular", "short": "Eye", "learn": "/elearning/eye-scrotum/", "fields": [
-      { "id": "finding", "label": "Finding", "type": "choice", "options": ["Normal", "Retinal detachment", "Vitreous haemorrhage or detachment", "Raised ONSD", "Other"] },
-      { "id": "onsd", "label": "Optic nerve sheath diameter", "type": "number", "unit": "mm" }
-    ] },
-    { "id": "other", "label": "Other application", "short": "Other", "learn": "/learn/", "fields": [
-      { "id": "application", "label": "Application", "type": "text" },
-      { "id": "diagnosis", "label": "Ultrasound diagnosis", "type": "text" }
-    ] }
+    {
+      "id": "aaa",
+      "label": "Abdominal aorta (AAA)",
+      "short": "AAA",
+      "learn": "/elearning/abdomen/",
+      "fields": [
+        {
+          "id": "visualised",
+          "label": "Aorta visualised",
+          "type": "choice",
+          "options": [
+            "Whole length",
+            "Partially",
+            "Not seen"
+          ]
+        },
+        {
+          "id": "diameter",
+          "label": "Maximum diameter",
+          "type": "number",
+          "unit": "mm"
+        },
+        {
+          "id": "aaa",
+          "label": "Aneurysm (3 cm or more)",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No",
+            "Indeterminate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "efast",
+      "label": "eFAST or FAFF",
+      "short": "eFAST",
+      "learn": "/elearning/abdomen/",
+      "fields": [
+        {
+          "id": "ruq",
+          "label": "Right upper quadrant",
+          "type": "choice",
+          "options": [
+            "No free fluid",
+            "Free fluid",
+            "Not seen"
+          ]
+        },
+        {
+          "id": "luq",
+          "label": "Left upper quadrant",
+          "type": "choice",
+          "options": [
+            "No free fluid",
+            "Free fluid",
+            "Not seen"
+          ]
+        },
+        {
+          "id": "pelvis",
+          "label": "Pelvis",
+          "type": "choice",
+          "options": [
+            "No free fluid",
+            "Free fluid",
+            "Not seen"
+          ]
+        },
+        {
+          "id": "pericardium",
+          "label": "Pericardium",
+          "type": "choice",
+          "options": [
+            "No effusion",
+            "Effusion",
+            "Not seen"
+          ]
+        },
+        {
+          "id": "ptx",
+          "label": "Pneumothorax",
+          "type": "choice",
+          "options": [
+            "None",
+            "Right",
+            "Left",
+            "Both",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "pleural",
+          "label": "Pleural fluid",
+          "type": "choice",
+          "options": [
+            "None",
+            "Right",
+            "Left",
+            "Both",
+            "Not assessed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "els",
+      "label": "Echo in life support (ELS)",
+      "short": "ELS",
+      "learn": "/elearning/cardiac/",
+      "fields": [
+        {
+          "id": "context",
+          "label": "Context",
+          "type": "choice",
+          "options": [
+            "Cardiac arrest, PEA",
+            "Cardiac arrest, asystole",
+            "Peri-arrest"
+          ]
+        },
+        {
+          "id": "activity",
+          "label": "Cardiac activity",
+          "type": "choice",
+          "options": [
+            "Coordinated",
+            "Uncoordinated",
+            "None"
+          ]
+        },
+        {
+          "id": "pericardial",
+          "label": "Pericardial effusion",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "rv",
+          "label": "RV dilated",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "pause",
+          "label": "Image captured within a 10-second pause",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shock",
+      "label": "Shock assessment",
+      "short": "Shock",
+      "learn": "/elearning/cardiac/",
+      "fields": [
+        {
+          "id": "lv",
+          "label": "LV function",
+          "type": "choice",
+          "options": [
+            "Hyperdynamic",
+            "Normal",
+            "Reduced",
+            "Severely reduced"
+          ]
+        },
+        {
+          "id": "rv",
+          "label": "RV dilated",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "pericardial",
+          "label": "Pericardial effusion",
+          "type": "choice",
+          "options": [
+            "None",
+            "Effusion",
+            "Tamponade physiology"
+          ]
+        },
+        {
+          "id": "ivc",
+          "label": "IVC",
+          "type": "choice",
+          "options": [
+            "Small, collapsing",
+            "Normal",
+            "Plethoric",
+            "Not seen"
+          ]
+        },
+        {
+          "id": "lungs",
+          "label": "Lungs",
+          "type": "choice",
+          "options": [
+            "A-lines",
+            "Diffuse B-lines",
+            "Pneumothorax",
+            "Effusion",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "fluid",
+          "label": "Abdominal free fluid",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "aorta",
+          "label": "Aorta",
+          "type": "choice",
+          "options": [
+            "Normal",
+            "Aneurysm",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "type",
+          "label": "Shock type suggested",
+          "type": "choice",
+          "options": [
+            "Hypovolaemic",
+            "Distributive",
+            "Cardiogenic",
+            "Obstructive",
+            "Mixed",
+            "Unclear"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cardiac",
+      "label": "Focused cardiac ultrasound",
+      "short": "Heart",
+      "learn": "/elearning/cardiac/",
+      "fields": [
+        {
+          "id": "views",
+          "label": "Views obtained",
+          "type": "multi",
+          "options": [
+            "PLAX",
+            "PSAX",
+            "A4C",
+            "Subcostal",
+            "IVC"
+          ]
+        },
+        {
+          "id": "lv",
+          "label": "LV function",
+          "type": "choice",
+          "options": [
+            "Hyperdynamic",
+            "Normal",
+            "Reduced",
+            "Severely reduced"
+          ]
+        },
+        {
+          "id": "rv",
+          "label": "RV dilated",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "pericardial",
+          "label": "Pericardial effusion",
+          "type": "choice",
+          "options": [
+            "None",
+            "Effusion",
+            "Tamponade physiology"
+          ]
+        },
+        {
+          "id": "ivc",
+          "label": "IVC",
+          "type": "choice",
+          "options": [
+            "Small, collapsing",
+            "Normal",
+            "Plethoric",
+            "Not seen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lung",
+      "label": "Lung and pleura",
+      "short": "Lung",
+      "learn": "/elearning/lung/",
+      "fields": [
+        {
+          "id": "zones",
+          "label": "Zones scanned",
+          "type": "choice",
+          "options": [
+            "6",
+            "8",
+            "12",
+            "Focused"
+          ]
+        },
+        {
+          "id": "sliding",
+          "label": "Lung sliding",
+          "type": "choice",
+          "options": [
+            "Present throughout",
+            "Absent in places",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "blines",
+          "label": "B-lines",
+          "type": "choice",
+          "options": [
+            "None",
+            "Focal",
+            "Diffuse"
+          ]
+        },
+        {
+          "id": "consolidation",
+          "label": "Consolidation or collapse",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        },
+        {
+          "id": "effusion",
+          "label": "Pleural effusion",
+          "type": "choice",
+          "options": [
+            "None",
+            "Small",
+            "Moderate",
+            "Large"
+          ]
+        },
+        {
+          "id": "marked",
+          "label": "Site marked for a procedure",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        },
+        {
+          "id": "ptx",
+          "label": "Pneumothorax",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes",
+            "Not assessed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "abdo",
+      "label": "Abdomen and renal tract",
+      "short": "Abdo/renal",
+      "learn": "/elearning/abdomen/",
+      "fields": [
+        {
+          "id": "fluid",
+          "label": "Peritoneal free fluid",
+          "type": "choice",
+          "options": [
+            "None",
+            "Small",
+            "Moderate",
+            "Large"
+          ]
+        },
+        {
+          "id": "marked",
+          "label": "Site marked for a procedure",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        },
+        {
+          "id": "hydro",
+          "label": "Hydronephrosis",
+          "type": "choice",
+          "options": [
+            "None",
+            "Mild",
+            "Moderate",
+            "Severe"
+          ]
+        },
+        {
+          "id": "side",
+          "label": "Side",
+          "type": "choice",
+          "options": [
+            "Right",
+            "Left",
+            "Both",
+            "Not applicable"
+          ]
+        },
+        {
+          "id": "bladder",
+          "label": "Bladder",
+          "type": "choice",
+          "options": [
+            "Empty",
+            "Normal",
+            "Distended",
+            "Not seen"
+          ]
+        },
+        {
+          "id": "volume",
+          "label": "Bladder volume",
+          "type": "number",
+          "unit": "mL"
+        }
+      ]
+    },
+    {
+      "id": "dvt",
+      "label": "DVT (compression)",
+      "short": "DVT",
+      "learn": "/elearning/dvt/",
+      "fields": [
+        {
+          "id": "side",
+          "label": "Leg",
+          "type": "choice",
+          "options": [
+            "Right",
+            "Left",
+            "Both"
+          ]
+        },
+        {
+          "id": "method",
+          "label": "Method",
+          "type": "choice",
+          "options": [
+            "2-point",
+            "3-point",
+            "Whole leg"
+          ]
+        },
+        {
+          "id": "cfv",
+          "label": "Common femoral vein",
+          "type": "choice",
+          "options": [
+            "Compressible",
+            "Not compressible",
+            "Not seen"
+          ]
+        },
+        {
+          "id": "pop",
+          "label": "Popliteal vein",
+          "type": "choice",
+          "options": [
+            "Compressible",
+            "Not compressible",
+            "Not seen"
+          ]
+        },
+        {
+          "id": "dvt",
+          "label": "DVT",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes",
+            "Indeterminate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cvc",
+      "label": "Central venous access",
+      "short": "CVC",
+      "learn": "/learn/#topic-heart",
+      "fields": [
+        {
+          "id": "site",
+          "label": "Site",
+          "type": "choice",
+          "options": [
+            "Internal jugular",
+            "Femoral",
+            "Axillary or subclavian"
+          ]
+        },
+        {
+          "id": "side",
+          "label": "Side",
+          "type": "choice",
+          "options": [
+            "Right",
+            "Left"
+          ]
+        },
+        {
+          "id": "guidance",
+          "label": "Guidance",
+          "type": "choice",
+          "options": [
+            "Real time, in plane",
+            "Real time, out of plane"
+          ]
+        },
+        {
+          "id": "attempts",
+          "label": "Needle passes",
+          "type": "number"
+        },
+        {
+          "id": "tip",
+          "label": "Needle tip seen throughout",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "success",
+          "label": "Successful",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "complication",
+          "label": "Complication",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "picc",
+      "label": "PICC or midline",
+      "short": "PICC",
+      "learn": "/learn/",
+      "fields": [
+        {
+          "id": "vein",
+          "label": "Vein",
+          "type": "choice",
+          "options": [
+            "Basilic",
+            "Brachial",
+            "Cephalic",
+            "Other"
+          ]
+        },
+        {
+          "id": "guidance",
+          "label": "Guidance",
+          "type": "choice",
+          "options": [
+            "Real time, in plane",
+            "Real time, out of plane"
+          ]
+        },
+        {
+          "id": "attempts",
+          "label": "Needle passes",
+          "type": "number"
+        },
+        {
+          "id": "success",
+          "label": "Successful",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "complication",
+          "label": "Complication",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "pva",
+      "label": "Peripheral vascular access",
+      "short": "PIV",
+      "learn": "/learn/",
+      "fields": [
+        {
+          "id": "site",
+          "label": "Site",
+          "type": "choice",
+          "options": [
+            "Antecubital fossa",
+            "Upper arm",
+            "Forearm",
+            "Pedal",
+            "Other"
+          ]
+        },
+        {
+          "id": "artery",
+          "label": "Artery and vein told apart",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "tip",
+          "label": "Needle tip seen in the vein",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "attempts",
+          "label": "Needle passes",
+          "type": "number"
+        },
+        {
+          "id": "success",
+          "label": "Successful",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "sim",
+          "label": "On a simulation arm",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fib",
+      "label": "Fascia iliaca block",
+      "short": "FIB",
+      "learn": "/elearning/hip-blocks/",
+      "fields": [
+        {
+          "id": "approach",
+          "label": "Approach",
+          "type": "choice",
+          "options": [
+            "Supra-inguinal",
+            "Infra-inguinal"
+          ]
+        },
+        {
+          "id": "side",
+          "label": "Side",
+          "type": "choice",
+          "options": [
+            "Right",
+            "Left"
+          ]
+        },
+        {
+          "id": "agent",
+          "label": "Agent and volume",
+          "type": "text"
+        },
+        {
+          "id": "spread",
+          "label": "Spread seen under fascia",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "complication",
+          "label": "Complication",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "block",
+      "label": "Other nerve block",
+      "short": "Block",
+      "learn": "/elearning/nerve-blocks/",
+      "fields": [
+        {
+          "id": "block",
+          "label": "Block",
+          "type": "text"
+        },
+        {
+          "id": "side",
+          "label": "Side",
+          "type": "choice",
+          "options": [
+            "Right",
+            "Left",
+            "Midline",
+            "Bilateral"
+          ]
+        },
+        {
+          "id": "agent",
+          "label": "Agent and volume",
+          "type": "text"
+        },
+        {
+          "id": "complication",
+          "label": "Complication",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "lp",
+      "label": "Ultrasound-assisted LP",
+      "short": "LP",
+      "learn": "/learn/",
+      "fields": [
+        {
+          "id": "habitus",
+          "label": "Body habitus",
+          "type": "choice",
+          "options": [
+            "Slim",
+            "Average",
+            "Raised BMI",
+            "Difficult landmarks"
+          ]
+        },
+        {
+          "id": "landmarks",
+          "label": "Midline and interspace identified",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "marked",
+          "label": "Site marked",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "lp",
+          "label": "LP result",
+          "type": "choice",
+          "options": [
+            "Successful",
+            "Unsuccessful",
+            "Not performed"
+          ]
+        },
+        {
+          "id": "manikin",
+          "label": "On a manikin",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "msk",
+      "label": "Soft tissue and musculoskeletal",
+      "short": "MSK",
+      "learn": "/elearning/msk/",
+      "fields": [
+        {
+          "id": "region",
+          "label": "Region",
+          "type": "text"
+        },
+        {
+          "id": "diagnosis",
+          "label": "Ultrasound diagnosis",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "ocular",
+      "label": "Ocular",
+      "short": "Eye",
+      "learn": "/elearning/eye-scrotum/",
+      "fields": [
+        {
+          "id": "finding",
+          "label": "Finding",
+          "type": "choice",
+          "options": [
+            "Normal",
+            "Retinal detachment",
+            "Vitreous haemorrhage or detachment",
+            "Raised ONSD",
+            "Other"
+          ]
+        },
+        {
+          "id": "onsd",
+          "label": "Optic nerve sheath diameter",
+          "type": "number",
+          "unit": "mm"
+        }
+      ]
+    },
+    {
+      "id": "preg",
+      "label": "Early pregnancy (first trimester)",
+      "short": "Early preg",
+      "learn": "/elearning/pelvis/",
+      "fields": [
+        {
+          "id": "approach",
+          "label": "Approach",
+          "type": "choice",
+          "options": [
+            "Transabdominal",
+            "Transvaginal"
+          ]
+        },
+        {
+          "id": "iup",
+          "label": "Intrauterine pregnancy seen",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No",
+            "Indeterminate"
+          ]
+        },
+        {
+          "id": "fh",
+          "label": "Fetal heart activity",
+          "type": "choice",
+          "options": [
+            "Present",
+            "Absent",
+            "Not applicable"
+          ]
+        },
+        {
+          "id": "crl",
+          "label": "Crown-rump length",
+          "type": "number",
+          "unit": "mm"
+        },
+        {
+          "id": "fluid",
+          "label": "Free fluid in the pouch of Douglas or Morison's pouch",
+          "type": "choice",
+          "options": [
+            "None",
+            "Small",
+            "Moderate",
+            "Large"
+          ]
+        },
+        {
+          "id": "ectopic",
+          "label": "Ectopic pregnancy suspected",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "biliary",
+      "label": "Gallbladder and biliary",
+      "short": "Biliary",
+      "learn": "/elearning/biliary-bladder/",
+      "fields": [
+        {
+          "id": "stones",
+          "label": "Gallstones",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        },
+        {
+          "id": "wall",
+          "label": "Wall thickened (over 3 mm)",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        },
+        {
+          "id": "fluid",
+          "label": "Pericholecystic fluid",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        },
+        {
+          "id": "murphy",
+          "label": "Sonographic Murphy's sign",
+          "type": "choice",
+          "options": [
+            "Positive",
+            "Negative",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "cbd",
+          "label": "Common bile duct",
+          "type": "number",
+          "unit": "mm"
+        }
+      ]
+    },
+    {
+      "id": "bowel",
+      "label": "Bowel",
+      "short": "Bowel",
+      "learn": "/elearning/abdomen/",
+      "fields": [
+        {
+          "id": "question",
+          "label": "Question",
+          "type": "choice",
+          "options": [
+            "Small bowel obstruction",
+            "Appendicitis",
+            "Intussusception",
+            "Other"
+          ]
+        },
+        {
+          "id": "dilated",
+          "label": "Dilated fluid-filled loops (over 2.5 cm)",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        },
+        {
+          "id": "peristalsis",
+          "label": "To-and-fro peristalsis",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes",
+            "Not assessed"
+          ]
+        },
+        {
+          "id": "fluid",
+          "label": "Free fluid",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        },
+        {
+          "id": "diagnosis",
+          "label": "Ultrasound diagnosis",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "procedure",
+      "label": "Other ultrasound-guided procedure",
+      "short": "Procedure",
+      "learn": "/learn/",
+      "fields": [
+        {
+          "id": "procedure",
+          "label": "Procedure",
+          "type": "choice",
+          "options": [
+            "Pleural aspiration or drain",
+            "Paracentesis",
+            "Arterial line",
+            "Joint aspiration",
+            "Abscess drainage",
+            "Foreign body removal",
+            "Other"
+          ]
+        },
+        {
+          "id": "guidance",
+          "label": "Guidance",
+          "type": "choice",
+          "options": [
+            "Site marking only",
+            "Real time, in plane",
+            "Real time, out of plane"
+          ]
+        },
+        {
+          "id": "attempts",
+          "label": "Needle passes",
+          "type": "number"
+        },
+        {
+          "id": "success",
+          "label": "Successful",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "sim",
+          "label": "On a simulator",
+          "type": "choice",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        },
+        {
+          "id": "complication",
+          "label": "Complication",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "other",
+      "label": "Other application",
+      "short": "Other",
+      "learn": "/learn/",
+      "fields": [
+        {
+          "id": "application",
+          "label": "Application",
+          "type": "text"
+        },
+        {
+          "id": "diagnosis",
+          "label": "Ultrasound diagnosis",
+          "type": "text"
+        }
+      ]
+    }
   ],
   "pathways": [
     {
-      "id": "rcem", "label": "RCEM", "name": "Royal College of Emergency Medicine PoCUS",
+      "id": "rcem",
+      "label": "RCEM",
+      "name": "Royal College of Emergency Medicine PoCUS",
       "source": "RCEM PoCUS curriculum (2021 curriculum, Appendix 3). Indicative minimum scans and reflective notes. Sign-off is by DOPS.",
       "checked": "2026-10-04",
       "windowFrom": null,
       "modules": [
-        { "id": "rcem-aaa", "label": "AAA", "types": ["aaa"], "total": 25, "reflections": 5 },
-        { "id": "rcem-efast", "label": "eFAST or FAFF", "types": ["efast"], "total": 25, "reflections": 5 },
-        { "id": "rcem-els", "label": "Echo in life support", "types": ["els"], "total": 10, "reflections": 5 },
-        { "id": "rcem-shock", "label": "Shock assessment", "types": ["shock"], "total": 25, "reflections": 5 },
-        { "id": "rcem-va", "label": "Vascular access", "types": ["cvc", "picc", "pva"], "total": 5, "reflections": 5 },
-        { "id": "rcem-fib", "label": "Fascia iliaca block", "types": ["fib"], "total": 10, "reflections": 5 }
-      ]
+        {
+          "id": "rcem-aaa",
+          "label": "AAA",
+          "types": [
+            "aaa"
+          ],
+          "total": 25,
+          "reflections": 5,
+          "assessments": [
+            {
+              "kind": "dops",
+              "label": "DOPS judged competent",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rcem-efast",
+          "label": "eFAST or FAFF",
+          "types": [
+            "efast"
+          ],
+          "total": 25,
+          "reflections": 5,
+          "assessments": [
+            {
+              "kind": "dops",
+              "label": "DOPS judged competent",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rcem-els",
+          "label": "Echo in life support",
+          "types": [
+            "els"
+          ],
+          "total": 10,
+          "reflections": 5,
+          "assessments": [
+            {
+              "kind": "dops",
+              "label": "DOPS judged competent",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rcem-shock",
+          "label": "Shock assessment",
+          "types": [
+            "shock"
+          ],
+          "total": 25,
+          "reflections": 5,
+          "assessments": [
+            {
+              "kind": "dops",
+              "label": "DOPS judged competent",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rcem-va",
+          "label": "Vascular access",
+          "types": [
+            "cvc",
+            "picc",
+            "pva"
+          ],
+          "total": 5,
+          "reflections": 5,
+          "assessments": [
+            {
+              "kind": "dops",
+              "label": "DOPS judged competent",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rcem-fib",
+          "label": "Fascia iliaca block",
+          "types": [
+            "fib"
+          ],
+          "total": 10,
+          "reflections": 5,
+          "assessments": [
+            {
+              "kind": "dops",
+              "label": "DOPS judged competent",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        }
+      ],
+      "desc": "Emergency medicine trainees in the UK. AAA, eFAST, ELS, shock, vascular access and fascia iliaca block.",
+      "region": "UK"
     },
     {
-      "id": "famus", "label": "FAMUS", "name": "Focused Acute Medicine Ultrasound (Society for Acute Medicine)",
+      "id": "famus",
+      "label": "FAMUS",
+      "name": "Focused Acute Medicine Ultrasound (Society for Acute Medicine)",
       "source": "FAMUS curriculum packs: Thoracic (v1, 2023), DVT (v1.1, 2025), Peripheral access (v1.3), Ultrasound-assisted LP (v1.4), Abdominal-renal (v2.0). Training completes within 2 years of the first supervised scan.",
       "checked": "2026-10-04",
-      "windowFrom": "firstSupervised", "windowDays": 730,
+      "windowFrom": "firstSupervised",
+      "windowDays": 730,
       "modules": [
-        { "id": "famus-thoracic", "label": "Thoracic", "types": ["lung"], "total": 40, "supervised": 10, "minDays": 183, "rules": [
-          { "label": "Consolidation", "min": 5, "match": { "f.consolidation": ["Yes"] } },
-          { "label": "Increased lung water", "min": 5, "match": { "f.blines": ["Diffuse"] } },
-          { "label": "Pleural effusion", "min": 20, "match": { "f.effusion": ["Small", "Moderate", "Large"] } },
-          { "label": "Effusion site marked", "min": 5, "match": { "f.marked": ["Yes"] } }
-        ] },
-        { "id": "famus-abdo", "label": "Abdominal-renal", "types": ["abdo"], "total": 40, "supervised": 10, "minDays": 122, "rules": [
-          { "label": "Free fluid", "min": 10, "match": { "f.fluid": ["Small", "Moderate", "Large"] } },
-          { "label": "Free fluid site marked", "min": 5, "match": { "f.marked": ["Yes"] } },
-          { "label": "Hydronephrosis", "min": 5, "match": { "f.hydro": ["Mild", "Moderate", "Severe"] } },
-          { "label": "Distended bladder", "min": 5, "match": { "f.bladder": ["Distended"] } }
-        ] },
-        { "id": "famus-dvt", "label": "DVT", "types": ["dvt"], "total": 10, "supervised": 5, "minDays": 30, "rules": [
-          { "label": "DVT seen", "min": 1, "match": { "f.dvt": ["Yes"] } }
-        ] },
-        { "id": "famus-pva", "label": "Peripheral access", "types": ["pva"], "total": 5, "supervised": 3, "rules": [
-          { "label": "On a simulation arm (1 at most)", "max": 1, "match": { "f.sim": ["Yes"] } }
-        ] },
-        { "id": "famus-lp", "label": "Ultrasound-assisted LP", "types": ["lp"], "total": 10, "supervised": 10, "minDays": 91, "rules": [
-          { "label": "Successful LP", "min": 1, "match": { "f.lp": ["Successful"] } },
-          { "label": "On a manikin (2 at most)", "max": 2, "match": { "f.manikin": ["Yes"] } }
-        ] }
-      ]
+        {
+          "id": "famus-thoracic",
+          "label": "Thoracic",
+          "types": [
+            "lung"
+          ],
+          "total": 40,
+          "supervised": 10,
+          "minDays": 183,
+          "rules": [
+            {
+              "label": "Consolidation",
+              "min": 5,
+              "match": {
+                "f.consolidation": [
+                  "Yes"
+                ]
+              }
+            },
+            {
+              "label": "Increased lung water",
+              "min": 5,
+              "match": {
+                "f.blines": [
+                  "Diffuse"
+                ]
+              }
+            },
+            {
+              "label": "Pleural effusion",
+              "min": 20,
+              "match": {
+                "f.effusion": [
+                  "Small",
+                  "Moderate",
+                  "Large"
+                ]
+              }
+            },
+            {
+              "label": "Effusion site marked",
+              "min": 5,
+              "match": {
+                "f.marked": [
+                  "Yes"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Assessment of completion of training",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "famus-abdo",
+          "label": "Abdominal-renal",
+          "types": [
+            "abdo"
+          ],
+          "total": 40,
+          "supervised": 10,
+          "minDays": 122,
+          "rules": [
+            {
+              "label": "Free fluid",
+              "min": 10,
+              "match": {
+                "f.fluid": [
+                  "Small",
+                  "Moderate",
+                  "Large"
+                ]
+              }
+            },
+            {
+              "label": "Free fluid site marked",
+              "min": 5,
+              "match": {
+                "f.marked": [
+                  "Yes"
+                ]
+              }
+            },
+            {
+              "label": "Hydronephrosis",
+              "min": 5,
+              "match": {
+                "f.hydro": [
+                  "Mild",
+                  "Moderate",
+                  "Severe"
+                ]
+              }
+            },
+            {
+              "label": "Distended bladder",
+              "min": 5,
+              "match": {
+                "f.bladder": [
+                  "Distended"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Assessment of completion of training",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "famus-dvt",
+          "label": "DVT",
+          "types": [
+            "dvt"
+          ],
+          "total": 10,
+          "supervised": 5,
+          "minDays": 30,
+          "rules": [
+            {
+              "label": "DVT seen",
+              "min": 1,
+              "match": {
+                "f.dvt": [
+                  "Yes"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Assessment of completion of training",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "famus-pva",
+          "label": "Peripheral access",
+          "types": [
+            "pva"
+          ],
+          "total": 5,
+          "supervised": 3,
+          "rules": [
+            {
+              "label": "On a simulation arm (1 at most)",
+              "max": 1,
+              "match": {
+                "f.sim": [
+                  "Yes"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Assessment of completion of training",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "famus-lp",
+          "label": "Ultrasound-assisted LP",
+          "types": [
+            "lp"
+          ],
+          "total": 10,
+          "supervised": 10,
+          "minDays": 91,
+          "rules": [
+            {
+              "label": "Successful LP",
+              "min": 1,
+              "match": {
+                "f.lp": [
+                  "Successful"
+                ]
+              }
+            },
+            {
+              "label": "On a manikin (2 at most)",
+              "max": 2,
+              "match": {
+                "f.manikin": [
+                  "Yes"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Assessment of completion of training",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        }
+      ],
+      "desc": "Society for Acute Medicine (UK). Thoracic, abdominal-renal, DVT, peripheral access and LP modules.",
+      "region": "UK"
     },
     {
-      "id": "fusic", "label": "FUSIC", "name": "Focused Ultrasound in Intensive Care (Intensive Care Society)",
+      "id": "fusic",
+      "label": "FUSIC",
+      "name": "Focused Ultrasound in Intensive Care (Intensive Care Society)",
       "source": "ICS FUSIC Heart training pack (2024) and FUSIC training details (2019) for the other modules. Logbook collection within 12 months, accreditation within 24 months.",
       "checked": "2026-10-04",
-      "windowFrom": "firstScan", "windowDays": 365,
+      "windowFrom": "firstScan",
+      "windowDays": 365,
       "modules": [
-        { "id": "fusic-heart", "label": "Heart", "types": ["cardiac"], "total": 50, "supervised": 10, "rules": [
-          { "label": "Healthy volunteers (10% at most)", "max": 5, "match": { "setting": ["Healthy volunteer"] } }
-        ] },
-        { "id": "fusic-lung", "label": "Lung", "types": ["lung"], "total": 30, "supervised": 10, "rules": [
-          { "label": "Normal scans (10 at most)", "max": 10, "match": { "overall": ["Normal"] } }
-        ] },
-        { "id": "fusic-abdo", "label": "Abdomen", "types": ["abdo"], "total": 25, "supervised": 10, "rules": [
-          { "label": "Normal scans (15 at most)", "max": 15, "match": { "overall": ["Normal"] } }
-        ] },
-        { "id": "fusic-dvt", "label": "DVT", "types": ["dvt"], "total": 10, "supervised": 5, "rules": [
-          { "label": "DVT seen", "min": 1, "match": { "f.dvt": ["Yes"] } }
-        ] },
-        { "id": "fusic-cvc", "label": "Vascular access: CVC", "types": ["cvc"], "total": 5, "supervised": 3 },
-        { "id": "fusic-picc", "label": "Vascular access: PICC or midline", "types": ["picc"], "total": 3, "supervised": 1 },
-        { "id": "fusic-pva", "label": "Vascular access: peripheral", "types": ["pva"], "total": 2, "supervised": 1 }
+        {
+          "id": "fusic-heart",
+          "label": "Heart",
+          "types": [
+            "cardiac"
+          ],
+          "total": 50,
+          "supervised": 10,
+          "rules": [
+            {
+              "label": "Healthy volunteers (10% at most)",
+              "max": 5,
+              "match": {
+                "setting": [
+                  "Healthy volunteer"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Triggered assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fusic-lung",
+          "label": "Lung",
+          "types": [
+            "lung"
+          ],
+          "total": 30,
+          "supervised": 10,
+          "rules": [
+            {
+              "label": "Normal scans (10 at most)",
+              "max": 10,
+              "match": {
+                "overall": [
+                  "Normal"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Triggered assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fusic-abdo",
+          "label": "Abdomen",
+          "types": [
+            "abdo"
+          ],
+          "total": 25,
+          "supervised": 10,
+          "rules": [
+            {
+              "label": "Normal scans (15 at most)",
+              "max": 15,
+              "match": {
+                "overall": [
+                  "Normal"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Triggered assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fusic-dvt",
+          "label": "DVT",
+          "types": [
+            "dvt"
+          ],
+          "total": 10,
+          "supervised": 5,
+          "rules": [
+            {
+              "label": "DVT seen",
+              "min": 1,
+              "match": {
+                "f.dvt": [
+                  "Yes"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Triggered assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fusic-cvc",
+          "label": "Vascular access: CVC",
+          "types": [
+            "cvc"
+          ],
+          "total": 5,
+          "supervised": 3,
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Triggered assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fusic-picc",
+          "label": "Vascular access: PICC or midline",
+          "types": [
+            "picc"
+          ],
+          "total": 3,
+          "supervised": 1,
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Triggered assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fusic-pva",
+          "label": "Vascular access: peripheral",
+          "types": [
+            "pva"
+          ],
+          "total": 2,
+          "supervised": 1,
+          "assessments": [
+            {
+              "kind": "final",
+              "label": "Triggered assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        }
+      ],
+      "desc": "Intensive Care Society (UK). Heart, lung, abdomen, DVT and vascular access.",
+      "region": "UK"
+    },
+    {
+      "id": "eusem",
+      "label": "EUSEM",
+      "region": "Europe",
+      "name": "European Society for Emergency Medicine, ultrasound curriculum (basic tier)",
+      "desc": "Europe. The EUSEM Core Compendium, basic tier: chest, abdomen, genitourinary, vessels, MSK, ocular, paediatrics, procedures and clinical scenarios.",
+      "source": "EUSEM Core Compendium of the Emergency Ultrasound Curriculum (Polyzogopoulou et al., Ultraschall in der Medizin, 2026). The compendium sets topics in two tiers and asks for formative and summative assessment, with EPAs, mentorship and image review. It sets no universal minimum numbers: your country or department decides them, so set your own targets.",
+      "checked": "2026-10-04",
+      "windowFrom": null,
+      "modules": [
+        {
+          "id": "eusem-chest",
+          "label": "Chest: heart and lung",
+          "types": [
+            "cardiac",
+            "els",
+            "shock",
+            "lung"
+          ],
+          "total": 0,
+          "topics": [
+            "Basic cardiac views",
+            "Pericardial fluid",
+            "Tamponade signs",
+            "LV function, visual",
+            "RV size and function, visual",
+            "IVC size and collapsibility",
+            "Pleural effusion",
+            "Lung congestion",
+            "Consolidation",
+            "Basic lung views",
+            "Pneumothorax"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem-abdo",
+          "label": "Abdominal and retroperitoneal",
+          "types": [
+            "aaa",
+            "efast",
+            "abdo",
+            "biliary",
+            "bowel"
+          ],
+          "total": 0,
+          "topics": [
+            "Aortic and iliac aneurysm",
+            "Free intra-abdominal fluid",
+            "Hydronephrosis",
+            "Bladder distension and volume",
+            "Gallbladder and wall",
+            "Gallstones and sludge",
+            "Acute cholecystitis",
+            "Other organs",
+            "Ureteric jets",
+            "General ileus"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem-gu",
+          "label": "Genitourinary",
+          "types": [
+            "preg",
+            "other"
+          ],
+          "total": 0,
+          "topics": [
+            "Uterus",
+            "Fetal heart rate or movement",
+            "Free fluid in ruptured ectopic",
+            "Intrauterine pregnancy",
+            "Fluid or haematoma in the scrotum",
+            "Scrotal soft tissue air and cellulitis"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem-vessels",
+          "label": "Vessels",
+          "types": [
+            "dvt"
+          ],
+          "total": 0,
+          "topics": [
+            "Lower limb 3-point compression",
+            "Lower limb focused venous Doppler"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem-msk",
+          "label": "MSK and soft tissue",
+          "types": [
+            "msk"
+          ],
+          "total": 0,
+          "topics": [
+            "Foreign body localisation and removal",
+            "Abscess detection and drainage",
+            "Cellulitis",
+            "Soft tissue air and necrotising fasciitis",
+            "Tendinopathy",
+            "Large bone fractures",
+            "Large joint effusion",
+            "Large tendon rupture"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem-ocular",
+          "label": "Ocular",
+          "types": [
+            "ocular"
+          ],
+          "total": 0,
+          "topics": [
+            "Retinal detachment",
+            "Vitreous detachment or haemorrhage",
+            "Globe rupture",
+            "Optic nerve sheath diameter"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem-paeds",
+          "label": "Paediatrics",
+          "types": [
+            "aaa",
+            "efast",
+            "els",
+            "shock",
+            "cardiac",
+            "lung",
+            "abdo",
+            "dvt",
+            "cvc",
+            "picc",
+            "pva",
+            "fib",
+            "block",
+            "lp",
+            "msk",
+            "ocular",
+            "preg",
+            "biliary",
+            "bowel",
+            "procedure",
+            "other"
+          ],
+          "total": 0,
+          "topics": [
+            "Free fluid and FAST",
+            "Pericardial fluid",
+            "LV function",
+            "Lung congestion, consolidation, effusion, pneumothorax",
+            "Oedema, cellulitis, effusions and fractures",
+            "Haematoma",
+            "Hydronephrosis and bladder volume",
+            "Vascular access",
+            "Fluid aspiration"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ],
+          "filter": {
+            "match": {
+              "age": [
+                "Under 16"
+              ]
+            }
+          }
+        },
+        {
+          "id": "eusem-proc",
+          "label": "Procedures",
+          "types": [
+            "pva",
+            "cvc",
+            "picc",
+            "procedure",
+            "block",
+            "fib"
+          ],
+          "total": 0,
+          "topics": [
+            "Peripheral IV",
+            "Central line",
+            "Pericardiocentesis",
+            "Thoracentesis",
+            "Paracentesis",
+            "Arthrocentesis",
+            "Abscess drainage",
+            "Foreign body removal",
+            "Arterial line",
+            "Nerve blocks"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem-scen",
+          "label": "Clinical scenarios",
+          "types": [
+            "els",
+            "shock",
+            "efast",
+            "cardiac",
+            "lung",
+            "aaa"
+          ],
+          "total": 0,
+          "topics": [
+            "Cardiac arrest",
+            "General trauma",
+            "Undifferentiated hypotension",
+            "Volume status and fluid responsiveness",
+            "Undifferentiated chest pain",
+            "Dyspnoea",
+            "Abdominal or back pain",
+            "Undifferentiated fever"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "general", "label": "General", "name": "General logbook",
+      "id": "eusem2",
+      "label": "EUSEM advanced",
+      "region": "Europe",
+      "name": "European Society for Emergency Medicine, ultrasound curriculum (advanced tier)",
+      "desc": "Europe. EUSEM Core Compendium advanced tier, once you have mastered the basic tier.",
+      "source": "EUSEM Core Compendium of the Emergency Ultrasound Curriculum (Polyzogopoulou et al., Ultraschall in der Medizin, 2026). The compendium sets topics in two tiers and asks for formative and summative assessment, with EPAs, mentorship and image review. It sets no universal minimum numbers: your country or department decides them, so set your own targets.",
+      "checked": "2026-10-04",
+      "windowFrom": null,
+      "modules": [
+        {
+          "id": "eusem2-chest",
+          "label": "Chest, advanced",
+          "types": [
+            "cardiac",
+            "shock",
+            "lung"
+          ],
+          "total": 0,
+          "topics": [
+            "Diastolic dysfunction",
+            "Regional wall motion",
+            "Valves",
+            "VTI",
+            "Pulmonary hypertension",
+            "Thoracic aorta",
+            "Pleural irregularities and masses",
+            "Types of consolidation",
+            "Diaphragm",
+            "Interstitial patterns"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem2-abdo",
+          "label": "Abdominal, advanced",
+          "types": [
+            "abdo",
+            "biliary",
+            "bowel",
+            "efast",
+            "other"
+          ],
+          "total": 0,
+          "topics": [
+            "Abdominal vessel Doppler",
+            "Extra FAST views",
+            "Liver and spleen lacerations",
+            "Catheters and stents",
+            "CBD and intrahepatic ducts",
+            "Gallbladder polyps and masses",
+            "Retroperitoneal fluid",
+            "Solid organ haemorrhage or ischaemia",
+            "Cirrhosis and ascites",
+            "Hydroureter",
+            "Appendicitis",
+            "Diverticulitis",
+            "Pneumoperitoneum",
+            "Hernia",
+            "Intussusception",
+            "Splenomegaly",
+            "Gastric content",
+            "Renal stone",
+            "Cysts, masses, infection"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem2-gu",
+          "label": "Genitourinary, advanced",
+          "types": [
+            "preg",
+            "other"
+          ],
+          "total": 0,
+          "topics": [
+            "Placenta",
+            "Ovaries and torsion",
+            "Uterine or ovarian masses",
+            "PID",
+            "Scrotal hernia",
+            "Epididymitis or orchitis",
+            "Hydrocele",
+            "Testicular haematoma or mass",
+            "Testicular torsion"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem2-vessels",
+          "label": "Vessels, advanced",
+          "types": [
+            "dvt",
+            "other"
+          ],
+          "total": 0,
+          "topics": [
+            "Torso or neck vein thrombosis",
+            "Upper limb DVT",
+            "Limb arterial Doppler",
+            "Torso arterial Doppler",
+            "Neck and head vessels",
+            "Dialysis fistula flow"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem2-msk",
+          "label": "MSK, advanced",
+          "types": [
+            "msk"
+          ],
+          "total": 0,
+          "topics": [
+            "Muscle rupture",
+            "Bursitis",
+            "Lymph nodes",
+            "Small joint effusion",
+            "Small bone fractures",
+            "Joint dislocation"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem2-ocular",
+          "label": "Ocular, advanced",
+          "types": [
+            "ocular"
+          ],
+          "total": 0,
+          "topics": [
+            "Foreign body",
+            "Papilloedema",
+            "Lens dislocation",
+            "Retrobulbar haematoma and air"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem2-ent",
+          "label": "ENT",
+          "types": [
+            "other",
+            "msk"
+          ],
+          "total": 0,
+          "topics": [
+            "Peritonsillar abscess",
+            "Salivary glands",
+            "Sinusitis",
+            "Neck swelling, Ludwig's angina"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem2-proc",
+          "label": "Procedures, advanced",
+          "types": [
+            "procedure",
+            "block",
+            "lp",
+            "other"
+          ],
+          "total": 0,
+          "topics": [
+            "Suprapubic aspiration",
+            "Fascial plane blocks",
+            "Joint reduction",
+            "Lumbar puncture",
+            "Tracheal intubation",
+            "Nasogastric tube",
+            "Transvenous pacing wire"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eusem2-scen",
+          "label": "Clinical scenarios, advanced",
+          "types": [
+            "preg",
+            "dvt",
+            "msk",
+            "ocular",
+            "other"
+          ],
+          "total": 0,
+          "topics": [
+            "Acute pregnancy complaints",
+            "Limb swelling and pain",
+            "MSK injury",
+            "Acute vision loss",
+            "Acute illness in children",
+            "Pre-hospital (EMS) use"
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessment",
+              "min": 1
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment or EPA entrusted",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "acem",
+      "label": "ACEM",
+      "region": "Australia and New Zealand",
+      "name": "Australasian College for Emergency Medicine (EM ultrasonography credentialing)",
+      "desc": "Australia and New Zealand. eFAST, AAA, basic lung, FELS and procedural guidance modules.",
+      "source": "ACEM P733 Recommendations for Health Service Credentialing: EM Ultrasonography, version 6.2 (December 2025). Counts are accurate examinations. FELS also asks for 25 reviewed images or loops, and procedural guidance for 3 in-plane and 3 out-of-plane supervised procedures (up to 3 on a simulator): record these in your notes. Maintenance: 3 hours of training a year and the module minimum every 2 years.",
+      "checked": "2026-10-04",
+      "windowFrom": null,
+      "modules": [
+        {
+          "id": "acem-efast",
+          "label": "eFAST",
+          "types": [
+            "efast"
+          ],
+          "total": 25,
+          "rules": [
+            {
+              "label": "Positive scans",
+              "min": 5,
+              "any": [
+                {
+                  "f.ruq": [
+                    "Free fluid"
+                  ]
+                },
+                {
+                  "f.luq": [
+                    "Free fluid"
+                  ]
+                },
+                {
+                  "f.pelvis": [
+                    "Free fluid"
+                  ]
+                },
+                {
+                  "f.pericardium": [
+                    "Effusion"
+                  ]
+                },
+                {
+                  "f.ptx": [
+                    "Right",
+                    "Left",
+                    "Both"
+                  ]
+                },
+                {
+                  "f.pleural": [
+                    "Right",
+                    "Left",
+                    "Both"
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "Clinically indicated",
+              "min": 13,
+              "match": {},
+              "not": {
+                "setting": [
+                  "Healthy volunteer",
+                  "Course or simulation"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessments",
+              "min": 2
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "acem-aaa",
+          "label": "AAA",
+          "types": [
+            "aaa"
+          ],
+          "total": 15,
+          "rules": [
+            {
+              "label": "Aneurysm shown",
+              "min": 3,
+              "match": {
+                "f.aaa": [
+                  "Yes"
+                ]
+              }
+            },
+            {
+              "label": "Clinically indicated",
+              "min": 8,
+              "match": {},
+              "not": {
+                "setting": [
+                  "Healthy volunteer",
+                  "Course or simulation"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessments",
+              "min": 2
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "acem-lung",
+          "label": "Basic lung",
+          "types": [
+            "lung"
+          ],
+          "total": 25,
+          "rules": [
+            {
+              "label": "Significant pathology",
+              "min": 5,
+              "match": {
+                "overall": [
+                  "Abnormal"
+                ]
+              }
+            },
+            {
+              "label": "Clinically indicated",
+              "min": 13,
+              "match": {},
+              "not": {
+                "setting": [
+                  "Healthy volunteer",
+                  "Course or simulation"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessments",
+              "min": 2
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "acem-fels",
+          "label": "Focused echo in life support (FELS)",
+          "types": [
+            "els",
+            "shock",
+            "cardiac"
+          ],
+          "total": 25,
+          "supervised": 5,
+          "rules": [
+            {
+              "label": "Pericardial effusion",
+              "min": 2,
+              "match": {
+                "f.pericardial": [
+                  "Yes",
+                  "Effusion",
+                  "Tamponade physiology"
+                ]
+              }
+            },
+            {
+              "label": "Right heart strain or massive PE",
+              "min": 2,
+              "match": {
+                "f.rv": [
+                  "Yes"
+                ]
+              }
+            },
+            {
+              "label": "Hypovolaemic or distributive shock",
+              "min": 2,
+              "any": [
+                {
+                  "f.type": [
+                    "Hypovolaemic",
+                    "Distributive"
+                  ]
+                },
+                {
+                  "f.ivc": [
+                    "Small, collapsing"
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "Left ventricular failure",
+              "min": 2,
+              "match": {
+                "f.lv": [
+                  "Reduced",
+                  "Severely reduced"
+                ]
+              }
+            },
+            {
+              "label": "Shock, peri-arrest or arrest",
+              "min": 5,
+              "any": [
+                {
+                  "type": [
+                    "els"
+                  ]
+                },
+                {
+                  "type": [
+                    "shock"
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "Clinically indicated",
+              "min": 13,
+              "match": {},
+              "not": {
+                "setting": [
+                  "Healthy volunteer",
+                  "Course or simulation"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "summative",
+              "label": "Summative assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "acem-proc",
+          "label": "Procedural guidance",
+          "types": [
+            "cvc",
+            "picc",
+            "pva",
+            "fib",
+            "block",
+            "procedure"
+          ],
+          "total": 25,
+          "supervised": 6,
+          "rules": [
+            {
+              "label": "Successful procedures",
+              "min": 25,
+              "any": [
+                {
+                  "f.success": [
+                    "Yes"
+                  ]
+                },
+                {
+                  "type": [
+                    "fib",
+                    "block"
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "On a simulator (3 at most)",
+              "max": 3,
+              "match": {
+                "f.sim": [
+                  "Yes"
+                ]
+              }
+            }
+          ],
+          "assessments": [
+            {
+              "kind": "formative",
+              "label": "Formative assessments",
+              "min": 2
+            },
+            {
+              "kind": "summative",
+              "label": "Summative assessment passed",
+              "min": 1,
+              "outcomes": [
+                "competent"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cpocus",
+      "label": "CPoCUS",
+      "region": "Canada",
+      "name": "Canadian Point of Care Ultrasound Society (Acute Care CORE Independent Practitioner)",
+      "desc": "Canada. Acute Care CORE: cardiac, aorta, abdomen, first trimester, pleural effusion and pneumothorax.",
+      "source": "CPoCUS Acute Care CORE track: an accredited introductory course, 50 determinate scans supervised in person by a CORE IP examiner across the core areas, then written, visual and practical examinations. Scans count for 5 years before the examinations. CPoCUS publishes the split between areas to members only, so check it in the members section.",
+      "checked": "2026-10-04",
+      "windowFrom": "firstScan",
+      "windowDays": 1826,
+      "modules": [
+        {
+          "id": "cpocus-core",
+          "label": "CORE areas",
+          "types": [
+            "cardiac",
+            "els",
+            "shock",
+            "aaa",
+            "abdo",
+            "efast",
+            "preg",
+            "lung"
+          ],
+          "total": 50,
+          "supervised": 50,
+          "rules": [
+            {
+              "label": "Determinate scans",
+              "min": 50,
+              "match": {},
+              "not": {
+                "overall": [
+                  "Indeterminate"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "acep",
+      "label": "ACEP",
+      "region": "United States",
+      "name": "American College of Emergency Physicians (emergency ultrasound)",
+      "desc": "United States. Benchmark of 25 quality-reviewed scans in each of the 12 core applications you use.",
+      "source": "ACEP Ultrasound Guidelines: Emergency, Point-of-care and Clinical Ultrasound Guidelines in Medicine. Benchmark 25 to 50 quality-reviewed examinations per core application and 150 to 300 in total, depending on how many applications you use. Your hospital sets the credentialing rules, so remove modules you do not use in Targets.",
+      "checked": "2026-10-04",
+      "windowFrom": null,
+      "modules": [
+        {
+          "id": "acep-trauma",
+          "label": "Trauma (eFAST)",
+          "types": [
+            "efast"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-preg",
+          "label": "Pregnancy",
+          "types": [
+            "preg"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-cardiac",
+          "label": "Cardiac and haemodynamic",
+          "types": [
+            "cardiac",
+            "els",
+            "shock"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-aorta",
+          "label": "Abdominal aorta",
+          "types": [
+            "aaa"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-thoracic",
+          "label": "Airway and thoracic",
+          "types": [
+            "lung"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-biliary",
+          "label": "Biliary",
+          "types": [
+            "biliary"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-urinary",
+          "label": "Urinary tract",
+          "types": [
+            "abdo"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-dvt",
+          "label": "DVT",
+          "types": [
+            "dvt"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-msk",
+          "label": "Soft tissue and MSK",
+          "types": [
+            "msk"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-ocular",
+          "label": "Ocular",
+          "types": [
+            "ocular"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-bowel",
+          "label": "Bowel",
+          "types": [
+            "bowel"
+          ],
+          "total": 25
+        },
+        {
+          "id": "acep-proc",
+          "label": "Procedural guidance",
+          "types": [
+            "cvc",
+            "picc",
+            "pva",
+            "fib",
+            "block",
+            "lp",
+            "procedure"
+          ],
+          "total": 25
+        }
+      ]
+    },
+    {
+      "id": "general",
+      "label": "General",
+      "name": "General logbook",
       "source": "No external targets. Log any application and set your own targets.",
       "checked": "2026-10-04",
       "windowFrom": null,
-      "modules": []
+      "modules": [],
+      "desc": "Any clinician using ultrasound, anywhere. Log any application and set your own targets.",
+      "region": ""
     }
   ],
   "_help_destinations": "Export destinations. Steps show after a learner builds a portfolio export. Keep wording general: Wavelength is not integrated with these portfolios.",
   "destinations": [
-    {"id": "rcem", "label": "RCEM e-portfolio (risr/advance, formerly Kaizen)", "pathway": "rcem", "steps": ["Open your risr/advance (Kaizen) e-portfolio, ideally on a computer.", "Create or open the entry for your ultrasound evidence and attach this PDF.", "Paste the verification link into the entry, so your supervisor and ARCP panel check the summary online.", "Link the entry to the PoCUS parts of the curriculum. RCEM sign-off is by DOPS, so ask your supervisor to complete the DOPS assessments in the e-portfolio."]},
-    {"id": "famus", "label": "FAMUS accreditation (Society for Acute Medicine)", "pathway": "famus", "steps": ["Keep this PDF with your countersigned report sheets.", "When the summary shows your targets met, ask your supervisor to complete the Assessment of Completion of Training (ACT).", "Send the signed ACT to the FAMUS administrator. Include this PDF and the verification link if they ask for your logbook.", "For reaccreditation every three years, export a fresh verified summary."]},
-    {"id": "fusic", "label": "FUSIC accreditation (Intensive Care Society)", "pathway": "fusic", "steps": ["Share this PDF and the verification link with your FUSIC supervisor.", "Upload it wherever your FUSIC accreditation asks for logbook evidence.", "Once your targets are met, ask your supervisor to arrange the final assessment."]},
-    {"id": "jrcptb", "label": "JRCPTB ePortfolio (physicians, including acute medicine)", "pathway": "famus", "steps": ["Open your JRCPTB ePortfolio.", "Upload this PDF to your personal library, or attach it to the entry it supports.", "Paste the verification link into the description.", "Link it to the curriculum capabilities it evidences and tell your educational supervisor where to find it."]},
-    {"id": "appraisal", "label": "Appraisal and revalidation", "pathway": "", "steps": ["Upload this PDF to your appraisal portfolio as evidence of ultrasound practice.", "Paste the verification link into the supporting information.", "Use the reflective notes in the PDF for your reflection on practice."]},
-    {"id": "other", "label": "Another portfolio or employer", "pathway": "", "steps": ["Attach this PDF to your portfolio or send it to the person who asked for it.", "Add the verification link, so they check the summary online."]}
+    {
+      "id": "rcem",
+      "label": "RCEM e-portfolio (risr/advance, formerly Kaizen)",
+      "pathway": "rcem",
+      "steps": [
+        "Open your risr/advance (Kaizen) e-portfolio, ideally on a computer.",
+        "Create or open the entry for your ultrasound evidence and attach this PDF.",
+        "Paste the verification link into the entry, so your supervisor and ARCP panel check the summary online.",
+        "Link the entry to the PoCUS parts of the curriculum. RCEM sign-off is by DOPS, so ask your supervisor to complete the DOPS assessments in the e-portfolio."
+      ]
+    },
+    {
+      "id": "famus",
+      "label": "FAMUS accreditation (Society for Acute Medicine)",
+      "pathway": "famus",
+      "steps": [
+        "Keep this PDF with your countersigned report sheets.",
+        "When the summary shows your targets met, ask your supervisor to complete the Assessment of Completion of Training (ACT).",
+        "Send the signed ACT to the FAMUS administrator. Include this PDF and the verification link if they ask for your logbook.",
+        "For reaccreditation every three years, export a fresh verified summary."
+      ]
+    },
+    {
+      "id": "fusic",
+      "label": "FUSIC accreditation (Intensive Care Society)",
+      "pathway": "fusic",
+      "steps": [
+        "Share this PDF and the verification link with your FUSIC supervisor.",
+        "Upload it wherever your FUSIC accreditation asks for logbook evidence.",
+        "Once your targets are met, ask your supervisor to arrange the final assessment."
+      ]
+    },
+    {
+      "id": "jrcptb",
+      "label": "JRCPTB ePortfolio (physicians, including acute medicine)",
+      "pathway": "famus",
+      "steps": [
+        "Open your JRCPTB ePortfolio.",
+        "Upload this PDF to your personal library, or attach it to the entry it supports.",
+        "Paste the verification link into the description.",
+        "Link it to the curriculum capabilities it evidences and tell your educational supervisor where to find it."
+      ]
+    },
+    {
+      "id": "eusem",
+      "label": "EUSEM-based training programme",
+      "pathway": "eusem",
+      "steps": [
+        "Share this PDF and the verification link with your ultrasound mentor or programme lead.",
+        "Attach your assessment records: the EUSEM compendium asks for formative and summative assessment.",
+        "Check the numbers your country or department sets, as the compendium leaves these to local programmes."
+      ]
+    },
+    {
+      "id": "acem",
+      "label": "ACEM credentialing (health service)",
+      "pathway": "acem",
+      "steps": [
+        "Send this PDF and the verification link to the credentialing lead or director of emergency medicine ultrasound at your health service.",
+        "Attach your formative and summative assessment records for each module.",
+        "Keep a fresh export each two-year cycle as evidence of maintenance."
+      ]
+    },
+    {
+      "id": "cpocus",
+      "label": "CPoCUS certification",
+      "pathway": "cpocus",
+      "steps": [
+        "Show this PDF to your CORE IP examiner when you book your examinations.",
+        "Use the verification link if CPoCUS or your examiner asks to check your logbook online.",
+        "Follow the CPoCUS members section for the current submission steps."
+      ]
+    },
+    {
+      "id": "acep",
+      "label": "Hospital credentialing (ACEP guidelines)",
+      "pathway": "acep",
+      "steps": [
+        "Send this PDF and the verification link to your ultrasound director or credentialing committee.",
+        "Check the PDF shows the quality-review status your hospital asks for.",
+        "Keep a fresh export for reappointment and ongoing quality review."
+      ]
+    },
+    {
+      "id": "appraisal",
+      "label": "Appraisal and revalidation",
+      "pathway": "",
+      "steps": [
+        "Upload this PDF to your appraisal portfolio as evidence of ultrasound practice.",
+        "Paste the verification link into the supporting information.",
+        "Use the reflective notes in the PDF for your reflection on practice."
+      ]
+    },
+    {
+      "id": "other",
+      "label": "Another portfolio or employer",
+      "pathway": "",
+      "steps": [
+        "Attach this PDF to your portfolio or send it to the person who asked for it.",
+        "Add the verification link, so they check the summary online."
+      ]
+    }
+  ],
+  "assessmentKinds": [
+    {
+      "id": "formative",
+      "label": "Formative assessment",
+      "help": "Feedback on a scan to guide your learning. Any outcome counts."
+    },
+    {
+      "id": "summative",
+      "label": "Summative assessment",
+      "help": "Decides if you are competent to scan without supervision."
+    },
+    {
+      "id": "dops",
+      "label": "DOPS (direct observation of procedural skills)",
+      "help": "RCEM signs off PoCUS by DOPS. Record it here, and ask your supervisor to complete the DOPS in your e-portfolio too."
+    },
+    {
+      "id": "final",
+      "label": "Final or triggered assessment",
+      "help": "The end-of-training assessment FAMUS and FUSIC ask for."
+    }
+  ],
+  "assessmentDomains": [
+    {
+      "id": "prep",
+      "label": "Preparation",
+      "help": "Indication, consent, infection control, patient position, machine and probe set-up."
+    },
+    {
+      "id": "acquire",
+      "label": "Image acquisition",
+      "help": "Finds every required view in a logical sequence with good probe handling."
+    },
+    {
+      "id": "optimise",
+      "label": "Image optimisation",
+      "help": "Depth, gain, focus and preset adjusted for diagnostic images."
+    },
+    {
+      "id": "interpret",
+      "label": "Interpretation",
+      "help": "Recognises normal and abnormal findings and knows the limits of the scan."
+    },
+    {
+      "id": "integrate",
+      "label": "Clinical integration",
+      "help": "Links the findings to the clinical question and acts on them safely."
+    },
+    {
+      "id": "record",
+      "label": "Documentation and communication",
+      "help": "Records and saves images, documents findings, and tells the team."
+    }
+  ],
+  "assessmentScale": [
+    "Below expected",
+    "Borderline",
+    "Meets expected",
+    "Above expected",
+    "Not observed"
+  ],
+  "assessmentOutcomes": [
+    {
+      "id": "competent",
+      "label": "Competent to scan independently for this application"
+    },
+    {
+      "id": "progressing",
+      "label": "Progressing, more supervised practice needed"
+    },
+    {
+      "id": "not-yet",
+      "label": "Not yet, needs focused training"
+    },
+    {
+      "id": "feedback",
+      "label": "Feedback only (formative)"
+    }
+  ],
+  "qualityScale": [
+    {
+      "id": "g",
+      "label": "Good"
+    },
+    {
+      "id": "a",
+      "label": "Acceptable with minor issues"
+    },
+    {
+      "id": "r",
+      "label": "Not acceptable"
+    }
   ]
 }

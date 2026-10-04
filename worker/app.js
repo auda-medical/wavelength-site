@@ -3,6 +3,9 @@
 //   POST signup, login, logout, profile, sync, signoff/request, signoff/complete, signoff/inperson,
 //        reset/request, reset/complete, account/delete (signoff/complete emails the learner unless profile.notifyEmail is false)
 //        evidence, evidence/withdraw
+//        assessment/request, assessment/inperson, assessment/cancel, assessment/complete (link), supervisors/add|remove|accept,
+//        supervise/signoff, supervise/assessment, supervise/assessment/new (see supervise.js)
+//   GET  assessments, supervisors, supervise/learner?id=, supervise/signoff?code=, assessment/view?t=
 //   GET  me, sync?since=, signoffs, evidence, signoff/view?t=, verify?code= (SO- sign-offs and EV- evidence summaries)
 //   POST signoff/image?code=&entry=&n= (encrypted bytes), signoff/images (manifest)   GET signoff/image?t=&entry=&n=
 // Logbook entries hold text only. Images stay on the learner's device. The one exception is encrypted image
@@ -12,90 +15,9 @@
 import { cookieFor, clearCookie, learner, sendMail } from './academy.js';
 import DATA from './academy-data.json';
 import { createEvidence, listEvidence, withdrawEvidence, verifyEvidence } from './evidence.js';
+import * as SV from './supervise.js';
 
-const enc = new TextEncoder();
-const SITE = 'https://thewavelength.co.uk';
-const HEAD = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin' };
-const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...HEAD, ...extra } });
-const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ' ').trim().slice(0, n);
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const TITLES = ['Dr', 'Prof', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx'];
-const PATHWAYS = ['rcem', 'famus', 'fusic', 'general'];
-const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-// ---------- Crypto helpers ----------
-const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
-const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-const b64u = (buf) => b64(buf).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' }[c]));
-async function pbkdf2(password, salt, iterations) {
-  const k = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-  return b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, k, 256));
-}
-async function hashPassword(password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  return `pbkdf2$100000$${b64(salt)}$${await pbkdf2(password, salt, 100000)}`;
-}
-async function checkPassword(password, stored) {
-  if (!stored) return false;
-  const [, it, salt, hash] = stored.split('$');
-  const got = await pbkdf2(password, unb64(salt), Number(it));
-  let d = got.length ^ hash.length;
-  for (let i = 0; i < Math.min(got.length, hash.length); i++) d |= got.charCodeAt(i) ^ hash.charCodeAt(i);
-  return d === 0;
-}
-const sha256 = async (text) => b64u(await crypto.subtle.digest('SHA-256', enc.encode(text)));
-const token = () => b64u(crypto.getRandomValues(new Uint8Array(32)));
-function code(prefix) {
-  const r = crypto.getRandomValues(new Uint8Array(8));
-  const s = [...r].map((b) => ALPHABET[b % ALPHABET.length]).join('');
-  return `${prefix}-${s.slice(0, 4)}-${s.slice(4)}`;
-}
-
-// The parts of an entry a supervisor signs. Editing any of these after sign-off voids the sign-off.
-const SIGNED_FIELDS = ['type', 'date', 'setting', 'age', 'sex', 'indication', 'findings', 'overall', 'quality', 'interpretation', 'confirmation', 'concordant', 'impact', 'supervision', 'supervisor', 'reflection'];
-function canonical(v) {
-  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
-  if (v && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
-  return JSON.stringify(v == null ? null : v);
-}
-const contentHash = (d) => sha256(canonical(Object.fromEntries(SIGNED_FIELDS.map((k) => [k, d[k] == null ? null : d[k]]))));
-
-// ---------- Request helpers ----------
-async function body(req) {
-  if (!(req.headers.get('Content-Type') || '').includes('application/json')) return null;
-  const text = await req.text();
-  if (text.length > 600000) return null;
-  try { return JSON.parse(text); } catch { return null; }
-}
-const fullName = (l) => [l.title, l.first_name, l.last_name].filter(Boolean).join(' ');
-function profileOf(l) { try { return JSON.parse(l.profile || '{}'); } catch { return {}; } }
-function cleanProfile(p, old = {}) {
-  const out = { ...old };
-  if (Array.isArray(p.pathways)) out.pathways = p.pathways.filter((x) => PATHWAYS.includes(x)).slice(0, 4);
-  if (p.grade !== undefined) out.grade = clip(p.grade, 80);
-  if (p.specialty !== undefined) out.specialty = clip(p.specialty, 80);
-  if (p.base !== undefined) out.base = clip(p.base, 120);
-  if (p.registration !== undefined) out.registration = clip(p.registration, 40);
-  if (p.targets && typeof p.targets === 'object') {
-    out.targets = {};
-    for (const [k, v] of Object.entries(p.targets).slice(0, 60)) {
-      if (!/^[a-z0-9-]{1,40}$/.test(k) || !v || typeof v !== 'object') continue;
-      const n = (x) => (x === '' || x == null ? null : Math.max(0, Math.min(999, Math.round(Number(x)) || 0)));
-      out.targets[k] = { total: n(v.total), supervised: n(v.supervised), label: clip(v.label, 60) || undefined, types: Array.isArray(v.types) ? v.types.map((t) => clip(t, 20)).slice(0, 10) : undefined };
-    }
-  }
-  if (p.windowStart && typeof p.windowStart === 'object') {
-    out.windowStart = {};
-    for (const [k, v] of Object.entries(p.windowStart).slice(0, 10)) if (PATHWAYS.includes(k) && /^\d{4}-\d{2}-\d{2}$/.test(v)) out.windowStart[k] = v;
-  }
-  if (p.onboarded) out.onboarded = true;
-  if (p.notifyEmail !== undefined) out.notifyEmail = !!p.notifyEmail;
-  return out;
-}
-function account(l) {
-  const p = profileOf(l);
-  return { id: l.id, email: l.email, title: l.title, firstName: l.first_name, lastName: l.last_name, name: fullName(l), role: l.role, organisation: l.organisation, newsletter: !!l.newsletter, declarationAt: l.declaration_at, profile: p };
-}
+import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, body, fullName, profileOf, cleanProfile, account } from './app-util.js';
 
 // ---------- Accounts ----------
 async function signup(env, req) {
@@ -148,7 +70,7 @@ async function me(env, l) {
     env.DB.prepare('SELECT module, MAX(score) AS best, COUNT(*) AS tries FROM attempts WHERE learner_id = ? GROUP BY module').bind(l.id).all(),
   ]);
   const modules = Object.values(DATA.modules).filter((m) => !m.draft).map((m) => ({ slug: m.slug, title: m.title, cpdHours: m.cpdHours }));
-  return json({ ok: true, account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules, imageShare: imgOn(env) });
+  return json({ ok: true, account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules, imageShare: imgOn(env), clipShare: imgOn(env) && env.CLIP_SHARE === 'true' });
 }
 
 async function saveProfile(env, l, req) {
@@ -222,6 +144,7 @@ async function deleteAccount(env, l, req) {
     env.DB.prepare('DELETE FROM signoffs WHERE learner_id = ?').bind(l.id),
     env.DB.prepare('DELETE FROM evidence_summaries WHERE learner_id = ?').bind(l.id),
     env.DB.prepare('DELETE FROM password_resets WHERE learner_id = ?').bind(l.id),
+    ...(await SV.deleteSupervision(env, l)),
   ];
   if (d.keepCertificates && hasCerts.n) stmts.push(env.DB.prepare('UPDATE learners SET password_hash = NULL, profile = NULL, declaration_at = NULL, organisation = NULL, role = NULL WHERE id = ?').bind(l.id));
   else stmts.push(env.DB.prepare('DELETE FROM attempts WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM certificates WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM learners WHERE id = ?').bind(l.id));
@@ -301,7 +224,9 @@ function snapshotOf(entries) {
 function cleanSupervisor(d) {
   return { name: clip(d.name, 120), role: clip(d.role, 120), reg: clip(d.registration, 40), email: clip(d.email, 160).toLowerCase(), accreditation: clip(d.accreditation, 120), basis: ['witnessed', 'reviewed', 'both'].includes(d.basis) ? d.basis : null, comment: clip(d.comment, 2000) };
 }
-async function applySignoff(env, so, decisions, sup, method) {
+const RATING = ['g', 'a', 'r'];
+function cleanRating(r) { if (!r || typeof r !== 'object') return null; const o = {}; for (const k of ['image', 'accuracy']) if (RATING.includes(r[k])) o[k] = r[k]; return Object.keys(o).length ? o : null; }
+async function applySignoff(env, so, decisions, sup, method, ratings = {}) {
   const at = new Date().toISOString();
   const now = Date.now();
   for (const e of JSON.parse(so.snapshot)) {
@@ -313,6 +238,7 @@ async function applySignoff(env, so, decisions, sup, method) {
     const hash = await contentHash(data);
     if (hash !== (await contentHash(e))) continue; // edited since the request: skip
     data.signoff = { code: so.id, status, name: sup.name, role: sup.role, reg: sup.reg, accreditation: sup.accreditation, basis: sup.basis, method, at, hash };
+    const rt = cleanRating((ratings || {})[e.id]); if (rt) data.signoff.rating = rt;
     delete data.signoffVoid;
     await env.DB.prepare('UPDATE logbook_entries SET data = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(data), now, e.id).run();
   }
@@ -324,9 +250,10 @@ async function signoffRequest(env, l, req) {
   if (!entries.length) return json({ ok: false, error: 'Choose at least one saved entry.' }, 400);
   const t = token();
   const id = code('SO');
-  await env.DB.prepare('INSERT INTO signoffs (id, learner_id, method, token_hash, entry_ids, snapshot, expires_at, supervisor_name, supervisor_email) VALUES (?,?,?,?,?,?,?,?,?)')
-    .bind(id, l.id, 'remote', await sha256(t), JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snapshotOf(entries)), Date.now() + 14 * 864e5, clip(d.supervisorName, 120), clip(d.supervisorEmail, 160).toLowerCase()).run();
-  return json({ ok: true, code: id, link: `${new URL(req.url).origin}/app/sign/#${t}`, expires: 14 });
+  const link = d.supervisorLink ? await env.DB.prepare("SELECT supervisor_id FROM supervisor_links WHERE id = ? AND learner_id = ? AND status = 'active'").bind(Number(d.supervisorLink), l.id).first() : null;
+  await env.DB.prepare('INSERT INTO signoffs (id, learner_id, method, token_hash, entry_ids, snapshot, expires_at, supervisor_name, supervisor_email, supervisor_id) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .bind(id, l.id, 'remote', await sha256(t), JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snapshotOf(entries)), Date.now() + 14 * 864e5, clip(d.supervisorName, 120), clip(d.supervisorEmail, 160).toLowerCase(), link ? link.supervisor_id : null).run();
+  return json({ ok: true, code: id, link: `${new URL(req.url).origin}/app/sign/#${t}`, expires: 14, toDashboard: !!link });
 }
 
 async function signoffView(env, url) {
@@ -349,18 +276,19 @@ async function signoffComplete(env, req, ctx) {
   const sig = String(d.signature || '');
   if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box with your finger or mouse.' }, 400);
   const decisions = d.decisions && typeof d.decisions === 'object' ? d.decisions : {};
-  await env.DB.prepare("UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL WHERE id = ?")
-    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), sig, so.id).run();
-  await applySignoff(env, so, decisions, sup, 'remote');
+  const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
+  await env.DB.prepare("UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL WHERE id = ?")
+    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, so.id).run();
+  await applySignoff(env, so, decisions, sup, 'remote', ratings);
   await deleteSharedImages(env, so.id);
   const mail = notifyLearner(env, so, decisions, sup);
   if (ctx && ctx.waitUntil) ctx.waitUntil(mail); else await mail;
   return json({ ok: true, code: so.id });
 }
 
-// Tells the learner by email when a supervisor completes a sign-off link. Counts and the code only, never findings.
-// Learners turn this off in the app (profile.notifyEmail = false).
-async function notifyLearner(env, so, decisions, sup) {
+// Tells the learner by email when a supervisor completes a sign-off link or signs from their dashboard. Counts and
+// the code only, never findings. Learners turn this off in the app (profile.notifyEmail = false).
+export async function notifyLearner(env, so, decisions, sup) {
   try {
     const l = await env.DB.prepare('SELECT email, title, first_name, last_name, profile FROM learners WHERE id = ?').bind(so.learner_id).first();
     if (!l || !l.email || profileOf(l).notifyEmail === false) return;
@@ -393,15 +321,16 @@ async function signoffInPerson(env, l, req) {
   const id = code('SO');
   const decisions = Object.fromEntries(entries.map((e) => [e.id, (d.decisions || {})[e.id] === 'query' ? 'query' : 'confirmed']));
   const so = { id, learner_id: l.id, snapshot: JSON.stringify(snapshotOf(entries)) };
-  await env.DB.prepare("INSERT INTO signoffs (id, learner_id, method, entry_ids, snapshot, status, supervisor_name, supervisor_role, supervisor_reg, supervisor_email, accreditation, basis, comment, decisions, signature, signed_at) VALUES (?,?,?,?,?,'signed',?,?,?,?,?,?,?,?,?,datetime('now'))")
-    .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), sig).run();
-  await applySignoff(env, so, decisions, sup, 'in-person');
+  const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
+  await env.DB.prepare("INSERT INTO signoffs (id, learner_id, method, entry_ids, snapshot, status, supervisor_name, supervisor_role, supervisor_reg, supervisor_email, accreditation, basis, comment, decisions, ratings, signature, signed_at) VALUES (?,?,?,?,?,'signed',?,?,?,?,?,?,?,?,?,?,datetime('now'))")
+    .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig).run();
+  await applySignoff(env, so, decisions, sup, 'in-person', ratings);
   return json({ ok: true, code: id });
 }
 
 async function signoffList(env, l) {
-  const { results = [] } = await env.DB.prepare('SELECT id, method, status, created_at, expires_at, supervisor_name, supervisor_role, supervisor_reg, accreditation, basis, comment, decisions, signature, signed_at, entry_ids FROM signoffs WHERE learner_id = ? ORDER BY created_at DESC LIMIT 300').bind(l.id).all();
-  return json({ ok: true, signoffs: results.map((r) => ({ ...r, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}') })) });
+  const { results = [] } = await env.DB.prepare('SELECT id, method, status, created_at, expires_at, supervisor_name, supervisor_role, supervisor_reg, accreditation, basis, comment, decisions, ratings, signature, signed_at, entry_ids, supervisor_id FROM signoffs WHERE learner_id = ? ORDER BY created_at DESC LIMIT 300').bind(l.id).all();
+  return json({ ok: true, signoffs: results.map((r) => ({ ...r, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ratings: JSON.parse(r.ratings || '{}') })) });
 }
 
 async function signoffCancel(env, l, req) {
@@ -414,7 +343,8 @@ async function signoffCancel(env, l, req) {
 
 // ---------- Encrypted image sharing in sign-off links ----------
 const imgOn = (env) => env.IMAGE_SHARE === 'true' && !!env.SHARED_IMAGES;
-const IMG_MAX = 1572864, IMG_PER_ENTRY = 12, IMG_PER_LINK = 60;
+const IMG_MAX = 1572864, CLIP_MAX = 12 * 1048576 + 64, IMG_PER_ENTRY = 12, IMG_PER_LINK = 60;
+const clipOn = (env) => imgOn(env) && env.CLIP_SHARE === 'true';
 const imgKey = (id, entry, n) => `so:${id}:${entry}:${n}`;
 async function ownPending(env, l, c) {
   const so = await env.DB.prepare("SELECT id, entry_ids, expires_at, status FROM signoffs WHERE id = ? AND learner_id = ? AND method = 'remote'").bind(clip(c, 20), l.id).first();
@@ -426,10 +356,13 @@ async function signoffImageUpload(env, l, req, url) {
   if (!so) return json({ ok: false, error: 'This sign-off request is no longer open.' }, 410);
   const entry = clip(url.searchParams.get('entry'), 40), n = Number(url.searchParams.get('n'));
   if (!JSON.parse(so.entry_ids).includes(entry) || !Number.isInteger(n) || n < 0 || n >= IMG_PER_ENTRY) return json({ ok: false, error: 'That image does not belong to this request.' }, 400);
+  const asClip = url.searchParams.get('kind') === 'clip';
+  if (asClip && !clipOn(env)) return json({ ok: false, error: 'Clip sharing is not switched on yet. Untick the clips, or share stills only.' }, 403);
+  const max = asClip ? CLIP_MAX : IMG_MAX;
   const len = Number(req.headers.get('Content-Length') || 0);
-  if (len > IMG_MAX) return json({ ok: false, error: 'Image too large.' }, 413);
+  if (len > max) return json({ ok: false, error: 'Image too large.' }, 413);
   const buf = await req.arrayBuffer();
-  if (buf.byteLength < 29 || buf.byteLength > IMG_MAX) return json({ ok: false, error: 'Image too large or empty.' }, 413);
+  if (buf.byteLength < 29 || buf.byteLength > max) return json({ ok: false, error: 'Image too large or empty.' }, 413);
   await env.SHARED_IMAGES.put(imgKey(so.id, entry, n), buf, { expiration: Math.floor(so.expires_at / 1000) });
   return json({ ok: true });
 }
@@ -440,7 +373,7 @@ async function signoffImagesCommit(env, l, req) {
   if (!so) return json({ ok: false, error: 'This sign-off request is no longer open.' }, 410);
   if (!d.declared) return json({ ok: false, error: 'Confirm that no identifiers remain on the images.' }, 400);
   const ids = JSON.parse(so.entry_ids), seen = new Set();
-  const list = (Array.isArray(d.images) ? d.images : []).slice(0, IMG_PER_LINK).map((i) => ({ entry: clip(i && i.entry, 40), n: Number(i && i.n), w: Math.min(20000, Number(i && i.w) || 0), h: Math.min(20000, Number(i && i.h) || 0) }))
+  const list = (Array.isArray(d.images) ? d.images : []).slice(0, IMG_PER_LINK).map((i) => ({ entry: clip(i && i.entry, 40), n: Number(i && i.n), w: Math.min(20000, Number(i && i.w) || 0), h: Math.min(20000, Number(i && i.h) || 0), kind: i && i.kind === 'clip' && clipOn(env) ? 'clip' : 'image', type: i && i.kind === 'clip' && /^video\/(mp4|webm)$/.test(i.type || '') ? i.type : 'image/jpeg' }))
     .filter((i) => ids.includes(i.entry) && Number.isInteger(i.n) && i.n >= 0 && i.n < IMG_PER_ENTRY && !seen.has(i.entry + ':' + i.n) && seen.add(i.entry + ':' + i.n));
   await env.SHARED_IMAGES.put(`so:${so.id}:m`, JSON.stringify(list), { expiration: Math.floor(so.expires_at / 1000) });
   return json({ ok: true, count: list.length });
@@ -464,6 +397,7 @@ async function deleteSharedImages(env, id) {
 async function verify(env, url) {
   const c = clip(url.searchParams.get('code'), 20).toUpperCase().replace(/\s+/g, '');
   if (c.startsWith('EV-')) return verifyEvidence(env, c, json);
+  if (c.startsWith('AS-')) return SV.verifyAssessment(env, c);
   const so = c && await env.DB.prepare("SELECT s.id, s.method, s.supervisor_name, s.supervisor_role, s.accreditation, s.basis, s.signed_at, s.signature IS NOT NULL AS signed_by_hand, s.decisions, s.snapshot, l.title, l.first_name, l.last_name FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.id = ? AND s.status = 'signed'").bind(c).first();
   if (!so) return json({ ok: false, error: 'No signed record matches that code.' }, 404);
   const dec = JSON.parse(so.decisions || '{}');
@@ -485,6 +419,7 @@ export async function handleApp(req, env, ctx) {
     if (p === 'reset/request') return resetRequest(env, req, ctx);
     if (p === 'reset/complete') return resetComplete(env, req);
     if (p === 'signoff/complete') return signoffComplete(env, req, ctx);
+    if (p === 'assessment/complete') return SV.assessmentComplete(env, req);
     const l = await learner(env, req);
     if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
     if (p === 'profile') return saveProfile(env, l, req);
@@ -498,16 +433,30 @@ export async function handleApp(req, env, ctx) {
     if (p === 'evidence') return createEvidence(env, l, await body(req), { code, clip, fullName, profileOf, json, origin: url.origin });
     if (p === 'evidence/withdraw') return withdrawEvidence(env, l, await body(req), clip, json);
     if (p === 'account/delete') return deleteAccount(env, l, req);
+    if (p === 'assessment/request') return SV.assessmentRequest(env, l, req);
+    if (p === 'assessment/inperson') return SV.assessmentInPerson(env, l, req);
+    if (p === 'assessment/cancel') return SV.assessmentCancel(env, l, req);
+    if (p === 'supervisors/add') return SV.supervisorAdd(env, l, req, ctx);
+    if (p === 'supervisors/remove') return SV.supervisorRemove(env, l, req);
+    if (p === 'supervisors/accept') return SV.supervisorAccept(env, l, req);
+    if (p === 'supervise/signoff') return SV.superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, (so, dec, sup) => { const m = notifyLearner(env, so, dec, sup); if (ctx && ctx.waitUntil) ctx.waitUntil(m); });
+    if (p === 'supervise/assessment') return SV.superviseAssessmentComplete(env, l, req);
+    if (p === 'supervise/assessment/new') return SV.superviseAssessmentNew(env, l, req);
     return json({ ok: false }, 404);
   }
   if (p === 'signoff/view') return signoffView(env, url);
   if (p === 'signoff/image') return signoffImageGet(env, url);
   if (p === 'verify') return verify(env, url);
+  if (p === 'assessment/view') return SV.assessmentView(env, url);
   const l = await learner(env, req);
   if (p === 'me') return l && l.password_hash ? me(env, l) : json({ ok: false, auth: false, academy: !!l });
   if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
   if (p === 'sync') return syncGet(env, l, url);
   if (p === 'signoffs') return signoffList(env, l);
   if (p === 'evidence') return listEvidence(env, l, json);
+  if (p === 'assessments') return SV.assessmentList(env, l);
+  if (p === 'supervisors') return SV.supervisorLinks(env, l);
+  if (p === 'supervise/learner') return SV.superviseLearner(env, l, url);
+  if (p === 'supervise/signoff') return SV.superviseSignoffView(env, l, url);
   return json({ ok: false }, 404);
 }

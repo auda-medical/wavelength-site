@@ -4,65 +4,28 @@
 // No findings, indications or reflections are stored in the snapshot: only counts.
 import LOGBOOK from '../data/logbook.json';
 
-const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
-const TYPES = Object.fromEntries(LOGBOOK.types.map((t) => [t.id, t]));
+import '../src/app/progress.js';
+
+const P = globalThis.WLProgress.create(LOGBOOK);
+const PATHS = P.PATHS;
+const TYPES = P.TYPES;
 const DEST = Object.fromEntries((LOGBOOK.destinations || []).map((d) => [d.id, d]));
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-function matches(e, match) {
-  return Object.keys(match).every((k) => {
-    const v = k.startsWith('f.') ? (e.findings || {})[k.slice(2)] : e[k];
-    return match[k].includes(v);
-  });
-}
-
-// Mirrors moduleStats in src/app/app.js. Keep the two in step.
-function moduleStats(mod, entries, targets) {
-  const t = targets[mod.id] || {};
-  const curriculumTotal = mod.total || 0, curriculumSup = mod.supervised || 0;
-  const total = t.total != null ? Number(t.total) || 0 : curriculumTotal;
-  const sup = t.supervised != null ? Number(t.supervised) || 0 : curriculumSup;
-  const list = entries.filter((e) => mod.types.includes(e.type) && !(e.exclude || []).includes(mod.id));
-  let over = 0;
-  const rules = (mod.rules || []).map((r) => {
-    const n = list.filter((e) => matches(e, r.match)).length;
-    if (r.max != null && n > r.max) over += n - r.max;
-    return { label: r.label, n, min: r.min || null, max: r.max != null ? r.max : null };
-  });
-  const counted = Math.max(0, list.length - over);
-  const supervised = list.filter((e) => e.supervision === 'direct').length;
-  const mentored = list.filter((e) => e.supervision === 'mentored').length;
-  const reflections = list.filter((e) => e.reflection && String(e.reflection).trim().length > 20).length;
-  const signed = list.filter((e) => e.signoff && e.signoff.status === 'confirmed').length;
-  const parts = [];
-  if (total) parts.push(Math.min(1, counted / total));
-  if (sup) parts.push(Math.min(1, supervised / sup));
-  if (mod.reflections) parts.push(Math.min(1, reflections / mod.reflections));
-  rules.forEach((r) => { if (r.min) parts.push(Math.min(1, r.n / r.min)); });
-  const frac = parts.length ? Math.min(...parts) : (list.length ? 1 : 0);
-  const needs = [];
-  if (total > counted) needs.push(`${total - counted} more scan${total - counted === 1 ? '' : 's'}`);
-  if (sup > supervised) needs.push(`${sup - supervised} more supervised`);
-  if (mod.reflections && mod.reflections > reflections) needs.push(`${mod.reflections - reflections} more reflection${mod.reflections - reflections === 1 ? '' : 's'}`);
-  rules.forEach((r) => { if (r.min && r.n < r.min) needs.push(`${r.min - r.n} more ${r.label.toLowerCase()}`); });
+// Snapshot of one module for the verify page and exports. Plain data only (no entry lists).
+function modOut(s) {
   return {
-    needs, id: mod.id, label: mod.label, logged: list.length, counted, total, supervised, supTarget: sup, mentored, reflections,
-    reflectionTarget: mod.reflections || 0, signed, rules, met: !!parts.length && frac >= 1, percent: Math.round(100 * frac),
-    ownTarget: (t.total != null && Number(t.total) !== curriculumTotal) || (t.supervised != null && Number(t.supervised) !== curriculumSup),
-    curriculumTotal, curriculumSup,
+    needs: s.needs, id: s.id, label: s.label, logged: s.logged, counted: s.counted, total: s.total, supervised: s.supervised, supTarget: s.supTarget,
+    mentored: s.mentored, reflections: s.reflections, reflectionTarget: s.reflectionTarget, signed: s.signed, rules: s.rules, assessments: s.assessments,
+    met: s.met, percent: s.percent, gaps: s.gaps, ownTarget: s.ownTarget, curriculumTotal: s.curriculumTotal, curriculumSup: s.curriculumSup,
   };
 }
 
-export function buildSummary(entries, profile, pathwayIds) {
-  const targets = profile.targets || {};
+export function buildSummary(entries, profile, pathwayIds, assessments = []) {
   const pathways = pathwayIds.filter((id) => PATHS[id]).map((pid) => {
     const pw = PATHS[pid];
-    let mods = pw.modules;
-    if (pid === 'general') {
-      const seen = [...new Set(entries.map((e) => e.type))].filter((t) => TYPES[t]);
-      mods = seen.map((t) => ({ id: `gen-${t}`, label: TYPES[t].label, types: [t], total: 0 }));
-    }
-    return { id: pid, label: pw.label, name: pw.name, source: pw.source, checked: pw.checked, modules: mods.map((m) => moduleStats(m, entries, targets)) };
+    const ps = P.pathway(pid, entries, profile, assessments);
+    return { id: pid, label: pw.label, name: pw.name, source: pw.source, checked: pw.checked, modules: ps.stats.map(modOut) };
   });
   const byType = {};
   for (const e of entries) {
@@ -80,6 +43,7 @@ export function buildSummary(entries, profile, pathwayIds) {
     supervised: entries.filter((e) => e.supervision === 'direct').length,
     firstScan: dates[0] || null, lastScan: dates[dates.length - 1] || null,
     pathways, types: Object.values(byType).sort((a, b) => b.logged - a.logged), signoffCodes: codes,
+    assessmentCodes: assessments.map((x) => x.id), assessmentsPassed: assessments.filter((x) => x.outcome === 'competent').length,
   };
 }
 
@@ -99,7 +63,8 @@ export async function createEvidence(env, l, d, { code, clip, fullName, profileO
   if (d && d.signedOnly) entries = entries.filter((e) => e.signoff && e.signoff.status === 'confirmed');
   if (!entries.length) return json({ ok: false, error: 'No synced scans match those choices. Connect to the internet so your logbook syncs, then try again.' }, 400);
   const dest = DEST[d && d.destination] ? d.destination : 'other';
-  const summary = buildSummary(entries, profile, pathwayIds);
+  const asm = await signedAssessments(env, l.id, from, to);
+  const summary = buildSummary(entries, profile, pathwayIds, asm);
   const data = { learner: fullName(l), grade: clip(profile.grade || l.role || '', 120), organisation: clip(l.organisation || '', 160), from, to, destination: dest, destinationLabel: DEST[dest] ? DEST[dest].label : '', signedOnly: !!(d && d.signedOnly), ...summary };
   const id = code('EV');
   await env.DB.prepare('INSERT INTO evidence_summaries (id, learner_id, destination, period_from, period_to, data) VALUES (?,?,?,?,?,?)').bind(id, l.id, dest, from, to, JSON.stringify(data)).run();
@@ -121,4 +86,9 @@ export async function verifyEvidence(env, c, json) {
   if (!row) return json({ ok: false, error: 'No evidence summary matches that code.' }, 404);
   if (row.withdrawn) return json({ ok: false, withdrawn: true, error: 'The learner has withdrawn this evidence summary. Ask them for a current one.' }, 410);
   return json({ ok: true, kind: 'evidence', code: row.id, createdAt: row.created_at, ...JSON.parse(row.data) });
+}
+
+export async function signedAssessments(env, learnerId, from = '2000-01-01', to = '2999-12-31') {
+  const { results = [] } = await env.DB.prepare("SELECT id, pathway, module, kind, outcome, assessed_on FROM assessments WHERE learner_id = ? AND status = 'signed' AND assessed_on >= ? AND assessed_on <= ? ORDER BY assessed_on").bind(learnerId, from, to).all();
+  return results;
 }
