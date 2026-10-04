@@ -1287,5 +1287,6 @@
 "Your supervisor": "Il tuo supervisore",
 "for sign-off yet.": "per la convalida.",
 "{name} queried {scans}.": "{name} ha contestato {scans}.",
-"{name} signed off {scans}.": "{name} ha convalidato {scans}."
+"{name} signed off {scans}.": "{name} ha convalidato {scans}.",
+"Could not share the file.": "Impossibile condividere il file."
 }

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Wavelength</string>
+    <string name="title_activity_main">Wavelength</string>
+    <string name="package_name">uk.co.thewavelength.app</string>
+    <string name="custom_url_scheme">uk.co.thewavelength.app</string>
+</resources>

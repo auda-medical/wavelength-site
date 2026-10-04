@@ -1,0 +1,21 @@
+{
+  "name": "wavelength-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "App Store and Google Play shells for the Wavelength app at thewavelength.co.uk/app/",
+  "scripts": {
+    "sync": "cap sync",
+    "assets": "capacitor-assets generate --ios --android --iconBackgroundColor '#0A1526' --splashBackgroundColor '#0A1526'"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/filesystem": "^8.1.4",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/share": "^8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2"
+  }
+}

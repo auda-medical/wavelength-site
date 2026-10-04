@@ -1319,5 +1319,6 @@
 "Your supervisor": "Twój opiekun",
 "for sign-off yet.": "do zatwierdzenia.",
 "{name} queried {scans}.": "{name} zakwestionował: {scans}.",
-"{name} signed off {scans}.": "{name} zatwierdził: {scans}."
+"{name} signed off {scans}.": "{name} zatwierdził: {scans}.",
+"Could not share the file.": "Nie udało się udostępnić pliku."
 }

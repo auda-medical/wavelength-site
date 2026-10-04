@@ -1319,5 +1319,6 @@
 "Your supervisor": "Ваш руководитель",
 "for sign-off yet.": "на подтверждение.",
 "{name} queried {scans}.": "{name} оспаривает {scans}.",
-"{name} signed off {scans}.": "{name} подтверждает {scans}."
+"{name} signed off {scans}.": "{name} подтверждает {scans}.",
+"Could not share the file.": "Не удалось поделиться файлом."
 }

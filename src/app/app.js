@@ -252,6 +252,10 @@
   function learnLink(mod) { var t = TYPES[mod.types[0]]; return t && t.learn ? t.learn : '/learn/'; }
 
   // ---------- Install ("Download the app") ----------
+  // Store shells: Android's WebView has no Web Share, so text and link shares use the native Share plugin.
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.Share && !navigator.share) {
+    try { navigator.share = function (d) { if (d && d.files) return Promise.reject(new Error('files')); return window.Capacitor.Plugins.Share.share({ title: d.title, text: d.text, url: d.url }); }; } catch (e) {}
+  }
   var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true || /WavelengthApp/.test(navigator.userAgent);
   var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); S.installEvt = e; $$('[data-install]').forEach(function (b) { b.hidden = false; }); });
@@ -1395,7 +1399,22 @@
     });
   }
   function fetchSignoffs() { return navigator.onLine ? api('/api/app/signoffs').then(function (r) { return r.signoffs || []; }).catch(function () { return []; }) : Promise.resolve([]); }
+  // In the App Store and Google Play shells, web downloads and Web Share do not work inside the WebView,
+  // so files go through the native Filesystem and Share plugins (mobile/), saved to the app cache first.
+  var NATIVE = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins;
+  function nativeShare(blob, name) {
+    return new Promise(function (ok, fail) { var r = new FileReader(); r.onload = function () { ok(String(r.result).split(',')[1]); }; r.onerror = fail; r.readAsDataURL(blob); })
+      .then(function (data) { return NATIVE.Filesystem.writeFile({ path: name.replace(/[^\w.-]+/g, '-'), data: data, directory: 'CACHE' }); })
+      .then(function (w) { return NATIVE.Share.share({ title: name, files: [w.uri] }); })
+      .catch(function (e) { if (!/cancel/i.test(String(e && e.message))) toast(T('Could not share the file.')); });
+  }
   function deliver(blob, name, extra) {
+    if (NATIVE && NATIVE.Share && NATIVE.Filesystem) {
+      return sheet('<h2>' + esc(T('Your file is ready')) + '</h2><p class="muted small">' + esc(name) + ' · ' + Math.max(1, Math.round(blob.size / 1024)) + ' KB</p><div class="btns"><button class="btn teal block" data-share>' + I.share + ' ' + esc(T('Share or save')) + '</button><button class="btn ghost block" data-close>' + esc(T('Close')) + '</button></div>' + (extra ? extra.html : ''), function (root) {
+        if (extra && extra.bind) extra.bind(root);
+        $('[data-share]', root).onclick = function () { nativeShare(blob, name); };
+      });
+    }
     var file; try { file = new File([blob], name, { type: blob.type }); } catch (e) { file = null; }
     var url = URL.createObjectURL(blob);
     var canShare = file && navigator.canShare && navigator.canShare({ files: [file] });

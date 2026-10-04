@@ -1271,5 +1271,6 @@
 "Your supervisor": "您的督导老师",
 "for sign-off yet.": "签核申请。",
 "{name} queried {scans}.": "{name} 质疑了 {scans}。",
-"{name} signed off {scans}.": "{name} 签核了 {scans}。"
+"{name} signed off {scans}.": "{name} 签核了 {scans}。",
+"Could not share the file.": "无法分享文件。"
 }

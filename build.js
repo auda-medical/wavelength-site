@@ -1337,6 +1337,26 @@ pages['/volunteer/unavailable/'] = layout({
 });
 
 const APP_INSTALL_JS = `<script>(function(){var e=null,b=document.querySelector('[data-app-install]'),ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);if('serviceWorker' in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app/'}).catch(function(){});addEventListener('beforeinstallprompt',function(x){x.preventDefault();e=x;});if(b)b.addEventListener('click',function(){if(e){e.prompt();e.userChoice.then(function(c){if(c.outcome==='accepted')location.href=b.getAttribute('data-app-href')||'/app/';});}else if(ios){document.querySelector('[data-app-ios]').hidden=false;}else{location.href=b.getAttribute('data-app-href')||'/app/';}});})();</script>`;
+// Account deletion page: Google Play and the App Store link to it from the store listings.
+pages['/app/delete-account/'] = layout({
+  title: 'Delete your Wavelength account',
+  pathname: '/app/delete-account/',
+  description: 'How to delete your Wavelength app account and what is deleted.',
+  body: `${pageHero({ eyebrow: 'Wavelength app', title: 'Delete your account.', lede: 'You delete your Wavelength account yourself in the app, in a few seconds. You can also ask us by email.', crumbs: [{ label: 'Home', href: '/' }, { label: 'App', href: '/app/get/' }, { label: 'Delete your account' }] })}
+<section class="section"><div class="wrap"><div class="prose">
+<h2>In the app</h2>
+<ol><li>Open the Wavelength app and log in.</li><li>Tap <b>Me</b>.</li><li>Scroll to the end and tap <b>Delete my account</b>.</li><li>Enter your password to confirm.</li></ol>
+<p>Export or back up your logbook first if you want to keep a copy. Deletion cannot be undone.</p>
+<h2>By email</h2>
+<p>If you cannot open the app, email <a class="text-link" href="${mailto(site.enquiriesEmail, 'Delete my Wavelength account')}">${site.enquiriesEmail}</a> from the email address on your account and ask us to delete it. We confirm within one month, usually much sooner.</p>
+<h2>What is deleted</h2>
+<p>Your account, password, profile, the written entries in your logbook, your sign-offs and sign-off requests, structured assessments, supervisor links, verified evidence summaries and any encrypted images waiting in a sign-off link. Verification codes for your sign-offs, assessments and summaries stop working.</p>
+<p>Photos and clips live only on your phone and in backup files you saved yourself. Uninstalling the app removes them from your phone. Delete any backup files from your own cloud storage separately.</p>
+<h2>What we keep</h2>
+<p>If you hold Wavelength Academy certificates, the app asks whether to keep them verifiable. If you choose to keep them, we keep your name and email with the certificate records so employers can still check them, for up to six years after your last activity. Otherwise we delete them too. Course booking and payment records stay for six years because the law requires it. Read the <a class="text-link" href="/privacy/">privacy notice</a> for details.</p>
+</div></div></section>`,
+});
+
 // Wavelength app landing page (/app/get/). The app itself is static in src/app/.
 {
   const f = (icon, t, d) => `<div class="pillar reveal"><div class="num">${icon}</div><h3>${t}</h3><p>${d}</p></div>`;

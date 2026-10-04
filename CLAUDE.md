@@ -116,3 +116,12 @@ Bookings go through Stripe Payment Links. Discount codes are Stripe promotion co
 
 ## Before pushing
 Build, then check pages at 390px and 1440px (`npm i --no-save playwright@1.56 && node tools/shots.mjs <outdir>`). No horizontal overflow, no console errors.
+
+## App Store and Google Play
+- `mobile/` holds Capacitor 8 shells (iOS and Android, bundle ID `uk.co.thewavelength.app`) that load the live app from https://thewavelength.co.uk/app/ (`server.url` in `mobile/capacitor.config.json`). Web changes reach store users at once; rebuild the shells only for native changes. Listing text, privacy labels, Data safety answers and review notes: `mobile/STORE.md`.
+- Builds run on GitHub Actions only (workflows "Android app" and "iOS app", run by hand with a version number). Secrets are listed at the top of each workflow file. The Android workflow outputs a signed .aab and uploads to Play internal testing once `PLAY_SERVICE_ACCOUNT_JSON` exists; the iOS workflow uploads to TestFlight with an App Store Connect API key.
+- After `npx cap add` or a Capacitor upgrade run `python3 mobile/scripts/patch-native.py` and `npm run assets` in `mobile/`.
+- The shell appends `WavelengthApp` to the user agent (app.js treats it as installed) and exposes the Share and Filesystem plugins: `deliver()` and `navigator.share` in app.js use them when `window.Capacitor` is native, because WebView downloads and Web Share do not work there.
+- Android cloud backup is off (`allowBackup` false) so logbook images never leave the phone through Google backup.
+- Store review account: appreview@thewavelength.co.uk in the live `learners` table. Account deletion page for the stores: /app/delete-account/.
+

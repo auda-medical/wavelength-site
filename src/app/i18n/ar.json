@@ -1351,5 +1351,6 @@
 "Your supervisor": "مشرفك",
 "for sign-off yet.": "للاعتماد بعد.",
 "{name} queried {scans}.": "استفسر {name} عن {scans}.",
-"{name} signed off {scans}.": "اعتمد {name} {scans}."
+"{name} signed off {scans}.": "اعتمد {name} {scans}.",
+"Could not share the file.": "تعذّرت مشاركة الملف."
 }

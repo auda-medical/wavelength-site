@@ -1,0 +1,26 @@
+{
+  "appId": "uk.co.thewavelength.app",
+  "appName": "Wavelength",
+  "webDir": "www",
+  "server": {
+    "url": "https://thewavelength.co.uk/app/",
+    "hostname": "thewavelength.co.uk",
+    "androidScheme": "https",
+    "allowNavigation": [
+      "thewavelength.co.uk",
+      "www.thewavelength.co.uk"
+    ],
+    "errorPath": "offline.html"
+  },
+  "ios": {
+    "contentInset": "never",
+    "limitsNavigationsToAppBoundDomains": true,
+    "backgroundColor": "#0A1526",
+    "scheme": "Wavelength"
+  },
+  "android": {
+    "backgroundColor": "#0A1526",
+    "allowMixedContent": false
+  },
+  "appendUserAgent": "WavelengthApp"
+}

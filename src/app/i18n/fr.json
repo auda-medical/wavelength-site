@@ -1287,5 +1287,6 @@
 "Your supervisor": "Votre superviseur",
 "for sign-off yet.": "pour validation.",
 "{name} queried {scans}.": "{name} a interrogé {scans}.",
-"{name} signed off {scans}.": "{name} a validé {scans}."
+"{name} signed off {scans}.": "{name} a validé {scans}.",
+"Could not share the file.": "Impossible de partager le fichier."
 }

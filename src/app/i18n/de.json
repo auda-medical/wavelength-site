@@ -1287,5 +1287,6 @@
 "Your supervisor": "Ihr Supervisor",
 "for sign-off yet.": "zur Bestätigung.",
 "{name} queried {scans}.": "{name} hat {scans} hinterfragt.",
-"{name} signed off {scans}.": "{name} hat {scans} bestätigt."
+"{name} signed off {scans}.": "{name} hat {scans} bestätigt.",
+"Could not share the file.": "Die Datei konnte nicht geteilt werden."
 }
