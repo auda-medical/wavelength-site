@@ -95,8 +95,11 @@ h1,h2,h3,h4{margin:0;font-weight:500;line-height:1.1}
 @media (max-width:359px){.brand{gap:10px}.brand svg{width:36px;height:36px}.brand .wm b{font-size:15px;letter-spacing:.26em}.brand .wm small{font-size:8px;letter-spacing:.18em}}
 @media (min-width:1100px){.nav{display:flex}.bar-end{display:none}}
 @media (min-width:1280px){.nav{gap:34px}}
-.mobile-menu{position:fixed;inset:0;z-index:45;background:var(--navy);color:var(--cream);display:flex;flex-direction:column;justify-content:center;padding:100px 32px 40px;opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s}
-.mobile-menu a{font-family:var(--serif);font-size:40px;text-decoration:none;padding:8px 0;opacity:0;transform:translateY(16px);transition:opacity .5s var(--ease),transform .5s var(--ease)}
+.mobile-menu{position:fixed;inset:0;z-index:45;background:var(--navy);color:var(--cream);display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 32px calc(40px + env(safe-area-inset-bottom,0px));opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s}
+.mobile-menu::before{content:"";position:sticky;top:0;z-index:2;flex:none;height:100px;margin:0 -32px;background:var(--navy)}
+.mobile-menu>:first-child{margin-top:auto}
+.mobile-menu>:last-child{margin-bottom:auto}
+.mobile-menu a{font-family:var(--serif);font-size:clamp(30px,5.4vh,40px);text-decoration:none;padding:8px 0;opacity:0;transform:translateY(16px);transition:opacity .5s var(--ease),transform .5s var(--ease)}
 .mobile-menu .btn{font-family:var(--sans);font-size:16px;margin-top:28px;align-self:flex-start}
 .menu-open .mobile-menu{opacity:1;visibility:visible}
 .menu-open .mobile-menu a{opacity:1;transform:none}
