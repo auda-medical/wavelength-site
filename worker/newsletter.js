@@ -117,7 +117,7 @@ async function testConnection(env) {
   try {
     const t = await api(env, 'topics', {}, 'GET');
     const id = await topicId(env);
-    out.push(id ? 'Topic: OK' : 'Topic: none (' + String(t.message || t.code || JSON.stringify(t)).slice(0, 160) + ')');
+    out.push(id ? 'Topic: OK' : 'Topic: none (' + JSON.stringify(t).slice(0, 400) + ')');
   } catch (e) { out.push('Topic check failed: ' + e.message); }
   return out.join(' · ');
 }
