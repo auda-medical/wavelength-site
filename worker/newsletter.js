@@ -129,7 +129,9 @@ export async function zohoSubscribe(env, { email, first, role, source }) {
     if (!s.zoho_refresh_token) return false;
     const info = { 'Contact Email': email, 'First Name': first || '' };
     if (role) info['Role'] = role;
-    const j = await api(env, 'json/listsubscribe', { listkey: await listKey(env), contactinfo: JSON.stringify(info), source: source || 'Website' });
+    const tid = await topicId(env);
+    // Contacts must join the campaign topic, or Zoho excludes them at send time ("No lists selected").
+    const j = await api(env, 'json/listsubscribe', { listkey: await listKey(env), contactinfo: JSON.stringify(info), source: source || 'Website', ...(tid ? { topic_id: tid } : {}) }, 'POST', true);
     return j.status === 'success' || j.code === '0';
   } catch { return false; }
 }
