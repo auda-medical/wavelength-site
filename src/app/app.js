@@ -782,7 +782,7 @@
     var pre = r.q.get('e');
     var todo = live().filter(function (e) { return !(e.signoff && e.signoff.status === 'confirmed'); }).sort(sortEntries);
     mount(shell({ title: 'Sign-off', back: 'log' },
-      '<div class="card dark"><h3>Two ways to get signed off</h3><p class="muted small">In person: hand your phone to your supervisor, who signs with a finger. By link: send a secure link your supervisor opens on any device. Every sign-off gets a code anyone can verify at thewavelength.co.uk/app/verify.</p></div>' +
+      '<div class="card dark"><h3>Two ways to get signed off</h3><p class="muted small">In person: hand your phone to your supervisor, who signs with a finger. By link: send a secure link your supervisor opens on any device. Every sign-off gets a code anyone can verify at thewavelength.co.uk/verify.</p></div>' +
       (todo.length ? '<h2 class="sec">Choose scans <button class="link" id="selall" type="button">Select all</button></h2><form id="sf">' + todo.map(function (e) {
         var t = TYPES[e.type] || { label: e.type };
         return '<label class="pathcard"><input type="checkbox" name="e" value="' + esc(e.id) + '"' + (pre === e.id ? ' checked' : '') + (e._dirty ? ' disabled' : '') + '><div class="grow"><b>' + esc(t.label) + '</b><span>' + esc(fmt(e.date)) + ' · ' + esc(SUP[e.supervision] || '') + (e.supervisor ? ' · ' + esc(e.supervisor) : '') + (e._dirty ? ' · syncing, try again shortly' : '') + '</span><div style="margin-top:4px">' + statusChip(e) + '</div></div></label>';
@@ -827,25 +827,76 @@
         var b = $('button.teal', f); busy(b, true, 'Signing…');
         api('/api/app/signoff/inperson', d).then(function (res) {
           if (!res.ok) throw new Error(res.error); closeSheet();
-          return sync().then(function () { sheet('<h2>Signed off</h2><p>Code <b>' + esc(res.code) + '</b>. Anyone can verify it at thewavelength.co.uk/app/verify.</p><div class="btns"><button class="btn teal block" data-close>Done</button></div>'); viewSignoff(route()); });
+          return sync().then(function () { sheet('<h2>Signed off</h2><p>Code <b>' + esc(res.code) + '</b>. Anyone can verify it at thewavelength.co.uk/verify.</p><div class="btns"><button class="btn teal block" data-close>Done</button></div>'); viewSignoff(route()); });
         }).catch(function (ex) { busy(b, false); err.textContent = ex.message || 'Could not sign. Check the connection.'; err.hidden = false; });
       });
     });
   }
-  function signByLink(ids) {
-    sheet('<h2>Send a sign-off link</h2><p class="muted small">Your supervisor sees the text of ' + plural(ids.length, 'scan') + ', not your images. The link works for 14 days.</p><form id="lf"><div class="field"><label for="ln2">Supervisor name (optional)</label><input id="ln2" name="supervisorName" type="text"></div><div class="btns"><button class="btn teal block">Create link</button></div></form>', function (root) {
-      $('#lf', root).addEventListener('submit', function (ev) {
-        ev.preventDefault(); var b = $('button', root); busy(b, true);
-        api('/api/app/signoff/request', { entryIds: ids, supervisorName: $('#ln2', root).value }).then(function (res) {
-          if (!res.ok) throw new Error(res.error);
-          var msg = 'Please sign off ' + plural(ids.length, 'ultrasound scan') + ' in my Wavelength logbook: ' + res.link;
-          var html = '<h2>Link ready</h2><p class="small muted">Send it by email, WhatsApp or Teams. Anyone with the link can sign, so send it only to your supervisor.</p><div class="card" style="word-break:break-all;font-size:13px">' + esc(res.link) + '</div><div class="btns">' + (navigator.share ? '<button class="btn teal block" data-share>Share link</button>' : '') + '<button class="btn block" data-copy>Copy link</button><a class="btn ghost block" href="mailto:?subject=' + encodeURIComponent('Ultrasound logbook sign-off') + '&body=' + encodeURIComponent(msg) + '">Email it</a><button class="btn ghost block" data-close>Done</button></div>';
-          closeSheet(); sheet(html, function (r2) {
-            var sh = $('[data-share]', r2); if (sh) sh.onclick = function () { navigator.share({ title: 'Logbook sign-off', text: msg }).catch(function () {}); };
-            $('[data-copy]', r2).onclick = function () { (navigator.clipboard ? navigator.clipboard.writeText(res.link) : Promise.reject()).then(function () { toast('Link copied.'); }).catch(function () { toast('Press and hold the link to copy it.'); }); };
+  // Encrypted image sharing: AES-GCM 256 on this phone, key only in the link's #fragment. The server stores ciphertext.
+  function b64u(buf) { var b = new Uint8Array(buf), s = ''; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function shareImages(code, sets, onStep) {
+    var raw = crypto.getRandomValues(new Uint8Array(32)), list = [], total = 0, done = 0;
+    sets.forEach(function (st) { total += st.images.length; });
+    return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt']).then(function (key) {
+      var chain = Promise.resolve();
+      sets.forEach(function (st) {
+        st.images.forEach(function (rec, n) {
+          chain = chain.then(function () {
+            onStep(++done, total);
+            var iv = crypto.getRandomValues(new Uint8Array(12));
+            return rec.blob.arrayBuffer().then(function (buf) {
+              return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: new TextEncoder().encode(code + ':' + st.entry + ':' + n) }, key, buf);
+            }).then(function (ct) {
+              var out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
+              return fetch('/api/app/signoff/image?code=' + encodeURIComponent(code) + '&entry=' + encodeURIComponent(st.entry) + '&n=' + n, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' }, body: out });
+            }).then(function (r) { return r.json(); }).then(function (j) {
+              if (!j.ok) throw new Error(j.error || 'Could not upload an image.');
+              list.push({ entry: st.entry, n: n, w: rec.w || 0, h: rec.h || 0 });
+            });
           });
-          viewSignoff(route());
-        }).catch(function (ex) { busy(b, false); toast(ex.message || 'Could not create the link.'); });
+        });
+      });
+      return chain;
+    }).then(function () {
+      return api('/api/app/signoff/images', { code: code, images: list, declared: true });
+    }).then(function (j) { if (!j.ok) throw new Error(j.error || 'Could not share the images.'); return b64u(raw); });
+  }
+  function signByLink(ids) {
+    var canShare = !!(S.me && S.me.imageShare && window.crypto && crypto.subtle);
+    Promise.all(ids.map(function (id) { return canShare ? imagesFor(id).then(function (im) { return { entry: id, images: im.slice(0, 12) }; }) : { entry: id, images: [] }; })).then(function (sets) {
+      sets = sets.filter(function (st) { return st.images.length; });
+      var count = sets.reduce(function (a, st) { return a + st.images.length; }, 0);
+      var imgPart = count ? '<div class="field"><label class="check"><input type="checkbox" id="incl" checked><span>Include ' + plural(count, 'image') + ' for your supervisor to review</span></label>' +
+        '<div id="inclbox"><div class="gallery" style="margin-top:8px">' + sets.map(function (st) { return st.images.map(function (rec) { return '<button type="button" disabled><img alt="Image to share" src="' + imgUrl(rec, true) + '"></button>'; }).join(''); }).join('') + '</div>' +
+        '<p class="hint">Images are encrypted on this phone. Wavelength cannot open them. They delete when your supervisor signs, when you cancel the request, or after 14 days.</p>' +
+        '<label class="check"><input type="checkbox" id="decl"><span>I have checked every image above. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them follows my trust\'s information governance policy.</span></label></div></div>' : '';
+      sheet('<h2>Send a sign-off link</h2><p class="muted small">' + (count ? 'Your supervisor sees the record of ' + plural(ids.length, 'scan') + ' and, if you include them, your images.' : 'Your supervisor sees the text of ' + plural(ids.length, 'scan') + ', not your images.') + ' The link works for 14 days. Anyone with the link sees what it holds, so send it only to your supervisor.</p><form id="lf"><div class="field"><label for="ln2">Supervisor name (optional)</label><input id="ln2" name="supervisorName" type="text"></div>' + imgPart + '<div class="err" hidden></div><div class="btns"><button class="btn teal block">Create link</button></div></form>', function (root) {
+        var incl = $('#incl', root);
+        if (incl) incl.onchange = function () { $('#inclbox', root).hidden = !incl.checked; };
+        $('#lf', root).addEventListener('submit', function (ev) {
+          ev.preventDefault(); var b = $('button.teal', root), err = $('.err', root); err.hidden = true;
+          var withImages = !!(incl && incl.checked);
+          if (withImages && !$('#decl', root).checked) { err.textContent = 'Tick the declaration, or untick Include images.'; err.hidden = false; return; }
+          busy(b, true);
+          var code = null;
+          api('/api/app/signoff/request', { entryIds: ids, supervisorName: $('#ln2', root).value }).then(function (res) {
+            if (!res.ok) throw new Error(res.error);
+            code = res.code;
+            if (!withImages) return { link: res.link, images: 0 };
+            return shareImages(res.code, sets, function (i, n) { b.textContent = 'Encrypting image ' + i + ' of ' + n + '…'; }).then(function (k) { return { link: res.link + '.' + k, images: count }; });
+          }).then(function (out) {
+            var msg = 'Please sign off ' + plural(ids.length, 'ultrasound scan') + ' in my Wavelength logbook: ' + out.link;
+            var html = '<h2>Link ready</h2><p class="small muted">Send it by email, WhatsApp or Teams.' + (out.images ? ' It holds the key to ' + plural(out.images, 'encrypted image') + ', so send it only to your supervisor.' : ' Anyone with the link can sign, so send it only to your supervisor.') + '</p><div class="card" style="word-break:break-all;font-size:13px">' + esc(out.link) + '</div><div class="btns">' + (navigator.share ? '<button class="btn teal block" data-share>Share link</button>' : '') + '<button class="btn block" data-copy>Copy link</button><a class="btn ghost block" href="mailto:?subject=' + encodeURIComponent('Ultrasound logbook sign-off') + '&body=' + encodeURIComponent(msg) + '">Email it</a><button class="btn ghost block" data-close>Done</button></div>';
+            closeSheet(); sheet(html, function (r2) {
+              var sh = $('[data-share]', r2); if (sh) sh.onclick = function () { navigator.share({ title: 'Logbook sign-off', text: msg }).catch(function () {}); };
+              $('[data-copy]', r2).onclick = function () { (navigator.clipboard ? navigator.clipboard.writeText(out.link) : Promise.reject()).then(function () { toast('Link copied.'); }).catch(function () { toast('Press and hold the link to copy it.'); }); };
+            });
+            viewSignoff(route());
+          }).catch(function (ex) {
+            if (code) api('/api/app/signoff/cancel', { code: code });
+            busy(b, false); b.textContent = 'Create link'; err.textContent = ex.message || 'Could not create the link. Check the connection.'; err.hidden = false;
+          });
+        });
       });
     });
   }

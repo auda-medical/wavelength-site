@@ -162,12 +162,13 @@ ${noindex ? '<meta name="robots" content="noindex">' : '<meta name="robots" cont
 <header class="site-header" data-theme="dark">
   <div class="wrap bar">
     <a class="brand" href="/" aria-label="${site.name} home">${mark()}<span class="wm"><b>WAVELENGTH</b><small>TUNE IN · GAIN CLARITY</small></span></a>
-    <nav class="nav" aria-label="Main">${navLinks}<a class="btn" href="/courses/core-emergency-ultrasound/#dates">${BOOK_LABEL}</a></nav>
+    <nav class="nav" aria-label="Main">${navLinks}<a class="nav-verify" href="/verify/"${pathname === '/verify/' ? ' aria-current="page"' : ''} title="Verify a certificate or sign-off"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Verify</a><a class="btn" href="/courses/core-emergency-ultrasound/#dates">${BOOK_LABEL}</a></nav>
     <button class="menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu"><span></span></button>
   </div>
 </header>
 <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
   <a href="/">Home</a>${mobileLinks}
+  <a href="/verify/">Verify a certificate</a>
   <a class="btn btn-teal" href="/courses/core-emergency-ultrasound/#dates">${BOOK_LABEL} ${arrow}</a>
 </div>
 <main id="main">
@@ -181,7 +182,7 @@ ${body}
         <p class="foot-tag">Point-of-care ultrasound education for emergency and acute clinicians: hands-on courses, free Pearls and Wavelength Academy.</p>
       </div>
       <div><h2>Courses</h2><ul>${openCourses.map((c) => `<li><a href="/courses/${c.slug}/">${esc(c.title)}</a></li>`).join('')}<li><a href="/courses/">All courses</a></li></ul></div>
-      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">For departments</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}<li><a href="/app/get/">Wavelength app</a></li><li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
+      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">For departments</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}<li><a href="/app/get/">Wavelength app</a></li><li><a href="/verify/">Verify a certificate or sign-off</a></li><li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li></ul>${socialIcons()}</div>
     </div>
     <div class="bottom">
@@ -1156,6 +1157,27 @@ pages['/elearning/verify/'] = layout({
 </form></div></section>`,
 });
 
+// One place to check any Wavelength code: WL- certificates, SO- sign-offs, EV- verified summaries.
+pages['/verify/'] = layout({
+  title: 'Verify a certificate or sign-off',
+  pathname: '/verify/',
+  description: 'Check that a Wavelength Academy certificate, a supervisor sign-off or a verified logbook summary is genuine. Enter the code printed on it.',
+  body: `${pageHero({ eyebrow: 'Verify', title: 'Is it genuine?', lede: 'Enter the code printed on any Wavelength certificate, sign-off or logbook summary. No account needed.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Verify' }] })}
+<section class="section"><div class="wrap"><form class="form ac-verify-form" method="get" action="/verify/" id="vform">
+  <label>Code<input name="code" id="vcode" required maxlength="40" autocomplete="off" placeholder="WL-, SO- or EV- code" style="text-transform:uppercase"></label>
+  <div><button class="btn" type="submit">Check ${arrow}</button></div>
+  <p class="form-error" id="verr" hidden>Codes start with WL-, SO- or EV-. Check the code and try again.</p>
+</form>
+<div class="pillars" style="margin-top:48px">
+  <div class="pillar"><div class="num">WL-</div><h3>Academy certificate</h3><p>Shows the learner's name, the module, CPD hours and the date it was issued.</p></div>
+  <div class="pillar"><div class="num">SO-</div><h3>Supervisor sign-off</h3><p>Shows who signed, their stated role and accreditation, how they signed and which scans they confirmed.</p></div>
+  <div class="pillar"><div class="num">EV-</div><h3>Verified logbook summary</h3><p>Shows the learner's progress against each pathway as Wavelength recorded it. Counts and dates only.</p></div>
+</div>
+<p style="margin-top:32px;color:var(--slate)">Scanning the QR code on a certificate or export opens the same check. Wavelength holds no patient identifiers, and checks never show findings or images.</p>
+</div></section>
+<script>(function(){var go=function(v){v=String(v||'').toUpperCase().replace(/\\s+/g,'');if(/^WL-/.test(v))return '/elearning/verify/?code='+encodeURIComponent(v);if(/^(SO|EV)-/.test(v))return '/app/verify/?code='+encodeURIComponent(v);return null;};var q=new URLSearchParams(location.search).get('code');if(q){var u=go(q);if(u){location.replace(u);return;}document.getElementById('verr').hidden=false;document.getElementById('vcode').value=q;}document.getElementById('vform').addEventListener('submit',function(e){e.preventDefault();var u=go(document.getElementById('vcode').value);if(u)location.href=u;else document.getElementById('verr').hidden=false;});})();</script>`,
+});
+
 pages['/elearning/certificate/'] = layout({
   title: 'Certificate',
   pathname: '/elearning/certificate/',
@@ -1264,7 +1286,7 @@ pages['/volunteer/unavailable/'] = layout({
     { q: 'Can I upload images I already have?', a: 'Yes. Tap Choose on any scan to add images from your photos or files, several at once, up to 12 per scan. This includes images copied from the ultrasound machine to a USB drive, once your trust\'s removable media and information governance policy allows it. Every image opens in the editor before it is saved.' },
     { q: 'Can I edit images in the app?', a: 'Yes. The built-in editor crops, rotates, trims the patient banner from the top of the screen and blacks out any name, number, date or label, with undo. You do not need your phone\'s photo editor. Saving re-encodes the image, which removes hidden location and device data.' },
     { q: 'How fast is sign-off?', a: 'Immediate in person: your supervisor signs on your phone after the scan. By link, they open it on their own phone, confirm or query each scan and sign with a finger, and the sign-off appears in your logbook straight away. The link shows the written record. Your images stay on your phone, so a supervisor who wants to review them looks at them with you.' },
-    { q: 'How does someone check a sign-off is genuine?', a: 'Each sign-off has a code (SO-XXXX-XXXX) and QR code, printed on your case PDFs and in the sign-off register of every export. Scanning it, or entering the code at thewavelength.co.uk/app/verify/, shows the learner, the supervisor, the date and how they signed. The check shows the record as it was signed, so an edited PDF does not match it, and changing a signed scan in the app voids its sign-off.' },
+    { q: 'How does someone check a sign-off is genuine?', a: 'Each sign-off has a code (SO-XXXX-XXXX) and QR code, printed on your case PDFs and in the sign-off register of every export. Scanning it, or entering the code at thewavelength.co.uk/verify, shows the learner, the supervisor, the date and how they signed. The check shows the record as it was signed, so an edited PDF does not match it, and changing a signed scan in the app voids its sign-off.' },
     { q: 'Is it in the App Store?', a: 'Not yet. You install it from this website in two taps and it works like any app, including offline. App Store and Google Play versions follow.' },
     { q: 'What about my Academy certificates?', a: 'Log in with the same email and your Wavelength Academy certificates appear in the app, ready to share or verify.' },
   ];

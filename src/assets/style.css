@@ -663,3 +663,5 @@ label.quiz-opt:has(input:focus-visible){outline:2px solid var(--teal);outline-of
 .ev-steps p{color:#B9C4D0;font-size:15px;line-height:1.6;margin:0}
 @media (max-width:900px){.ev-steps{grid-template-columns:1fr 1fr;gap:28px 20px}}
 @media (max-width:560px){.ev-steps{grid-template-columns:1fr}}
+.nav .nav-verify{display:inline-flex;align-items:center;gap:6px;font-size:14px;opacity:.85}
+.nav .nav-verify:hover{opacity:1}

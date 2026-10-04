@@ -245,3 +245,7 @@ ol.steps li { margin: 0 0 6px; }
 .evmod { border-top: 1px solid var(--line); padding: 10px 0; }
 .evmod p { margin: 4px 0 0; }
 .evmod .row { align-items: center; gap: 8px; }
+
+/* Supervisor review of encrypted shared images */
+.review-imgs { display: grid; gap: 10px; margin-top: 12px; }
+.review-img { width: 100%; height: auto; border-radius: 10px; background: #000; display: block; -webkit-touch-callout: none; user-select: none; }

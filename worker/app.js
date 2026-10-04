@@ -4,7 +4,11 @@
 //        reset/request, reset/complete, account/delete
 //        evidence, evidence/withdraw
 //   GET  me, sync?since=, signoffs, evidence, signoff/view?t=, verify?code= (SO- sign-offs and EV- evidence summaries)
-// Logbook entries hold text only. Images stay on the learner's device and never reach this Worker.
+//   POST signoff/image?code=&entry=&n= (encrypted bytes), signoff/images (manifest)   GET signoff/image?t=&entry=&n=
+// Logbook entries hold text only. Images stay on the learner's device. The one exception is encrypted image
+// sharing in sign-off links (IMAGE_SHARE = "true"): the phone encrypts with AES-GCM and keeps the key in the link's
+// #fragment, so this Worker stores only ciphertext in KV (SHARED_IMAGES), deleted on sign-off, cancel, account
+// deletion or after 14 days. See the DPIA before changing any of this.
 import { cookieFor, clearCookie, learner, sendMail } from './academy.js';
 import DATA from './academy-data.json';
 import { createEvidence, listEvidence, withdrawEvidence, verifyEvidence } from './evidence.js';
@@ -143,7 +147,7 @@ async function me(env, l) {
     env.DB.prepare('SELECT module, MAX(score) AS best, COUNT(*) AS tries FROM attempts WHERE learner_id = ? GROUP BY module').bind(l.id).all(),
   ]);
   const modules = Object.values(DATA.modules).filter((m) => !m.draft).map((m) => ({ slug: m.slug, title: m.title, cpdHours: m.cpdHours }));
-  return json({ ok: true, account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules });
+  return json({ ok: true, account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules, imageShare: imgOn(env) });
 }
 
 async function saveProfile(env, l, req) {
@@ -210,6 +214,8 @@ async function deleteAccount(env, l, req) {
   const d = await body(req);
   if (!d || !(await checkPassword(String(d.password || ''), l.password_hash))) return json({ ok: false, error: 'Your password is not right.' }, 400);
   const hasCerts = await env.DB.prepare('SELECT COUNT(*) AS n FROM certificates WHERE learner_id = ?').bind(l.id).first();
+  const { results: open = [] } = await env.DB.prepare("SELECT id FROM signoffs WHERE learner_id = ? AND status = 'pending'").bind(l.id).all();
+  for (const so of open) await deleteSharedImages(env, so.id);
   const stmts = [
     env.DB.prepare('DELETE FROM logbook_entries WHERE learner_id = ?').bind(l.id),
     env.DB.prepare('DELETE FROM signoffs WHERE learner_id = ?').bind(l.id),
@@ -328,7 +334,8 @@ async function signoffView(env, url) {
   if (!so) return json({ ok: false, error: 'This sign-off link is not valid. Ask the learner to send a new one.' }, 404);
   if (so.status !== 'pending') return json({ ok: false, done: true, error: `This request was signed by ${so.supervisor_name} on ${String(so.signed_at).slice(0, 10)}.` }, 410);
   if (so.expires_at < Date.now()) return json({ ok: false, error: 'This sign-off link has expired. Ask the learner to send a new one.' }, 410);
-  return json({ ok: true, code: so.id, learner: fullName(so), supervisorName: so.supervisor_name, entries: JSON.parse(so.snapshot) });
+  const images = imgOn(env) ? (await env.SHARED_IMAGES.get(`so:${so.id}:m`, 'json')) || [] : [];
+  return json({ ok: true, code: so.id, learner: fullName(so), supervisorName: so.supervisor_name, entries: JSON.parse(so.snapshot), images });
 }
 
 async function signoffComplete(env, req) {
@@ -344,6 +351,7 @@ async function signoffComplete(env, req) {
   await env.DB.prepare("UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL WHERE id = ?")
     .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), sig, so.id).run();
   await applySignoff(env, so, decisions, sup, 'remote');
+  await deleteSharedImages(env, so.id);
   return json({ ok: true, code: so.id });
 }
 
@@ -371,8 +379,59 @@ async function signoffList(env, l) {
 
 async function signoffCancel(env, l, req) {
   const d = await body(req);
-  await env.DB.prepare("UPDATE signoffs SET status = 'cancelled', token_hash = NULL WHERE id = ? AND learner_id = ? AND status = 'pending'").bind(clip(d && d.code, 20), l.id).run();
+  const c = clip(d && d.code, 20);
+  const r = await env.DB.prepare("UPDATE signoffs SET status = 'cancelled', token_hash = NULL WHERE id = ? AND learner_id = ? AND status = 'pending'").bind(c, l.id).run();
+  if (r.meta && r.meta.changes) await deleteSharedImages(env, c);
   return json({ ok: true });
+}
+
+// ---------- Encrypted image sharing in sign-off links ----------
+const imgOn = (env) => env.IMAGE_SHARE === 'true' && !!env.SHARED_IMAGES;
+const IMG_MAX = 1572864, IMG_PER_ENTRY = 12, IMG_PER_LINK = 60;
+const imgKey = (id, entry, n) => `so:${id}:${entry}:${n}`;
+async function ownPending(env, l, c) {
+  const so = await env.DB.prepare("SELECT id, entry_ids, expires_at, status FROM signoffs WHERE id = ? AND learner_id = ? AND method = 'remote'").bind(clip(c, 20), l.id).first();
+  return so && so.status === 'pending' && so.expires_at > Date.now() + 120000 ? so : null;
+}
+async function signoffImageUpload(env, l, req, url) {
+  if (!imgOn(env)) return json({ ok: false, error: 'Image sharing is not switched on yet.' }, 404);
+  const so = await ownPending(env, l, url.searchParams.get('code'));
+  if (!so) return json({ ok: false, error: 'This sign-off request is no longer open.' }, 410);
+  const entry = clip(url.searchParams.get('entry'), 40), n = Number(url.searchParams.get('n'));
+  if (!JSON.parse(so.entry_ids).includes(entry) || !Number.isInteger(n) || n < 0 || n >= IMG_PER_ENTRY) return json({ ok: false, error: 'That image does not belong to this request.' }, 400);
+  const len = Number(req.headers.get('Content-Length') || 0);
+  if (len > IMG_MAX) return json({ ok: false, error: 'Image too large.' }, 413);
+  const buf = await req.arrayBuffer();
+  if (buf.byteLength < 29 || buf.byteLength > IMG_MAX) return json({ ok: false, error: 'Image too large or empty.' }, 413);
+  await env.SHARED_IMAGES.put(imgKey(so.id, entry, n), buf, { expiration: Math.floor(so.expires_at / 1000) });
+  return json({ ok: true });
+}
+async function signoffImagesCommit(env, l, req) {
+  if (!imgOn(env)) return json({ ok: false, error: 'Image sharing is not switched on yet.' }, 404);
+  const d = await body(req);
+  const so = d && await ownPending(env, l, d.code);
+  if (!so) return json({ ok: false, error: 'This sign-off request is no longer open.' }, 410);
+  if (!d.declared) return json({ ok: false, error: 'Confirm that no identifiers remain on the images.' }, 400);
+  const ids = JSON.parse(so.entry_ids), seen = new Set();
+  const list = (Array.isArray(d.images) ? d.images : []).slice(0, IMG_PER_LINK).map((i) => ({ entry: clip(i && i.entry, 40), n: Number(i && i.n), w: Math.min(20000, Number(i && i.w) || 0), h: Math.min(20000, Number(i && i.h) || 0) }))
+    .filter((i) => ids.includes(i.entry) && Number.isInteger(i.n) && i.n >= 0 && i.n < IMG_PER_ENTRY && !seen.has(i.entry + ':' + i.n) && seen.add(i.entry + ':' + i.n));
+  await env.SHARED_IMAGES.put(`so:${so.id}:m`, JSON.stringify(list), { expiration: Math.floor(so.expires_at / 1000) });
+  return json({ ok: true, count: list.length });
+}
+async function signoffImageGet(env, url) {
+  if (!imgOn(env)) return json({ ok: false }, 404);
+  const t = clip(url.searchParams.get('t'), 100);
+  const so = t && await env.DB.prepare('SELECT id, status, expires_at FROM signoffs WHERE token_hash = ?').bind(await sha256(t)).first();
+  if (!so || so.status !== 'pending' || so.expires_at < Date.now()) return json({ ok: false }, 410);
+  const buf = await env.SHARED_IMAGES.get(imgKey(so.id, clip(url.searchParams.get('entry'), 40), Number(url.searchParams.get('n'))), 'arrayBuffer');
+  if (!buf) return json({ ok: false }, 404);
+  return new Response(buf, { headers: { 'Content-Type': 'application/octet-stream', ...HEAD } });
+}
+async function deleteSharedImages(env, id) {
+  if (!env.SHARED_IMAGES || !id) return;
+  const m = await env.SHARED_IMAGES.get(`so:${id}:m`, 'json');
+  const keys = (Array.isArray(m) ? m : []).map((i) => imgKey(id, i.entry, i.n));
+  await Promise.all([...keys, `so:${id}:m`].map((k) => env.SHARED_IMAGES.delete(k)));
 }
 
 async function verify(env, url) {
@@ -407,12 +466,15 @@ export async function handleApp(req, env, ctx) {
     if (p === 'signoff/request') return signoffRequest(env, l, req);
     if (p === 'signoff/inperson') return signoffInPerson(env, l, req);
     if (p === 'signoff/cancel') return signoffCancel(env, l, req);
+    if (p === 'signoff/image') return signoffImageUpload(env, l, req, url);
+    if (p === 'signoff/images') return signoffImagesCommit(env, l, req);
     if (p === 'evidence') return createEvidence(env, l, await body(req), { code, clip, fullName, profileOf, json, origin: url.origin });
     if (p === 'evidence/withdraw') return withdrawEvidence(env, l, await body(req), clip, json);
     if (p === 'account/delete') return deleteAccount(env, l, req);
     return json({ ok: false }, 404);
   }
   if (p === 'signoff/view') return signoffView(env, url);
+  if (p === 'signoff/image') return signoffImageGet(env, url);
   if (p === 'verify') return verify(env, url);
   const l = await learner(env, req);
   if (p === 'me') return l && l.password_hash ? me(env, l) : json({ ok: false, auth: false, academy: !!l });

@@ -44,19 +44,46 @@
     return;
   }
 
-  var token = location.hash.slice(1);
+  function unb64u(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function showImages(res, byEntry) {
+    var stamp = 'Review copy · ' + res.learner + ' · ' + new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    crypto.subtle.importKey('raw', unb64u(keyStr), 'AES-GCM', false, ['decrypt']).then(function (key) {
+      Object.keys(byEntry).forEach(function (entry) {
+        var box = root.querySelector('[data-imgs="' + entry + '"]'); if (!box) return;
+        Promise.all(byEntry[entry].map(function (im) {
+          return fetch('/api/app/signoff/image?t=' + encodeURIComponent(token) + '&entry=' + encodeURIComponent(entry) + '&n=' + im.n).then(function (r) { if (!r.ok) throw new Error('gone'); return r.arrayBuffer(); }).then(function (buf) {
+            var u = new Uint8Array(buf);
+            return crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12), additionalData: new TextEncoder().encode(res.code + ':' + entry + ':' + im.n) }, key, u.slice(12));
+          }).then(function (plain) { return createImageBitmap(new Blob([plain], { type: 'image/jpeg' })); }).then(function (bmp) {
+            var cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height; cv.className = 'review-img';
+            var g = cv.getContext('2d'); g.drawImage(bmp, 0, 0);
+            var fs = Math.max(14, Math.round(cv.width / 40)); g.font = '600 ' + fs + 'px DM Sans, system-ui, sans-serif'; g.textBaseline = 'bottom';
+            var w = g.measureText(stamp).width; g.fillStyle = 'rgba(15,30,51,.7)'; g.fillRect(0, cv.height - fs * 1.8, w + fs, fs * 1.8); g.fillStyle = '#fff'; g.fillText(stamp, fs / 2, cv.height - fs * 0.4);
+            g.save(); g.globalAlpha = 0.14; g.translate(cv.width / 2, cv.height / 2); g.rotate(-Math.PI / 7); g.font = '600 ' + fs * 2 + 'px DM Sans, system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#fff'; g.fillText('REVIEW COPY', 0, 0); g.restore();
+            cv.oncontextmenu = function (ev) { ev.preventDefault(); };
+            return cv;
+          });
+        })).then(function (cvs) { box.innerHTML = ''; cvs.forEach(function (c) { box.appendChild(c); }); })
+          .catch(function () { box.innerHTML = '<p class="small err">These images could not be opened. The link may be incomplete. Ask the learner to send it again.</p>'; });
+      });
+    }).catch(function () { root.querySelectorAll('[data-imgs]').forEach(function (b) { b.innerHTML = '<p class="small err">These images could not be opened. The link may be incomplete.</p>'; }); });
+  }
+  var frag = location.hash.slice(1).split('.'), token = frag[0], keyStr = frag[1] || '';
   history.replaceState(null, '', location.pathname); // keep the token out of history and screenshots of the address bar
   if (!token) { root.innerHTML = '<div class="err">This link is incomplete. Ask the learner to send it again.</div>'; return; }
   fetch('/api/app/signoff/view?t=' + encodeURIComponent(token)).then(function (r) { return r.json(); }).then(function (res) {
     if (!res.ok) { root.innerHTML = '<div class="' + (res.done ? 'ok' : 'err') + '">' + esc(res.error) + '</div>'; return; }
+    var shared = keyStr && window.crypto && crypto.subtle ? (res.images || []) : [];
+    var byEntry = {}; shared.forEach(function (i) { (byEntry[i.entry] = byEntry[i.entry] || []).push(i); });
     lede.textContent = res.learner + ' asks you to confirm ' + res.entries.length + (res.entries.length === 1 ? ' scan' : ' scans') + ' from their ultrasound logbook.';
     var rows = res.entries.map(function (e) {
       var t = TYPES[e.type] || { label: e.type, fields: [] }, f = e.findings || {};
       var findings = t.fields.filter(function (fd) { return f[fd.id] != null && f[fd.id] !== ''; }).map(function (fd) { return '<dt>' + esc(fd.label) + '</dt><dd>' + esc(Array.isArray(f[fd.id]) ? f[fd.id].join(', ') : f[fd.id]) + (fd.unit ? ' ' + fd.unit : '') + '</dd>'; }).join('');
       var r = function (k, v) { return v ? '<dt>' + k + '</dt><dd>' + esc(v) + '</dd>' : ''; };
-      return '<div class="card"><div class="row" style="margin-bottom:8px"><div class="grow"><b>' + esc(t.label) + '</b><p class="small muted" style="margin:0">' + esc(fmt(e.date)) + ' · ' + esc(SUP[e.supervision] || '') + (e.supervisor ? ' · ' + esc(e.supervisor) : '') + (e.imageCount ? ' · ' + e.imageCount + ' image' + (e.imageCount === 1 ? '' : 's') + ' on the learner\'s phone' : '') + '</p></div><select data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">Confirm</option><option value="query">Query</option></select></div><div class="detail"><dl>' + r('Setting', e.setting) + r('Indication', e.indication) + findings + r('Overall', e.overall) + r('Image quality', e.quality) + r('Interpretation', e.interpretation) + r('Confirmed by', e.confirmation) + r('Impact', e.impact) + '</dl></div></div>';
+      return '<div class="card"><div class="row" style="margin-bottom:8px"><div class="grow"><b>' + esc(t.label) + '</b><p class="small muted" style="margin:0">' + esc(fmt(e.date)) + ' · ' + esc(SUP[e.supervision] || '') + (e.supervisor ? ' · ' + esc(e.supervisor) : '') + (byEntry[e.id] ? ' · ' + byEntry[e.id].length + ' image' + (byEntry[e.id].length === 1 ? '' : 's') + ' below' : e.imageCount ? ' · ' + e.imageCount + ' image' + (e.imageCount === 1 ? '' : 's') + ' on the learner\'s phone' : '') + '</p></div><select data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">Confirm</option><option value="query">Query</option></select></div><div class="detail"><dl>' + r('Setting', e.setting) + r('Indication', e.indication) + findings + r('Overall', e.overall) + r('Image quality', e.quality) + r('Interpretation', e.interpretation) + r('Confirmed by', e.confirmation) + r('Impact', e.impact) + '</dl></div>' + (byEntry[e.id] ? '<div class="review-imgs" data-imgs="' + esc(e.id) + '"><p class="small muted">Decrypting images…</p></div>' : '') + '</div>';
     }).join('');
-    root.innerHTML = '<p class="small muted">You see the written record only. Images stay on the learner\'s phone, so review them with the learner or on the ultrasound machine before you confirm.</p>' + rows +
+    var intro = shared.length ? '<p class="small muted">The learner shared ' + shared.length + (shared.length === 1 ? ' image' : ' images') + ' for review. They were encrypted on the learner\'s phone and only this link opens them. They are for review only: do not save, screenshot or forward them. They delete when you sign.</p>' : '<p class="small muted">You see the written record only. Images stay on the learner\'s phone, so review them with the learner or on the ultrasound machine before you confirm.</p>';
+    root.innerHTML = intro + rows +
       '<form id="sf"><div class="field"><label for="n">Your name</label><input id="n" name="name" type="text" value="' + esc(res.supervisorName || '') + '" required></div>' +
       '<div class="field"><label for="ro">Role</label><input id="ro" name="role" type="text" placeholder="For example consultant in emergency medicine" required></div>' +
       '<div class="two"><div class="field"><label for="rg">GMC, NMC or HCPC number</label><input id="rg" name="registration" type="text"></div><div class="field"><label for="ac">Accreditation</label><select id="ac" name="accreditation"><option value="">Choose</option>' + ACCRED.map(function (a) { return '<option>' + a + '</option>'; }).join('') + '</select></div></div>' +
@@ -67,6 +94,7 @@
       '<label class="check"><input type="checkbox" name="confirm" value="1" required><span>I witnessed or reviewed these scans as stated, and my decisions above are accurate.</span></label>' +
       '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">Submit sign-off</button></div></form>';
     var f = document.getElementById('sf');
+    if (shared.length) { var br = document.getElementById('br'); if (br) br.checked = true; showImages(res, byEntry); }
     var cv = document.getElementById('sig'), g, drawn = false, last = null;
     var size = function () { cv.width = cv.clientWidth; cv.height = cv.clientHeight; g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.strokeStyle = '#0F1E33'; g.lineWidth = 2.4; g.lineCap = 'round'; g.lineJoin = 'round'; drawn = false; };
     size(); document.getElementById('sigclr').onclick = size;
@@ -85,7 +113,7 @@
       post('/api/app/signoff/complete', d).then(function (r) {
         if (!r.ok) throw new Error(r.error || 'Could not submit.');
         lede.textContent = '';
-        root.innerHTML = '<div class="ok"><b>Thank you.</b> Your sign-off is recorded with code ' + esc(r.code) + '. The learner sees it in their logbook straight away.</div><p class="small muted">Anyone can check it at thewavelength.co.uk/app/verify.</p><a class="btn ghost block" href="/">Visit Wavelength</a>';
+        root.innerHTML = '<div class="ok"><b>Thank you.</b> Your sign-off is recorded with code ' + esc(r.code) + '. The learner sees it in their logbook straight away.</div><p class="small muted">Anyone can check it at thewavelength.co.uk/verify.</p><a class="btn ghost block" href="/">Visit Wavelength</a>';
       }).catch(function (ex) { b.disabled = false; b.textContent = 'Submit sign-off'; err.textContent = ex.message; err.hidden = false; });
     });
   });
