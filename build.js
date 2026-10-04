@@ -163,7 +163,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : '<meta name="robots" cont
   <div class="wrap bar">
     <a class="brand" href="/" aria-label="${site.name} home">${mark()}<span class="wm"><b>WAVELENGTH</b><small>TUNE IN · GAIN CLARITY</small></span></a>
     <nav class="nav" aria-label="Main">${navLinks}<a class="nav-verify" href="/verify/"${pathname === '/verify/' ? ' aria-current="page"' : ''} title="Verify a certificate or sign-off"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Verify</a><a class="btn" href="/courses/core-emergency-ultrasound/#dates">${BOOK_LABEL}</a></nav>
-    <button class="menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu"><span></span></button>
+    <div class="bar-end"><a class="btn bar-book" href="/courses/core-emergency-ultrasound/#dates">${BOOK_LABEL}</a><button class="menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu"><span></span></button></div>
   </div>
 </header>
 <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
