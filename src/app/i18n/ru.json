@@ -1320,5 +1320,10 @@
 "for sign-off yet.": "на подтверждение.",
 "{name} queried {scans}.": "{name} оспаривает {scans}.",
 "{name} signed off {scans}.": "{name} подтверждает {scans}.",
-"Could not share the file.": "Не удалось поделиться файлом."
+"Could not share the file.": "Не удалось поделиться файлом.",
+"Central venous catheter": "Центральный венозный катетер",
+"Central venous catheter, supervised": "Центральный венозный катетер, под наблюдением",
+"PICC or midline (peripheral line if unavailable)": "PICC или мидлайн (периферический катетер, если недоступно)",
+"PICC or midline, supervised": "PICC или мидлайн, под наблюдением",
+"Peripheral access, supervised": "Периферический доступ, под наблюдением"
 }

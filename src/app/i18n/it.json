@@ -1288,5 +1288,10 @@
 "for sign-off yet.": "per la convalida.",
 "{name} queried {scans}.": "{name} ha contestato {scans}.",
 "{name} signed off {scans}.": "{name} ha convalidato {scans}.",
-"Could not share the file.": "Impossibile condividere il file."
+"Could not share the file.": "Impossibile condividere il file.",
+"Central venous catheter": "Catetere venoso centrale",
+"Central venous catheter, supervised": "Catetere venoso centrale, supervisionato",
+"PICC or midline (peripheral line if unavailable)": "PICC o midline (accesso periferico se non disponibile)",
+"PICC or midline, supervised": "PICC o midline, supervisionato",
+"Peripheral access, supervised": "Accesso periferico, supervisionato"
 }

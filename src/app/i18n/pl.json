@@ -1320,5 +1320,10 @@
 "for sign-off yet.": "do zatwierdzenia.",
 "{name} queried {scans}.": "{name} zakwestionował: {scans}.",
 "{name} signed off {scans}.": "{name} zatwierdził: {scans}.",
-"Could not share the file.": "Nie udało się udostępnić pliku."
+"Could not share the file.": "Nie udało się udostępnić pliku.",
+"Central venous catheter": "Cewnik do żyły centralnej",
+"Central venous catheter, supervised": "Cewnik do żyły centralnej, pod nadzorem",
+"PICC or midline (peripheral line if unavailable)": "PICC lub midline (wkłucie obwodowe, jeśli niedostępne)",
+"PICC or midline, supervised": "PICC lub midline, pod nadzorem",
+"Peripheral access, supervised": "Dostęp obwodowy, pod nadzorem"
 }

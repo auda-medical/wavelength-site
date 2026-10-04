@@ -1531,7 +1531,7 @@
       "id": "fusic",
       "label": "FUSIC",
       "name": "Focused Ultrasound in Intensive Care (Intensive Care Society)",
-      "source": "ICS FUSIC Heart training pack (2024) and FUSIC training details (2019) for the other modules. Logbook collection within 12 months, accreditation within 24 months.",
+      "source": "ICS FUSIC training packs: Heart (2025, v13), Lung (2025, v10), Abdomen (2025, v11), DVT (2026, v1), Vascular (2026, v1). Logbook collection within 12 months, first to last scan; accreditation within 24 months. No more than 10% of studies on healthy volunteers; course scans no longer count as supervised.",
       "checked": "2026-10-04",
       "windowFrom": "firstScan",
       "windowDays": 365,
@@ -1576,11 +1576,11 @@
           "supervised": 10,
           "rules": [
             {
-              "label": "Normal scans (10 at most)",
-              "max": 10,
+              "label": "Healthy volunteers (10% at most)",
+              "max": 3,
               "match": {
-                "overall": [
-                  "Normal"
+                "setting": [
+                  "Healthy volunteer"
                 ]
               }
             }
@@ -1606,11 +1606,11 @@
           "supervised": 10,
           "rules": [
             {
-              "label": "Normal scans (15 at most)",
-              "max": 15,
+              "label": "Healthy volunteers (10% at most)",
+              "max": 2,
               "match": {
-                "overall": [
-                  "Normal"
+                "setting": [
+                  "Healthy volunteer"
                 ]
               }
             }
@@ -1643,6 +1643,15 @@
                   "Yes"
                 ]
               }
+            },
+            {
+              "label": "Healthy volunteers (10% at most)",
+              "max": 1,
+              "match": {
+                "setting": [
+                  "Healthy volunteer"
+                ]
+              }
             }
           ],
           "assessments": [
@@ -1657,51 +1666,91 @@
           ]
         },
         {
-          "id": "fusic-cvc",
-          "label": "Vascular access: CVC",
+          "id": "fusic-vasc",
+          "label": "Vascular access",
           "types": [
-            "cvc"
-          ],
-          "total": 5,
-          "supervised": 3,
-          "assessments": [
-            {
-              "kind": "final",
-              "label": "Triggered assessment passed",
-              "min": 1,
-              "outcomes": [
-                "competent"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "fusic-picc",
-          "label": "Vascular access: PICC or midline",
-          "types": [
-            "picc"
-          ],
-          "total": 3,
-          "supervised": 1,
-          "assessments": [
-            {
-              "kind": "final",
-              "label": "Triggered assessment passed",
-              "min": 1,
-              "outcomes": [
-                "competent"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "fusic-pva",
-          "label": "Vascular access: peripheral",
-          "types": [
+            "cvc",
+            "picc",
             "pva"
           ],
-          "total": 2,
-          "supervised": 1,
+          "total": 30,
+          "supervised": 5,
+          "rules": [
+            {
+              "label": "Central venous catheter",
+              "min": 5,
+              "match": {
+                "type": [
+                  "cvc"
+                ]
+              }
+            },
+            {
+              "label": "Central venous catheter, supervised",
+              "min": 3,
+              "match": {
+                "type": [
+                  "cvc"
+                ],
+                "supervision": [
+                  "direct"
+                ]
+              }
+            },
+            {
+              "label": "PICC or midline (peripheral line if unavailable)",
+              "min": 3,
+              "match": {
+                "type": [
+                  "picc",
+                  "pva"
+                ]
+              }
+            },
+            {
+              "label": "PICC or midline, supervised",
+              "min": 1,
+              "match": {
+                "type": [
+                  "picc",
+                  "pva"
+                ],
+                "supervision": [
+                  "direct"
+                ]
+              }
+            },
+            {
+              "label": "Peripheral access",
+              "min": 2,
+              "match": {
+                "type": [
+                  "pva"
+                ]
+              }
+            },
+            {
+              "label": "Peripheral access, supervised",
+              "min": 1,
+              "match": {
+                "type": [
+                  "pva"
+                ],
+                "supervision": [
+                  "direct"
+                ]
+              }
+            },
+            {
+              "label": "Healthy volunteers (10% at most)",
+              "max": 3,
+              "match": {
+                "setting": [
+                  "Healthy volunteer"
+                ]
+              }
+            }
+          ],
           "assessments": [
             {
               "kind": "final",

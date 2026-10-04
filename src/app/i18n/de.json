@@ -1288,5 +1288,10 @@
 "for sign-off yet.": "zur Bestätigung.",
 "{name} queried {scans}.": "{name} hat {scans} hinterfragt.",
 "{name} signed off {scans}.": "{name} hat {scans} bestätigt.",
-"Could not share the file.": "Die Datei konnte nicht geteilt werden."
+"Could not share the file.": "Die Datei konnte nicht geteilt werden.",
+"Central venous catheter": "Zentralvenöser Katheter",
+"Central venous catheter, supervised": "Zentralvenöser Katheter, supervidiert",
+"PICC or midline (peripheral line if unavailable)": "PICC oder Midline (peripherer Zugang, falls nicht verfügbar)",
+"PICC or midline, supervised": "PICC oder Midline, supervidiert",
+"Peripheral access, supervised": "Peripherer Zugang, supervidiert"
 }

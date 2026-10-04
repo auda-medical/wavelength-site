@@ -28,6 +28,20 @@ const posts = (fs.existsSync(LEARN_DIR) ? fs.readdirSync(LEARN_DIR) : [])
   })
   .filter((p) => SHOW_DRAFTS || (p.draft !== true && p.date <= new Date().toISOString().slice(0, 10)))
   .sort((a, b) => b.date.localeCompare(a.date));
+// Guides: long-form reference pages in content/guides/*.md (front matter: title, slug, seoTitle, summary, date,
+// reviewed, author, order, draft). Built at /guides/<slug>/. Drafts build unlisted and noindex, reachable by link for review,
+// like Academy drafts; they join the menu, the /guides/ list and the sitemap once draft is false.
+const GUIDES_DIR = path.join(ROOT, 'content/guides');
+const guides = (fs.existsSync(GUIDES_DIR) ? fs.readdirSync(GUIDES_DIR) : [])
+  .filter((f) => f.endsWith('.md'))
+  .map((f) => {
+    const { meta, html } = md.parse(fs.readFileSync(path.join(GUIDES_DIR, f), 'utf8'));
+    const toc = [...html.matchAll(/<h2 id="([^"]+)">(.*?)<\/h2>/g)].map((m) => ({ id: m[1], label: m[2].replace(/<[^>]+>/g, '') }));
+    return { ...meta, slug: meta.slug || f.replace(/\.md$/, ''), html, toc, date: String(meta.date || ''), order: Number(meta.order || 99) };
+  })
+  .filter((g) => g.date <= new Date().toISOString().slice(0, 10))
+  .sort((a, b) => a.order - b.order);
+const liveGuides = guides.filter((g) => g.draft !== true);
 // Wavelength Academy modules: content/academy/<slug>/module.json, lesson Markdown files and assessment.md.
 // The assessment answer key goes to worker/academy-data.json for server-side marking, never into pages.
 const ACADEMY_DIR = path.join(ROOT, 'content/academy');
@@ -97,9 +111,10 @@ const NAV = [
     { href: '/courses/', label: 'Ultrasound courses', short: 'Courses', text: 'Open courses with dates and online booking.' },
     { href: '/training/', label: 'Training for your department', short: 'For departments', text: 'A closed course or focused sessions for your team.' },
   ] },
-  ...(posts.length || liveModules.length ? [{ href: '/learn/', label: 'Learn', match: ['/learn/', '/elearning/'], children: [
+  ...(posts.length || liveModules.length || liveGuides.length ? [{ href: '/learn/', label: 'Learn', match: ['/learn/', '/elearning/', '/guides/'], children: [
     ...(posts.length ? [{ href: '/learn/', label: 'Wavelength Pearls', short: 'Pearls', text: 'Free five-minute pearls, each with a short test.' }] : []),
     ...(liveModules.length ? [{ href: '/elearning/', label: 'Wavelength Academy', short: 'Academy', text: 'Free modules with a Wavelength certificate and CPD hours.' }] : []),
+    ...(liveGuides.length ? [{ href: '/guides/', label: 'Guides', short: 'Guides', text: 'Sign-off, accreditation and logbook guides for RCEM, FAMUS and FUSIC.' }] : []),
   ] }] : []),
   { href: '/app/get/', label: 'App', match: ['/app/'] },
   { href: '/faculty/', label: 'Faculty' },
@@ -190,7 +205,7 @@ ${body}
         <p class="foot-tag">Point-of-care ultrasound education for emergency and acute clinicians: hands-on courses, free Pearls and Wavelength Academy.</p>
       </div>
       <div><h2>Courses</h2><ul>${openCourses.map((c) => `<li><a href="/courses/${c.slug}/">${esc(c.title)}</a></li>`).join('')}<li><a href="/courses/">All courses</a></li></ul></div>
-      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">For departments</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}<li><a href="/app/get/">Wavelength app</a></li><li><a href="/verify/">Verify a certificate or sign-off</a></li><li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
+      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">For departments</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}${liveGuides.length ? '<li><a href="/guides/">Guides</a></li>' : ''}<li><a href="/app/get/">Wavelength app</a></li><li><a href="/verify/">Verify a certificate or sign-off</a></li><li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li></ul>${socialIcons()}</div>
     </div>
     <div class="bottom">
@@ -994,6 +1009,47 @@ ${subscribeBand('Get the next one <em>by email.</em>')}`,
   });
 }
 
+// Guides: /guides/ index and one page per guide, with a contents list built from the ## headings.
+if (guides.length) {
+  const gCrumbs = (extra = []) => [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: 'Guides', href: '/guides/' }, ...extra];
+  const guideCard = (g, h = 'h2') => `<a class="post-card reveal" href="/guides/${g.slug}/"><p class="eyebrow">${esc(g.eyebrow || 'Guide')}${g.draft === true ? ' · Draft' : ''}</p><${h}>${esc(g.title)}</${h}><p>${esc(g.summary || '')}</p><span class="meta">${readMins(g.html)} min read${g.reviewed || g.date ? ` · Checked ${fmtDate(g.reviewed || g.date, { month: 'long', year: 'numeric' })}` : ''}</span></a>`;
+  pages['/guides/'] = layout({
+    title: 'Ultrasound sign-off and accreditation guides',
+    seoTitle: 'POCUS sign-off and accreditation guides',
+    pathname: '/guides/',
+    description: 'Plain guides to RCEM ultrasound sign-off, FAMUS and FUSIC accreditation, and keeping an ultrasound logbook that stands up to review.',
+    noindex: !liveGuides.length,
+    jsonld: [breadcrumbLd(gCrumbs())],
+    body: `${pageHero({ eyebrow: 'Guides', title: 'Get signed off.', lede: 'Step-by-step guides to the UK ultrasound pathways and the logbook behind them, checked against each body\'s current documents.', crumbs: gCrumbs().slice(0, -1).concat([{ label: 'Guides' }]) })}
+<section class="section sand"><div class="wrap">${(SHOW_DRAFTS ? guides : liveGuides).length ? `<div class="post-grid">${(SHOW_DRAFTS ? guides : liveGuides).map((g) => guideCard(g)).join('')}</div>` : `<div class="empty-dates reveal"><div><h3>First guides arriving soon</h3><p>Subscribe and they reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div>`}</div></section>
+${subscribeBand('Pathway changes, <em>in your inbox.</em>')}`,
+  });
+  for (const g of guides) {
+    const href = `/guides/${g.slug}/`;
+    const isDirector = !g.author || g.author === site.director.name;
+    const others = (g.draft === true ? guides : liveGuides).filter((o) => o !== g);
+    const checked = g.reviewed || g.date;
+    pages[href] = layout({
+      title: g.title,
+      seoTitle: g.seoTitle || g.title,
+      pathname: href,
+      description: g.summary,
+      ogType: 'article',
+      noindex: g.draft === true,
+      jsonld: [
+        { '@context': 'https://schema.org', '@type': 'Article', headline: g.seoTitle || g.title, alternativeHeadline: g.title, description: g.summary, datePublished: g.date, dateModified: checked, author: { '@type': 'Person', name: g.author || site.director.name, ...(isDirector ? { '@id': url('/faculty/#director'), jobTitle: site.director.title, url: url('/faculty/') } : {}) }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), isAccessibleForFree: true, inLanguage: 'en-GB' },
+        breadcrumbLd([...gCrumbs(), { label: g.title, href }]),
+      ],
+      body: `${pageHero({ eyebrow: (g.eyebrow || 'Guide') + (g.draft === true ? ' · Draft, not published' : ''), title: esc(g.title), lede: esc(g.summary || ''), crumbs: gCrumbs([{ label: g.short || g.title }]), extra: `<p class="byline rise">${isDirector ? `<a href="/faculty/">${esc(g.author || site.director.name)}</a>` : esc(g.author)}${checked ? ` · Checked against official sources ${fmtDate(checked, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''} · ${readMins(g.html)} min read</p>` })}
+<section class="section"><div class="wrap guide-wrap">${g.toc.length > 2 ? `<nav class="guide-toc reveal" aria-label="Contents"><p class="eyebrow">Contents</p><ol>${g.toc.map((t) => `<li><a href="#${t.id}">${t.label}</a></li>`).join('')}</ol></nav>` : ''}<article class="prose post guide reveal">${g.html}</article></div>
+<div class="wrap"><div class="post-cta reveal"><div><h3>Build the logbook as you go</h3><p>The free Wavelength app tracks your scans against RCEM, FAMUS and FUSIC targets, records supervisor sign-off and exports a verified summary.</p></div><a class="btn btn-teal" href="/app/get/">Get the app ${arrow}</a></div></div>
+</section>
+${others.length ? `<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">More guides</p></div><div class="post-grid">${others.map((o) => guideCard(o, 'h3')).join('')}</div></div></section>` : ''}
+${subscribeBand('Pathway changes, <em>in your inbox.</em>')}`,
+    });
+  }
+}
+
 // Learn tests: one page per post with questions, plus a question bank listing them all
 const tested = posts.filter((p) => p.questions.length);
 for (const p of tested) {
@@ -1774,6 +1830,7 @@ if (fs.existsSync(path.join(LEARN_DIR, 'images'))) copyDir(path.join(LEARN_DIR, 
 const LASTMOD = {};
 for (const p of posts) LASTMOD[`/learn/${p.slug}/`] = p.reviewed || p.date;
 for (const m of liveModules) if (m.published) LASTMOD[`/elearning/${m.slug}/`] = String(m.published).slice(0, 10);
+for (const g of liveGuides) LASTMOD[`/guides/${g.slug}/`] = g.reviewed || g.date;
 if (posts.length) LASTMOD['/learn/'] = posts.map((p) => p.date).sort().pop();
 fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /email/\nDisallow: /subscribe/thanks/\nDisallow: /app/sign/\nDisallow: /app/assess/\nAllow: /app/get/\n\nSitemap: ${url('/sitemap.xml')}\n`);
 fs.writeFileSync(
@@ -1781,6 +1838,7 @@ fs.writeFileSync(
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
     .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !/^\/elearning\/[^/]+\/(learn|assessment)\//.test(p) && !['/elearning/certificate/', '/elearning/account/'].includes(p) && !(p === '/elearning/' && !liveModules.length) && !modules.some((m) => m.draft === true && p.startsWith(`/elearning/${m.slug}/`)) && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => (p === `/learn/${x.slug}/` || p === `/learn/${x.slug}/test/`) && x.draft === true)) && !(p === '/learn/test/' && !posts.some((x) => x.draft !== true && x.questions.length)))
     .filter((p) => !/^\/learn\/[^/]+\/test\/$/.test(p) && !['/verify/', '/elearning/verify/'].includes(p))
+    .filter((p) => !(p === '/guides/' && !liveGuides.length) && !guides.some((g) => g.draft === true && p === `/guides/${g.slug}/`))
     .map((p) => `  <url><loc>${url(p)}</loc>${/^\d{4}-\d{2}-\d{2}$/.test(LASTMOD[p] || '') ? `<lastmod>${LASTMOD[p]}</lastmod>` : ''}<priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );

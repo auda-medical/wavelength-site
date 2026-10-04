@@ -1272,5 +1272,10 @@
 "for sign-off yet.": "签核申请。",
 "{name} queried {scans}.": "{name} 质疑了 {scans}。",
 "{name} signed off {scans}.": "{name} 签核了 {scans}。",
-"Could not share the file.": "无法分享文件。"
+"Could not share the file.": "无法分享文件。",
+"Central venous catheter": "中心静脉导管",
+"Central venous catheter, supervised": "中心静脉导管（督导下）",
+"PICC or midline (peripheral line if unavailable)": "PICC 或中线导管（无条件时可用外周导管）",
+"PICC or midline, supervised": "PICC 或中线导管（督导下）",
+"Peripheral access, supervised": "外周静脉通路（督导下）"
 }
