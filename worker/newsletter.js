@@ -203,7 +203,7 @@ export async function sendIssue(env, { force = false } = {}) {
   try {
     await record(env, issue.slug, 'sending', 'Creating campaign');
     const key = await createVerified(env, issue);
-    const sres = await api(env, 'sendcampaign', { campaignkey: key });
+    const sres = await api(env, 'sendcampaign', { campaignkey: key }, 'POST', true);
     const st = (sres.response && (sres.response.campaign_status || sres.response.code)) || sres.code;
     if (sres.response ? String(sres.response.code) !== '200' : String(sres.code) !== '200') throw new Error('sendcampaign: ' + (sres.message || (sres.response && sres.response.message) || JSON.stringify(sres).slice(0, 300)));
     await record(env, issue.slug, 'sent', `Campaign ${key} ${st}`, key);
@@ -255,7 +255,7 @@ export async function newsletterAdminPost(env, f) {
   }
   if (a === 'test') return testConnection(env);
   if (a === 'dryrun') {
-    try { const issue = await loadIssue(env); const key = await createVerified(env, issue); return `Dry run OK: draft campaign ${key} created with the list attached. Nothing sent. Format: ${(await getSettings(env)).zoho_list_format}. Details: ${LAST_DETAILS}`; }
+    try { const issue = await loadIssue(env); const key = await createVerified(env, issue); return `Dry run OK: draft campaign ${key} created with the list attached. Nothing sent.`; }
     catch (e) { return 'Dry run failed: ' + e.message; }
   }
   if (a === 'send') return (await sendIssue(env, { force: true })).msg;
