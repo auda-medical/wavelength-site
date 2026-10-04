@@ -1,9 +1,9 @@
 ---
-title: "Tendon ruptures: the Achilles and the distal biceps"
-minutes: 12
+title: "Tendon ruptures: the Achilles, the distal biceps and the quadriceps"
+minutes: 16
 ---
 
-Two tendon ruptures are often missed at first presentation, because patients keep some movement: the Achilles, and the distal biceps at the elbow. In both, the scan follows the tendon all the way to its insertion and adds movement when a still image is unclear.
+Three tendon ruptures are often missed at first presentation, because patients keep some movement: the Achilles, the distal biceps at the elbow, and the quadriceps above the knee. In all three, the scan follows the tendon all the way to its insertion and adds movement when a still image is unclear.
 
 ## The Achilles tendon
 
@@ -48,10 +48,33 @@ An intact bicipital aponeurosis, the lacertus fibrosus, can hold a torn tendon n
 
 > **The aha** Trace to the insertion, not to the elbow crease. The empty destination makes the diagnosis.
 
+## The quadriceps tendon
+
+Patients are usually over 40 and describe a stumble or a fall onto a bent knee. Swelling hides the defect, the X-ray looks near normal, and some patients can still lift the leg a little using the retinacula at the sides of the patella. Inability to perform a full straight-leg raise against gravity is the key examination finding.
+
+### The scan
+
+1. Supine, knee straight or slightly bent over a pillow.
+2. Linear probe, long axis, above the patella, marker to the head.
+3. Follow the bright, fibrillar tendon down to its insertion on the top of the patella.
+4. Sweep medial to lateral across the whole width, then confirm in short axis.
+5. Gently bend the knee a little, if pain allows, and watch the insertion.
+6. Compare with the other knee. Look at the patellar tendon below the patella too.
+
+### Findings
+
+- **Normal:** a continuous band of parallel fibres reaching the superior pole of the patella.
+- **Complete rupture:** a gap, usually within 2 cm of the patella, filled with fluid or haematoma, with wavy retracted ends. The gap widens as the knee bends.
+- **Partial tear:** loss of some fibres, with part of the tendon still continuous through the full length.
+- **Anisotropy:** a dark area that lights up when you rock the probe heel to toe.
+
+> **The aha** Trust the gap more than the blur. Gentle flexion opens a true full-thickness tear.
+
 ## What to do with the finding
 
 - **Complete Achilles rupture:** immobilise in plantarflexion and refer through your trust's Achilles pathway the same day.
 - **Distal biceps rupture:** refer to the upper limb or orthopaedic team urgently for an early repair decision.
+- **Complete quadriceps rupture:** splint the knee straight and refer urgently to orthopaedics, as early repair gives the best results.
 - **Unclear scan with a convincing story:** refer for specialist review and imaging. Do not reassure on a scan you could not complete.
 
 ## Case

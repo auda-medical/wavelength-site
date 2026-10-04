@@ -121,3 +121,19 @@ title: Final assessment
 - Record the right ventricle as normal size
 - Record the scan as normal
 : Documenting the views obtained and not obtained shows the limits of your scan to the next clinician. Recording a structure as normal when you did not see it well is the most common cause of a confident wrong report.
+
+?? A breathless patient has a dilated right ventricle with a free wall of 8 mm. What does the wall thickness suggest?
+@ 05-right-heart-venous
++ A chronic pressure load, such as pulmonary hypertension or chronic lung disease
+- Acute pulmonary embolism in a previously healthy heart
+- A pericardial effusion
+- Normal anatomy
+: A previously normal RV cannot hypertrophy in hours and stays thin when it dilates acutely. A wall over about 5 mm suggests chronic disease, which mimics acute strain.
+
+?? A hypotensive patient has a plethoric IVC and bilateral B-lines. What is the best reading?
+@ 05-right-heart-venous
++ Raised filling pressures with lung water, so look for another cause before giving more fluid
+- Hypovolaemia needing a fluid bolus
+- A normal finding
+- Tension pneumothorax on both sides
+: A full IVC with widespread B-lines suggests the circulation is already loaded. Look at the LV, the RV and the pericardium for the cause.

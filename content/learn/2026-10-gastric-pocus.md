@@ -5,11 +5,12 @@ category: Abdomen
 date: 2026-10-03
 author: Dr Firas Abou-Auda
 draft: false
+reviewed: 2026-10-04
 ---
 
 Fasting times guide sedation and anaesthesia, but they do not tell you what is in the stomach. Trauma, pain, opioids, diabetes and pregnancy all slow gastric emptying. A quick scan of the gastric antrum shows the contents directly.
 
-![Wavelength Pearl: gastric POCUS. Classify the antrum as empty, clear fluid or solid.](/learn/images/gastric-pearl.webp)
+![Wavelength Pearl: gastric POCUS. Classify the antrum as empty, clear fluid or solid.](/learn/images/gastric-antrum-pearl.webp)
 
 *Scan images in the graphic are illustrations, not patient scans.*
 

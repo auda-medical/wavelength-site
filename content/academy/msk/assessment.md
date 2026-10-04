@@ -113,3 +113,43 @@ title: Final assessment
 - The tendon is invisible on ultrasound
 - Colour Doppler is needed to see the tendon
 : The bicipital aponeurosis limits retraction. Only following the tendon to the radial tuberosity shows whether it still inserts on the bone.
+
+?? Where does a quadriceps tendon rupture usually occur?
+@ 07-tendon-ruptures
++ Within about 2 cm of the superior pole of the patella
+- At the tibial tuberosity
+- At the inferior pole of the patella
+- In the middle of the rectus femoris muscle
+: Most quadriceps ruptures occur close to the top of the patella. A tear at the inferior pole involves the patellar tendon.
+
+?? How do you confirm a full-thickness quadriceps tendon tear on ultrasound?
+@ 07-tendon-ruptures
++ Gently flex the knee and watch the gap widen
+- Press hard over the tendon
+- Add colour Doppler
+- Scan only in short axis
+: Flexion pulls the torn ends apart. A partial tear or anisotropy does not open with movement.
+
+?? Where does a knee effusion collect first?
+@ 08-effusions
++ The suprapatellar recess, deep to the quadriceps tendon
+- The prepatellar bursa
+- The popliteal fossa
+- Under the patellar tendon
+: The suprapatellar recess connects with the joint. Fluid in front of the patella is prepatellar bursitis, outside the joint.
+
+?? Which view shows a glenohumeral effusion most reliably?
+@ 08-effusions
++ The posterior recess, with the arm externally rotated
+- The subacromial bursa
+- The anterior view over the coracoid
+- The biceps tendon sheath alone
+: The posterior recess with external rotation detects glenohumeral fluid most reliably. Fluid in the biceps sheath alone is less reliable.
+
+?? A febrile patient has a hot knee and only a small effusion on ultrasound. What do you do?
+@ 08-effusions
++ Aspirate under ultrasound guidance and send fluid for culture and crystals
+- Exclude septic arthritis because the effusion is small
+- Start colchicine for presumed gout
+- Repeat the scan next week
+: Ultrasound cannot tell infected from sterile fluid, and a small effusion does not exclude infection. Fluid analysis decides.

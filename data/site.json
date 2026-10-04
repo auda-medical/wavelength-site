@@ -138,11 +138,12 @@
       {
         "slug": "abdomen",
         "label": "Abdomen and pelvis",
-        "intro": "Free fluid, the gallbladder, kidneys, stomach and bowel, in adults and children.",
+        "intro": "Free fluid, the gallbladder and bile duct, kidneys, bladder, stomach, bowel and the pelvis, in adults and children.",
         "categories": [
           "Abdomen",
           "Renal",
-          "eFAST"
+          "eFAST",
+          "Pelvis"
         ]
       },
       {

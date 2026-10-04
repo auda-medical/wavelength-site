@@ -5,11 +5,12 @@ category: Lung
 date: 2026-10-03
 author: Dr Firas Abou-Auda
 draft: false
+reviewed: 2026-10-04
 ---
 
 You have found the bat, watched the pleural line, and seen no sliding. Many clinicians stop here and call a pneumothorax. Absent sliding tells you something is wrong. It does not tell you what.
 
-![Wavelength Pearl: lung scan. B-lines and lung pulse rule out pneumothorax under the probe. A lung point confirms it.](/learn/images/lung-pearl.webp)
+![Wavelength Pearl: lung scan. B-lines and lung pulse rule out pneumothorax under the probe. A lung point confirms it.](/learn/images/pneumothorax-pearl.webp)
 
 *Scan images in the graphic are illustrations, not patient scans.*
 
@@ -37,7 +38,7 @@ Each sign answers one question: are the two layers of pleura touching under the 
 
 ## Use M-mode
 
-Place the M-mode line across the pleural line. A moving lung gives a grainy pattern below the line, the seashore sign. No movement gives flat horizontal lines all the way down, the barcode sign. At the lung point, the trace switches between the two with breathing.
+Place the M-mode line across the pleural line. A moving lung gives a grainy pattern below the line, the seashore sign. No movement gives flat horizontal lines all the way down, the barcode or stratosphere sign. At the lung point, the trace switches between the two with breathing.
 
 > **Pitfall** A large pneumothorax with a fully collapsed lung has no lung point, because the lung edge never reaches the chest wall. In a patient with signs of tension, treat the patient. Do not delay decompression to look for a lung point.
 

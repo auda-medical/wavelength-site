@@ -1,6 +1,6 @@
 ---
 title: "The right heart, the IVC and the ultrasound JVP"
-minutes: 15
+minutes: 18
 ---
 
 The right side of the heart and the large veins tell you about pulmonary embolism, fluid status and venous congestion. No single sign answers the question. Put them together.
@@ -10,6 +10,16 @@ The right side of the heart and the large veins tell you about pulmonary embolis
 - In the apical four-chamber view the RV is normally smaller than two thirds of the LV. An RV as large as or larger than the LV is dilated.
 - In PSAX, a D-shaped LV, with the septum flattened towards it, shows the RV under pressure or volume load.
 - In a shocked patient, a dilated RV with a small, vigorous LV raises the question of massive pulmonary embolism. A thick RV wall, over about 5 mm, suggests a chronic cause, such as pulmonary hypertension.
+
+### Build the pattern
+
+One enlarged ventricle is a clue. Add three questions before you act on it:
+
+1. **Is the septum flat?** A D-shaped LV in short axis shows the RV is under pressure.
+2. **Is the RV wall thin?** A thin wall fits an acute rise in pressure. A thick wall points to chronic disease, such as COPD or pulmonary hypertension, which mimics acute strain.
+3. **Do the veins and lungs agree?** A plethoric IVC, a non-compressible femoral or popliteal vein and clear lungs with A-lines all make pulmonary embolism more likely.
+
+A normal RV does not exclude pulmonary embolism, because most small emboli leave the RV unchanged.
 
 ## The IVC: follow it into the right atrium
 
@@ -25,6 +35,12 @@ The aorta has thick, bright walls, pulses, gives off branches running forwards, 
 
 - **A small IVC which collapses with a sniff** suggests a low right atrial pressure.
 - **A large IVC, over about 2 cm, which barely changes** suggests a high right atrial pressure.
+
+The IVC adds context. It does not write the fluid prescription. Read it with the heart and the lungs:
+
+- **Plethoric IVC with a dilated RV:** right heart strain.
+- **Plethoric IVC with bilateral B-lines:** raised filling pressures and lung water. More fluid risks harm.
+- **Small, collapsing IVC with a vigorous LV and clear lungs:** fits hypovolaemia or vasodilatation. Give fluid in measured boluses and reassess after each one.
 
 ## The ultrasound JVP: find the collapse point
 

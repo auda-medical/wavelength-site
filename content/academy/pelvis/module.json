@@ -1,0 +1,36 @@
+{
+  "slug": "pelvis",
+  "code": "PEL",
+  "title": "Pelvic pain in women: early pregnancy, torsion, bleeding cysts and pelvic sepsis",
+  "short": "Pelvic pain in women",
+  "category": "Pelvis",
+  "summary": "A woman with pelvic pain has a short list of time-critical diagnoses. Learn a systematic transabdominal pelvic scan, the criteria for a definite intrauterine pregnancy, the signs of ectopic pregnancy and haemoperitoneum, why Doppler misleads in ovarian torsion, and how to separate a bleeding cyst from a tubo-ovarian abscess.",
+  "cpdHours": 1.25,
+  "minutes": 75,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/ectopic-pregnancy-find-the-adnexa/",
+  "image": "/learn/images/ectopic-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-04",
+  "reviewDue": "2028-10-04",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency, acute and urgent care doctors, advanced clinical practitioners and physician associates who assess women with pelvic pain or bleeding in early pregnancy. It teaches transabdominal scanning only.",
+  "outcomes": [
+    "Perform a systematic transabdominal scan of the uterus, adnexa, pouch of Douglas and Morison's pouch",
+    "Apply the criteria for a definite intrauterine pregnancy and separate a pseudosac from an early gestational sac",
+    "Recognise the signs of ectopic pregnancy and haemoperitoneum, and act on them",
+    "Recognise the features of ovarian torsion and explain why normal Doppler flow does not exclude it",
+    "Separate a haemorrhagic cyst from a tubo-ovarian abscess, and refer appropriately"
+  ],
+  "lessons": ["01-context", "02-technique", "03-early-pregnancy", "04-torsion", "05-cysts-abscess", "06-cases"],
+  "references": [
+    "Stein JC, et al. Emergency physician ultrasonography for evaluating patients at risk for ectopic pregnancy: a meta-analysis. Annals of Emergency Medicine. 2010;56:674-83.",
+    "Moore C, Todd WM, O'Brien E, Lin H. Free fluid in Morison's pouch on bedside ultrasound predicts need for operative intervention in suspected ectopic pregnancy. Academic Emergency Medicine. 2007;14:755-8.",
+    "National Institute for Health and Care Excellence. Ectopic pregnancy and miscarriage: diagnosis and initial management (NG126). 2019, updated 2023.",
+    "Lee EJ, et al. Diagnosis of ovarian torsion with color Doppler sonography: depiction of twisted vascular pedicle. Journal of Ultrasound in Medicine. 1998;17:83-9.",
+    "Levine D, et al. Management of asymptomatic ovarian and other adnexal cysts imaged at US: Society of Radiologists in Ultrasound consensus conference statement. Radiology. 2010;256:943-54.",
+    "British Association for Sexual Health and HIV. UK national guideline for the management of pelvic inflammatory disease. 2019.",
+    "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023."
+  ]
+}

@@ -25,6 +25,8 @@ CROP = {
     'sbo-pearl.webp': (0.02, 0.33, 0.51),
     'shoulder-pearl.webp': (0.02, 0.42, 0.52),
     'tendon-pearl.webp': (0.02, 0.33, 0.47),
+    'cbd-pearl.webp': (0.71, 1.0, 0.13),
+    'pneumothorax-pearl.webp': (0.03, 0.36, 0.55),
     'peng-block-pearl.webp': (0.66, 1.0, 0.12),
     'radial-block-pearl.webp': (0.66, 1.0, 0.12),
 }

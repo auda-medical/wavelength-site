@@ -1,0 +1,35 @@
+{
+  "slug": "biliary-bladder",
+  "code": "BBL",
+  "title": "The second look: gallbladder wall, bile duct and bladder",
+  "short": "Gallbladder, bile duct and bladder",
+  "category": "Abdomen",
+  "summary": "Four questions that come after you find the organ: is this thick gallbladder wall cholecystitis, is the bile duct dilated, is the bladder truly full and has it affected the kidneys, and is the material in the bladder clot or a lesion? Learn to measure correctly, use colour Doppler to separate duct from vessel, estimate bladder volume, and read each finding in context.",
+  "cpdHours": 1,
+  "minutes": 60,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/common-bile-duct-find-the-parallel-channel/",
+  "image": "/learn/images/cbd-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-04",
+  "reviewDue": "2028-10-04",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency, acute and urgent care doctors, advanced clinical practitioners and physician associates who already find the gallbladder, kidneys and bladder, and want to answer the next question.",
+  "outcomes": [
+    "Measure the gallbladder wall correctly and list the causes of wall thickening outside the gallbladder",
+    "Recognise the pattern of acute calculous cholecystitis",
+    "Identify the common bile duct with colour Doppler, measure it, and interpret it for age and cholecystectomy",
+    "Estimate bladder volume, check the kidneys and troubleshoot a catheter",
+    "Separate bladder clot from a wall lesion using movement and colour Doppler, and refer appropriately"
+  ],
+  "lessons": ["01-context", "02-gallbladder-wall", "03-bile-duct", "04-retention", "05-bladder-contents", "06-cases"],
+  "references": [
+    "Yokoe M, et al. Tokyo Guidelines 2018: diagnostic criteria and severity grading of acute cholecystitis. Journal of Hepato-Biliary-Pancreatic Sciences. 2018;25:41-54.",
+    "Ralls PW, et al. Real-time sonography in suspected acute cholecystitis: prospective evaluation of primary and secondary signs. Radiology. 1985;155:767-71.",
+    "van Breda Vriesman AC, et al. Diffuse gallbladder wall thickening: differential diagnosis. American Journal of Roentgenology. 2007;188:495-501.",
+    "Bowie JD. What is the upper limit of normal for the common bile duct on ultrasound: how much do you want it to be? American Journal of Gastroenterology. 2000;95:897-900.",
+    "National Institute for Health and Care Excellence. Suspected cancer: recognition and referral (NG12). Urological cancers.",
+    "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023."
+  ]
+}

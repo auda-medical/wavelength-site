@@ -137,3 +137,19 @@ title: Final assessment
 - Wait 24 hours and rescan
 - Treat as an abscess and drain
 : Ultrasound misses early disease. Clinical suspicion drives surgical review, antibiotics and resuscitation.
+
+?? A suspected abdominal wall hernia is not visible in a supine patient at rest. What do you do next?
+@ 08-hernia
++ Repeat the scan during a cough or strain, and with the patient standing
+- Report no hernia
+- Press hard with the probe
+- Drain the lump
+: Raised abdominal pressure pushes contents through the defect. Many small hernias only appear with cough, Valsalva or standing.
+
+?? Which finding in a non-reducible hernia raises concern for strangulation?
+@ 08-hernia
++ Thick-walled bowel with no flow in its wall and fluid in the sac
+- Bright, compressible fat in the sac
+- Contents that slide back with gentle pressure
+- A defect seen only on coughing
+: Loss of flow in the bowel wall, wall thickening, fluid in the sac and absent peristalsis suggest compromised bowel, which needs urgent surgery.

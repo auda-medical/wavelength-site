@@ -412,6 +412,186 @@
     }
    }
   },
+  "biliary-bladder": {
+   "slug": "biliary-bladder",
+   "code": "BBL",
+   "title": "The second look: gallbladder wall, bile duct and bladder",
+   "cpdHours": 1,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "c",
+     "why": "The distal duct hides behind the duodenum, and early obstruction may not dilate the duct.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "d",
+     "why": "A wall over 3 mm counts as thickened. Measure the anterior wall with the beam at 90° to it.",
+     "review": "02-gallbladder-wall",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "b",
+     "why": "The posterior wall merges with bowel and gas behind it, which exaggerates its thickness.",
+     "review": "02-gallbladder-wall",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "c",
+     "why": "Stones with focal tenderness under the probe are the strongest pair. Wall thickening and pericholecystic fluid add weight.",
+     "review": "02-gallbladder-wall",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "b",
+     "why": "Both run anterior to the portal vein. Only colour Doppler reliably separates them.",
+     "review": "03-bile-duct",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "c",
+     "why": "Most references use about 6 mm as the upper limit in a 45-year-old with a gallbladder. 11 mm is dilated.",
+     "review": "03-bile-duct",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "d",
+     "why": "The duct often widens after cholecystectomy, and up to 10 mm can be normal. Interpret it with symptoms and liver tests.",
+     "review": "03-bile-duct",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "c",
+     "why": "The ellipsoid formula multiplies three diameters by 0.52.",
+     "review": "04-retention",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "a",
+     "why": "10 × 9 × 8 = 720, and 720 × 0.52 is about 375 mL.",
+     "review": "04-retention",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "b",
+     "why": "A full bladder around a catheter means the catheter is blocked or not in the bladder.",
+     "review": "04-retention",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "b",
+     "why": "Clot is unattached and avascular. A fixed mass with vessels suggests a wall lesion.",
+     "review": "05-bladder-contents",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "d",
+     "why": "Organised clot moves little and some tumours show little flow. Visible haematuria with a fixed mass needs urology assessment.",
+     "review": "05-bladder-contents",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Context: the second look",
+     "path": "/elearning/biliary-bladder/learn/context/"
+    },
+    "02-gallbladder-wall": {
+     "title": "The gallbladder wall: read the pattern",
+     "path": "/elearning/biliary-bladder/learn/gallbladder-wall/"
+    },
+    "03-bile-duct": {
+     "title": "The common bile duct: find the parallel channel",
+     "path": "/elearning/biliary-bladder/learn/bile-duct/"
+    },
+    "04-retention": {
+     "title": "The full bladder: measure, then look upstream",
+     "path": "/elearning/biliary-bladder/learn/retention/"
+    },
+    "05-bladder-contents": {
+     "title": "Something in the bladder: move it, then add colour",
+     "path": "/elearning/biliary-bladder/learn/bladder-contents/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/biliary-bladder/learn/cases/"
+    }
+   }
+  },
   "cardiac": {
    "slug": "cardiac",
    "code": "FCU",
@@ -593,6 +773,30 @@
      "correct": "d",
      "why": "Documenting the views obtained and not obtained shows the limits of your scan to the next clinician. Recording a structure as normal when you did not see it well is the most common cause of a confident wrong report.",
      "review": "06-pitfalls-documentation",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q16",
+     "correct": "b",
+     "why": "A previously normal RV cannot hypertrophy in hours and stays thin when it dilates acutely. A wall over about 5 mm suggests chronic disease, which mimics acute strain.",
+     "review": "05-right-heart-venous",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q17",
+     "correct": "c",
+     "why": "A full IVC with widespread B-lines suggests the circulation is already loaded. Look at the LV, the RV and the pericardium for the cause.",
+     "review": "05-right-heart-venous",
      "options": [
       "a",
       "b",
@@ -1455,8 +1659,8 @@
   "lumps": {
    "slug": "lumps",
    "code": "LMP",
-   "title": "The hot or pulsatile lump: cellulitis, abscess, haematoma or pseudoaneurysm",
-   "cpdHours": 1,
+   "title": "The hot, pulsatile or reducible lump: abscess, haematoma, pseudoaneurysm or hernia",
+   "cpdHours": 1.25,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -1663,6 +1867,30 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q18",
+     "correct": "a",
+     "why": "Raised abdominal pressure pushes contents through the defect. Many small hernias only appear with cough, Valsalva or standing.",
+     "review": "08-hernia",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q19",
+     "correct": "d",
+     "why": "Loss of flow in the bowel wall, wall thickening, fluid in the sac and absent peristalsis suggest compromised bowel, which needs urgent surgery.",
+     "review": "08-hernia",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -1685,6 +1913,10 @@
     "04-vascular-lumps": {
      "title": "Vascular lumps: find the neck",
      "path": "/elearning/lumps/learn/vascular-lumps/"
+    },
+    "08-hernia": {
+     "title": "The lump that comes and goes: abdominal wall hernia",
+     "path": "/elearning/lumps/learn/hernia/"
     },
     "05-safe-drainage": {
      "title": "Safe drainage and documentation",
@@ -1923,8 +2155,8 @@
   "msk": {
    "slug": "msk",
    "code": "MSK",
-   "title": "Soft tissue and joints: foreign bodies, tendons, the shoulder and the hip",
-   "cpdHours": 1.25,
+   "title": "Soft tissue and joints: foreign bodies, tendons, effusions, the shoulder and the hip",
+   "cpdHours": 1.5,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -2095,6 +2327,66 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q15",
+     "correct": "b",
+     "why": "Most quadriceps ruptures occur close to the top of the patella. A tear at the inferior pole involves the patellar tendon.",
+     "review": "07-tendon-ruptures",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q16",
+     "correct": "a",
+     "why": "Flexion pulls the torn ends apart. A partial tear or anisotropy does not open with movement.",
+     "review": "07-tendon-ruptures",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q17",
+     "correct": "c",
+     "why": "The suprapatellar recess connects with the joint. Fluid in front of the patella is prepatellar bursitis, outside the joint.",
+     "review": "08-effusions",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q18",
+     "correct": "b",
+     "why": "The posterior recess with external rotation detects glenohumeral fluid most reliably. Fluid in the biceps sheath alone is less reliable.",
+     "review": "08-effusions",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q19",
+     "correct": "b",
+     "why": "Ultrasound cannot tell infected from sterile fluid, and a small effusion does not exclude infection. Fluid analysis decides.",
+     "review": "08-effusions",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -2111,12 +2403,16 @@
      "path": "/elearning/msk/learn/tendon/"
     },
     "07-tendon-ruptures": {
-     "title": "Tendon ruptures: the Achilles and the distal biceps",
+     "title": "Tendon ruptures: the Achilles, the distal biceps and the quadriceps",
      "path": "/elearning/msk/learn/tendon-ruptures/"
     },
     "04-shoulder": {
      "title": "The shoulder: one posterior view",
      "path": "/elearning/msk/learn/shoulder/"
+    },
+    "08-effusions": {
+     "title": "Joint effusions: the knee and the shoulder",
+     "path": "/elearning/msk/learn/effusions/"
     },
     "05-hip": {
      "title": "The hip: compare the capsule",
@@ -2305,6 +2601,186 @@
     "06-cases": {
      "title": "Cases",
      "path": "/elearning/nerve-blocks/learn/cases/"
+    }
+   }
+  },
+  "pelvis": {
+   "slug": "pelvis",
+   "code": "PEL",
+   "title": "Pelvic pain in women: early pregnancy, torsion, bleeding cysts and pelvic sepsis",
+   "cpdHours": 1.25,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "b",
+     "why": "A positive pregnancy test turns any adnexal finding into a possible ectopic pregnancy until proven otherwise. Check it first.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "d",
+     "why": "The bedside scan cannot separate a very early intrauterine pregnancy, a miscarriage and an ectopic pregnancy. The patient needs formal transvaginal scanning and serial hCG.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "a",
+     "why": "Follicles identify the ovary. Bowel loops mimic the ovary but show peristalsis and lack follicles.",
+     "review": "02-technique",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "b",
+     "why": "A sac alone may be a pseudosac. A yolk sac or fetal pole within a sac surrounded by myometrium confirms an intrauterine pregnancy.",
+     "review": "03-early-pregnancy",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "b",
+     "why": "A pseudosac is fluid or blood in the cavity itself. A true early sac implants off-centre in the endometrium.",
+     "review": "03-early-pregnancy",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "a",
+     "why": "Free fluid reaching the right upper quadrant in early pregnancy suggests a large bleed, most often a ruptured ectopic pregnancy.",
+     "review": "03-early-pregnancy",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "b",
+     "why": "Heterotopic pregnancy is rare after natural conception but more common after assisted conception, so a visible intrauterine pregnancy does not exclude an ectopic in these patients.",
+     "review": "03-early-pregnancy",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "b",
+     "why": "The whirlpool sign shows the twist itself. Free fluid and small cysts are common and non-specific.",
+     "review": "04-torsion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "d",
+     "why": "Venous outflow blocks first, and the ovarian and uterine arteries both supply the ovary. Present arterial flow does not exclude torsion.",
+     "review": "04-torsion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "a",
+     "why": "Clotting blood forms fibrin strands and a retracting clot with no blood supply. Flow within a solid part suggests tissue.",
+     "review": "05-cysts-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "d",
+     "why": "Thick walls, septa, debris, hyperaemia and tenderness in a febrile patient point to pelvic sepsis.",
+     "review": "05-cysts-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "d",
+     "why": "Pelvic inflammatory disease often shows nothing on ultrasound. Treat according to the clinical picture and local guidance.",
+     "review": "05-cysts-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Context: one question at a time",
+     "path": "/elearning/pelvis/learn/context/"
+    },
+    "02-technique": {
+     "title": "Technique: the uterus, the adnexa and the pouch of Douglas",
+     "path": "/elearning/pelvis/learn/technique/"
+    },
+    "03-early-pregnancy": {
+     "title": "Early pregnancy: find the pregnancy, then look beyond the uterus",
+     "path": "/elearning/pelvis/learn/early-pregnancy/"
+    },
+    "04-torsion": {
+     "title": "Ovarian torsion: follow the pedicle",
+     "path": "/elearning/pelvis/learn/torsion/"
+    },
+    "05-cysts-abscess": {
+     "title": "Bleeding cysts and pelvic sepsis",
+     "path": "/elearning/pelvis/learn/cysts-abscess/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/pelvis/learn/cases/"
     }
    }
   },

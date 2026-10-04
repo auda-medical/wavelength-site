@@ -5,11 +5,12 @@ category: Abdomen
 date: 2026-10-03
 author: Dr Firas Abou-Auda
 draft: false
+reviewed: 2026-10-04
 ---
 
 The gallbladder moves with breathing, changes shape after a meal, and hides behind bowel gas. New scanners sweep the right upper quadrant hoping to see it. A landmark gets you there every time: the main lobar fissure, a bright line inside the liver which runs from the portal vein to the gallbladder neck.
 
-![Wavelength Pearl: gallbladder. Find the portal vein, follow the main lobar fissure to the gallbladder neck, and confirm in two planes.](/learn/images/gallbladder-pearl.webp)
+![Wavelength Pearl: gallbladder. Find the portal vein, follow the main lobar fissure to the gallbladder neck, and confirm in two planes.](/learn/images/gallbladder-fissure-pearl.webp)
 
 *Scan images in the graphic are illustrations, not patient scans.*
 

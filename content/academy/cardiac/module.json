@@ -6,7 +6,7 @@
   "category": "Cardiac",
   "summary": "Answer the questions that change emergency care: is the left ventricle weak, is there fluid around the heart, is the right heart under strain, and how full is the venous system? Learn the four views, EPSS, the descending aorta landmark, the IVC and the ultrasound JVP.",
   "cpdHours": 1.5,
-  "minutes": 90,
+  "minutes": 93,
   "passMark": 80,
   "draft": false,
   "pearl": "/learn/pericardial-or-pleural-descending-aorta/",
@@ -23,12 +23,22 @@
     "Separate pericardial from pleural fluid and recognise the signs which support tamponade",
     "Assess right ventricular size, the inferior vena cava and the ultrasound jugular venous pressure, then document and act safely"
   ],
-  "lessons": ["01-context", "02-views", "03-lv-function", "04-pericardium", "05-right-heart-venous", "06-pitfalls-documentation", "07-cases"],
+  "lessons": [
+    "01-context",
+    "02-views",
+    "03-lv-function",
+    "04-pericardium",
+    "05-right-heart-venous",
+    "06-pitfalls-documentation",
+    "07-cases"
+  ],
   "references": [
     "Via G, et al. International evidence-based recommendations for focused cardiac ultrasound. Journal of the American Society of Echocardiography. 2014;27:683.e1-683.e33.",
     "Spencer KT, et al. Focused cardiac ultrasound: recommendations from the American Society of Echocardiography. Journal of the American Society of Echocardiography. 2013;26:567.",
     "McKaigney CJ, et al. E-point septal separation: a bedside tool for emergency physician assessment of left ventricular ejection fraction. American Journal of Emergency Medicine. 2014;32:493-7.",
     "Intensive Care Society. Focused Ultrasound for Intensive Care (FUSIC) Heart accreditation pathway.",
+    "Rudski LG, et al. Guidelines for the echocardiographic assessment of the right heart in adults. Journal of the American Society of Echocardiography. 2010;23:685-713.",
+    "Konstantinides SV, et al. 2019 ESC guidelines for the diagnosis and management of acute pulmonary embolism. European Heart Journal. 2020;41:543-603.",
     "American College of Emergency Physicians. Ultrasound guidelines: emergency, point-of-care and clinical ultrasound guidelines in medicine. Annals of Emergency Medicine. 2023.",
     "Royal College of Emergency Medicine. Point-of-care ultrasound appendix to the RCEM curriculum."
   ]
