@@ -68,14 +68,15 @@ async function token(env) {
   return j.access_token;
 }
 
-async function api(env, path, params = {}, method = 'POST') {
+async function api(env, path, params = {}, method = 'POST', inQuery = false) {
   const t = await token(env);
   const q = new URLSearchParams({ resfmt: 'JSON', ...params });
-  const url = method === 'GET' ? `${API}/${path}?${q}` : `${API}/${path}`;
+  const url = method === 'GET' || inQuery ? `${API}/${path}?${q}` : `${API}/${path}`;
+  if (inQuery) { method = 'POST'; }
   const r = await fetch(url, {
     method,
     headers: { Authorization: `Zoho-oauthtoken ${t}`, ...(method === 'GET' ? {} : { 'Content-Type': 'application/x-www-form-urlencoded' }) },
-    body: method === 'GET' ? undefined : q,
+    body: method === 'GET' || inQuery ? undefined : q,
   });
   const text = await r.text();
   try { return JSON.parse(text); } catch { return { code: String(r.status), message: text.slice(0, 300) }; }
@@ -144,6 +145,50 @@ async function record(env, slug, status, detail, campaignKey = '') {
     .bind(slug, status, String(detail || '').slice(0, 500), campaignKey).run();
 }
 
+
+// Create a draft campaign and confirm Zoho attached the newsletter list. Tries Zoho's documented
+// formats in turn and remembers the one that works (setting zoho_list_format). Sends nothing.
+const FORMATS = ['query-quoted', 'query-bare', 'body-bare'];
+async function createVerified(env, issue) {
+  const lk = await listKey(env);
+  const tid = await topicId(env);
+  const s = await getSettings(env);
+  const order = s.zoho_list_format ? [s.zoho_list_format, ...FORMATS.filter((f) => f !== s.zoho_list_format)] : FORMATS;
+  const tried = [];
+  for (const fmt of order) {
+    const params = {
+      campaignname: `${issue.campaignName || issue.subject} (${new Date().toISOString().slice(0, 10)})`,
+      from_email: FROM_EMAIL, from_name: FROM_NAME, subject: issue.subject,
+      content_url: `${SITE}/email/pearl/?v=${encodeURIComponent(issue.slug)}`,
+      list_details: fmt.endsWith('quoted') ? JSON.stringify({ [lk]: [] }) : `{${lk}:[]}`,
+    };
+    if (tid) params.topicId = tid;
+    const c = await api(env, 'createCampaign', params, 'POST', fmt.startsWith('query'));
+    const key = c.campaignKey || c.campaignkey || (c.response && c.response.campaignkey);
+    if (!key) { tried.push(`${fmt}: ${c.message || c.code}`); continue; }
+    const d = await api(env, 'getcampaigndetails', { campaignkey: key, campaigntype: 'normal' }, 'GET');
+    const lists = findLists(d);
+    if (lists.length) { if (s.zoho_list_format !== fmt) await put(env, 'zoho_list_format', fmt); return key; }
+    tried.push(`${fmt}: no list attached`);
+  }
+  throw new Error('List not attached. Tried ' + tried.join('; '));
+}
+function findLists(d) {
+  const seen = [];
+  const walk = (o) => {
+    if (!o || typeof o !== 'object') return;
+    for (const [k, v] of Object.entries(o)) {
+      if (/mailing_lists|mailinglists|list_details/i.test(k) && v) {
+        const arr = Array.isArray(v) ? v : Object.values(v);
+        for (const x of arr) if (x && (x.listkey || x.listname || x.list_name)) seen.push(x);
+      }
+      walk(v);
+    }
+  };
+  walk(d);
+  return seen;
+}
+
 // Send this week's issue. force skips the age check (admin "send now").
 export async function sendIssue(env, { force = false } = {}) {
   const issue = await loadIssue(env);
@@ -154,17 +199,7 @@ export async function sendIssue(env, { force = false } = {}) {
   if (!force && age > 8) { await record(env, issue.slug, 'skipped', `Draft is ${Math.floor(age)} days old`); return { ok: false, msg: 'Draft too old, skipped.' }; }
   try {
     await record(env, issue.slug, 'sending', 'Creating campaign');
-    const params = {
-      campaignname: `${issue.campaignName || issue.subject} (${new Date().toISOString().slice(0, 10)})`,
-      from_email: FROM_EMAIL, from_name: FROM_NAME, subject: issue.subject,
-      content_url: `${SITE}/email/pearl/?v=${encodeURIComponent(issue.slug)}`,
-      list_details: JSON.stringify({ [await listKey(env)]: [] }),
-    };
-    const tid = await topicId(env);
-    if (tid) params.topicId = tid;
-    const c = await api(env, 'createCampaign', params);
-    const key = c.campaignKey || c.campaignkey || (c.response && c.response.campaignkey);
-    if (!key) throw new Error('createCampaign: ' + (c.message || JSON.stringify(c).slice(0, 300)));
+    const key = await createVerified(env, issue);
     const sres = await api(env, 'sendcampaign', { campaignkey: key });
     const st = (sres.response && (sres.response.campaign_status || sres.response.code)) || sres.code;
     if (sres.response ? String(sres.response.code) !== '200' : String(sres.code) !== '200') throw new Error('sendcampaign: ' + (sres.message || (sres.response && sres.response.message) || JSON.stringify(sres).slice(0, 300)));
@@ -199,7 +234,7 @@ export async function newsletterAdminHtml(env, msg) {
   <div style="display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 32px">
     ${s.zoho_client_id ? `<a class="btn btn-ghost small" href="/volunteer/admin/newsletter/connect/">${connected ? 'Reconnect' : 'Connect'} Zoho Campaigns</a>` : ''}
     <form method="post"><input type="hidden" name="action" value="toggle"><button class="btn btn-ghost small" type="submit">${s.newsletter_auto === 'off' ? 'Resume' : 'Pause'} automatic sending</button></form>
-    ${connected ? `<form method="post"><input type="hidden" name="action" value="test"><button class="btn btn-ghost small" type="submit">Test connection (sends nothing)</button></form>` : ''}
+    ${connected ? `<form method="post"><input type="hidden" name="action" value="test"><button class="btn btn-ghost small" type="submit">Test connection (sends nothing)</button></form><form method="post"><input type="hidden" name="action" value="dryrun"><button class="btn btn-ghost small" type="submit">Dry run (draft only, sends nothing)</button></form>` : ''}
     ${connected ? `<form method="post" onsubmit="return confirm('Send this week\\'s issue to the whole list now?')"><input type="hidden" name="action" value="send"><button class="btn small" type="submit">Send this week's issue now</button></form>` : ''}
   </div>
   ${connected ? '' : `<form class="form pw-form" method="post" style="max-width:560px;margin-bottom:32px"><input type="hidden" name="action" value="client"><p class="admin-summary">Step 1: paste the Client ID and Client Secret from the Zoho API console (server-based application, redirect URI ${REDIRECT}). Step 2: click Connect.</p><label>Client ID<input name="client_id" autocomplete="off" required maxlength="200" value="${esc(s.zoho_client_id || '')}"></label><label>Client Secret<input name="client_secret" type="password" autocomplete="off" required maxlength="200"></label><button class="btn btn-ghost small" type="submit">Save</button></form>`}
@@ -216,6 +251,10 @@ export async function newsletterAdminPost(env, f) {
     return 'Saved. Now click Connect Zoho Campaigns.';
   }
   if (a === 'test') return testConnection(env);
+  if (a === 'dryrun') {
+    try { const issue = await loadIssue(env); const key = await createVerified(env, issue); return `Dry run OK: draft campaign ${key} created with the list attached. Nothing sent. Format: ${(await getSettings(env)).zoho_list_format}`; }
+    catch (e) { return 'Dry run failed: ' + e.message; }
+  }
   if (a === 'send') return (await sendIssue(env, { force: true })).msg;
   return '';
 }
