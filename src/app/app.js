@@ -85,6 +85,30 @@
 
   // ---------- Sync ----------
   function live() { return S.entries.filter(function (e) { return !e.deleted; }); }
+  // Sign-off status per scan: green signed, amber awaiting a live link, red needs action, none when the learner marks it as not needing sign-off.
+  function setPending(list) {
+    var m = {}, now = Date.now();
+    (list || []).forEach(function (s) { if (s.status === 'pending' && s.method !== 'in-person' && s.expires_at > now) (s.entry_ids || []).forEach(function (id) { m[id] = { code: s.id, name: s.supervisor_name || '', exp: s.expires_at }; }); });
+    return setKv('pending', m);
+  }
+  function waiting(e) { var p = (S.kv.pending || {})[e.id]; return p && p.exp > Date.now() ? p : null; }
+  function signState(e) {
+    if (e.signoff && e.signoff.status === 'confirmed') return 'signed';
+    if (waiting(e)) return 'waiting';
+    if (e.noSignoff) return 'none';
+    if (e.signoff && e.signoff.status === 'query') return 'query';
+    if (e.signoffVoid) return 'void';
+    return 'todo';
+  }
+  var STATES = { signed: ['green', 'Signed off'], waiting: ['amber', 'Awaiting sign-off'], none: ['', ''], query: ['red', 'Queried'], void: ['red', 'Edited, re-sign'], todo: ['red', 'Not sent'] };
+  var TODO = ['todo', 'query', 'void'];
+  function stateMatch(e, f) { var s = signState(e); return !f || (f === 'todo' ? TODO.indexOf(s) >= 0 : f === 'unsigned' ? (s !== 'signed' && s !== 'none') : s === f); }
+  // New sign-offs from supervisors (by link), shown until the learner opens the logbook or dismisses them.
+  function news() { return S.kv.news || []; }
+  function newsText(list) {
+    var by = {}; list.forEach(function (n) { var k = n.name + '|' + n.status; by[k] = (by[k] || 0) + 1; });
+    return Object.keys(by).map(function (k) { var p = k.split('|'); return p[0] + ' ' + (p[1] === 'query' ? 'queried ' : 'signed off ') + plural(by[k], 'scan') + '.'; }).join(' ');
+  }
   function strip(e) { var o = {}; for (var k in e) if (k.charAt(0) !== '_') o[k] = e[k]; return o; }
   function saveLocal(e) { var i = S.entries.findIndex(function (x) { return x.id === e.id; }); if (i >= 0) S.entries[i] = e; else S.entries.push(e); return put('entries', e); }
   function setSyncDot() { var d = $('.sync-dot'); if (!d) return; d.classList.toggle('off', !S.online); d.classList.toggle('busy', S.syncing); d.title = !S.online ? 'Offline. Changes save on this device and sync when you reconnect.' : S.syncing ? 'Syncing' : 'Synced'; }
@@ -109,12 +133,22 @@
     }) : Promise.resolve();
     return push.then(function () { return api('/api/app/sync?since=' + (S.kv.lastSync || 0)); }).then(function (res) {
       if (!res.ok) throw new Error(res.error || 'Sync failed');
+      var fresh = [];
       return Promise.all((res.entries || []).map(function (e) {
         var local = S.entries.find(function (x) { return x.id === e.id; });
         if (local && local._dirty) return null;
+        var so = e.signoff, old = local && local.signoff;
+        if (local && so && so.method !== 'in-person' && (!old || old.code !== so.code || old.status !== so.status)) fresh.push({ id: e.id, code: so.code, status: so.status, name: so.name || 'Your supervisor' });
         if (e.deleted) { S.entries = S.entries.filter(function (x) { return x.id !== e.id; }); dropImages(e.id); return del('entries', e.id); }
         return saveLocal(e);
-      })).then(function () { return setKv('lastSync', res.now); });
+      })).then(function () {
+        if (!fresh.length) return;
+        var keep = news().filter(function (n) { return !fresh.some(function (f) { return f.id === n.id; }); });
+        toast(newsText(fresh));
+        return setKv('news', keep.concat(fresh).slice(-50));
+      }).then(function () { return setKv('lastSync', res.now); });
+    }).then(function () {
+      return api('/api/app/signoffs').then(function (r) { if (r.ok) return setPending(r.signoffs); });
     }).catch(function () { /* offline or server error: try again later */ }).then(function () {
       S.syncing = false; setSyncDot();
       if (['home', 'log', 'progress', 'entry'].indexOf(route().name) >= 0 && !document.querySelector('form[data-dirty]')) render(true);
@@ -229,7 +263,7 @@
     var tab = function (name, href, icon, label) { return '<a href="#/' + href + '"' + (r === name || (opts.tab === name) ? ' aria-current="page"' : '') + '>' + icon + '<span>' + label + '</span></a>'; };
     var top = opts.hero ? '' : '<header class="top">' + (opts.back ? '<a class="back" href="#/' + opts.back + '" aria-label="Back">' + I.back + '</a>' : MARK(34, 'rgba(247,245,240,.5)')) + '<h1>' + esc(opts.title) + '</h1>' + (opts.action || '') + '<span class="sync-dot" aria-hidden="true"></span></header>';
     return top + (opts.hero || '') + '<main class="' + (opts.hero ? 'flush' : '') + '">' + body + '</main>' +
-      '<nav class="tabs" aria-label="App">' + tab('home', '', I.home, 'Home') + tab('log', 'log', I.book, 'Logbook') + '<a class="plus" href="#/new" aria-label="Log a scan">' + I.plus + '<span>Log</span></a>' + tab('progress', 'progress', I.chart, 'Progress') + tab('me', 'me', I.user, 'Me') + '</nav>';
+      '<nav class="tabs" aria-label="App">' + tab('home', '', I.home, 'Home') + tab('log', 'log', I.book, 'Logbook' + (news().length ? '<i class="nd" aria-label="New sign-off"></i>' : '')) + '<a class="plus" href="#/new" aria-label="Log a scan">' + I.plus + '<span>Log</span></a>' + tab('progress', 'progress', I.chart, 'Progress') + tab('me', 'me', I.user, 'Me') + '</nav>';
   }
 
   var keepScroll = 0;
@@ -388,7 +422,7 @@
   function viewHome() {
     var ents = live(), month = today().slice(0, 7);
     var signed = ents.filter(function (e) { return e.signoff && e.signoff.status === 'confirmed'; }).length;
-    var pending = ents.filter(function (e) { return !(e.signoff && e.signoff.status === 'confirmed'); }).length;
+    var pending = ents.filter(function (e) { return stateMatch(e, 'unsigned'); }).length;
     var name = S.account.firstName;
     var hour = new Date().getHours(), hi = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     var hero = '<header class="top" style="padding-bottom:4px">' + MARK(34, 'rgba(247,245,240,.5)') + '<h1 style="font:600 13px var(--sans);letter-spacing:.38em">WAVELENGTH</h1><span class="sync-dot" aria-hidden="true"></span></header>' +
@@ -397,7 +431,9 @@
     var quick = '<div class="card" style="margin-top:16px;padding:10px"><div style="display:grid;grid-template-columns:repeat(4,1fr);text-align:center;font-size:12px;font-weight:600">' +
       [['new', I.plus, 'Log a scan'], ['signoff', I.pen, 'Sign-off'], ['export', I.file, 'Export'], ['backup', I.cloud, 'Back up']].map(function (q) { return '<a href="#/' + q[0] + '" style="text-decoration:none;color:var(--navy);display:grid;gap:6px;justify-items:center;padding:8px 2px"><span style="width:44px;height:44px;border-radius:14px;background:var(--sand);display:grid;place-items:center">' + q[1] + '</span>' + q[2] + '</a>'; }).join('') + '</div></div>';
     var install = canInstall() ? '<div style="margin:0 0 12px">' + installButton() + '</div>' : '';
-    var backup = backupNudge();
+    var nw = news(), q = nw.some(function (n) { return n.status === 'query'; });
+    var newsCard = nw.length ? '<div class="card" style="border-color:#b9dcc4;background:var(--green-bg)"><div class="row"><span style="color:var(--green)">' + I.pen + '</span><div class="grow"><h3>New sign-off</h3><p class="small" style="margin:0">' + esc(newsText(nw)) + '</p></div></div><div class="btns"><a class="btn sm" href="#/log' + (q ? '?s=todo' : '?s=signed') + '">See scans</a><button class="btn ghost sm" type="button" id="nwx">Dismiss</button></div></div>' : '';
+    var backup = newsCard + backupNudge();
     var paths = myPaths().map(function (pid) {
       var ps = pathwayStats(pid);
       var rows = ps.stats.filter(function (s) { return s.total || s.list.length; }).sort(function (a, b) { return b.list.length - a.list.length; }).slice(0, 4);
@@ -413,6 +449,7 @@
       '<h2 class="sec">Recent scans <a href="#/log">Logbook</a></h2>' + (recent.length ? recent.map(entryRow).join('') : '<div class="card"><p class="muted">Nothing logged yet.</p><a class="btn teal" href="#/new">Log your first scan</a></div>') +
       academy +
       (course ? '<h2 class="sec">Next course</h2><a class="card teal" href="/courses/' + esc(course.slug) + '/" style="display:block;text-decoration:none"><p class="eyebrow" style="color:var(--teal-l)">' + esc(fmt(course.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })) + '</p><h3>' + esc(course.title) + '</h3><p class="muted" style="color:#cfe3e6">' + esc([course.venue, course.city].filter(Boolean).join(', ')) + '</p><span class="btn light sm">See the course</span></a>' : '')));
+    var nx = $('#nwx'); if (nx) nx.onclick = function () { setKv('news', []).then(function () { render(true); }); };
     loadThumbs();
   }
   function academyCard() {
@@ -441,15 +478,14 @@
     return (e.overall ? e.overall + '. ' : '') + bits.join('; ');
   }
   function statusChip(e) {
-    if (e.signoff && e.signoff.status === 'confirmed') return '<span class="chip green">Signed off</span>';
-    if (e.signoff && e.signoff.status === 'query') return '<span class="chip amber">Query</span>';
-    if (e.signoffVoid) return '<span class="chip amber">Edited, re-sign</span>';
-    return '<span class="chip">Not signed</span>';
+    var st = STATES[signState(e)];
+    return st[1] ? '<span class="chip ' + st[0] + '">' + st[1] + '</span>' : '';
   }
   var SUP = {}; C.supervision.forEach(function (s) { SUP[s.id] = s.label; });
   function entryRow(e) {
     var t = TYPES[e.type] || { label: e.type, short: e.type };
-    return '<a class="entry" href="#/entry/' + esc(e.id) + '"><span class="thumb" data-thumb="' + esc(e.id) + '">' + esc(t.short) + '</span><div class="grow"><h3>' + esc(t.label) + '</h3><p>' + esc(fmt(e.date)) + (e.setting ? ' · ' + esc(e.setting) : '') + '</p><div class="meta">' + statusChip(e) + (e.supervision === 'direct' ? '<span class="chip teal">Supervised</span>' : '') + (e._dirty ? '<span class="chip">Not synced</span>' : '') + '</div></div></a>';
+    var col = STATES[signState(e)][0], isNew = news().some(function (n) { return n.id === e.id; });
+    return '<a class="entry' + (col ? ' s-' + col : '') + '" href="#/entry/' + esc(e.id) + '"><span class="thumb" data-thumb="' + esc(e.id) + '">' + esc(t.short) + '</span><div class="grow"><h3>' + esc(t.label) + '</h3><p>' + esc(fmt(e.date)) + (e.setting ? ' · ' + esc(e.setting) : '') + '</p><div class="meta">' + (isNew ? '<span class="chip teal">New</span>' : '') + statusChip(e) + (e.supervision === 'direct' ? '<span class="chip teal">Supervised</span>' : '') + (e._dirty ? '<span class="chip">Not synced</span>' : '') + '</div></div></a>';
   }
   function loadThumbs() {
     $$('[data-thumb]').forEach(function (el) {
@@ -464,8 +500,7 @@
     var used = {}; ents.forEach(function (e) { used[e.type] = (used[e.type] || 0) + 1; });
     var list = ents.filter(function (e) {
       if (f !== 'all' && e.type !== f) return false;
-      if (st === 'unsigned' && e.signoff && e.signoff.status === 'confirmed') return false;
-      if (st === 'signed' && !(e.signoff && e.signoff.status === 'confirmed')) return false;
+      if (!stateMatch(e, st)) return false;
       if (q && JSON.stringify(e).toLowerCase().indexOf(q) < 0 && (TYPES[e.type] || {}).label.toLowerCase().indexOf(q) < 0) return false;
       return true;
     });
@@ -474,12 +509,13 @@
     mount(shell({ title: 'Logbook', action: '<a class="act" href="#/signoff" style="text-decoration:none">Sign-off</a>' },
       '<div class="search"><input type="search" id="q" placeholder="Search your logbook" value="' + esc(q) + '" aria-label="Search"><a class="btn ghost sm" href="#/export" style="flex:none">Export</a></div>' +
       '<div class="filters">' + filt('all', 'All', ents.length) + Object.keys(used).map(function (t) { return filt(t, (TYPES[t] || {}).short || t, used[t]); }).join('') + '</div>' +
-      '<div class="seg" style="margin:0 0 6px">' + [['', 'Any status'], ['unsigned', 'Not signed off'], ['signed', 'Signed off']].map(function (o) { return '<input type="radio" name="st" id="st' + o[0] + '" value="' + o[0] + '"' + (st === o[0] ? ' checked' : '') + '><label for="st' + o[0] + '">' + o[1] + '</label>'; }).join('') + '</div>' +
+      '<div class="seg" style="margin:0 0 6px">' + [['', 'All'], ['todo', 'Not sent'], ['waiting', 'Awaiting'], ['signed', 'Signed off'], ['none', 'No sign-off']].map(function (o) { var n = o[0] ? ents.filter(function (e) { return stateMatch(e, o[0]); }).length : ents.length; return (o[0] === 'none' && !n && st !== 'none') ? '' : '<input type="radio" name="st" id="st' + o[0] + '" value="' + o[0] + '"' + (st === o[0] ? ' checked' : '') + '><label for="st' + o[0] + '">' + o[1] + ' · ' + n + '</label>'; }).join('') + '</div>' +
       (list.length ? Object.keys(groups).map(function (m) { return '<p class="month">' + fmt(m + '-15', { month: 'long', year: 'numeric' }) + ' · ' + groups[m].length + '</p>' + groups[m].map(entryRow).join(''); }).join('') :
         '<div class="empty">' + I.book.replace('width="24" height="24"', 'width="48" height="48"') + '<p>' + (ents.length ? 'No scans match.' : 'Your logbook is empty.') + '</p><a class="btn teal" href="#/new">Log a scan</a></div>')));
     var upd = function (k, v) { var p = route().q; if (v) p.set(k, v); else p.delete(k); history.replaceState(null, '', '#/log?' + p.toString()); viewLog(route()); };
     $$('[data-f]').forEach(function (b) { b.addEventListener('click', function () { upd('type', b.dataset.f === 'all' ? '' : b.dataset.f); }); });
     $$('input[name=st]').forEach(function (i) { i.addEventListener('change', function () { upd('s', i.value); }); });
+    if (news().length) setKv('news', []).then(function () { var d = $('.tabs .nd'); if (d) d.remove(); });
     var qi = $('#q'), tmr; qi.addEventListener('input', function () { clearTimeout(tmr); tmr = setTimeout(function () { upd('q', qi.value); var n = $('#q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); });
     loadThumbs();
   }
@@ -521,7 +557,7 @@
     var editing = r.name === 'edit' ? S.entries.find(function (x) { return x.id === r.arg; }) : null;
     var copyFrom = r.q.get('copy') ? S.entries.find(function (x) { return x.id === r.q.get('copy'); }) : null;
     var e = editing ? JSON.parse(JSON.stringify(strip(editing))) : { date: today(), supervision: '', setting: (copyFrom || {}).setting || S.kv.lastSetting || '', age: (copyFrom || {}).age || '', sex: (copyFrom || {}).sex || '', type: r.q.get('type') || '' };
-    if (copyFrom) { e.date = copyFrom.date; e.indication = copyFrom.indication; e.supervisor = copyFrom.supervisor; e.supervision = copyFrom.supervision; e.patient = copyFrom.patient || copyFrom.id; }
+    if (copyFrom) { e.date = copyFrom.date; e.indication = copyFrom.indication; e.supervisor = copyFrom.supervisor; e.supervision = copyFrom.supervision; e.noSignoff = copyFrom.noSignoff; e.patient = copyFrom.patient || copyFrom.id; }
     if (!editing) draftImages = [];
     var mine = {}; myPaths().forEach(function (pid) { PATHS[pid].modules.forEach(function (m) { m.types.forEach(function (t) { mine[t] = 1; }); }); });
     var ordered = C.types.slice().sort(function (a, b) { return (mine[b.id] || 0) - (mine[a.id] || 0); });
@@ -544,6 +580,7 @@
       '<div class="field"><label for="impact">Impact on management</label><input id="impact" name="impact" type="text" placeholder="For example, changed fluid plan, avoided CT" value="' + esc(e.impact || '') + '"></div>' +
       '<div class="field"><span class="lab">Supervision</span>' + seg('supervision', C.supervision, e.supervision) + '</div>' +
       '<div class="field"><label for="supv">Supervisor or mentor</label><input id="supv" name="supervisor" type="text" list="supl" placeholder="Name" value="' + esc(e.supervisor || '') + '"><datalist id="supl">' + supNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></div>' +
+      '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>No sign-off needed for this scan</span></label></div>' +
       '<div class="field"><span class="lab">Images</span><p class="hint">Stay on this phone only. Crop and cover identifiers before you save.</p><div class="gallery" id="gal"></div>' +
       '<input type="file" accept="image/*" capture="environment" id="cam" hidden><input type="file" accept="image/*" id="pick" hidden multiple></div>' +
       '<div class="field"><label for="refl">Reflection</label><p class="hint">What you learned and what you will do differently. Counts as a reflective note.</p><textarea id="refl" name="reflection">' + esc(e.reflection || '') + '</textarea></div>' +
@@ -603,6 +640,7 @@
       var out = editing ? Object.assign({}, strip(editing)) : { id: uid(), createdAt: Date.now() };
       ['type', 'date', 'setting', 'age', 'sex', 'indication', 'overall', 'quality', 'interpretation', 'confirmation', 'concordant', 'impact', 'supervision', 'supervisor', 'reflection'].forEach(function (k) { out[k] = (d[k] || '').trim ? (d[k] || '').trim() : d[k]; });
       out.findings = readFindings();
+      out.noSignoff = !!$('input[name=noSignoff]', form).checked; if (!out.noSignoff) delete out.noSignoff;
       if (copyFrom) out.patient = e.patient;
       var mods = modulesForType(out.type).map(function (m) { return m.id; });
       var ticked = $$('input[name=count]:checked', form).map(function (i) { return i.value; });
@@ -708,8 +746,14 @@
     var row = function (k, v) { return v == null || v === '' || (Array.isArray(v) && !v.length) ? '' : '<dt>' + esc(k) + '</dt><dd>' + esc(Array.isArray(v) ? v.join(', ') : v) + '</dd>'; };
     var f = e.findings || {};
     var so = e.signoff;
-    var signHtml = so ? '<div class="signbox ' + (so.status === 'confirmed' ? 'ok' : 'warn') + '"><b>' + (so.status === 'confirmed' ? 'Signed off' : 'Queried') + '</b> by ' + esc(so.name) + (so.role ? ', ' + esc(so.role) : '') + (so.reg ? ' (' + esc(so.reg) + ')' : '') + ' on ' + esc(fmt(so.at)) + (so.method === 'in-person' ? ', in person' : ', by link') + (so.basis ? ' (' + ({ witnessed: 'witnessed the scan', reviewed: 'reviewed the images', both: 'witnessed and reviewed' })[so.basis] + ')' : '') + '. Code ' + esc(so.code) + '.</div>'
-      : e.signoffVoid ? '<div class="warn">Signed by ' + esc(e.signoffVoid.name) + ', then edited. Ask for sign-off again.</div>' : '<p class="muted small" style="margin:0">Not signed off yet.</p>';
+    var signHtml = so ? '<div class="signbox ' + (so.status === 'confirmed' ? 'ok' : 'err') + '" style="margin:0"><b>' + (so.status === 'confirmed' ? 'Signed off' : 'Queried') + '</b> by ' + esc(so.name) + (so.role ? ', ' + esc(so.role) : '') + (so.reg ? ' (' + esc(so.reg) + ')' : '') + ' on ' + esc(fmt(so.at)) + (so.method === 'in-person' ? ', in person' : ', by link') + (so.basis ? ' (' + ({ witnessed: 'witnessed the scan', reviewed: 'reviewed the images', both: 'witnessed and reviewed' })[so.basis] + ')' : '') + '. Code ' + esc(so.code) + '.</div>'
+      : e.signoffVoid ? '<div class="warn">Signed by ' + esc(e.signoffVoid.name) + ', then edited. Ask for sign-off again.</div>' : '';
+    var wt = !(so && so.status === 'confirmed') && waiting(e), state = signState(e);
+    if (wt) signHtml = '<div class="signbox warn"><b>Awaiting sign-off</b>' + (wt.name ? ' from ' + esc(wt.name) : '') + '. Link sent, valid until ' + esc(fmt(new Date(wt.exp).toISOString())) + '.</div>' + (so ? '<p class="small muted" style="margin:8px 0 0">Earlier: ' + (so.status === 'query' ? 'queried' : 'signed') + ' by ' + esc(so.name) + '.</p>' : '');
+    else if (state === 'none') signHtml = '<p class="muted small" style="margin:0">No sign-off needed for this scan.</p>';
+    else if (!signHtml) signHtml = '<div class="signbox" style="border-color:#efc2bd;background:var(--red-bg)"><b style="color:var(--red)">Not sent</b> for sign-off yet.</div>';
+    var canToggle = !(so && so.status === 'confirmed') && !wt;
+    signHtml += canToggle ? '<div class="btns" style="margin-top:10px">' + (state === 'none' ? '<button class="btn ghost sm" type="button" id="nsb">Needs sign-off</button>' : '<a class="btn sm" href="#/signoff?e=' + esc(e.id) + '">Request sign-off</a><button class="btn ghost sm" type="button" id="nsb">No sign-off needed</button>') + '</div>' : '';
     var mods = [];
     myPaths().forEach(function (pid) { PATHS[pid].modules.forEach(function (m) { if (m.types.indexOf(e.type) >= 0) mods.push('<span class="chip ' + ((e.exclude || []).indexOf(m.id) < 0 ? 'teal' : '') + '">' + esc(PATHS[pid].label + ' ' + m.label) + ((e.exclude || []).indexOf(m.id) < 0 ? '' : ', not counted') + '</span>'); }); });
     mount(shell({ title: t.label, back: 'log', action: '<a class="act" href="#/edit/' + esc(e.id) + '" style="text-decoration:none">Edit</a>' },
@@ -722,7 +766,9 @@
       (e.reflection ? '<div class="card"><h3>Reflection</h3><p style="white-space:pre-wrap">' + esc(e.reflection) + '</p></div>' : '') +
       (mods.length ? '<div class="card"><h3 style="margin-bottom:8px">Counts towards</h3><div class="meta" style="display:flex;flex-wrap:wrap;gap:6px">' + mods.join('') + '</div></div>' : '') +
       ((TYPES[e.type] || {}).learn ? '<a class="card dark" style="display:block;text-decoration:none" href="' + esc(TYPES[e.type].learn) + '"><p class="eyebrow" style="color:var(--teal-l)">Learn more</p><h3>' + esc(t.label) + ' on Wavelength</h3><p class="muted small">Free Pearls and certified Academy modules.</p></a>' : '') +
-      '<div class="btns"><a class="btn teal" href="#/new?copy=' + esc(e.id) + '">Another scan, same patient</a>' + (!(so && so.status === 'confirmed') ? '<a class="btn ghost" href="#/signoff?e=' + esc(e.id) + '">Request sign-off</a>' : '') + '<button class="btn ghost" id="shb">' + I.share + ' Share case</button>' + '<button class="btn ghost danger-text" id="delb" style="color:var(--red)">Delete</button></div></div>'));
+      '<div class="btns"><a class="btn teal" href="#/new?copy=' + esc(e.id) + '">Another scan, same patient</a>' + '' + '<button class="btn ghost" id="shb">' + I.share + ' Share case</button>' + '<button class="btn ghost danger-text" id="delb" style="color:var(--red)">Delete</button></div></div>'));
+    var nsb = $('#nsb');
+    if (nsb) nsb.onclick = function () { var d = strip(e); if (d.noSignoff) delete d.noSignoff; else d.noSignoff = true; d._dirty = true; d.updatedAt = e.updatedAt || 0; saveLocal(d).then(function () { toast(d.noSignoff ? 'Marked as no sign-off needed.' : 'Marked as needing sign-off.'); render(true); sync(); }); };
     $$('[data-img]').forEach(function (im) { getOne('images', im.dataset.img).then(function (rec) { if (rec) im.src = imgUrl(rec, true); else im.parentNode.innerHTML = '<span class="small" style="color:#B9C4D0;padding:6px">Image on another device or backup</span>'; }); });
     $$('[data-view]').forEach(function (b) { b.onclick = function () { getOne('images', b.dataset.view).then(function (rec) { if (!rec) return; var v = document.createElement('div'); v.className = 'viewer'; v.innerHTML = '<img alt="Scan image" src="' + imgUrl(rec) + '"><button class="btn sm light">Close</button>'; v.onclick = function () { v.remove(); }; document.body.appendChild(v); }); }; });
     $('#shb').onclick = function () {
@@ -780,21 +826,21 @@
   var ACCRED = ['RCEM-approved ultrasound supervisor', 'FAMUS mentor', 'FAMUS supervisor', 'FUSIC mentor', 'FUSIC supervisor', 'Consultant sonographer', 'Other'];
   function viewSignoff(r) {
     var pre = r.q.get('e');
-    var todo = live().filter(function (e) { return !(e.signoff && e.signoff.status === 'confirmed'); }).sort(sortEntries);
+    var todo = live().filter(function (e) { return !(e.signoff && e.signoff.status === 'confirmed') && (!e.noSignoff || e.id === pre); }).sort(sortEntries);
     mount(shell({ title: 'Sign-off', back: 'log' },
       '<div class="card dark"><h3>Two ways to get signed off</h3><p class="muted small">In person: hand your phone to your supervisor, who signs with a finger. By link: send a secure link your supervisor opens on any device. Every sign-off gets a code anyone can verify at thewavelength.co.uk/verify.</p></div>' +
       (todo.length ? '<h2 class="sec">Choose scans <button class="link" id="selall" type="button">Select all</button></h2><form id="sf">' + todo.map(function (e) {
         var t = TYPES[e.type] || { label: e.type };
         return '<label class="pathcard"><input type="checkbox" name="e" value="' + esc(e.id) + '"' + (pre === e.id ? ' checked' : '') + (e._dirty ? ' disabled' : '') + '><div class="grow"><b>' + esc(t.label) + '</b><span>' + esc(fmt(e.date)) + ' · ' + esc(SUP[e.supervision] || '') + (e.supervisor ? ' · ' + esc(e.supervisor) : '') + (e._dirty ? ' · syncing, try again shortly' : '') + '</span><div style="margin-top:4px">' + statusChip(e) + '</div></div></label>';
       }).join('') + '<div class="btns" style="position:sticky;bottom:calc(var(--tab) + var(--safe-b) + 8px);background:var(--cream);padding:8px 0"><button class="btn teal" style="flex:1" type="button" data-m="person">Supervisor is with me</button><button class="btn" style="flex:1" type="button" data-m="link">Send a link</button></div></form>'
-        : '<div class="empty"><p>Everything in your logbook is signed off.</p></div>') +
+        : '<div class="empty"><p>Nothing left to send. Every scan needing sign-off is signed off.</p></div>') +
       '<h2 class="sec">Requests and history</h2><div id="hist"><p class="muted small">Loading…</p></div>'));
     var sel = function () { return $$('input[name=e]:checked').map(function (i) { return i.value; }); };
     var sa = $('#selall'); if (sa) sa.onclick = function () { var boxes = $$('input[name=e]:not(:disabled)'); var on = boxes.some(function (b) { return !b.checked; }); boxes.forEach(function (b) { b.checked = on; }); };
     $$('[data-m]').forEach(function (b) { b.onclick = function () { var ids = sel(); if (!ids.length) { toast('Choose at least one scan.'); return; } if (!navigator.onLine) { toast('Sign-off needs an internet connection.'); return; } (b.dataset.m === 'person' ? signInPerson : signByLink)(ids); }; });
     api('/api/app/signoffs').then(function (res) {
       var h = $('#hist'); if (!h) return;
-      var list = (res.signoffs || []);
+      var list = (res.signoffs || []); if (res.ok) setPending(list);
       h.innerHTML = list.length ? list.map(function (s) {
         var n = s.entry_ids.length, conf = Object.values(s.decisions || {}).filter(function (x) { return x === 'confirmed'; }).length;
         var st = s.status === 'signed' ? '<span class="chip green">Signed</span>' : s.status === 'pending' ? (s.expires_at < Date.now() ? '<span class="chip">Expired</span>' : '<span class="chip amber">Waiting</span>') : '<span class="chip">Cancelled</span>';
@@ -1013,7 +1059,7 @@
       var so = e.signoff || {};
       var f = e.findings || {}, t = TYPES[e.type] || { fields: [] };
       var findings = t.fields.filter(function (fd) { return f[fd.id] != null && f[fd.id] !== ''; }).map(function (fd) { return fd.label + ': ' + (Array.isArray(f[fd.id]) ? f[fd.id].join(', ') : f[fd.id]) + (fd.unit ? ' ' + fd.unit : ''); }).join('; ');
-      var r = [e.date, t.label || e.type, e.setting, e.age, e.sex, e.indication, findings, e.overall, e.quality, e.interpretation, e.confirmation, e.concordant, e.impact, SUP[e.supervision] || '', e.supervisor, (e.images || []).length, so.status === 'confirmed' ? 'Signed off' : so.status === 'query' ? 'Queried' : 'Not signed', so.name ? so.name + (so.role ? ', ' + so.role : '') : '', so.at ? so.at.slice(0, 10) : '', so.code || ''];
+      var r = [e.date, t.label || e.type, e.setting, e.age, e.sex, e.indication, findings, e.overall, e.quality, e.interpretation, e.confirmation, e.concordant, e.impact, SUP[e.supervision] || '', e.supervisor, (e.images || []).length, so.status === 'confirmed' ? 'Signed off' : waiting(e) ? 'Awaiting' : e.noSignoff ? 'Not needed' : so.status === 'query' ? 'Queried' : 'Not sent', so.name ? so.name + (so.role ? ', ' + so.role : '') : '', so.at ? so.at.slice(0, 10) : '', so.code || ''];
       if (d.reflections) r.push(e.reflection || '');
       return r.map(function (x) { return x == null ? '' : x; });
     });
@@ -1207,6 +1253,7 @@
       '<h2 class="sec">Pathways</h2><form id="pf" class="card">' + C.pathways.map(function (pw) { return '<label class="check" style="padding:8px 0"><input type="checkbox" name="p" value="' + pw.id + '"' + (myPaths().indexOf(pw.id) >= 0 && (p.pathways || []).indexOf(pw.id) >= 0 ? ' checked' : '') + '><span><b>' + esc(pw.label === 'General' ? 'General logbook' : pw.label) + '</b><br><span class="muted">' + DESC[pw.id] + '</span></span></label>'; }).join('') + '<div class="btns"><button class="btn sm">Save pathways</button></div></form>' +
       '<h2 class="sec">Certificates <a href="/elearning/account/">All</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="Share certificate">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">Pass a free Academy module to earn a verifiable CPD certificate.</p><a class="btn sm" href="/elearning/">Browse modules</a></div>') +
       '<h2 class="sec">Profile</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">First name</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">Last name</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">Grade or role</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div><div class="field"><label for="m4">Organisation</label><input id="m4" name="organisation" type="text" value="' + esc(acc.organisation || '') + '"></div><div class="field"><label for="m5">GMC, NMC or HCPC number (shown on exports, optional)</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><button class="btn sm">Save profile</button></form>' +
+      '<h2 class="sec">Notifications</h2><div class="card"><label class="check"><input type="checkbox" id="nte"' + (p.notifyEmail === false ? '' : ' checked') + '><span>Email me when a supervisor signs off or queries my scans by link</span></label><p class="small muted" style="margin:8px 0 0">The app also shows new sign-offs on your home screen and logbook.</p></div>' +
       '<h2 class="sec">Your data</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/backup">Back up or restore photos</a><a href="#/export">Export your logbook</a><a href="#/evidence">Verified summaries you have shared</a><a href="#/declaration">Your responsibility for stored data</a><a href="/app-terms/">Logbook terms of use</a><a href="/privacy/">Privacy notice</a><a href="/app/verify/">Verify a sign-off code</a></div></div>' +
       '<h2 class="sec">Account</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">Current password</label><input id="c1" name="current" type="password" autocomplete="current-password"></div><div class="field"><label for="c2">New password</label><input id="c2" name="password" type="password" minlength="10" autocomplete="new-password"></div><button class="btn sm ghost">Change password</button></form></div>' +
       '<div class="btns"><button class="btn ghost block" id="lo">Log out</button><button class="btn ghost block" id="dl" style="color:var(--red)">Delete my account</button></div>' +
@@ -1216,6 +1263,7 @@
     $('#pf').addEventListener('submit', function (e) { e.preventDefault(); var ps = $$('input[name=p]:checked', this).map(function (i) { return i.value; }); if (!ps.length) { toast('Keep at least one pathway.'); return; } saveProfile({ pathways: ps }).then(function () { toast('Pathways saved.'); }).catch(function (ex) { toast(ex.message); }); });
     $('#mf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); saveProfile({ grade: d.grade, registration: d.registration }, { firstName: d.firstName, lastName: d.lastName, organisation: d.organisation }).then(function () { toast('Profile saved.'); render(true); }).catch(function (ex) { toast(ex.message); }); });
     $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; api('/api/app/password', formData(f)).then(function (res) { toast(res.ok ? 'Password changed.' : res.error); if (res.ok) f.reset(); }); });
+    $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? 'Sign-off emails on.' : 'Sign-off emails off.'); }).catch(function (ex) { toast(ex.message); }); };
     $('#lo').onclick = function () { api('/api/app/logout', {}).then(signedOut); };
     $('#dl').onclick = function () {
       sheet('<h2>Delete your account?</h2><p class="muted small">This deletes your logbook, sign-offs and account from Wavelength. Back up or export first if you want a copy. Images on this phone are removed too.</p><form id="df"><div class="field"><label for="dp">Your password</label><input id="dp" type="password" autocomplete="current-password" required></div>' + (certs.length ? '<label class="check"><input type="checkbox" id="kc" checked><span>Keep my Academy certificates verifiable</span></label>' : '') + '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn danger block">Delete everything</button><button type="button" class="btn ghost block" data-close>Cancel</button></div></form>', function (root) {

@@ -125,6 +125,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 .entry h3 { margin: 0; font-size: 15px; font-weight: 600; }
 .entry p { margin: 2px 0 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .entry .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.entry.s-red { border-left: 4px solid var(--red); }
+.entry.s-amber { border-left: 4px solid var(--amber); }
+.entry.s-green { border-left: 4px solid var(--green); }
 .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
 .empty svg { margin: 0 auto 14px; }
 
@@ -170,6 +173,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 .tabs { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; height: calc(var(--tab) + var(--safe-b)); padding-bottom: var(--safe-b); background: rgba(10,21,38,.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid rgba(247,245,240,.08); }
 .tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #8796A8; text-decoration: none; font-size: 11px; font-weight: 500; }
 .tabs a[aria-current] { color: var(--teal-l); }
+.tabs a { position: relative; }
+.tabs .nd { position: absolute; top: 6px; left: calc(50% + 8px); width: 9px; height: 9px; border-radius: 50%; background: #E0645A; box-shadow: 0 0 0 2px var(--deep); }
 .tabs .plus { align-self: center; justify-self: center; width: 58px; height: 58px; border-radius: 50%; background: var(--teal); color: #fff; box-shadow: 0 8px 24px rgba(42,127,138,.45); margin-top: -18px; }
 .tabs .plus span { display: none; }
 

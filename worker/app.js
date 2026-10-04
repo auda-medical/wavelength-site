@@ -1,7 +1,7 @@
 // Wavelength app API: password accounts, logbook sync and supervisor sign-off.
 // Routes (all under /api/app/, run_worker_first covers /api/*):
 //   POST signup, login, logout, profile, sync, signoff/request, signoff/complete, signoff/inperson,
-//        reset/request, reset/complete, account/delete
+//        reset/request, reset/complete, account/delete (signoff/complete emails the learner unless profile.notifyEmail is false)
 //        evidence, evidence/withdraw
 //   GET  me, sync?since=, signoffs, evidence, signoff/view?t=, verify?code= (SO- sign-offs and EV- evidence summaries)
 //   POST signoff/image?code=&entry=&n= (encrypted bytes), signoff/images (manifest)   GET signoff/image?t=&entry=&n=
@@ -89,6 +89,7 @@ function cleanProfile(p, old = {}) {
     for (const [k, v] of Object.entries(p.windowStart).slice(0, 10)) if (PATHWAYS.includes(k) && /^\d{4}-\d{2}-\d{2}$/.test(v)) out.windowStart[k] = v;
   }
   if (p.onboarded) out.onboarded = true;
+  if (p.notifyEmail !== undefined) out.notifyEmail = !!p.notifyEmail;
   return out;
 }
 function account(l) {
@@ -338,7 +339,7 @@ async function signoffView(env, url) {
   return json({ ok: true, code: so.id, learner: fullName(so), supervisorName: so.supervisor_name, entries: JSON.parse(so.snapshot), images });
 }
 
-async function signoffComplete(env, req) {
+async function signoffComplete(env, req, ctx) {
   const d = await body(req);
   if (!d) return json({ ok: false }, 400);
   const so = await env.DB.prepare('SELECT * FROM signoffs WHERE token_hash = ?').bind(await sha256(clip(d.token, 100))).first();
@@ -352,7 +353,33 @@ async function signoffComplete(env, req) {
     .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), sig, so.id).run();
   await applySignoff(env, so, decisions, sup, 'remote');
   await deleteSharedImages(env, so.id);
+  const mail = notifyLearner(env, so, decisions, sup);
+  if (ctx && ctx.waitUntil) ctx.waitUntil(mail); else await mail;
   return json({ ok: true, code: so.id });
+}
+
+// Tells the learner by email when a supervisor completes a sign-off link. Counts and the code only, never findings.
+// Learners turn this off in the app (profile.notifyEmail = false).
+async function notifyLearner(env, so, decisions, sup) {
+  try {
+    const l = await env.DB.prepare('SELECT email, title, first_name, last_name, profile FROM learners WHERE id = ?').bind(so.learner_id).first();
+    if (!l || !l.email || profileOf(l).notifyEmail === false) return;
+    const ids = JSON.parse(so.entry_ids || '[]');
+    const ok = ids.filter((id) => decisions[id] === 'confirmed').length;
+    const q = ids.filter((id) => decisions[id] === 'query').length;
+    if (!ok && !q) return;
+    const n = (k) => `${k} ${k === 1 ? 'scan' : 'scans'}`;
+    const what = [ok ? `signed off ${n(ok)}` : '', q ? `queried ${n(q)}` : ''].filter(Boolean).join(' and ');
+    const link = `${SITE}/app/#/log?s=${q ? 'todo' : 'signed'}`;
+    const lines = [`Hello ${l.first_name},`, `${sup.name} ${what} in your Wavelength logbook.`, q ? 'Open the app to read the query, update the scan and send it again.' : 'Open the app to see the scans, now marked green.', `Sign-off code: ${so.id}. Anyone can check it at thewavelength.co.uk/verify.`];
+    await sendMail(env, {
+      to: l.email, toName: fullName(l), subject: q && !ok ? 'Your supervisor queried a scan' : 'Your scans have been signed off',
+      heading: q && !ok ? 'Scan queried' : 'Sign-off received',
+      paragraphs: lines.concat('To stop these emails, untick the setting under Me in the app.'),
+      button: { href: link, label: 'Open your logbook' },
+      text: lines.join('\n\n') + `\n\n${link}\n\nTo stop these emails, untick the setting under Me in the app.`,
+    });
+  } catch { /* email is a courtesy: never fail the sign-off */ }
 }
 
 async function signoffInPerson(env, l, req) {
@@ -457,7 +484,7 @@ export async function handleApp(req, env, ctx) {
     if (p === 'logout') return json({ ok: true }, 200, { 'Set-Cookie': clearCookie });
     if (p === 'reset/request') return resetRequest(env, req, ctx);
     if (p === 'reset/complete') return resetComplete(env, req);
-    if (p === 'signoff/complete') return signoffComplete(env, req);
+    if (p === 'signoff/complete') return signoffComplete(env, req, ctx);
     const l = await learner(env, req);
     if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
     if (p === 'profile') return saveProfile(env, l, req);
