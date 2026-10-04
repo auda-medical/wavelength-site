@@ -169,7 +169,8 @@ async function createVerified(env, issue) {
     if (!key) { tried.push(`${fmt}: ${c.message || c.code}`); continue; }
     const d = await api(env, 'getcampaigndetails', { campaignkey: key, campaigntype: 'normal' }, 'GET');
     const lists = findLists(d);
-    LAST_DETAILS = JSON.stringify(d).slice(0, 900);
+    const picks = {}; const grab = (o, path) => { if (!o || typeof o !== 'object') return; for (const [k, v] of Object.entries(o)) { if (/list|recipient|contact/i.test(k)) picks[path + k] = v; grab(v, path + k + '.'); } }; grab(d, '');
+    LAST_DETAILS = 'top keys ' + Object.keys(d).join(',') + ' | ' + JSON.stringify(picks).slice(0, 900) + ' | matched ' + lists.length;
     if (lists.length) { if (s.zoho_list_format !== fmt) await put(env, 'zoho_list_format', fmt); return key; }
     tried.push(`${fmt}: no list attached`);
   }
