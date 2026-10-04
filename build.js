@@ -1336,13 +1336,15 @@ pages['/volunteer/unavailable/'] = layout({
   body: `${volHero('Opening soon.', `The volunteer area is not open yet. Email <a class="text-link" href="mailto:${site.enquiriesEmail}" style="color:inherit">${site.enquiriesEmail}</a> to register your interest.`)}`,
 });
 
+const APP_INSTALL_JS = `<script>(function(){var e=null,b=document.querySelector('[data-app-install]'),ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);if('serviceWorker' in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app/'}).catch(function(){});addEventListener('beforeinstallprompt',function(x){x.preventDefault();e=x;});if(b)b.addEventListener('click',function(){if(e){e.prompt();e.userChoice.then(function(c){if(c.outcome==='accepted')location.href=b.getAttribute('data-app-href')||'/app/';});}else if(ios){document.querySelector('[data-app-ios]').hidden=false;}else{location.href=b.getAttribute('data-app-href')||'/app/';}});})();</script>`;
 // Wavelength app landing page (/app/get/). The app itself is static in src/app/.
 {
   const f = (icon, t, d) => `<div class="pillar reveal"><div class="num">${icon}</div><h3>${t}</h3><p>${d}</p></div>`;
   const appFaqs = [
     { q: 'Is it free?', a: 'Yes. The logbook, progress tracking, sign-off, exports and backups are free.' },
     { q: 'Does Wavelength see my scan photos?', a: 'No. Photos stay on your phone and in backup files you save to your own iCloud Drive, Google Drive or OneDrive. Only the written record syncs to your account, and it must never contain patient identifiers. Images you include in a sign-off link are encrypted on your phone first, so Wavelength stores files it cannot open, and deletes them once your supervisor signs.' },
-    { q: 'Which pathways does it track?', a: 'RCEM PoCUS, FAMUS (thoracic, abdominal-renal, DVT, peripheral access, LP) and FUSIC (heart, lung, abdomen, DVT, vascular access), plus a general logbook for any application with targets you set. One scan counts towards every pathway it fits.' },
+    { q: 'Which pathways does it track?', a: 'RCEM PoCUS, FAMUS, FUSIC, the EUSEM core compendium (basic and advanced), ACEM, CPoCUS and ACEP, plus a general logbook for any application with targets you set. One scan counts towards every pathway it fits, and structured assessments (DOPS, formative and summative) count too.' },
+    { q: 'Is it in my language?', a: 'The app works in English, French, Spanish, German, Italian, Polish, Arabic, Russian and Chinese. Choose a language on the first screen or in Me. Exports, certificates and verification records stay in English so every reviewer reads them the same way.' },
     { q: 'Do I need an account?', a: 'Yes. The app, its exports and its downloads need a free Wavelength account. Every scan, sign-off and verified summary then belongs to a named clinician, which is what makes it trustworthy evidence.' },
     { q: 'How does it get into my e-portfolio?', a: 'Choose where the export is going (the RCEM e-portfolio on risr/advance, formerly Kaizen, the JRCPTB ePortfolio, FAMUS, FUSIC or appraisal) and the app builds the PDF and shows the steps for that portfolio. Wavelength is not yet connected directly to these systems, so you attach the file and paste the verification link. We are working towards direct links.' },
     { q: 'What is a verified summary?', a: 'A record of your progress against each pathway, created by Wavelength from your synced logbook, with a code and QR code on the PDF. Your supervisor, ARCP panel or accrediting body scans it and sees the same figures and sign-offs online, so they know the file has not been edited. It shows counts and dates only, never findings or images. You withdraw a summary at any time.' },
@@ -1413,7 +1415,7 @@ pages['/volunteer/unavailable/'] = layout({
 ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open it on your phone and add it to your home screen.')}`,
   });
   html = html.replace('<link rel="manifest" href="/site.webmanifest">', '<link rel="manifest" href="/app/manifest.webmanifest">')
-    .replace('</body>', `<script>(function(){var e=null,b=document.querySelector('[data-app-install]'),ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);if('serviceWorker' in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app/'}).catch(function(){});addEventListener('beforeinstallprompt',function(x){x.preventDefault();e=x;});if(b)b.addEventListener('click',function(){if(e){e.prompt();e.userChoice.then(function(c){if(c.outcome==='accepted')location.href='/app/';});}else if(ios){document.querySelector('[data-app-ios]').hidden=false;}else{location.href='/app/';}});})();</script>\n</body>`);
+    .replace('</body>', `${APP_INSTALL_JS}\n</body>`);
   pages['/app/get/'] = html;
 }
 
@@ -1488,6 +1490,218 @@ const notFound = layout({
   noindex: true,
   body: `${pageHero({ eyebrow: 'Error 404', title: 'Lost the signal.', lede: 'That page does not exist. Try the courses page or head home.', extra: '<div class="hero-ctas rise"><a class="btn btn-teal" href="/courses/">View courses</a><a class="btn btn-ghost light" href="/">Home</a></div>' })}`,
 });
+
+// ---------- Translated pages (/fr/, /es/ ...) ----------
+// Copy lives in data/i18n/site.<lang>.json (same keys as site.en.json). Each language gets home, app, about and contact.
+// English pages with a translation carry hreflang links, and every page offers the visitor's browser language once.
+{
+  const I18N = path.join(ROOT, 'data/i18n');
+  const LANGS = [
+    ['fr', 'Français', 'fr_FR'], ['es', 'Español', 'es_ES'], ['de', 'Deutsch', 'de_DE'], ['it', 'Italiano', 'it_IT'],
+    ['pl', 'Polski', 'pl_PL'], ['ar', 'العربية', 'ar_AR'], ['ru', 'Русский', 'ru_RU'], ['zh', '中文（简体）', 'zh_CN'],
+  ].filter(([l]) => fs.existsSync(path.join(I18N, `site.${l}.json`)));
+  const LOCAL = { '/': '', '/app/get/': 'app/', '/about/': 'about/', '/contact/': 'contact/' };
+  const altsFor = (enPath) => (enPath in LOCAL ? [['en', enPath], ...LANGS.map(([l]) => [l, `/${l}/${LOCAL[enPath]}`])] : null);
+  const hreflang = (alts) => alts.map(([l, p]) => `<link rel="alternate" hreflang="${l === 'zh' ? 'zh-Hans' : l}" href="${url(p)}">`).join('') + `<link rel="alternate" hreflang="x-default" href="${url(alts[0][1])}">`;
+  const names = Object.fromEntries([['en', 'English'], ...LANGS.map(([l, n]) => [l, n])]);
+  // Banner offering the browser's language. Labels come from each language file so the offer reads in that language.
+  const offer = Object.fromEntries(LANGS.map(([l]) => { const c = JSON.parse(fs.readFileSync(path.join(I18N, `site.${l}.json`), 'utf8')).chrome; const inner = { fr: 'français', es: 'español', it: 'italiano' }[l] || names[l]; return [l, { t: c.suggest.replace('{language}', inner), go: c.suggestGo.replace('{language}', inner), x: c.dismiss, rtl: l === 'ar' }]; }));
+  const offerJs = (alts) => `<script>(function(){try{var A=${JSON.stringify(Object.fromEntries((alts || LANGS.map(([l]) => [l, `/${l}/`])).filter(([l]) => l !== 'en')))},O=${JSON.stringify(offer)};var k='wl-lang-offer';if(localStorage.getItem(k))return;var ls=(navigator.languages||[navigator.language||'']).map(function(x){return String(x).slice(0,2).toLowerCase()});if(ls[0]==='en')return;var l=ls.filter(function(x){return A[x]})[0];if(!l)return;var o=O[l],d=document.createElement('div');d.className='lang-offer';d.lang=l;if(o.rtl)d.dir='rtl';d.innerHTML='<span></span><a></a><button type="button"></button>';d.children[0].textContent=o.t;d.children[1].textContent=o.go;d.children[1].href=A[l];d.children[2].textContent='×';d.children[2].setAttribute('aria-label',o.x);d.children[2].onclick=function(){try{localStorage.setItem(k,'1')}catch(e){}d.remove()};d.children[1].onclick=function(){try{localStorage.setItem(k,'1')}catch(e){}};document.body.appendChild(d)}catch(e){}})();</script>`;
+  const langMenu = (alts, current, label) => `<details class="lang-menu"><summary aria-label="${esc(label)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.8 3.9 6 3.9 9.5s-1.3 6.7-3.9 9.5c-2.6-2.8-3.9-6-3.9-9.5S9.4 5.3 12 2.5z"/></svg><span>${current === 'en' ? 'EN' : current.toUpperCase()}</span></summary><div>${alts.map(([l, p]) => `<a href="${p}" lang="${l === 'zh' ? 'zh-Hans' : l}"${l === 'ar' ? ' dir="rtl"' : ''}${l === current ? ' aria-current="true"' : ''}>${esc(names[l])}</a>`).join('')}</div></details>`;
+  const allHomes = [['en', '/'], ...LANGS.map(([l]) => [l, `/${l}/`])];
+
+  // English pages: hreflang where a translation exists, a language menu in the header and footer, and the browser-language offer.
+  for (const [p, html] of Object.entries(pages)) {
+    if (p.startsWith('/volunteer/') || p.startsWith('/email/')) continue;
+    const alts = altsFor(p);
+    let h = html;
+    if (alts && !/noindex/.test(h.slice(0, 2000))) h = h.replace('</head>', hreflang(alts) + '\n</head>');
+    h = h.replace('<div class="bar-end">', `<div class="bar-end">${langMenu(alts || allHomes, 'en', 'Language')}`).replace('<a class="nav-verify"', `${langMenu(alts || allHomes, 'en', 'Language')}<a class="nav-verify"`)
+      .replace('<span><a href="/privacy/">Privacy</a>', `<span class="foot-langs">${allHomes.map(([l, q]) => `<a href="${(alts || allHomes).find(([x]) => x === l)[1]}" lang="${l === 'zh' ? 'zh-Hans' : l}">${esc(names[l])}</a>`).join(' · ')}</span><span><a href="/privacy/">Privacy</a>`)
+      .replace('</body>', offerJs(alts) + '\n</body>');
+    pages[p] = h;
+  }
+
+  for (const [lang, , locale] of LANGS) {
+    const L = JSON.parse(fs.readFileSync(path.join(I18N, `site.${lang}.json`), 'utf8'));
+    const t = (sec, key) => { const v = (L[sec] || {})[key]; if (v == null) throw new Error(`site.${lang}.json missing ${sec}.${key}`); return v; };
+    const c = (k) => t('chrome', k);
+    const base = `/${lang}/`;
+    const hl = lang === 'zh' ? 'zh-Hans' : lang;
+    const rtl = lang === 'ar';
+    const appHref = `/app/?lang=${lang}`;
+    const page = (enPath, { title, description, body, jsonld = [] }) => {
+      const pathname = base + LOCAL[enPath];
+      const alts = altsFor(enPath);
+      const fullTitle = `${title} | ${site.name}`;
+      const nav = [[`${base}app/`, c('app')], [`${base}about/`, c('about')], [`${base}contact/`, c('contact')]];
+      const ld = [{ '@context': 'https://schema.org', '@type': 'EducationalOrganization', '@id': url('/#org'), name: site.name, url: url('/') }, { '@context': 'https://schema.org', '@type': 'WebPage', name: title, url: url(pathname), inLanguage: hl }, ...jsonld];
+      return `<!doctype html>
+<html lang="${hl}"${rtl ? ' dir="rtl"' : ''}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${esc(fullTitle)}</title>
+<meta name="description" content="${esc(description)}">
+<link rel="canonical" href="${url(pathname)}">
+${hreflang(alts)}
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0A1526">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="${site.name}">
+<meta property="og:title" content="${esc(fullTitle)}">
+<meta property="og:description" content="${esc(description)}">
+<meta property="og:url" content="${url(pathname)}">
+<meta property="og:image" content="${url('/assets/og.png')}">
+<meta property="og:locale" content="${locale}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="${enPath === '/app/get/' ? '/app/manifest.webmanifest' : '/site.webmanifest'}">
+<link rel="stylesheet" href="/assets/style.css?v=${BUILD}">
+<script>document.documentElement.classList.add('js');setTimeout(function(){if(!window.__wl)document.documentElement.classList.remove('js')},2500)</script>
+<script type="application/ld+json">${JSON.stringify(ld)}</script>
+</head>
+<body class="l10n">
+<a class="skip" href="#main">${esc(c('skip'))}</a>
+<header class="site-header" data-theme="dark">
+  <div class="wrap bar">
+    <a class="brand" href="${base}" aria-label="${site.name}" dir="ltr">${mark()}<span class="wm"><b>WAVELENGTH</b><small>TUNE IN · GAIN CLARITY</small></span></a>
+    <nav class="nav" aria-label="${esc(c('menu'))}">${langMenu(alts, lang, c('language'))}${nav.map(([h, l]) => `<a href="${h}"${h === pathname ? ' aria-current="page"' : ''}>${esc(l)}</a>`).join('')}<a class="nav-verify" href="/verify/" title="${esc(c('verifyTitle'))}">${esc(c('verify'))}</a><a class="btn" href="${base}app/">${esc(c('getApp'))}</a></nav>
+    <div class="bar-end">${langMenu(alts, lang, c('language'))}<a class="btn bar-book" href="${base}app/">${esc(c('getApp'))}</a><button class="menu-toggle" type="button" aria-label="${esc(c('menu'))}" aria-expanded="false" aria-controls="mobile-menu"><span></span></button></div>
+  </div>
+</header>
+<div class="mobile-menu" id="mobile-menu" aria-hidden="true">
+  <a href="${base}">${esc(c('home'))}</a>${nav.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join('')}
+  <a href="/verify/">${esc(c('verifyTitle'))}</a>
+  <a href="/" lang="en">${esc(c('englishSite'))}</a>
+  <a class="btn btn-teal" href="${base}app/">${esc(c('getApp'))} ${arrow}</a>
+</div>
+<main id="main">
+${body}
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <a class="brand" href="${base}" aria-label="${site.name}" dir="ltr">${mark({ ring: '#F7F5F0' })}<span class="wm"><b>WAVELENGTH</b><small>TUNE IN · GAIN CLARITY</small></span></a>
+        <p class="foot-tag">${esc(c('footerTag'))}</p>
+      </div>
+      <div><h2>Wavelength</h2><ul>${nav.map(([h, l]) => `<li><a href="${h}">${esc(l)}</a></li>`).join('')}<li><a href="/verify/">${esc(c('verifyTitle'))}</a></li><li><a href="/" lang="en">${esc(c('englishSite'))}</a></li></ul></div>
+      <div><h2>${esc(c('contact'))}</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li></ul>${socialIcons()}</div>
+    </div>
+    <div class="bottom">
+      <span>${esc(c('company').replace('{year}', new Date().getFullYear()))} ${esc(c('independence'))} ${esc(c('footerLegal'))}</span>
+      <span class="foot-langs">${alts.map(([l, q]) => `<a href="${q}" lang="${l === 'zh' ? 'zh-Hans' : l}">${esc(names[l])}</a>`).join(' · ')}</span>
+      <span><a href="/privacy/" lang="en">${esc(c('privacy'))}</a> · <a href="/app-terms/" lang="en">${esc(c('appTerms'))}</a> (${esc(c('inEnglish'))})</span>
+    </div>
+  </div>
+</footer>
+<script src="/assets/main.js?v=${BUILD}" defer></script>
+</body>
+</html>`;
+    };
+    const ctas = `<div class="hero-ctas rise"><a class="btn btn-teal" href="${base}app/">${esc(t('home', 'ctaApp'))} ${arrow}</a><a class="btn btn-ghost light" href="${appHref}">${esc(t('home', 'ctaBrowser'))}</a></div>`;
+    const pill = (num, h, p, href, link, d = 0) => `<a class="pillar reveal" data-d="${d}" href="${href}" style="text-decoration:none;color:inherit"${href.startsWith(base) ? '' : ' hreflang="en"'}><div class="num">${num}</div><h3>${esc(h)}</h3><p>${esc(p)}</p><span class="text-link">${esc(link)}</span></a>`;
+    const PATHS = [['RCEM', 'pathRcem'], ['FAMUS', 'pathFamus'], ['FUSIC', 'pathFusic'], ['EUSEM', 'pathEusem'], ['ACEM', 'pathAcem'], ['CPoCUS', 'pathCpocus'], ['ACEP', 'pathAcep'], ['', 'pathGeneral']];
+    const d = site.director;
+    pages[base] = page('/', {
+      title: t('home', 'seoTitle'),
+      description: t('home', 'description'),
+      body: `<section class="hero on-dark">${mesh}
+  <canvas class="waves" aria-hidden="true"></canvas>
+  <div class="wrap hero-inner">
+    <div class="rise">${mark({ size: 96, cls: 'hero-mark', draw: true, ring: '#F7F5F0' })}</div>
+    <p class="eyebrow rise">${esc(t('home', 'eyebrow'))}</p>
+    <h1 class="split-words">${t('home', 'title')}</h1>
+    <p class="lede rise">${esc(t('home', 'lede'))}</p>
+    ${ctas}
+    <div class="hero-meta rise">${[['metaPathways', 'metaPathwaysText'], ['metaLanguages', 'metaLanguagesText'], ['metaPrivacy', 'metaPrivacyText'], ['metaFree', 'metaFreeText']].map(([a, b]) => `<div><b>${esc(t('home', a))}</b>${esc(t('home', b))}</div>`).join('')}</div>
+  </div>
+</section>
+<section class="section sand"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">${esc(t('home', 'waysEyebrow'))}</p><h2 class="reveal" data-d="1">${esc(t('home', 'waysTitle'))}</h2></div>
+  <div class="pillars l-ways">
+    ${pill('01', t('home', 'wayApp'), t('home', 'wayAppText'), `${base}app/`, t('home', 'wayAppLink'))}
+    ${posts.length ? pill('02', t('home', 'wayPearls'), t('home', 'wayPearlsText'), '/learn/', t('home', 'wayPearlsLink'), 1) : ''}
+    ${liveModules.length ? pill('03', t('home', 'wayAcademy'), t('home', 'wayAcademyText'), '/elearning/', t('home', 'wayAcademyLink'), 2) : ''}
+    ${pill('04', t('home', 'wayCourses'), t('home', 'wayCoursesText'), '/courses/', t('home', 'wayCoursesLink'), 3)}
+  </div>
+</div></section>
+<section class="section"><div class="wrap split">
+  <div><p class="eyebrow reveal">${esc(t('home', 'pathEyebrow'))}</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">${esc(t('home', 'pathTitle'))}</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">${esc(t('home', 'pathIntro'))}</p></div>
+  <ul class="l-paths reveal" data-d="2">${PATHS.map(([a, k]) => `<li>${a ? `<b dir="ltr">${a}</b>` : `<b>+</b>`}<span>${esc(t('home', k))}</span></li>`).join('')}</ul>
+</div></section>
+<section class="section sand"><div class="wrap"><div class="director">
+  <div class="portrait reveal has-photo"><img src="${ver(d.photo)}" alt="${esc(d.name)}" width="840" height="1050" loading="lazy" decoding="async"><span class="cap">${esc(t('home', 'directorEyebrow'))}</span></div>
+  <div><p class="eyebrow reveal">${esc(t('home', 'directorEyebrow'))}</p><h2 class="reveal" data-d="1" dir="ltr">${esc(d.name)}</h2><p class="reveal" data-d="2">${esc(t('home', 'directorText'))}</p><p class="reveal" data-d="2" style="margin-top:20px"><a class="text-link" href="${base}about/">${esc(t('home', 'directorLink'))}</a></p></div>
+</div></div></section>
+<section class="section on-dark l-cta" style="background:var(--navy)"><div class="wrap"><h2 class="display reveal" style="color:var(--cream);font-size:clamp(38px,5vw,64px)">${esc(t('home', 'ctaTitle'))}</h2><p class="reveal" data-d="1" style="color:#B9C4D0;margin-top:14px">${esc(t('home', 'ctaText'))}</p>${ctas}</div></section>`,
+    });
+
+    const feats = [1, 2, 3, 4, 5, 6].map((n, i) => `<div class="pillar reveal" data-d="${i % 3}"><div class="num">0${n}</div><h3>${esc(t('app', 'f' + n))}</h3><p>${esc(t('app', `f${n}Text`))}</p></div>`).join('');
+    const faqs = [1, 2, 3, 4, 5, 6].map((n) => ({ q: t('app', 'q' + n), a: t('app', 'a' + n) }));
+    pages[`${base}app/`] = page('/app/get/', {
+      title: t('app', 'seoTitle'),
+      description: t('app', 'description'),
+      jsonld: [faqLd(faqs), { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Wavelength', applicationCategory: 'MedicalApplication', operatingSystem: 'iOS, Android, web', inLanguage: hl, offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' }, url: url(`${base}app/`) }],
+      body: `<section class="hero on-dark">${mesh}<div class="wrap hero-inner">
+  <p class="eyebrow rise">${esc(t('app', 'eyebrow'))}</p>
+  <h1 class="split-words">${t('app', 'title')}</h1>
+  <p class="lede rise">${esc(t('app', 'lede'))}</p>
+  <div class="hero-ctas rise app-ctas">
+    <button class="app-dl" type="button" data-app-install data-app-href="${appHref}"><span class="app-dl-ico">${mark({ size: 30, ring: '#7FC4CC' })}</span><span><small>${esc(t('app', 'dlSmall'))}</small><b>${esc(t('app', 'dlButton'))}</b></span></button>
+    <a class="btn btn-ghost light" href="${appHref}">${esc(t('app', 'browser'))}</a>
+  </div>
+  <div class="app-ios rise" data-app-ios hidden>${t('app', 'ios')}</div>
+</div></section>
+<section class="section sand"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">${esc(t('app', 'featEyebrow'))}</p><h2 class="reveal" data-d="1">${esc(t('app', 'featTitle'))}</h2></div>
+  <div class="pillars app-pillars">${feats}</div>
+</div></section>
+<section class="section"><div class="wrap split">
+  <div><p class="eyebrow reveal">${esc(t('app', 'privEyebrow'))}</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">${esc(t('app', 'privTitle'))}</h2></div>
+  <div class="reveal" data-d="2"><p class="lede">${esc(t('app', 'privText'))}</p><p class="eyebrow" style="margin-top:36px">${esc(t('app', 'langEyebrow'))}</p><p style="color:var(--slate);margin-top:12px">${esc(t('app', 'langText'))}</p></div>
+</div></section>
+<section class="section sand"><div class="wrap split">
+  <div><p class="eyebrow reveal">${esc(t('app', 'faqEyebrow'))}</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,64px);margin-top:20px">${esc(t('app', 'faqTitle'))}</h2></div>
+  ${faqHtml(faqs)}
+</div></section>
+<section class="section on-dark l-cta" style="background:var(--navy)"><div class="wrap"><h2 class="display reveal" style="color:var(--cream);font-size:clamp(38px,5vw,64px)">${esc(t('home', 'ctaTitle'))}</h2><p class="reveal" data-d="1" style="color:#B9C4D0;margin-top:14px">${esc(t('home', 'ctaText'))}</p>${ctas}</div></section>`,
+    }).replace('</body>', `${APP_INSTALL_JS}\n</body>`);
+
+    const zahra = (site.team || []).find((x) => /Zahra/.test(x.name));
+    const person = (p, role, text) => `<div class="l-person reveal">${p.photo ? `<img src="${ver(p.photo)}" alt="${esc(p.name)}" width="840" height="1050" loading="lazy" decoding="async">` : ''}<div><h3 dir="ltr">${esc(p.name)}</h3><p class="role">${esc(role)}</p><p>${esc(text)}</p></div></div>`;
+    pages[`${base}about/`] = page('/about/', {
+      title: t('about', 'seoTitle'),
+      description: t('about', 'description'),
+      body: `${pageHero({ eyebrow: t('about', 'eyebrow'), title: t('about', 'title') })}
+<section class="section"><div class="wrap split">
+  <div><p class="eyebrow reveal">${esc(t('about', 'approachEyebrow'))}</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">${t('about', 'approachTitle')}</h2></div>
+  <div class="reveal" data-d="2"><p class="lede">${esc(t('about', 'lede'))}</p>${['p1', 'p2', 'p3'].map((k) => `<p class="lede">${esc(t('about', k))}</p>`).join('')}</div>
+</div></section>
+<section class="section sand"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">${esc(t('about', 'teamEyebrow'))}</p></div>
+  <div class="l-team">${person(d, t('about', 'firasRole'), t('about', 'firas'))}${zahra ? person(zahra, t('about', 'zahraRole'), t('about', 'zahra')) : ''}</div>
+  <p class="reveal" style="color:var(--slate);margin-top:36px;max-width:760px">${esc(t('about', 'companyText'))}</p>
+</div></section>`,
+    });
+
+    pages[`${base}contact/`] = page('/contact/', {
+      title: t('contact', 'seoTitle'),
+      description: t('contact', 'description'),
+      body: `${pageHero({ eyebrow: t('contact', 'eyebrow'), title: esc(t('contact', 'title')), lede: esc(t('contact', 'lede')) })}
+<section class="section"><div class="wrap">
+  <div class="contact-grid">
+    <a class="contact-card reveal" href="mailto:${site.enquiriesEmail}"><p class="eyebrow">${esc(t('contact', 'general'))}</p><h2 dir="ltr">${site.enquiriesEmail}</h2><p>${esc(t('contact', 'generalText'))}</p><span class="text-link">${esc(t('contact', 'emailUs'))}</span></a>
+    <a class="contact-card reveal" data-d="1" href="mailto:${site.bookingsEmail}"><p class="eyebrow">${esc(t('contact', 'bookings'))}</p><h2 dir="ltr">${site.bookingsEmail}</h2><p>${esc(t('contact', 'bookingsText'))}</p><span class="text-link">${esc(t('contact', 'emailUs'))}</span></a>
+  </div>
+  <div class="empty-dates reveal" style="margin-top:40px"><div><h3>${esc(t('contact', 'deptTitle'))}</h3><p>${esc(t('contact', 'deptText'))}</p></div><a class="btn btn-teal" href="${mailto(site.enquiriesEmail, 'Ultrasound training')}">${esc(t('contact', 'deptCta'))} ${arrow}</a></div>
+</div></section>`,
+    });
+  }
+}
 
 // ---------- Write output ----------
 fs.rmSync(DIST, { recursive: true, force: true });
