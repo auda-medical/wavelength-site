@@ -103,6 +103,25 @@ async function topicId(env) {
 }
 
 // Add someone to the list. Zoho sends its own confirmation email (double opt-in) before they join.
+// Read-only check: token refresh, list lookup, topics. Sends nothing.
+async function testConnection(env) {
+  const out = [];
+  try { await token(env); out.push('Token: OK'); } catch (e) { return 'Token failed: ' + e.message; }
+  try {
+    const j = await api(env, 'getmailinglists', { sort: 'asc', fromindex: '1', range: '100' }, 'GET');
+    const lists = j.list_of_details || [];
+    if (!lists.length) out.push('Lists: none returned (' + String(j.message || j.code || JSON.stringify(j)).slice(0, 160) + ')');
+    else out.push('Lists: ' + lists.map((l) => `${l.listname} (${l.noofcontacts} contacts)`).join(', '));
+    await listKey(env); out.push(`Newsletter list found`);
+  } catch (e) { out.push('List check failed: ' + e.message); }
+  try {
+    const t = await api(env, 'topics', {}, 'GET');
+    const id = await topicId(env);
+    out.push(id ? 'Topic: OK' : 'Topic: none (' + String(t.message || t.code || JSON.stringify(t)).slice(0, 160) + ')');
+  } catch (e) { out.push('Topic check failed: ' + e.message); }
+  return out.join(' · ');
+}
+
 export async function zohoSubscribe(env, { email, first, role, source }) {
   try {
     const s = await getSettings(env);
@@ -180,6 +199,7 @@ export async function newsletterAdminHtml(env, msg) {
   <div style="display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 32px">
     ${s.zoho_client_id ? `<a class="btn btn-ghost small" href="/volunteer/admin/newsletter/connect/">${connected ? 'Reconnect' : 'Connect'} Zoho Campaigns</a>` : ''}
     <form method="post"><input type="hidden" name="action" value="toggle"><button class="btn btn-ghost small" type="submit">${s.newsletter_auto === 'off' ? 'Resume' : 'Pause'} automatic sending</button></form>
+    ${connected ? `<form method="post"><input type="hidden" name="action" value="test"><button class="btn btn-ghost small" type="submit">Test connection (sends nothing)</button></form>` : ''}
     ${connected ? `<form method="post" onsubmit="return confirm('Send this week\\'s issue to the whole list now?')"><input type="hidden" name="action" value="send"><button class="btn small" type="submit">Send this week's issue now</button></form>` : ''}
   </div>
   ${connected ? '' : `<form class="form pw-form" method="post" style="max-width:560px;margin-bottom:32px"><input type="hidden" name="action" value="client"><p class="admin-summary">Step 1: paste the Client ID and Client Secret from the Zoho API console (server-based application, redirect URI ${REDIRECT}). Step 2: click Connect.</p><label>Client ID<input name="client_id" autocomplete="off" required maxlength="200" value="${esc(s.zoho_client_id || '')}"></label><label>Client Secret<input name="client_secret" type="password" autocomplete="off" required maxlength="200"></label><button class="btn btn-ghost small" type="submit">Save</button></form>`}
@@ -195,6 +215,7 @@ export async function newsletterAdminPost(env, f) {
     await put(env, 'zoho_client_id', id); await put(env, 'zoho_client_secret', sec);
     return 'Saved. Now click Connect Zoho Campaigns.';
   }
+  if (a === 'test') return testConnection(env);
   if (a === 'send') return (await sendIssue(env, { force: true })).msg;
   return '';
 }
