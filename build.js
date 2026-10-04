@@ -486,7 +486,7 @@ pages['/'] = layout({
       ${posts.length ? `<a class="pillar reveal" data-d="1" href="/learn/" style="text-decoration:none;color:inherit"><div class="num">Pearls</div><h3>Five-minute techniques</h3><p>${posts.length} free Wavelength Pearls, one view or pitfall at a time, each with a short test.</p><span class="text-link">Read the Pearls</span></a>` : ''}
       ${liveModules.length ? `<a class="pillar reveal" data-d="2" href="/elearning/" style="text-decoration:none;color:inherit"><div class="num">Academy</div><h3>Certified e-learning</h3><p>Free modules with lessons, clinical cases, an assessment and a CPD certificate anyone can verify online.</p><span class="text-link">Start a module</span></a>` : ''}
     </div>
-    <a class="bank-link reveal" href="/app/get/" style="margin-top:28px;background:var(--navy)"><span><span class="eyebrow" style="color:var(--teal-l)">The Wavelength app</span><strong>Your ultrasound logbook: track RCEM, FAMUS and FUSIC targets, get signed off, and send QR-verified evidence to your portfolio. Free.</strong></span>${arrow}</a>
+    <a class="bank-link reveal" href="/app/get/" style="margin-top:28px;background:var(--navy)"><span><span class="eyebrow" style="color:var(--teal-l)">The Wavelength app</span><strong>Your ultrasound logbook: log scans from a photo or an upload, get signed off the same day, track RCEM, FAMUS and FUSIC targets, and send QR-verified evidence to your portfolio. Free.</strong></span>${arrow}</a>
     ${liveModules.length ? `<div class="ac-verify reveal" style="margin-top:28px"><div><h3>Certificates you can prove</h3><p>Every Academy certificate shows your name, CPD hours and a unique code. Your educational supervisor, appraiser or employer checks it online in seconds.</p></div><a class="btn btn-ghost" href="/elearning/verify/">Verify a certificate ${arrow}</a></div>` : ''}
   </div>
 </section>
@@ -1261,6 +1261,10 @@ pages['/volunteer/unavailable/'] = layout({
     { q: 'How does it get into my e-portfolio?', a: 'Choose where the export is going (the RCEM e-portfolio on risr/advance, formerly Kaizen, the JRCPTB ePortfolio, FAMUS, FUSIC or appraisal) and the app builds the PDF and shows the steps for that portfolio. Wavelength is not yet connected directly to these systems, so you attach the file and paste the verification link. We are working towards direct links.' },
     { q: 'What is a verified summary?', a: 'A record of your progress against each pathway, created by Wavelength from your synced logbook, with a code and QR code on the PDF. Your supervisor, ARCP panel or accrediting body scans it and sees the same figures and sign-offs online, so they know the file has not been edited. It shows counts and dates only, never findings or images. You withdraw a summary at any time.' },
     { q: 'Will my college or accrediting body accept it?', a: 'The logbook records what the published curricula ask for, and verified summaries let reviewers check your evidence online. Your supervisor and the accrediting body decide what they accept, so check with them. Wavelength is independent of RCEM, JRCPTB, the Society for Acute Medicine and the Intensive Care Society.' },
+    { q: 'Can I upload images I already have?', a: 'Yes. Tap Choose on any scan to add images from your photos or files, several at once, up to 12 per scan. This includes images copied from the ultrasound machine to a USB drive, once your trust\'s removable media and information governance policy allows it. Every image opens in the editor before it is saved.' },
+    { q: 'Can I edit images in the app?', a: 'Yes. The built-in editor crops, rotates, trims the patient banner from the top of the screen and blacks out any name, number, date or label, with undo. You do not need your phone\'s photo editor. Saving re-encodes the image, which removes hidden location and device data.' },
+    { q: 'How fast is sign-off?', a: 'Immediate in person: your supervisor signs on your phone after the scan. By link, they open it on their own phone, confirm or query each scan and sign with a finger, and the sign-off appears in your logbook straight away. The link shows the written record. Your images stay on your phone, so a supervisor who wants to review them looks at them with you.' },
+    { q: 'How does someone check a sign-off is genuine?', a: 'Each sign-off has a code (SO-XXXX-XXXX) and QR code, printed on your case PDFs and in the sign-off register of every export. Scanning it, or entering the code at thewavelength.co.uk/app/verify/, shows the learner, the supervisor, the date and how they signed. The check shows the record as it was signed, so an edited PDF does not match it, and changing a signed scan in the app voids its sign-off.' },
     { q: 'Is it in the App Store?', a: 'Not yet. You install it from this website in two taps and it works like any app, including offline. App Store and Google Play versions follow.' },
     { q: 'What about my Academy certificates?', a: 'Log in with the same email and your Wavelength Academy certificates appear in the app, ready to share or verify.' },
   ];
@@ -1273,7 +1277,7 @@ pages['/volunteer/unavailable/'] = layout({
   <div>
     <p class="eyebrow rise">The Wavelength app</p>
     <h1 class="split-words">Your logbook. <em>In your pocket.</em></h1>
-    <p class="lede rise">Log every scan in seconds, watch your RCEM, FAMUS and FUSIC targets fill up in colour, and get signed off by your supervisor. Free, and your photos never leave your phone.</p>
+    <p class="lede rise">Log a scan in seconds from a photo you take or an image you upload. Your supervisor signs it off on the spot or from a secure link, and anyone checking your portfolio confirms it is genuine by scanning a QR code. Free, and your photos never leave your phone.</p>
     <div class="hero-ctas rise app-ctas">
       <button class="app-dl" type="button" data-app-install><span class="app-dl-ico">${mark({ size: 30, ring: '#7FC4CC' })}</span><span><small>Free for iPhone and Android</small><b>Download the app</b></span></button>
       <a class="btn btn-ghost light" href="/app/">Open in your browser</a>
@@ -1288,12 +1292,20 @@ pages['/volunteer/unavailable/'] = layout({
     <div class="ph-tabs"><i></i><i></i><em>+</em><i></i><i></i></div>
   </div></div>
 </div></section>
+<section class="section sand"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">Why clinicians switch</p><h2 class="reveal" data-d="1">Three things a paper logbook cannot do.</h2></div>
+  <div class="pillars app-pillars">
+    ${f('Same day', 'Signed off before you go home', 'Hand your phone to your supervisor to sign with a finger, or send a secure link by WhatsApp, Teams or email. They confirm the scan from their own phone, often within minutes. No chasing signatures weeks later.')}
+    ${f('Verify', 'Checked with one scan of a QR code', 'Every sign-off, every case PDF and every logbook export carries its own code and QR code. Your supervisor, ARCP panel, FAMUS administrator or appraiser scans it and sees the genuine record on the Wavelength site. No account needed to check, and no emails asking you to prove it.')}
+    ${f('Images', 'Any image, ready to use', 'Photograph the screen, or upload images you already have from your photos or files, up to 12 per scan. Crop, rotate, trim off the patient banner and black out identifiers inside the app before you save.')}
+  </div>
+</div></section>
 <section class="section"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal">Built by ultrasound supervisors</p><h2 class="reveal" data-d="1">Everything your logbook should have been.</h2></div>
   <div class="pillars app-pillars">
     ${f('Targets', 'Every pathway, one scan', 'Choose RCEM, FAMUS, FUSIC or your own targets. A lung scan counts towards FAMUS thoracic and FUSIC lung at once, with pathology quotas, supervised counts and training windows tracked for you.')}
     ${f('Colour', 'See what is left', 'Red, amber, green. Each module shows exactly how many scans, supervised scans, reflections and pathologies you still need.')}
-    ${f('Privacy', 'Photos stay on your phone', 'Take a photo of the screen, crop it, black out identifiers, and save. Hidden photo data is stripped. Images never reach our servers.')}
+    ${f('Privacy', 'Photos stay on your phone', 'Take a photo or upload one, then crop, rotate and black out identifiers in the built-in editor. Hidden photo data is stripped when you save. Images never reach our servers.')}
     ${f('Sign-off', 'Signed in seconds', 'Hand your phone to your supervisor to sign with a finger, or send a secure link. Each sign-off gets a code anyone can verify.')}
     ${f('Export', 'Portfolio-ready', 'PDF with a summary of training, scan log, reflections and sign-off register, each sign-off with its own QR code. Excel and CSV too.')}
     ${f('Backup', 'Your cloud, your copy', 'One tap saves your photos to iCloud Drive, Google Drive or OneDrive. Restore on a new phone in seconds.')}
