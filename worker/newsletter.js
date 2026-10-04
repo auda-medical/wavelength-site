@@ -112,7 +112,7 @@ async function testConnection(env) {
     const j = await api(env, 'getmailinglists', { sort: 'asc', fromindex: '1', range: '100' }, 'GET');
     const lists = j.list_of_details || [];
     if (!lists.length) out.push('Lists: none returned (' + String(j.message || j.code || JSON.stringify(j)).slice(0, 160) + ')');
-    else out.push('Lists: ' + lists.map((l) => `${l.listname} (${l.noofcontacts} contacts)`).join(', '));
+    else out.push('Lists: ' + lists.map((l) => `${l.listname} (${l.noofcontacts} contacts, no ${l.listunino})`).join(', '));
     await listKey(env); out.push(`Newsletter list found`);
   } catch (e) { out.push('List check failed: ' + e.message); }
   try {
@@ -170,7 +170,7 @@ async function createVerified(env, issue) {
     const d = await api(env, 'getcampaigndetails', { campaignkey: key, campaigntype: 'normal' }, 'GET');
     const lists = findLists(d);
     const picks = {}; const grab = (o, path) => { if (!o || typeof o !== 'object') return; for (const [k, v] of Object.entries(o)) { if (/list|recipient|contact/i.test(k)) picks[path + k] = v; grab(v, path + k + '.'); } }; grab(d, '');
-    LAST_DETAILS = 'top keys ' + Object.keys(d).join(',') + ' | ' + JSON.stringify(picks).slice(0, 900) + ' | matched ' + lists.length;
+    LAST_DETAILS = JSON.stringify({ subs: d.total_subscribers_count, status: d.campaign_status, seg: d.segments_info, ver: d.version, st: d.status, lists: (d.associated_mailing_lists || []).map((l) => [l.listname, l.contactscount, l.liststatus]), cd: Object.fromEntries(Object.entries((d['campaign-details'] || [])[0] || {}).filter(([k]) => /topic|email_type|content|list|recip|count|status/i.test(k))) });
     if (lists.length) { if (s.zoho_list_format !== fmt) await put(env, 'zoho_list_format', fmt); return key; }
     tried.push(`${fmt}: no list attached`);
   }
@@ -255,7 +255,7 @@ export async function newsletterAdminPost(env, f) {
   }
   if (a === 'test') return testConnection(env);
   if (a === 'dryrun') {
-    try { const issue = await loadIssue(env); const key = await createVerified(env, issue); return `Dry run OK: draft campaign ${key} created with the list attached. Nothing sent.`; }
+    try { const issue = await loadIssue(env); const key = await createVerified(env, issue); return `Dry run OK: draft campaign ${key} created with the list attached. Nothing sent. Debug: ${LAST_DETAILS}`; }
     catch (e) { return 'Dry run failed: ' + e.message; }
   }
   if (a === 'send') return (await sendIssue(env, { force: true })).msg;
