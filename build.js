@@ -260,6 +260,11 @@ function eventsLd(c) {
     url: url(`/courses/${c.slug}/`),
     location: { '@type': 'Place', name: d.venue, address: { '@type': 'PostalAddress', ...(d.street ? { streetAddress: d.street } : {}), addressLocality: (d.city || '').split(',')[0], ...(d.city && d.city.includes(',') ? { addressRegion: d.city.split(',')[1].trim() } : {}), ...(d.postcode ? { postalCode: d.postcode } : {}), addressCountry: 'GB' } },
     organizer: { '@type': 'Organization', name: site.name, url: url('/') },
+    // Google Events asks for performer: the Course Director leads every date; list extra faculty per date in courses.json `faculty` (names)
+    performer: [
+      { '@type': 'Person', name: site.director.name, jobTitle: site.director.title, url: url('/faculty/') },
+      ...(d.faculty || []).map((n) => ({ '@type': 'Person', name: n })),
+    ],
     ...(d.price ? { offers: { '@type': 'Offer', price: String(d.price), priceCurrency: 'GBP', availability: (d.soldOut || d.places === 0) ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock', url: d.stripeLink || url(`/courses/${c.slug}/`), validFrom: '2026-10-01' } } : {}),
   }));
 }

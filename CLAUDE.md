@@ -9,6 +9,7 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 
 ## Common changes
 - Course dates, prices, venues, Stripe payment links: `data/courses.json` (`dates` array; see README).
+- Event structured data (`eventsLd` in build.js) lists the Course Director as `performer` for every date, as Google Search Console asks. Add other confirmed instructors to a date with `faculty: ["Dr Name"]` in `data/courses.json`.
 - New course: copy a course object in `data/courses.json`, new `slug`.
 - Team, emails, company details, LinkedIn and Instagram links: `data/site.json`. Each person has an optional `email` shown on their profile (aliases of the shared Zoho inbox hello@).
 - Photos: crop to 4:5 head and shoulders with the face centred, 1680x2100 (2x for sharp screens), plain studio background, export WebP to `src/assets/team-<name>.webp` and set `photo` in `data/site.json`.
