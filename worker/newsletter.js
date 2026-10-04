@@ -203,9 +203,13 @@ export async function sendIssue(env, { force = false } = {}) {
   try {
     await record(env, issue.slug, 'sending', 'Creating campaign');
     const key = await createVerified(env, issue);
-    const sres = await api(env, 'sendcampaign', { campaignkey: key }, 'POST', true);
+    const lk = await listKey(env), tid = await topicId(env);
+    let sres = await api(env, 'sendcampaign', { campaignkey: key }, 'POST', true);
+    const failed = (x) => (x.response ? String(x.response.code) !== '200' : String(x.code) !== '200');
+    // Fallback: some accounts want the list and topic repeated on the send call.
+    if (failed(sres)) sres = await api(env, 'sendcampaign', { campaignkey: key, list_details: JSON.stringify({ [lk]: [] }), ...(tid ? { topicId: tid } : {}) }, 'POST', true);
     const st = (sres.response && (sres.response.campaign_status || sres.response.code)) || sres.code;
-    if (sres.response ? String(sres.response.code) !== '200' : String(sres.code) !== '200') throw new Error('sendcampaign: ' + (sres.message || (sres.response && sres.response.message) || JSON.stringify(sres).slice(0, 300)));
+    if (sres.response ? String(sres.response.code) !== '200' : String(sres.code) !== '200') throw new Error('sendcampaign: ' + JSON.stringify(sres).slice(0, 400));
     await record(env, issue.slug, 'sent', `Campaign ${key} ${st}`, key);
     return { ok: true, msg: `Sent ${issue.subject}` };
   } catch (e) {
