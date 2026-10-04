@@ -565,15 +565,16 @@ label.quiz-opt:has(input:focus-visible){outline:2px solid var(--teal);outline-of
 .nav-drop{position:relative}
 .nav-drop-link{display:inline-flex;align-items:center;gap:6px}
 .nav-caret{transition:transform .3s var(--ease)}
-.nav-panel{position:absolute;top:calc(100% + 14px);left:50%;width:300px;transform:translate(-50%,8px);padding:10px;border-radius:var(--radius);background:var(--white);color:var(--navy);box-shadow:0 24px 60px -24px rgba(10,21,38,.45);border:1px solid var(--line);opacity:0;visibility:hidden;transition:opacity .25s,transform .25s var(--ease),visibility .25s;z-index:60}
+.nav-panel{position:absolute;top:calc(100% + 14px);left:50%;width:320px;max-width:calc(100vw - 32px);box-sizing:border-box;transform:translate(-50%,8px);padding:10px;border-radius:var(--radius);background:var(--white);color:var(--navy);box-shadow:0 24px 60px -24px rgba(10,21,38,.45);border:1px solid var(--line);opacity:0;visibility:hidden;transition:opacity .25s,transform .25s var(--ease),visibility .25s;z-index:60}
 .nav-panel::before{content:"";position:absolute;left:0;right:0;top:-16px;height:16px}
 .nav-drop:hover .nav-panel,.nav-drop:focus-within .nav-panel,.nav-drop.open .nav-panel{opacity:1;visibility:visible;transform:translate(-50%,0)}
 .nav-drop:hover .nav-caret,.nav-drop.open .nav-caret{transform:rotate(180deg)}
-.nav .nav-panel a{display:grid;gap:2px;padding:12px 14px;border-radius:10px;color:var(--navy)}
+.nav .nav-panel a{display:grid;gap:4px;padding:12px 14px;border-radius:10px;color:var(--navy);white-space:normal;font-size:inherit;line-height:1.35}
 .nav .nav-panel a::after{display:none}
 .nav .nav-panel a:hover,.nav .nav-panel a[aria-current="page"]{background:var(--cream)}
 .nav-panel b{font-family:var(--serif);font-size:21px;font-weight:600}
-.nav-panel span{font-size:13px;color:var(--slate);font-weight:400}
+.nav-panel b{display:block;line-height:1.2}
+.nav-panel span{display:block;font-size:13px;line-height:1.45;color:var(--slate);font-weight:400;white-space:normal;overflow-wrap:break-word}
 .mm-sub{display:flex;gap:22px;margin:-4px 0 10px 2px}
 .mobile-menu .mm-sub a{font-family:var(--sans);font-size:17px;color:var(--teal-light);padding:4px 0}
 .menu-open .mobile-menu .mm-sub a{opacity:1;transform:none}
