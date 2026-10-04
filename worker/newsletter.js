@@ -148,6 +148,7 @@ async function record(env, slug, status, detail, campaignKey = '') {
 
 // Create a draft campaign and confirm Zoho attached the newsletter list. Tries Zoho's documented
 // formats in turn and remembers the one that works (setting zoho_list_format). Sends nothing.
+let LAST_DETAILS = '';
 const FORMATS = ['query-quoted', 'query-bare', 'body-bare'];
 async function createVerified(env, issue) {
   const lk = await listKey(env);
@@ -168,6 +169,7 @@ async function createVerified(env, issue) {
     if (!key) { tried.push(`${fmt}: ${c.message || c.code}`); continue; }
     const d = await api(env, 'getcampaigndetails', { campaignkey: key, campaigntype: 'normal' }, 'GET');
     const lists = findLists(d);
+    LAST_DETAILS = JSON.stringify(d).slice(0, 900);
     if (lists.length) { if (s.zoho_list_format !== fmt) await put(env, 'zoho_list_format', fmt); return key; }
     tried.push(`${fmt}: no list attached`);
   }
@@ -252,7 +254,7 @@ export async function newsletterAdminPost(env, f) {
   }
   if (a === 'test') return testConnection(env);
   if (a === 'dryrun') {
-    try { const issue = await loadIssue(env); const key = await createVerified(env, issue); return `Dry run OK: draft campaign ${key} created with the list attached. Nothing sent. Format: ${(await getSettings(env)).zoho_list_format}`; }
+    try { const issue = await loadIssue(env); const key = await createVerified(env, issue); return `Dry run OK: draft campaign ${key} created with the list attached. Nothing sent. Format: ${(await getSettings(env)).zoho_list_format}. Details: ${LAST_DETAILS}`; }
     catch (e) { return 'Dry run failed: ' + e.message; }
   }
   if (a === 'send') return (await sendIssue(env, { force: true })).msg;
