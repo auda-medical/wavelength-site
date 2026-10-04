@@ -95,7 +95,7 @@ async function topicId(env) {
   const s = await getSettings(env);
   if (s.zoho_topic_id) return s.zoho_topic_id;
   const j = await api(env, 'topics', {}, 'GET');
-  const all = j.topics || j.topic_details || j.data || [];
+  const all = j.topicDetails || j.topics || j.topic_details || j.data || [];
   const first = Array.isArray(all) ? all[0] : null;
   const id = first && (first.topic_id || first.topicId || first.id);
   if (id) { await put(env, 'zoho_topic_id', id); return String(id); }
@@ -117,7 +117,7 @@ async function testConnection(env) {
   try {
     const t = await api(env, 'topics', {}, 'GET');
     const id = await topicId(env);
-    out.push(id ? 'Topic: OK' : 'Topic: none (' + JSON.stringify(t).slice(0, 400) + ')');
+    out.push(id ? 'Topic: OK' : 'Topic: none (' + String(t.message || t.code || '').slice(0, 160) + ')');
   } catch (e) { out.push('Topic check failed: ' + e.message); }
   return out.join(' · ');
 }
