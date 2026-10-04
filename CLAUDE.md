@@ -38,6 +38,11 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 - Topics: `learnTopics` in `data/site.json` groups pearls and Academy modules by `category` (Fundamentals, Heart and vessels, Lung and airway, Abdomen and pelvis, Soft tissue and joints, Eye and scrotum). /learn/ shows a sticky topic bar with search, one section per topic and the matching Academy modules at the foot of each. A new category needs adding to a topic, or it lands under "More pearls". Links like /learn/#topic-lung open one topic.
 - Card images: `python3 tools/pearl-thumbs.py` cuts a 16:10 thumbnail from each `*-pearl.webp` into `content/learn/images/thumbs/` (default crop: the 3D illustration top right; exceptions in `CROP`). Run it after adding a pearl graphic and check the crop. Academy cards use the thumbnail of the module's `image`.
 
+## Guides (cornerstone pages)
+- Markdown in `content/guides/` (front matter: title, short, slug, seoTitle, eyebrow, summary, date, reviewed, author, order, draft). Built at /guides/<slug>/ with a contents list from the `##` headings; /guides/ lists them. Menu (under Learn) and footer show Guides once one is live. `draft: true` builds the page unlisted and noindex, out of the sitemap, reachable by link.
+- Markdown supports pipe tables (`| a | b |` with a `|---|` line) and gives every `##` heading an id.
+- Live October 2026: RCEM ultrasound sign-off, ultrasound logbook, FAMUS accreditation, FUSIC accreditation. Every requirement, number and fee is checked against the source list at the foot of each guide. Action plans and email templates are Wavelength advice and say so. Re-check against the sources and update `reviewed` at least yearly, or when RCEM, SAM or the ICS publish a new pack. Keep the FUSIC/FAMUS/RCEM targets in `data/logbook.json` consistent with the guides.
+
 ## Search (SEO)
 - Google Search Console: domain property thewavelength.co.uk, verified and owned by Firas's Google account; sitemap submitted. Firas wants dashboard tasks like this done through Claude in Chrome, not handed to him.
 - Every Pearl has `slug` (search-friendly URL, e.g. epss-ultrasound) and `seoTitle` (the search-result title, which names the condition or technique plus "ultrasound", "POCUS" or "block"). `title` stays the hook shown as the H1. Give every new pearl both fields.

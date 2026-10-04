@@ -9,7 +9,7 @@ date: 2026-10-04
 reviewed: 2026-10-04
 author: Dr Firas Abou-Auda
 order: 4
-draft: true
+draft: false
 ---
 
 Focused Ultrasound in Intensive Care (FUSIC) is the Intensive Care Society's training and accreditation pathway for critical care ultrasound. It launched in 2012 and is open to any healthcare professional, of any grade and any specialty. Intensive care is its home, but emergency physicians, acute physicians, anaesthetists and advanced practitioners all use it, particularly FUSIC Heart.
@@ -49,6 +49,8 @@ Prices on the Society's website on 4 October 2026, by membership:
 HD is listed from £75. The fee covers registration, the e-learning and the certificate.
 
 ## Your action plan: how to get it done
+
+These steps are Wavelength's practical advice, built on the official requirements set out in this guide. Where a step quotes a rule, the rule comes from the source documents listed at the end.
 
 ### Step 1. Find a mentor or trainer first
 

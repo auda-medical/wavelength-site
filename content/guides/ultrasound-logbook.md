@@ -9,7 +9,7 @@ date: 2026-10-04
 reviewed: 2026-10-04
 author: Dr Firas Abou-Auda
 order: 2
-draft: true
+draft: false
 ---
 
 Every UK point-of-care ultrasound pathway asks for a logbook. RCEM uses it as one side of its triangle of evidence. FAMUS and FUSIC check it before your final assessment and reject it if it breaks their rules. A good logbook gets you signed off sooner. A poor one sends you back to rescan.
@@ -19,6 +19,8 @@ This guide covers what to record, how to protect patient confidentiality, and th
 > **In one line** Log every scan on the day, with no patient identifiers, the supervision level, your findings, what formal imaging later showed and one line on what you learned.
 
 ## Set up your logbook in 20 minutes
+
+The next two sections are Wavelength's practical advice. The rules they refer to come from the sources at the end.
 
 1. **Choose one format.** The e-portfolio log, a spreadsheet or an app. Keeping two copies means neither stays complete.
 2. **Create the fields** listed in the table below. Add a column for each pathway module you are working towards.

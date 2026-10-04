@@ -9,7 +9,7 @@ date: 2026-10-04
 reviewed: 2026-10-04
 author: Dr Firas Abou-Auda
 order: 1
-draft: true
+draft: false
 ---
 
 Point-of-care ultrasound (PoCUS) is a mandatory part of emergency medicine training in the UK. Under the RCEM curriculum, PoCUS sits within Specialty Learning Outcome 6, "Deliver key procedural skills", and you progress through it like any other procedure: by gathering evidence over time until a supervisor trusts you to scan without supervision.
@@ -20,7 +20,7 @@ This guide sets out what the current RCEM documents require, where most trainees
 
 ## Your action plan: how to get it done
 
-Follow these steps in order. Each one is something you do this week, not a principle to agree with.
+These steps are Wavelength's practical advice, built on the official requirements set out in this guide. Where a step quotes a rule, the rule comes from the source documents listed at the end. Follow them in order.
 
 ### Step 1. Find your PoCUS lead in your first week
 
@@ -57,7 +57,7 @@ At your first educational supervisor meeting, add a PoCUS line to your personal 
 
 Do not save assessments for a quiet day. Open the DOPS form on your phone before the scan, and ask: "Could you watch this scan as a DOPS for my PoCUS sign-off? It takes two minutes to fill in afterwards." Send the e-portfolio ticket before the end of the shift while it is fresh.
 
-Aim for at least two DOPS per modality from different assessors, plus one CbD or Mini-CEX where ultrasound changed what you did.
+We suggest at least two DOPS per modality from different assessors, plus one CbD or Mini-CEX where ultrasound changed what you did.
 
 ### Step 8. Book protected scanning time
 
@@ -69,7 +69,7 @@ Write a reflection the same day you meet a scan worth learning from: a missed fi
 
 ### Step 10. Ask for the entrustment decision
 
-When your logbook, reflections and DOPS show consistent independent scanning, ask your supervisor for the entrustment decision: "I think I am ready for level 4 in AAA. My logbook, reflections and three DOPS are in the e-portfolio. Could you review them and record your decision?" Do this at least three months before ARCP so there is time to fill any gap.
+When your logbook, reflections and DOPS show consistent independent scanning, ask your supervisor for the entrustment decision: "I think I am ready for level 4 in AAA. My logbook, reflections and three DOPS are in the e-portfolio. Could you review them and record your decision?" We suggest asking at least three months before ARCP, so there is time to fill any gap.
 
 ### A weekly routine that works
 

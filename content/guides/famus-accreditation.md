@@ -9,7 +9,7 @@ date: 2026-10-04
 reviewed: 2026-10-04
 author: Dr Firas Abou-Auda
 order: 3
-draft: true
+draft: false
 ---
 
 Focused Acute Medicine Ultrasound (FAMUS) is the point-of-care ultrasound accreditation run by the Society for Acute Medicine (SAM). It was designed for acute physicians and is open to any registered healthcare professional who looks after acutely unwell adults: doctors, nurses, advanced clinical practitioners, physician associates and allied health professionals.
@@ -38,6 +38,8 @@ Points to note on specific modules:
 FAMUS does not include focused echocardiography. SAM recommends the Intensive Care Society's FUSIC Heart for this, alongside FAMUS thoracic, for managing breathless patients.
 
 ## Your action plan: how to get it done
+
+These steps are Wavelength's practical advice, built on the official requirements set out in this guide. Where a step quotes a rule, the rule comes from the source documents listed at the end.
 
 ### Step 1. Find a supervisor before you pay anything
 
