@@ -6,6 +6,7 @@ import { handleAcademy, sendCertificate } from './academy.js';
 import { handleApp } from './app.js';
 import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
 import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
+import { zohoConnectUrl, zohoCallback, zohoSubscribe, scheduledNewsletter, newsletterAdminHtml, newsletterAdminPost } from './newsletter.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
 // admin_hash, session_secret). Passwords are stored as PBKDF2 hashes, never in plain text.
@@ -105,11 +106,14 @@ async function saveVolunteer(env, form) {
     dates: form.getAll('dates').map((x) => clip(x, 80)).filter(Boolean).slice(0, 20).join('; '),
     notes: clip(form.get('notes'), 1000),
     future: form.get('future_contact') ? 1 : 0,
+    news: form.get('newsletter') ? 1 : 0,
   };
   const ok = d.first && d.last && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email) && form.get('confirm_age') && form.get('confirm_scan') && form.get('confirm_findings') && form.get('confirm_privacy');
   if (!ok) return false;
-  await env.DB.prepare('INSERT INTO volunteers (first_name,last_name,email,phone,status,organisation,year,dates,notes,future_contact) VALUES (?,?,?,?,?,?,?,?,?,?)')
-    .bind(d.first, d.last, d.email, d.phone, d.status, d.org, d.year, d.dates, d.notes, d.future).run();
+  await env.DB.prepare('INSERT INTO volunteers (first_name,last_name,email,phone,status,organisation,year,dates,notes,future_contact,newsletter) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+    .bind(d.first, d.last, d.email, d.phone, d.status, d.org, d.year, d.dates, d.notes, d.future, d.news).run();
+  // Optional newsletter: Zoho sends its own confirmation email before adding them.
+  if (d.news) await zohoSubscribe(env, { email: d.email, first: d.first, role: d.status, source: 'Volunteer sign-up' });
   return true;
 }
 
@@ -127,9 +131,9 @@ async function adminPage(env, req) {
       <form method="post" onsubmit="return confirm('Delete ${esc(r.first_name)} ${esc(r.last_name)} permanently?')"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="delete"><button class="btn btn-ghost small danger" type="submit">Delete</button></form>
     </td></tr>`).join('');
   const table = results.length
-    ? `<p class="admin-summary">${results.length} volunteer${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/volunteer/admin/export.csv">Download as spreadsheet (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a> · <a class="text-link" href="/volunteer/admin/departments/">Department enquiries</a></p>
+    ? `<p class="admin-summary">${results.length} volunteer${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/volunteer/admin/export.csv">Download as spreadsheet (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a> · <a class="text-link" href="/volunteer/admin/departments/">Department enquiries</a> · <a class="text-link" href="/volunteer/admin/newsletter/">Newsletter</a></p>
        <div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Signed up</th><th scope="col">Name and contact</th><th scope="col">Role</th><th scope="col">Dates</th><th scope="col">Notes</th><th scope="col">Future contact</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>`
-    : '<div class="empty-dates"><div><h3>No volunteers yet</h3><p>Sign-ups appear here as soon as someone submits the form. <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a> · <a class="text-link" href="/volunteer/admin/departments/">Department enquiries</a></p></div></div>';
+    : '<div class="empty-dates"><div><h3>No volunteers yet</h3><p>Sign-ups appear here as soon as someone submits the form. <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a> · <a class="text-link" href="/volunteer/admin/departments/">Department enquiries</a> · <a class="text-link" href="/volunteer/admin/newsletter/">Newsletter</a></p></div></div>';
   const s = await settings(env);
   const pw = (who, label) => `<form class="form pw-form" method="post"><input type="hidden" name="action" value="password_${who}"><label>${label}<input name="new_password" type="password" minlength="10" autocomplete="new-password" required></label><button class="btn btn-ghost small" type="submit">Change</button></form>`;
   const msg = { ok: 'Password changed.', short: 'Use at least 10 characters.' }[new URL(req.url).searchParams.get('pw')] || '';
@@ -181,6 +185,9 @@ async function academyAdmin(env, req) {
 }
 
 export default {
+  async scheduled(event, env, ctx) {
+    if (env.DB) ctx.waitUntil(scheduledNewsletter(env));
+  },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     let p = url.pathname;
@@ -241,6 +248,23 @@ export default {
       if (p === '/volunteer/admin/academy/feedback.csv') return csvResponse((await env.DB.prepare('SELECT created_at, module, useful, practice, comment FROM feedback ORDER BY created_at DESC').all()).results || [], ['created_at', 'module', 'useful', 'practice', 'comment'], 'wavelength-academy-feedback');
       if (p === '/volunteer/admin/faculty/applications.csv') return csvResponse((await env.DB.prepare('SELECT * FROM faculty_applications ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'profession', 'specialty', 'organisation', 'registration', 'experience', 'credentials', 'applications', 'interests', 'details', 'contacted'], 'wavelength-faculty-applications');
       if (p === '/volunteer/admin/departments/enquiries.csv') return csvResponse((await env.DB.prepare('SELECT * FROM department_enquiries ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'role', 'organisation', 'setting', 'training', 'topics', 'group_size', 'timing', 'details', 'contacted'], 'wavelength-department-enquiries');
+      if (p === '/volunteer/admin/newsletter/connect/') {
+        const exp = Date.now() + 15 * 60e3;
+        const to = await zohoConnectUrl(env, `${exp}.${await sign(env, 'zoho.' + exp)}`);
+        return redirect(to || '/volunteer/admin/newsletter/?m=' + encodeURIComponent('Add the Zoho API client first.'));
+      }
+      if (p === '/volunteer/admin/newsletter/callback/') {
+        const [exp, sig] = String(url.searchParams.get('state') || '').split('.');
+        if (!exp || Number(exp) < Date.now() || !(await same(env, sig || '', await sign(env, 'zoho.' + exp)))) return redirect('/volunteer/admin/newsletter/?m=' + encodeURIComponent('Connection link expired. Try again.'));
+        const err = url.searchParams.get('error') || await zohoCallback(env, String(url.searchParams.get('code') || ''));
+        return redirect('/volunteer/admin/newsletter/?m=' + encodeURIComponent(err ? 'Zoho connection failed: ' + err : 'Connected to Zoho Campaigns.'));
+      }
+      if (p === '/volunteer/admin/newsletter/') {
+        if (req.method === 'POST') { const m = await newsletterAdminPost(env, await req.formData()); return redirect('/volunteer/admin/newsletter/?m=' + encodeURIComponent(m)); }
+        const shell = await env.ASSETS.fetch(new Request(new URL('/volunteer/admin/', req.url).toString()));
+        const html = await newsletterAdminHtml(env, url.searchParams.get('m') || '');
+        return withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(html, { html: true }); } }).transform(shell));
+      }
       if (p === '/volunteer/admin/departments/') {
         if (req.method === 'POST') { await departmentsAdminPost(env, req); return redirect('/volunteer/admin/departments/'); }
         const shell = await env.ASSETS.fetch(new Request(new URL('/volunteer/admin/', req.url).toString()));

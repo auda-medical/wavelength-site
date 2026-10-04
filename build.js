@@ -1154,7 +1154,7 @@ pages['/elearning/verify/'] = layout({
   <label>Certificate code<input name="code" required maxlength="40" autocomplete="off" placeholder="WL-DVT-XXXX-XXXX" style="text-transform:uppercase"></label>
   <div><button class="btn" type="submit">Check certificate ${arrow}</button></div>
   <p class="form-error" data-show-on="error" hidden>We could not find a certificate with that code. Check it and try again.</p>
-</form></div></section>${subscribeBand('Supervising or appraising? <em>Get the weekly Pearl.</em>', 'One free email a week: a practical scanning skill with a short test, new Academy modules and course dates. Optional. No account needed to verify.')}`,
+</form></div></section>${subscribeBand('Supervising or appraising? <em>Get the weekly Pearl.</em>', 'One free email a week: a practical scanning skill with a short test, new Academy modules and course dates. Optional. No account needed to verify.')}<section class="section sand"><div class="wrap"><div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">Do you supervise scanning?</h2><p>Teach with Wavelength. We welcome experienced scanners and ultrasound supervisors to our faculty.</p></div><a class="btn" href="/faculty/join/?utm_source=verify&amp;utm_medium=web">Apply to teach ${arrow}</a></div></div></section>`,
 });
 
 // One place to check any Wavelength code: WL- certificates, SO- sign-offs, EV- verified summaries.
@@ -1175,7 +1175,7 @@ pages['/verify/'] = layout({
 </div>
 <p style="margin-top:32px;color:var(--slate)">Scanning the QR code on a certificate or export opens the same check. Wavelength holds no patient identifiers, and checks never show findings or images.</p>
 </div></section>
-${subscribeBand('Supervising or appraising? <em>Get the weekly Pearl.</em>', 'One free email a week: a practical scanning skill with a short test, new Academy modules and course dates. Optional. No account needed to verify.')}
+${subscribeBand('Supervising or appraising? <em>Get the weekly Pearl.</em>', 'One free email a week: a practical scanning skill with a short test, new Academy modules and course dates. Optional. No account needed to verify.')}<section class="section sand"><div class="wrap"><div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">Do you supervise scanning?</h2><p>Teach with Wavelength. We welcome experienced scanners and ultrasound supervisors to our faculty.</p></div><a class="btn" href="/faculty/join/?utm_source=verify&amp;utm_medium=web">Apply to teach ${arrow}</a></div></div></section>
 <script>(function(){var go=function(v){v=String(v||'').toUpperCase().replace(/\\s+/g,'');if(/^WL-/.test(v))return '/elearning/verify/?code='+encodeURIComponent(v);if(/^(SO|EV)-/.test(v))return '/app/verify/?code='+encodeURIComponent(v);return null;};var q=new URLSearchParams(location.search).get('code');if(q){var u=go(q);if(u){location.replace(u);return;}document.getElementById('verr').hidden=false;document.getElementById('vcode').value=q;}document.getElementById('vform').addEventListener('submit',function(e){e.preventDefault();var u=go(document.getElementById('vcode').value);if(u)location.href=u;else document.getElementById('verr').hidden=false;});})();</script>`,
 });
 
@@ -1248,6 +1248,7 @@ pages['/volunteer/'] = layout({
     <label class="consent"><input type="checkbox" name="confirm_findings" value="yes" required><span>I understand course scans are for teaching, not diagnosis.</span></label>
     <label class="consent"><input type="checkbox" name="confirm_privacy" value="yes" required><span>Wavelength may store my details to arrange volunteer sessions, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
     <label class="consent"><input type="checkbox" name="future_contact" value="yes"><span>Contact me about future volunteer sessions. (Optional)</span></label>
+    <label class="consent"><input type="checkbox" name="newsletter" value="yes"><span>Send me the weekly Wavelength Pearl: free ultrasound tips and course dates. I confirm by email and can unsubscribe at any time. (Optional)</span></label>
     <div><button class="btn" type="submit">Sign up to volunteer ${arrow}</button></div>
   </form>
 </div></section>`,

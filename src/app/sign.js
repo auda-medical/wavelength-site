@@ -29,7 +29,7 @@
       '<p class="small muted">Counts and sign-offs come from the server copy of the learner\'s logbook at the time shown, not from the exported file. Wavelength holds no patient identifiers and no scan images. Supervisor accreditation is as each supervisor stated it. The accrediting body or training programme decides what evidence it accepts.</p>';
   }
 
-var PEARL_CTA = '<div class="card"><h3 style="margin-bottom:6px">One ultrasound Pearl a week</h3><p class="small muted" style="margin-bottom:12px">Free practical scanning tips for clinicians who scan, supervise or teach. Optional, and you can leave at any time.</p><a class="btn ghost block" href="/subscribe/?utm_source=verify&amp;utm_medium=web">Get the weekly Pearl</a></div>';
+var PEARL_CTA = '<div class="card"><h3 style="margin-bottom:6px">One ultrasound Pearl a week</h3><p class="small muted" style="margin-bottom:12px">Free practical scanning tips for clinicians who scan, supervise or teach. Optional, and you can leave at any time.</p><a class="btn ghost block" href="/subscribe/?utm_source=verify&amp;utm_medium=web">Get the weekly Pearl</a><p class="small muted" style="margin-top:12px">Do you supervise scanning? <a href="/faculty/join/?utm_source=verify&amp;utm_medium=web">Teach with us</a></p></div>';
   if (document.body.dataset.page === 'verify') {
     var code = new URLSearchParams(location.search).get('code') || '';
     lede.textContent = 'Check a supervisor sign-off (SO-) or a verified logbook summary (EV-) from a Wavelength export.';

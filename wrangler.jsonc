@@ -22,6 +22,8 @@
     { "pattern": "thewavelength.co.uk", "custom_domain": true },
     { "pattern": "www.thewavelength.co.uk", "custom_domain": true }
   ],
+  // Weekly newsletter: worker/newsletter.js sends at 7:30am UK time on Tuesdays (06:30 UTC in summer, 07:30 UTC in winter).
+  "triggers": { "crons": ["30 6 * * 2", "30 7 * * 2"] },
   "workers_dev": false,
   "preview_urls": false
 }
