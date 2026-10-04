@@ -486,7 +486,7 @@ pages['/'] = layout({
       ${posts.length ? `<a class="pillar reveal" data-d="1" href="/learn/" style="text-decoration:none;color:inherit"><div class="num">Pearls</div><h3>Five-minute techniques</h3><p>${posts.length} free Wavelength Pearls, one view or pitfall at a time, each with a short test.</p><span class="text-link">Read the Pearls</span></a>` : ''}
       ${liveModules.length ? `<a class="pillar reveal" data-d="2" href="/elearning/" style="text-decoration:none;color:inherit"><div class="num">Academy</div><h3>Certified e-learning</h3><p>Free modules with lessons, clinical cases, an assessment and a CPD certificate anyone can verify online.</p><span class="text-link">Start a module</span></a>` : ''}
     </div>
-    <a class="bank-link reveal" href="/app/get/" style="margin-top:28px;background:var(--navy)"><span><span class="eyebrow" style="color:var(--teal-l)">The Wavelength app</span><strong>Your ultrasound logbook: log scans, track RCEM, FAMUS and FUSIC targets, get signed off. Free.</strong></span>${arrow}</a>
+    <a class="bank-link reveal" href="/app/get/" style="margin-top:28px;background:var(--navy)"><span><span class="eyebrow" style="color:var(--teal-l)">The Wavelength app</span><strong>Your ultrasound logbook: track RCEM, FAMUS and FUSIC targets, get signed off, and send QR-verified evidence to your portfolio. Free.</strong></span>${arrow}</a>
     ${liveModules.length ? `<div class="ac-verify reveal" style="margin-top:28px"><div><h3>Certificates you can prove</h3><p>Every Academy certificate shows your name, CPD hours and a unique code. Your educational supervisor, appraiser or employer checks it online in seconds.</p></div><a class="btn btn-ghost" href="/elearning/verify/">Verify a certificate ${arrow}</a></div>` : ''}
   </div>
 </section>
@@ -1257,14 +1257,17 @@ pages['/volunteer/unavailable/'] = layout({
     { q: 'Is it free?', a: 'Yes. The logbook, progress tracking, sign-off, exports and backups are free.' },
     { q: 'Does Wavelength see my scan photos?', a: 'No. Photos stay on your phone and in backup files you save to your own iCloud Drive, Google Drive or OneDrive. Only the written record syncs to your account, and it must never contain patient identifiers.' },
     { q: 'Which pathways does it track?', a: 'RCEM PoCUS, FAMUS (thoracic, abdominal-renal, DVT, peripheral access, LP) and FUSIC (heart, lung, abdomen, DVT, vascular access), plus a general logbook for any application with targets you set. One scan counts towards every pathway it fits.' },
-    { q: 'Will my college or accrediting body accept it?', a: 'The logbook records what the published curricula ask for and exports to PDF and Excel for your portfolio. Your supervisor and the accrediting body decide what they accept, so check with them.' },
+    { q: 'Do I need an account?', a: 'Yes. The app, its exports and its downloads need a free Wavelength account. Every scan, sign-off and verified summary then belongs to a named clinician, which is what makes it trustworthy evidence.' },
+    { q: 'How does it get into my e-portfolio?', a: 'Choose where the export is going (the RCEM e-portfolio on risr/advance, formerly Kaizen, the JRCPTB ePortfolio, FAMUS, FUSIC or appraisal) and the app builds the PDF and shows the steps for that portfolio. Wavelength is not yet connected directly to these systems, so you attach the file and paste the verification link. We are working towards direct links.' },
+    { q: 'What is a verified summary?', a: 'A record of your progress against each pathway, created by Wavelength from your synced logbook, with a code and QR code on the PDF. Your supervisor, ARCP panel or accrediting body scans it and sees the same figures and sign-offs online, so they know the file has not been edited. It shows counts and dates only, never findings or images. You withdraw a summary at any time.' },
+    { q: 'Will my college or accrediting body accept it?', a: 'The logbook records what the published curricula ask for, and verified summaries let reviewers check your evidence online. Your supervisor and the accrediting body decide what they accept, so check with them. Wavelength is independent of RCEM, JRCPTB, the Society for Acute Medicine and the Intensive Care Society.' },
     { q: 'Is it in the App Store?', a: 'Not yet. You install it from this website in two taps and it works like any app, including offline. App Store and Google Play versions follow.' },
     { q: 'What about my Academy certificates?', a: 'Log in with the same email and your Wavelength Academy certificates appear in the app, ready to share or verify.' },
   ];
   let html = layout({
     title: 'Wavelength app | Free ultrasound logbook with RCEM, FAMUS and FUSIC targets',
     pathname: '/app/get/',
-    description: 'A free point-of-care ultrasound logbook. Log scans, track RCEM, FAMUS and FUSIC targets in colour, get signed off by your supervisor, and export to PDF or Excel. Photos stay on your phone.',
+    description: 'A free point-of-care ultrasound logbook. Log scans, track RCEM, FAMUS and FUSIC targets, get signed off, and export portfolio-ready PDFs with QR-verified summaries. Photos stay on your phone.',
     jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'App', href: '/app/get/' }]), faqLd(appFaqs), { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Wavelength', applicationCategory: 'MedicalApplication', operatingSystem: 'iOS, Android, web', offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' }, url: url('/app/get/') }],
     body: `<section class="hero on-dark">${mesh}<div class="wrap hero-inner app-hero">
   <div>
@@ -1292,12 +1295,17 @@ pages['/volunteer/unavailable/'] = layout({
     ${f('Colour', 'See what is left', 'Red, amber, green. Each module shows exactly how many scans, supervised scans, reflections and pathologies you still need.')}
     ${f('Privacy', 'Photos stay on your phone', 'Take a photo of the screen, crop it, black out identifiers, and save. Hidden photo data is stripped. Images never reach our servers.')}
     ${f('Sign-off', 'Signed in seconds', 'Hand your phone to your supervisor to sign with a finger, or send a secure link. Each sign-off gets a code anyone can verify.')}
-    ${f('Export', 'Portfolio-ready', 'PDF with a summary of training, scan log, reflections and sign-off register. Excel and CSV too.')}
+    ${f('Export', 'Portfolio-ready', 'PDF with a summary of training, scan log, reflections and sign-off register, each sign-off with its own QR code. Excel and CSV too.')}
     ${f('Backup', 'Your cloud, your copy', 'One tap saves your photos to iCloud Drive, Google Drive or OneDrive. Restore on a new phone in seconds.')}
     ${f('Guard', 'Identifier check', 'The app warns you before saving text that looks like an NHS number, a hospital number, a date of birth or a name.')}
     ${f('Learn', 'Linked to learning', 'Every scan type links to free Pearls and certified Academy modules. Your CPD certificates sit in the same app.')}
     ${f('Offline', 'Works without signal', 'Log in the basement resus room. Entries sync when you reconnect.')}
   </div>
+</div></section>
+<section class="section on-dark" style="background:var(--navy)"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal" style="color:var(--teal-l)">From scan to portfolio</p><h2 class="reveal" data-d="1" style="color:var(--cream)">Evidence your assessors can check.</h2><p class="reveal" data-d="2" style="color:#B9C4D0;max-width:640px">Paper logbooks and spreadsheets ask your ARCP panel or accrediting body to take the numbers on trust. Every Wavelength export carries a verification code instead.</p></div>
+  <ol class="ev-steps"><li class="reveal" data-d="0"><span class="ev-n">01</span><h3>Log and get signed off</h3><p>Record each scan in seconds. Your supervisor signs on your phone or from a secure link, and each sign-off gets its own code.</p></li><li class="reveal" data-d="1"><span class="ev-n">02</span><h3>Choose where it goes</h3><p>RCEM e-portfolio (risr/advance, formerly Kaizen), JRCPTB ePortfolio for acute medicine, FAMUS, FUSIC, or appraisal and revalidation. The PDF and the steps match the destination.</p></li><li class="reveal" data-d="2"><span class="ev-n">03</span><h3>Verified summary</h3><p>Wavelength builds your progress against each pathway from your synced logbook and stamps it with a code and QR code. Counts and dates only, never findings or images.</p></li><li class="reveal" data-d="3"><span class="ev-n">04</span><h3>Scan to check</h3><p>Your supervisor, ARCP panel or the FAMUS administrator scans the QR code and sees the same figures and sign-offs online. If the file was edited, it shows.</p></li></ol>
+  <p class="reveal" style="color:#B9C4D0;font-size:14px;margin-top:28px;max-width:760px">Wavelength is independent of RCEM, JRCPTB, the Society for Acute Medicine and the Intensive Care Society, and is not yet connected directly to their portfolio systems. You attach the PDF and paste the verification link. A free account is needed to use the app and its exports.</p>
 </div></section>
 <section class="section sand"><div class="wrap split">
   <div><p class="eyebrow reveal">Good to know</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,64px);margin-top:20px">Questions.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">Read the <a class="text-link" href="/app-terms/">logbook terms of use</a> and <a class="text-link" href="/privacy/">privacy notice</a>.</p></div>
@@ -1403,7 +1411,7 @@ if (fs.existsSync(path.join(LEARN_DIR, 'images'))) copyDir(path.join(LEARN_DIR, 
 // Wavelength app: config from data/logbook.json, upcoming courses, newsletter form, and cache-busting version.
 {
   const appCourses = courses.filter((c) => c.status !== 'hidden').flatMap((c) => upcoming(c).map((d) => ({ slug: c.slug, title: c.title, date: d.date, venue: d.venue, city: d.city }))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
-  const { _help, ...lb } = logbook;
+  const { _help, _help_destinations, ...lb } = logbook;
   const nl = site.newsletter && site.newsletter.action ? { action: site.newsletter.action, hidden: site.newsletter.hidden, emailField: site.newsletter.emailField, firstNameField: site.newsletter.firstNameField, roleField: site.newsletter.roleField } : null;
   fs.writeFileSync(path.join(DIST, 'app/config.js'), `window.WL_LOGBOOK = ${JSON.stringify({ ...lb, courses: appCourses, newsletter: nl })};\n`);
   const appDir = path.join(DIST, 'app');

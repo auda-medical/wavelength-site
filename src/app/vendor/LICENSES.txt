@@ -1,2 +1,3 @@
 jsPDF 2.5.2 (MIT, James Hall and yWorks) and jspdf-autotable 3.8.4 (MIT, Simon Bengtsson).
 Loaded only when a learner exports a PDF.
+qrcode-generator 1.4.4 (MIT, Kazuhiko Arase). Draws the verification QR codes on PDF exports.

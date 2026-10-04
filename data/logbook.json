@@ -200,5 +200,14 @@
       "windowFrom": null,
       "modules": []
     }
+  ],
+  "_help_destinations": "Export destinations. Steps show after a learner builds a portfolio export. Keep wording general: Wavelength is not integrated with these portfolios.",
+  "destinations": [
+    {"id": "rcem", "label": "RCEM e-portfolio (risr/advance, formerly Kaizen)", "pathway": "rcem", "steps": ["Open your risr/advance (Kaizen) e-portfolio, ideally on a computer.", "Create or open the entry for your ultrasound evidence and attach this PDF.", "Paste the verification link into the entry, so your supervisor and ARCP panel check the summary online.", "Link the entry to the PoCUS parts of the curriculum. RCEM sign-off is by DOPS, so ask your supervisor to complete the DOPS assessments in the e-portfolio."]},
+    {"id": "famus", "label": "FAMUS accreditation (Society for Acute Medicine)", "pathway": "famus", "steps": ["Keep this PDF with your countersigned report sheets.", "When the summary shows your targets met, ask your supervisor to complete the Assessment of Completion of Training (ACT).", "Send the signed ACT to the FAMUS administrator. Include this PDF and the verification link if they ask for your logbook.", "For reaccreditation every three years, export a fresh verified summary."]},
+    {"id": "fusic", "label": "FUSIC accreditation (Intensive Care Society)", "pathway": "fusic", "steps": ["Share this PDF and the verification link with your FUSIC supervisor.", "Upload it wherever your FUSIC accreditation asks for logbook evidence.", "Once your targets are met, ask your supervisor to arrange the final assessment."]},
+    {"id": "jrcptb", "label": "JRCPTB ePortfolio (physicians, including acute medicine)", "pathway": "famus", "steps": ["Open your JRCPTB ePortfolio.", "Upload this PDF to your personal library, or attach it to the entry it supports.", "Paste the verification link into the description.", "Link it to the curriculum capabilities it evidences and tell your educational supervisor where to find it."]},
+    {"id": "appraisal", "label": "Appraisal and revalidation", "pathway": "", "steps": ["Upload this PDF to your appraisal portfolio as evidence of ultrasound practice.", "Paste the verification link into the supporting information.", "Use the reflective notes in the PDF for your reflection on practice."]},
+    {"id": "other", "label": "Another portfolio or employer", "pathway": "", "steps": ["Attach this PDF to your portfolio or send it to the person who asked for it.", "Add the verification link, so they check the summary online."]}
   ]
 }

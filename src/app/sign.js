@@ -8,13 +8,35 @@
   function post(url, d) { return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(d) }).then(function (r) { return r.json(); }); }
   var ACCRED = ['RCEM-approved ultrasound supervisor', 'FAMUS mentor', 'FAMUS supervisor', 'FUSIC mentor', 'FUSIC supervisor', 'Consultant sonographer', 'Other'];
 
+  function evidenceHtml(r) {
+    var n = function (v) { return v === '' || v == null ? '' : String(v); };
+    var dl = function (k, v) { return v ? '<dt>' + k + '</dt><dd>' + esc(v) + '</dd>' : ''; };
+    var own = false;
+    var paths = (r.pathways || []).map(function (p) {
+      var rows = p.modules.map(function (m) {
+        if (m.ownTarget) own = true;
+        var status = m.met ? '<span class="chip green">Met</span>' : (m.total || m.supTarget) ? '<span class="chip amber">In progress</span>' : '';
+        var nums = 'Scans ' + m.counted + (m.total ? ' / ' + m.total : '') + ' · Supervised ' + m.supervised + (m.supTarget ? ' / ' + m.supTarget : '') + ' · Signed off ' + m.signed;
+        var path = (m.rules || []).filter(function (x) { return x.min; }).map(function (x) { return '<span style="white-space:nowrap">' + esc(x.label) + ' ' + x.n + '/' + x.min + (x.n >= x.min ? ' ✓' : '') + '</span>'; }).join(' · ');
+        return '<div class="evmod"><div class="row"><b class="grow">' + esc(m.label) + (m.ownTarget ? ' *' : '') + '</b>' + status + '</div><p class="small">' + nums + '</p>' + (path ? '<p class="small muted">' + path + '</p>' : '') + '</div>';
+      }).join('');
+      return '<div class="card"><h3>' + esc(p.name || p.label) + '</h3>' + (rows || '<p class="small muted">No modules.</p>') + '<p class="small muted" style="margin-top:8px">Targets from ' + esc(p.source || '') + ' Checked ' + esc(fmt(p.checked)) + '.</p></div>';
+    }).join('');
+    return '<div class="ok"><b>Genuine summary.</b> Wavelength created this from ' + esc(r.learner) + '\'s synced logbook on ' + esc(fmt(r.createdAt)) + '.</div>' +
+      '<div class="card"><div class="detail"><dl>' + dl('Code', r.code) + dl('Learner', r.learner) + dl('Grade or role', r.grade) + dl('Organisation', r.organisation) + dl('Period', fmt(r.from) + ' to ' + fmt(r.to)) + dl('Prepared for', r.destinationLabel) + dl('Scans', n(r.scans) + (r.signedOnly ? ' (signed off only)' : '')) + dl('Directly supervised', n(r.supervised)) + dl('Signed off by a supervisor', n(r.signed)) + dl('First and last scan', r.firstScan ? fmt(r.firstScan) + ' to ' + fmt(r.lastScan) : '') + '</dl></div></div>' +
+      paths + (own ? '<p class="small muted">* The learner set their own target for this module, which differs from the curriculum figure.</p>' : '') +
+      ((r.signoffCodes || []).length ? '<div class="card"><h3>Sign-offs</h3><p class="small muted">Open any code to see who signed and when.</p><p style="line-height:2">' + r.signoffCodes.map(function (c) { return '<a class="chip" href="/app/verify/?code=' + encodeURIComponent(c) + '">' + esc(c) + '</a>'; }).join(' ') + '</p></div>' : '') +
+      '<p class="small muted">Counts and sign-offs come from the server copy of the learner\'s logbook at the time shown, not from the exported file. Wavelength holds no patient identifiers and no scan images. Supervisor accreditation is as each supervisor stated it. The accrediting body or training programme decides what evidence it accepts.</p>';
+  }
+
   if (document.body.dataset.page === 'verify') {
     var code = new URLSearchParams(location.search).get('code') || '';
-    lede.textContent = 'Check a supervisor sign-off from a Wavelength logbook export.';
-    var form = '<form id="vf" method="get"><div class="field"><label for="c">Sign-off code</label><input id="c" name="code" type="text" placeholder="SO-XXXX-XXXX" value="' + esc(code) + '" autocapitalize="characters" required></div><button class="btn teal block">Verify</button></form>';
+    lede.textContent = 'Check a supervisor sign-off (SO-) or a verified logbook summary (EV-) from a Wavelength export.';
+    var form = '<form id="vf" method="get"><div class="field"><label for="c">Code</label><input id="c" name="code" type="text" placeholder="SO-XXXX-XXXX or EV-XXXX-XXXX" value="' + esc(code) + '" autocapitalize="characters" required></div><button class="btn teal block">Verify</button></form>';
     if (!code) { root.innerHTML = form; return; }
     fetch('/api/app/verify?code=' + encodeURIComponent(code)).then(function (r) { return r.json(); }).then(function (res) {
       if (!res.ok) { root.innerHTML = '<div class="err">' + esc(res.error) + '</div>' + form; return; }
+      if (res.kind === 'evidence') { document.getElementById('h').textContent = 'Verified summary'; lede.textContent = ''; root.innerHTML = evidenceHtml(res) + form; return; }
       root.innerHTML = '<div class="ok"><b>Genuine sign-off.</b> This record exists in the Wavelength logbook.</div><div class="card"><div class="detail"><dl><dt>Code</dt><dd>' + esc(res.code) + '</dd><dt>Learner</dt><dd>' + esc(res.learner) + '</dd><dt>Signed by</dt><dd>' + esc(res.supervisor) + (res.role ? ', ' + esc(res.role) : '') + '</dd>' + (res.accreditation ? '<dt>Accreditation stated</dt><dd>' + esc(res.accreditation) + '</dd>' : '') + '<dt>Method</dt><dd>' + (res.method === 'in-person' ? 'In person, signed on the learner\'s device' : 'By secure link') + (res.handSigned ? ', signed by hand' : '') + '</dd>' + (res.basis ? '<dt>Basis</dt><dd>' + ({ witnessed: 'Witnessed the scan', reviewed: 'Reviewed the images', both: 'Witnessed the scan and reviewed the images' })[res.basis] + '</dd>' : '') + '<dt>Signed</dt><dd>' + esc(fmt(res.signedAt)) + '</dd><dt>Scans confirmed</dt><dd>' + res.confirmed + ' of ' + res.entries.length + '</dd></dl></div></div>' +
         '<div class="card"><h3 style="margin-bottom:8px">Scans in this sign-off</h3>' + res.entries.map(function (e) { return '<div class="row" style="padding:6px 0;border-top:1px solid var(--line);font-size:14px"><span class="grow">' + esc((TYPES[e.type] || {}).label || e.type) + ', ' + esc(fmt(e.date)) + '</span><span class="chip ' + (e.decision === 'confirmed' ? 'green' : 'amber') + '">' + (e.decision === 'confirmed' ? 'Confirmed' : e.decision === 'query' ? 'Queried' : 'Not reviewed') + '</span></div>'; }).join('') + '</div>' +
         '<p class="small muted">Wavelength records who signed and when. The supervisor\'s accreditation is as they stated it. The logbook holds no patient identifiers.</p>' + form;

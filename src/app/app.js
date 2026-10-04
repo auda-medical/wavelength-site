@@ -5,6 +5,7 @@
   var C = window.WL_LOGBOOK;
   var TYPES = {}; C.types.forEach(function (t) { TYPES[t.id] = t; });
   var PATHS = {}; C.pathways.forEach(function (p) { PATHS[p.id] = p; });
+  var DESTS = C.destinations || [], DEST = {}; DESTS.forEach(function (d) { DEST[d.id] = d; });
   var app = document.getElementById('app');
   var S = { account: null, me: null, entries: [], kv: {}, db: null, online: navigator.onLine, syncing: false, installEvt: null, urls: {} };
 
@@ -240,7 +241,7 @@
       return (authViews[r.name] || viewWelcome)(r);
     }
     if (!S.account.declarationAt || !(profile().onboarded)) return viewOnboard(r);
-    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, signoff: viewSignoff, export: viewExport, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration };
+    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration };
     (views[r.name] || viewHome)(r);
     setSyncDot();
     if (soft) window.scrollTo(0, keepScroll);
@@ -871,20 +872,31 @@
   function closeSheet() { $$('.sheet-bg').forEach(function (s) { s.remove(); }); }
 
   // ---------- Export ----------
-  function viewExport() {
+  function scansIn(pid) { var pw = PATHS[pid]; if (!pw || pid === 'general') return live().length; return live().filter(function (e) { return pw.modules.some(function (m) { return m.types.indexOf(e.type) >= 0; }); }).length; }
+  function defaultDest() {
+    var best = null, n = 0, p = myPaths();
+    DESTS.forEach(function (x) { if (x.pathway && p.indexOf(x.pathway) >= 0) { var c = scansIn(x.pathway); if (c > n) { n = c; best = x.id; } } });
+    return best || 'other';
+  }
+  function viewExport(r) {
     var ents = live(), first = ents.map(function (e) { return e.date; }).sort()[0] || today();
+    var dest = (r && r.q.get('to')) || defaultDest();
     mount(shell({ title: 'Export', back: 'log' },
-      '<p class="muted small">Exports build on this phone. Nothing leaves it until you share or save the file.</p><form id="xf">' +
+      '<p class="muted small">Exports build on this phone. A verified summary sends only counts and dates to your account, never images or findings.</p><form id="xf">' +
+      '<div class="field"><label for="ds">Where is it going?</label><select id="ds" name="destination">' + DESTS.map(function (x) { return '<option value="' + x.id + '"' + (x.id === dest ? ' selected' : '') + '>' + esc(x.label) + '</option>'; }).join('') + '</select></div>' +
       '<div class="field"><span class="lab">Format</span>' + seg('fmt', [{ id: 'pdf', label: 'PDF for your portfolio' }, { id: 'xlsx', label: 'Excel' }, { id: 'csv', label: 'CSV' }], 'pdf') + '</div>' +
       '<div class="two"><div class="field"><label for="from">From</label><input type="date" id="from" name="from" value="' + first + '"></div><div class="field"><label for="to">To</label><input type="date" id="to" name="to" value="' + today() + '"></div></div>' +
       '<div class="field"><label for="pw">Pathway</label><select id="pw" name="pathway"><option value="">All scans</option>' + myPaths().map(function (p) { return '<option value="' + p + '">' + esc(PATHS[p].label) + ' scans only</option>'; }).join('') + '</select></div>' +
       '<div class="field"><label for="st">Status</label><select id="st" name="status"><option value="">All</option><option value="signed">Signed off only</option></select></div>' +
+      '<div class="field" id="evopt"><label class="check"><input type="checkbox" name="verified" value="1" checked><span><b>Add a verified summary with a QR code.</b> Your supervisor, ARCP panel or accrediting body scans it to see your progress and sign-offs as Wavelength holds them. Needs internet.</span></label></div>' +
       '<div class="field"><label class="check"><input type="checkbox" name="reflections" value="1" checked><span>Include reflections</span></label></div>' +
       '<div class="field" id="imgopt"><label class="check"><input type="checkbox" name="images" value="1"><span>Include images from this phone (PDF only). Check every image is free of identifiers before you share the file.</span></label></div>' +
       '<div class="err" hidden></div><button class="btn teal block">Create export</button></form>'));
     var f = $('#xf');
-    var tog = function () { $('#imgopt').hidden = formData(f).fmt !== 'pdf'; };
+    var tog = function () { var v = formData(f).fmt; $('#imgopt').hidden = v !== 'pdf'; $('#evopt').hidden = v === 'csv'; };
+    var pickPath = function () { var x = DEST[$('#ds').value]; $('#pw').value = x && x.pathway && myPaths().indexOf(x.pathway) >= 0 && scansIn(x.pathway) ? x.pathway : ''; };
     $$('input[name=fmt]', f).forEach(function (i) { i.onchange = tog; });
+    $('#ds').onchange = pickPath; pickPath();
     f.addEventListener('submit', function (ev) {
       ev.preventDefault(); var d = formData(f), b = $('button.teal', f), err = $('.err', f); err.hidden = true;
       var list = live().filter(function (e) {
@@ -894,17 +906,51 @@
         return true;
       }).sort(function (a, b2) { return a.date.localeCompare(b2.date); });
       if (!list.length) { err.textContent = 'No scans match those choices.'; err.hidden = false; return; }
-      busy(b, true, 'Building your file…');
-      var job = d.fmt === 'csv' ? Promise.resolve(exportCsv(list, d)) : d.fmt === 'xlsx' ? fetchSignoffs().then(function (so) { return exportXlsx(list, d, so); }) : fetchSignoffs().then(function (so) { return exportPdf(list, d, so); });
-      job.then(function (out) { busy(b, false); deliver(out.blob, out.name); }).catch(function (ex) { busy(b, false); err.textContent = ex.message || 'Could not build the file.'; err.hidden = false; });
+      busy(b, true, d.verified && d.fmt !== 'csv' ? 'Creating your verified summary…' : 'Building your file…');
+      var evJob = d.verified && d.fmt !== 'csv' ? makeEvidence(d) : Promise.resolve(null);
+      evJob.then(function (evd) {
+        if (evd) b.textContent = 'Building your file…';
+        var job = d.fmt === 'csv' ? Promise.resolve(exportCsv(list, d)) : d.fmt === 'xlsx' ? fetchSignoffs().then(function (so) { return exportXlsx(list, d, so, evd); }) : fetchSignoffs().then(function (so) { return exportPdf(list, d, so, evd); });
+        return job.then(function (out) { return { out: out, ev: evd }; });
+      }).then(function (res) { busy(b, false); deliver(res.out.blob, res.out.name, portfolioSteps(d.destination, res.ev)); })
+        .catch(function (ex) { busy(b, false); err.textContent = ex.message || 'Could not build the file.'; err.hidden = false; });
+    });
+  }
+  function makeEvidence(d) {
+    if (!navigator.onLine) return Promise.reject(new Error('You are offline. Connect to the internet for a verified summary, or untick it.'));
+    return sync().then(function () { return api('/api/app/evidence', { from: d.from, to: d.to, pathway: d.pathway || '', signedOnly: d.status === 'signed', destination: d.destination }); }).then(function (res) {
+      if (!res.ok) throw new Error(res.error || 'Could not create the verified summary. Try again, or untick it.');
+      return res;
+    });
+  }
+  function portfolioSteps(destId, evd) {
+    var x = DEST[destId] || DEST.other; if (!x) return null;
+    var html = '<div class="card" style="margin-top:16px;text-align:left"><h3>Add it to ' + esc(x.id === 'other' ? 'your portfolio' : x.label.replace(/ \(.*\)$/, '')) + '</h3><ol class="steps">' + x.steps.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>' +
+      (evd ? '<p class="small muted" style="margin-top:10px">Verification code <b>' + esc(evd.code) + '</b></p><div class="btns"><button class="btn sm" type="button" data-copyev>Copy verification link</button><a class="btn sm ghost" target="_blank" rel="noopener" href="' + esc(evd.link) + '">Open it</a></div>' : '') + '</div>';
+    return { html: html, bind: function (root) { var c = $('[data-copyev]', root); if (c) c.onclick = function () { (navigator.clipboard ? navigator.clipboard.writeText(evd.link) : Promise.reject()).then(function () { toast('Link copied.'); }).catch(function () { prompt('Copy this link', evd.link); }); }; } };
+  }
+  function viewEvidence() {
+    mount(shell({ title: 'Verified summaries', back: 'me' }, '<p class="muted small">Each verified summary has a code a reviewer checks online. Withdraw one you no longer want people to see. The code then shows as withdrawn.</p><div id="evl"><div class="card"><p class="muted small">Loading…</p></div></div><a class="btn teal block" href="#/export">Create a new export</a>'));
+    api('/api/app/evidence').then(function (res) {
+      var box = $('#evl'); if (!box) return;
+      var rows = res.evidence || [];
+      if (!res.ok) { box.innerHTML = '<div class="card"><p class="muted small">Connect to the internet to see your verified summaries.</p></div>'; return; }
+      if (!rows.length) { box.innerHTML = '<div class="card"><p class="muted small">None yet. Tick "Add a verified summary" when you export your logbook.</p></div>'; return; }
+      box.innerHTML = rows.map(function (x) {
+        return '<div class="card"><div class="row"><div class="grow"><b>' + esc(x.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc((DEST[x.destination] || {}).label || 'Portfolio') + '<br>' + esc(fmt(x.period_from)) + ' to ' + esc(fmt(x.period_to)) + ' · created ' + esc(fmt(x.created_at)) + '</p></div><span class="chip ' + (x.withdrawn ? 'amber' : 'green') + '">' + (x.withdrawn ? 'Withdrawn' : 'Live') + '</span></div>' +
+          (x.withdrawn ? '' : '<div class="btns"><button class="btn sm" data-copy="' + esc(x.id) + '">Copy link</button><button class="btn sm ghost" data-wd="' + esc(x.id) + '">Withdraw</button></div>') + '</div>';
+      }).join('');
+      $$('[data-copy]', box).forEach(function (bt) { bt.onclick = function () { var l = location.origin + '/app/verify/?code=' + bt.dataset.copy; (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(function () { toast('Link copied.'); }).catch(function () { prompt('Copy this link', l); }); }; });
+      $$('[data-wd]', box).forEach(function (bt) { bt.onclick = function () { if (!confirm('Withdraw ' + bt.dataset.wd + '? Anyone who checks this code will see it is withdrawn.')) return; api('/api/app/evidence/withdraw', { code: bt.dataset.wd }).then(function () { toast('Withdrawn.'); viewEvidence(); }); }; });
     });
   }
   function fetchSignoffs() { return navigator.onLine ? api('/api/app/signoffs').then(function (r) { return r.signoffs || []; }).catch(function () { return []; }) : Promise.resolve([]); }
-  function deliver(blob, name) {
+  function deliver(blob, name, extra) {
     var file; try { file = new File([blob], name, { type: blob.type }); } catch (e) { file = null; }
     var url = URL.createObjectURL(blob);
     var canShare = file && navigator.canShare && navigator.canShare({ files: [file] });
-    sheet('<h2>Your file is ready</h2><p class="muted small">' + esc(name) + ' · ' + Math.max(1, Math.round(blob.size / 1024)) + ' KB</p><div class="btns">' + (canShare ? '<button class="btn teal block" data-share>' + I.share + ' Share or save</button>' : '') + '<a class="btn ' + (canShare ? 'ghost' : 'teal') + ' block" href="' + url + '" download="' + esc(name) + '">Download</a><button class="btn ghost block" data-close>Close</button></div>', function (root) {
+    sheet('<h2>Your file is ready</h2><p class="muted small">' + esc(name) + ' · ' + Math.max(1, Math.round(blob.size / 1024)) + ' KB</p><div class="btns">' + (canShare ? '<button class="btn teal block" data-share>' + I.share + ' Share or save</button>' : '') + '<a class="btn ' + (canShare ? 'ghost' : 'teal') + ' block" href="' + url + '" download="' + esc(name) + '">Download</a><button class="btn ghost block" data-close>Close</button></div>' + (extra ? extra.html : ''), function (root) {
+      if (extra && extra.bind) extra.bind(root);
       var sh = $('[data-share]', root); if (sh) sh.onclick = function () { navigator.share({ files: [file], title: name }).catch(function () {}); };
     });
   }
@@ -937,20 +983,38 @@
     });
     return rows;
   }
-  function exportXlsx(list, d, signoffs) {
+  function exportXlsx(list, d, signoffs, evd) {
     var t = rowsFor(list, d);
     var acc = S.account;
     var sheets = [
-      { name: 'Progress', rows: summaryRows(list), widths: [12, 34, 12, 10, 16, 18, 12, 44, 10] },
+      { name: 'Progress', rows: evd ? [['Pathway', 'Module', 'Scan target', 'Counted', 'Supervised target', 'Directly supervised', 'Signed off', 'Status']].concat(evRows(evd)) : summaryRows(list), widths: [12, 34, 12, 10, 16, 18, 12, 44, 10] },
       { name: 'Scans', rows: [t.head].concat(t.rows), widths: [11, 24, 18, 10, 8, 26, 50, 12, 12, 40, 18, 12, 30, 22, 20, 7, 12, 28, 12, 16, 50] },
       { name: 'Sign-offs', rows: [['Code', 'Date', 'Supervisor', 'Role', 'Registration', 'Accreditation', 'Method', 'Scans', 'Confirmed', 'Comment']].concat(signoffs.filter(function (s) { return s.status === 'signed'; }).map(function (s) { return [s.id, (s.signed_at || '').slice(0, 10), s.supervisor_name, s.supervisor_role, s.supervisor_reg || '', s.accreditation || '', s.method, s.entry_ids.length, Object.values(s.decisions || {}).filter(function (x) { return x === 'confirmed'; }).length, s.comment || '']; })), widths: [16, 11, 24, 30, 14, 30, 10, 7, 9, 50] },
-      { name: 'About', rows: [['Wavelength ultrasound logbook', ''], ['Name', acc.name], ['Email', acc.email], ['Grade or role', profile().grade || acc.role || ''], ['Registration', profile().registration || ''], ['Period', fmt(d.from) + ' to ' + fmt(d.to)], ['Scans', list.length], ['Generated', fmt(today())], ['Verify sign-offs', 'thewavelength.co.uk/app/verify'], ['Patient data', 'This record holds no patient identifiers.']], widths: [22, 60] }
+      { name: 'About', rows: [['Wavelength ultrasound logbook', ''], ['Name', acc.name], ['Email', acc.email], ['Grade or role', profile().grade || acc.role || ''], ['Registration', profile().registration || ''], ['Period', fmt(d.from) + ' to ' + fmt(d.to)], ['Scans', list.length], ['Generated', fmt(today())], ['Verified summary', evd ? evd.code : 'Not created'], ['Check it at', evd ? evd.link : location.host + '/app/verify'], ['Patient data', 'This record holds no patient identifiers.']], widths: [22, 60] }
     ];
     return { blob: WLZip.xlsx(sheets), name: 'Wavelength-logbook-' + dateStamp() + '.xlsx' };
   }
   function blobToDataUrl(b) { return new Promise(function (ok) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.readAsDataURL(b); }); }
-  function exportPdf(list, d, signoffs) {
-    var load = window.jspdf ? Promise.resolve() : loadScript('/app/vendor/jspdf.umd.min.js').then(function () { return loadScript('/app/vendor/jspdf.plugin.autotable.min.js'); });
+  function qrPng(text, px) {
+    var q = window.qrcode(0, 'M'); q.addData(text); q.make();
+    var n = q.getModuleCount(), m = 4, sz = Math.max(3, Math.floor((px || 360) / (n + 2 * m)));
+    var c = document.createElement('canvas'); c.width = c.height = (n + 2 * m) * sz;
+    var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.fillStyle = '#0F1E33';
+    for (var r = 0; r < n; r++) for (var k = 0; k < n; k++) if (q.isDark(r, k)) g.fillRect((k + m) * sz, (r + m) * sz, sz, sz);
+    return c.toDataURL('image/png');
+  }
+  function verifyUrl(code) { return location.origin + '/app/verify/?code=' + code; }
+  function evRows(evd) {
+    var rows = [];
+    evd.summary.pathways.forEach(function (p) {
+      p.modules.forEach(function (m) {
+        rows.push([p.label, m.label + (m.ownTarget ? ' *' : ''), m.total || '', m.counted, m.supTarget || '', m.supervised, m.signed, m.met ? 'Target met' : (m.needs || []).length ? m.needs.join(', ') + ' needed' : plural(m.logged, 'scan') + ' logged']);
+      });
+    });
+    return rows;
+  }
+  function exportPdf(list, d, signoffs, evd) {
+    var load = (window.jspdf ? Promise.resolve() : loadScript('/app/vendor/jspdf.umd.min.js').then(function () { return loadScript('/app/vendor/jspdf.plugin.autotable.min.js'); })).then(function () { return window.qrcode ? null : loadScript('/app/vendor/qrcode.js'); });
     return load.then(function () { return fetch('/assets/logo-192.png').then(function (r) { return r.blob(); }).then(blobToDataUrl).catch(function () { return null; }); }).then(function (logo) {
       var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
       var W = 210, navy = [15, 30, 51], teal = [42, 127, 138], acc = S.account;
@@ -964,10 +1028,21 @@
       var info = [['Name', acc.name], ['Grade or role', profile().grade || acc.role || ''], ['Organisation', acc.organisation || ''], ['Pathways', myPaths().map(function (p) { return PATHS[p].label; }).join(', ')], ['Period', fmt(d.from) + ' to ' + fmt(d.to)], ['Scans in this export', String(list.length)], ['Generated', fmt(today(), { day: 'numeric', month: 'long', year: 'numeric' })]];
       doc.autoTable({ startY: 72, body: info, theme: 'plain', styles: { fontSize: 10.5, cellPadding: 1.6 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 48, textColor: teal } } });
       var y = doc.lastAutoTable.finalY + 8;
-      doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text('Summary of training', 16, y);
-      var sum = summaryRows(list);
+      if (evd) {
+        doc.setFillColor(237, 234, 227); doc.roundedRect(16, y, W - 32, 44, 2, 2, 'F');
+        doc.addImage(qrPng(evd.link, 360), 'PNG', W - 56, y + 3, 38, 38);
+        doc.setTextColor.apply(doc, teal); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text('VERIFIED SUMMARY', 22, y + 9);
+        doc.setTextColor.apply(doc, navy); doc.setFontSize(16); doc.text(evd.code, 22, y + 18);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+        doc.text(doc.splitTextToSize('Scan the QR code, or enter the code at ' + location.host + '/app/verify, to see this summary as Wavelength holds it. The progress figures and sign-offs come from the learner\'s synced logbook on the Wavelength server, not from this file. Created ' + fmt(evd.createdAt, { day: 'numeric', month: 'long', year: 'numeric' }) + '.', W - 32 - 54), 22, y + 25);
+        y += 52;
+      }
+      doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor.apply(doc, navy); doc.text('Summary of training', 16, y);
+      var sum = evd ? [['Pathway', 'Module', 'Scan target', 'Counted', 'Supervised target', 'Directly supervised', 'Signed off', 'Still needed']].concat(evRows(evd)) : summaryRows(list);
+      var own = evd && evd.summary.pathways.some(function (p) { return p.modules.some(function (m) { return m.ownTarget; }); });
       doc.autoTable({ startY: y + 4, head: [sum[0].slice(0, 8)], body: sum.slice(1).map(function (r) { return r.slice(0, 8); }), styles: { fontSize: 8.5, cellPadding: 1.8 }, headStyles: { fillColor: navy }, didParseCell: function (h) { if (h.section === 'body' && h.column.index === 7) { var met = /met/i.test(h.cell.raw); h.cell.styles.textColor = met ? [46, 125, 91] : [180, 69, 58]; } } });
-      doc.addPage();
+      if (own) { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(91, 104, 120); doc.text('* The learner set their own target for this module, which differs from the curriculum figure.', 16, doc.lastAutoTable.finalY + 5); }
+      doc.addPage(); doc.setTextColor.apply(doc, navy);
       doc.setFontSize(14); doc.text('Scan log', 16, 18);
       var t = rowsFor(list, d);
       var body = list.map(function (e, i) { var r = t.rows[i]; return [r[0], r[1], [r[2], r[3], r[4]].filter(Boolean).join(', '), r[5], r[6] + (r[7] ? '\nOverall: ' + r[7] : '') + (r[9] ? '\n' + r[9] : ''), r[13] + (r[14] ? '\n' + r[14] : ''), r[16] + (r[17] ? '\n' + r[17] + '\n' + r[18] + '\n' + r[19] : '')]; });
@@ -980,9 +1055,10 @@
       var sos = signoffs.filter(function (s) { return s.status === 'signed' && ids[s.id]; });
       if (sos.length) {
         doc.addPage(); doc.setFontSize(14); doc.text('Sign-off register', 16, 18);
-        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text('Verify any code at thewavelength.co.uk/app/verify', 16, 24);
-        doc.autoTable({ startY: 28, head: [['Code', 'Date', 'Supervisor', 'Registration', 'Accreditation', 'Method', 'Scans', 'Signature']], body: sos.map(function (s) { return [s.id, (s.signed_at || '').slice(0, 10), s.supervisor_name + (s.supervisor_role ? '\n' + s.supervisor_role : ''), s.supervisor_reg || '', s.accreditation || '', (s.method === 'in-person' ? 'In person' : 'By link') + (s.basis ? '\n' + ({ witnessed: 'Witnessed', reviewed: 'Reviewed images', both: 'Witnessed and reviewed' })[s.basis] : ''), String(s.entry_ids.length), '']; }), styles: { fontSize: 8, cellPadding: 1.8, valign: 'middle', minCellHeight: 14 }, headStyles: { fillColor: navy }, columnStyles: { 7: { cellWidth: 30 } },
-          didDrawCell: function (h) { if (h.section === 'body' && h.column.index === 7) { var s = sos[h.row.index]; if (s && s.signature) { try { doc.addImage(s.signature, 'PNG', h.cell.x + 1, h.cell.y + 1, 28, Math.min(h.cell.height - 2, 12)); } catch (e) { /* skip */ } } } } });
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text('Verify any code at ' + location.host + '/app/verify, or scan its QR code', 16, 24);
+        var qrs = sos.map(function (s) { return qrPng(verifyUrl(s.id), 200); });
+        doc.autoTable({ startY: 28, head: [['Code', 'Date', 'Supervisor', 'Registration', 'Accreditation', 'Method', 'Scans', 'Signature', 'Verify']], body: sos.map(function (s) { return [s.id, (s.signed_at || '').slice(0, 10), s.supervisor_name + (s.supervisor_role ? '\n' + s.supervisor_role : ''), s.supervisor_reg || '', s.accreditation || '', (s.method === 'in-person' ? 'In person' : 'By link') + (s.basis ? '\n' + ({ witnessed: 'Witnessed', reviewed: 'Reviewed images', both: 'Witnessed and reviewed' })[s.basis] : ''), String(s.entry_ids.length), '', '']; }), styles: { fontSize: 8, cellPadding: 1.8, valign: 'middle', minCellHeight: 18 }, headStyles: { fillColor: navy }, columnStyles: { 7: { cellWidth: 30 }, 8: { cellWidth: 18 } },
+          didDrawCell: function (h) { if (h.section === 'body' && h.column.index === 8) { try { doc.addImage(qrs[h.row.index], 'PNG', h.cell.x + 1.5, h.cell.y + 1.5, 15, 15); } catch (e) { /* skip */ } } if (h.section === 'body' && h.column.index === 7) { var s = sos[h.row.index]; if (s && s.signature) { try { doc.addImage(s.signature, 'PNG', h.cell.x + 1, h.cell.y + 1, 28, Math.min(h.cell.height - 2, 12)); } catch (e) { /* skip */ } } } } });
       }
       var withImg = d.images ? list.filter(function (e) { return (e.images || []).length; }) : [];
       var addImages = withImg.reduce(function (p, e) {
@@ -997,7 +1073,7 @@
       }, Promise.resolve());
       return addImages.then(function () {
         var n = doc.getNumberOfPages();
-        for (var i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(120, 130, 145); doc.text('Wavelength ultrasound logbook · ' + acc.name + ' · Page ' + i + ' of ' + n, 16, 290); doc.text('This record holds no patient identifiers. Sign-off codes verify at thewavelength.co.uk/app/verify', 16, 294); }
+        for (var i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(120, 130, 145); doc.text('Wavelength ultrasound logbook · ' + acc.name + ' · Page ' + i + ' of ' + n, 16, 290); doc.text('This record holds no patient identifiers. ' + (evd ? 'Verified summary ' + evd.code + '. ' : '') + 'Codes verify at ' + location.host + '/app/verify', 16, 294); }
         return { blob: doc.output('blob'), name: 'Wavelength-logbook-' + dateStamp() + '.pdf' };
       });
     });
@@ -1013,6 +1089,8 @@
     var rows = [['Indication', e.indication || '']].concat(t.fields.filter(function (fd) { return f[fd.id] != null && f[fd.id] !== ''; }).map(function (fd) { return [fd.label, (Array.isArray(f[fd.id]) ? f[fd.id].join(', ') : f[fd.id]) + (fd.unit ? ' ' + fd.unit : '')]; }))
       .concat([['Overall', e.overall || ''], ['Image quality', e.quality || ''], ['Interpretation', e.interpretation || ''], ['Confirmed by', [e.confirmation, e.concordant].filter(Boolean).join(', ')], ['Impact', e.impact || '']]);
     if (d.reflections && e.reflection) rows.push(['Reflection', e.reflection]);
+    var so = e.signoff && e.signoff.status === 'confirmed' && e.signoff.code ? e.signoff : null;
+    if (so) { rows.push(['Signed off', so.name + (so.role ? ', ' + so.role : '') + ', ' + fmt(so.at) + '. Code ' + so.code + '. Scan the QR code to verify.']); try { doc.addImage(qrPng(verifyUrl(so.code), 240), 'PNG', 176, 3, 24, 24); } catch (x) { /* skip */ } }
     doc.autoTable({ startY: 58, body: rows.filter(function (r) { return r[1]; }), theme: 'grid', styles: { fontSize: 9.5, cellPadding: 2.2, valign: 'top' }, columnStyles: { 0: { fontStyle: 'bold', textColor: teal, cellWidth: 46 } } });
     var y = doc.lastAutoTable.finalY + 8;
     var done = function () { doc.setFontSize(7.5); doc.setTextColor(120, 130, 145); doc.text('Shared from the Wavelength ultrasound logbook. Holds no patient identifiers. thewavelength.co.uk', 14, 290); return { blob: doc.output('blob'), name: 'case.pdf' }; };
@@ -1078,7 +1156,7 @@
       '<h2 class="sec">Pathways</h2><form id="pf" class="card">' + C.pathways.map(function (pw) { return '<label class="check" style="padding:8px 0"><input type="checkbox" name="p" value="' + pw.id + '"' + (myPaths().indexOf(pw.id) >= 0 && (p.pathways || []).indexOf(pw.id) >= 0 ? ' checked' : '') + '><span><b>' + esc(pw.label === 'General' ? 'General logbook' : pw.label) + '</b><br><span class="muted">' + DESC[pw.id] + '</span></span></label>'; }).join('') + '<div class="btns"><button class="btn sm">Save pathways</button></div></form>' +
       '<h2 class="sec">Certificates <a href="/elearning/account/">All</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="Share certificate">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">Pass a free Academy module to earn a verifiable CPD certificate.</p><a class="btn sm" href="/elearning/">Browse modules</a></div>') +
       '<h2 class="sec">Profile</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">First name</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">Last name</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">Grade or role</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div><div class="field"><label for="m4">Organisation</label><input id="m4" name="organisation" type="text" value="' + esc(acc.organisation || '') + '"></div><div class="field"><label for="m5">GMC, NMC or HCPC number (shown on exports, optional)</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><button class="btn sm">Save profile</button></form>' +
-      '<h2 class="sec">Your data</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/backup">Back up or restore photos</a><a href="#/export">Export your logbook</a><a href="#/declaration">Your responsibility for stored data</a><a href="/app-terms/">Logbook terms of use</a><a href="/privacy/">Privacy notice</a><a href="/app/verify/">Verify a sign-off code</a></div></div>' +
+      '<h2 class="sec">Your data</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/backup">Back up or restore photos</a><a href="#/export">Export your logbook</a><a href="#/evidence">Verified summaries you have shared</a><a href="#/declaration">Your responsibility for stored data</a><a href="/app-terms/">Logbook terms of use</a><a href="/privacy/">Privacy notice</a><a href="/app/verify/">Verify a sign-off code</a></div></div>' +
       '<h2 class="sec">Account</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">Current password</label><input id="c1" name="current" type="password" autocomplete="current-password"></div><div class="field"><label for="c2">New password</label><input id="c2" name="password" type="password" minlength="10" autocomplete="new-password"></div><button class="btn sm ghost">Change password</button></form></div>' +
       '<div class="btns"><button class="btn ghost block" id="lo">Log out</button><button class="btn ghost block" id="dl" style="color:var(--red)">Delete my account</button></div>' +
       '<p class="small muted" style="text-align:center;margin-top:20px">Wavelength app · Auda Medical Ltd</p>'));

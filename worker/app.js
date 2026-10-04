@@ -2,10 +2,12 @@
 // Routes (all under /api/app/, run_worker_first covers /api/*):
 //   POST signup, login, logout, profile, sync, signoff/request, signoff/complete, signoff/inperson,
 //        reset/request, reset/complete, account/delete
-//   GET  me, sync?since=, signoffs, signoff/view?t=, verify?code=
+//        evidence, evidence/withdraw
+//   GET  me, sync?since=, signoffs, evidence, signoff/view?t=, verify?code= (SO- sign-offs and EV- evidence summaries)
 // Logbook entries hold text only. Images stay on the learner's device and never reach this Worker.
 import { cookieFor, clearCookie, learner, sendMail } from './academy.js';
 import DATA from './academy-data.json';
+import { createEvidence, listEvidence, withdrawEvidence, verifyEvidence } from './evidence.js';
 
 const enc = new TextEncoder();
 const SITE = 'https://thewavelength.co.uk';
@@ -211,6 +213,7 @@ async function deleteAccount(env, l, req) {
   const stmts = [
     env.DB.prepare('DELETE FROM logbook_entries WHERE learner_id = ?').bind(l.id),
     env.DB.prepare('DELETE FROM signoffs WHERE learner_id = ?').bind(l.id),
+    env.DB.prepare('DELETE FROM evidence_summaries WHERE learner_id = ?').bind(l.id),
     env.DB.prepare('DELETE FROM password_resets WHERE learner_id = ?').bind(l.id),
   ];
   if (d.keepCertificates && hasCerts.n) stmts.push(env.DB.prepare('UPDATE learners SET password_hash = NULL, profile = NULL, declaration_at = NULL, organisation = NULL, role = NULL WHERE id = ?').bind(l.id));
@@ -374,6 +377,7 @@ async function signoffCancel(env, l, req) {
 
 async function verify(env, url) {
   const c = clip(url.searchParams.get('code'), 20).toUpperCase().replace(/\s+/g, '');
+  if (c.startsWith('EV-')) return verifyEvidence(env, c, json);
   const so = c && await env.DB.prepare("SELECT s.id, s.method, s.supervisor_name, s.supervisor_role, s.accreditation, s.basis, s.signed_at, s.signature IS NOT NULL AS signed_by_hand, s.decisions, s.snapshot, l.title, l.first_name, l.last_name FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.id = ? AND s.status = 'signed'").bind(c).first();
   if (!so) return json({ ok: false, error: 'No signed record matches that code.' }, 404);
   const dec = JSON.parse(so.decisions || '{}');
@@ -403,6 +407,8 @@ export async function handleApp(req, env, ctx) {
     if (p === 'signoff/request') return signoffRequest(env, l, req);
     if (p === 'signoff/inperson') return signoffInPerson(env, l, req);
     if (p === 'signoff/cancel') return signoffCancel(env, l, req);
+    if (p === 'evidence') return createEvidence(env, l, await body(req), { code, clip, fullName, profileOf, json, origin: url.origin });
+    if (p === 'evidence/withdraw') return withdrawEvidence(env, l, await body(req), clip, json);
     if (p === 'account/delete') return deleteAccount(env, l, req);
     return json({ ok: false }, 404);
   }
@@ -413,5 +419,6 @@ export async function handleApp(req, env, ctx) {
   if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
   if (p === 'sync') return syncGet(env, l, url);
   if (p === 'signoffs') return signoffList(env, l);
+  if (p === 'evidence') return listEvidence(env, l, json);
   return json({ ok: false }, 404);
 }
