@@ -1,5 +1,7 @@
 ---
 title: "Median nerve block: find the fascicles, then build a soft halo"
+slug: median-nerve-block
+seoTitle: "Ultrasound-guided median nerve block"
 summary: A forearm median nerve block numbs the palm on the thumb side and the index and middle fingers. Find the honeycomb nerve between the finger flexors in the mid to distal forearm, and surround it with a small volume.
 category: Nerve blocks
 date: 2026-10-03

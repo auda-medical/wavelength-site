@@ -1,5 +1,7 @@
 ---
 title: "Fascia iliaca block, infra-inguinal: find the fascia, then flood the plane"
+slug: fascia-iliaca-block-infra-inguinal
+seoTitle: "Infra-inguinal fascia iliaca block: ultrasound technique"
 summary: The classic emergency department block for a fractured hip. Find fascia iliaca lying on iliacus, lateral to the femoral nerve, and fill the plane with a larger volume so it spreads across to the nerves of the thigh.
 category: Nerve blocks
 date: 2026-10-03

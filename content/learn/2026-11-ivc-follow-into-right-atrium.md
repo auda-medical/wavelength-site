@@ -1,5 +1,7 @@
 ---
 title: "IVC: follow it into the right atrium"
+slug: ivc-ultrasound
+seoTitle: "IVC ultrasound: follow it into the right atrium"
 summary: A tube behind the liver is not always the IVC. Start in the subcostal view, keep the right atrium on screen and rotate, and you know you have the right vessel before you measure it.
 category: Cardiac
 date: 2026-11-09

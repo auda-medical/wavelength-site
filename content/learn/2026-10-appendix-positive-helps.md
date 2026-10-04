@@ -1,5 +1,7 @@
 ---
 title: "Appendix ultrasound: a positive scan helps"
+slug: appendicitis-ultrasound
+seoTitle: "Appendicitis ultrasound: a positive scan helps"
 summary: A blind-ending, non-compressible tube over 6 mm across in the right lower quadrant supports appendicitis. Not seeing the appendix does not exclude it. Learn graded compression, what to measure, and how to act on each result.
 category: Abdomen
 date: 2026-10-03

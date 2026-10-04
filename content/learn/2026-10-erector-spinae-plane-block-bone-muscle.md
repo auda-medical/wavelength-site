@@ -1,5 +1,7 @@
 ---
 title: "Erector spinae plane block: bone, muscle, then flood the plane"
+slug: erector-spinae-plane-block
+seoTitle: "Erector spinae plane block: ultrasound technique"
 summary: The erector spinae plane block places local anaesthetic on the transverse process, under erector spinae, far from the pleura. Find the flat-topped transverse process, lift the muscle off it and watch the fluid spread up and down.
 category: Nerve blocks
 date: 2026-10-03

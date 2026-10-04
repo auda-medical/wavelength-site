@@ -106,7 +106,7 @@
     "passMarkDefault": 80
   },
   "learnTopics": {
-    "_help": "Topic groups for the Pearls and Academy pages, in display order. Each pearl and module joins the topic whose categories list its category. A category not listed here shows under \"More pearls\". Add a topic by copying one object and giving it a new slug.",
+    "_help": "Topic groups for the Pearls and Academy pages, in display order. Each pearl and module joins the topic whose categories list its category. A category not listed here shows under \"More pearls\". Add a topic by copying one object and giving it a new slug. Topics with a \"page\" also get their own landing page at /learn/<page>/ (heading, seoTitle and about paragraphs) once they hold three or more live pearls.",
     "topics": [
       {
         "slug": "fundamentals",
@@ -124,6 +124,13 @@
           "Cardiac",
           "Vascular",
           "Aorta"
+        ],
+        "page": "cardiac-vascular-ultrasound",
+        "heading": "Cardiac and vascular ultrasound",
+        "seoTitle": "Cardiac and vascular POCUS: echo, IVC, aorta and DVT",
+        "about": [
+          "Focused cardiac ultrasound answers a few questions in a breathless or shocked patient: is the left ventricle squeezing, is the right ventricle under strain, is there fluid around the heart, and how full is the venous system? These pearls take each question in turn, with the view, the measurement and the trap that catches new scanners.",
+          "The vascular pearls cover compression ultrasound for proximal DVT, the Baker's cyst which mimics it, and the femoral pseudoaneurysm after a puncture. Each one ends with a short test."
         ]
       },
       {
@@ -133,6 +140,13 @@
         "categories": [
           "Lung",
           "Airway"
+        ],
+        "page": "lung-ultrasound",
+        "heading": "Lung ultrasound and the airway",
+        "seoTitle": "Lung ultrasound: pneumothorax, effusion and consolidation",
+        "about": [
+          "Lung ultrasound beats the supine chest X-ray for pneumothorax, pleural effusion and consolidation, and it needs only a few views. These pearls start with the pleural line and lung sliding, then move to fluid above the diaphragm, air bronchograms, diaphragm movement and confirming tube position after intubation.",
+          "Each pearl teaches one sign, the pitfall which makes it misleading, and a short test to check what stuck."
         ]
       },
       {
@@ -144,6 +158,13 @@
           "Renal",
           "eFAST",
           "Pelvis"
+        ],
+        "page": "abdominal-pelvic-ultrasound",
+        "heading": "Abdominal and pelvic ultrasound",
+        "seoTitle": "Abdominal and pelvic POCUS: eFAST, biliary, renal and pelvis",
+        "about": [
+          "Point-of-care ultrasound of the abdomen and pelvis answers focused questions at the bedside: is there free fluid, is the bile duct dilated, is the kidney obstructed, is the bladder full, is the bowel obstructed, and is there an intrauterine pregnancy?",
+          "These pearls cover eFAST, the gallbladder and common bile duct, hydronephrosis and pyonephrosis, the bladder, the stomach, small bowel obstruction, appendicitis, intussusception in children, and pelvic pain in women, including ectopic pregnancy and ovarian torsion."
         ]
       },
       {
@@ -153,6 +174,13 @@
         "categories": [
           "Soft tissue",
           "MSK"
+        ],
+        "page": "msk-soft-tissue-ultrasound",
+        "heading": "Soft tissue and musculoskeletal ultrasound",
+        "seoTitle": "MSK and soft tissue ultrasound: abscess, tendon and joint",
+        "about": [
+          "Soft tissue and musculoskeletal ultrasound settles common emergency department questions in minutes: abscess or cellulitis, a retained foreign body, a torn tendon, fluid in a joint, or a dislocated shoulder before and after reduction.",
+          "These pearls cover abscess and necrotising fasciitis, foreign bodies, hernias, Achilles, quadriceps and distal biceps tears, tendon anisotropy, and effusions of the hip, knee and shoulder, each with a short test."
         ]
       },
       {
@@ -170,6 +198,13 @@
         "intro": "Ultrasound-guided regional anaesthesia for pain in the emergency department.",
         "categories": [
           "Nerve blocks"
+        ],
+        "page": "ultrasound-guided-nerve-blocks",
+        "heading": "Ultrasound-guided nerve blocks",
+        "seoTitle": "Ultrasound-guided nerve blocks for emergency analgesia",
+        "about": [
+          "Ultrasound-guided regional anaesthesia gives targeted pain relief for fractures, wounds and dislocations, with less need for opioids and procedural sedation. These pearls describe the anatomy, the probe position and the target for each block used in emergency care.",
+          "They cover the femoral nerve, infra-inguinal and supra-inguinal fascia iliaca and PENG blocks for hip fractures, serratus anterior plane and erector spinae plane blocks for rib fractures, rectus sheath, greater occipital, superior trunk and SHAC blocks, and the median, ulnar, radial and digital nerve blocks for the hand. Follow your local guidance on training, monitoring and local anaesthetic doses."
         ]
       }
     ]

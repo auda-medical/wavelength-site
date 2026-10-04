@@ -1,5 +1,7 @@
 ---
 title: "Diaphragm ultrasound: watch the sniff"
+slug: diaphragm-ultrasound
+seoTitle: "Diaphragm ultrasound: watch the sniff"
 summary: A weak or paralysed diaphragm causes unexplained breathlessness and failure to wean. Put the probe below the ribs, ask for a sniff, and watch which way the diaphragm moves. Towards the probe is normal. Away from it is paradoxical.
 category: Lung
 date: 2026-10-03

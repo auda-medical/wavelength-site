@@ -1,5 +1,7 @@
 ---
 title: "Quadriceps tendon: follow it to the patella"
+slug: quadriceps-tendon-rupture-ultrasound
+seoTitle: "Quadriceps tendon rupture ultrasound"
 summary: A fall, a giving-way knee and a patient who cannot straight-leg raise. Follow the quadriceps tendon down to the top of the patella and look for a gap. Bend the knee gently, and a true tear opens.
 category: MSK
 date: 2026-10-04

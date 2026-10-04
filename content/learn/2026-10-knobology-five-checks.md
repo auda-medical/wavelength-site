@@ -1,5 +1,7 @@
 ---
 title: Five checks before every scan
+slug: ultrasound-knobology
+seoTitle: "Ultrasound knobology: five checks before every scan"
 summary: Probe, preset, depth, gain and focus. Thirty seconds of set-up decides whether the image answers your question.
 category: Core skills
 date: 2026-10-03

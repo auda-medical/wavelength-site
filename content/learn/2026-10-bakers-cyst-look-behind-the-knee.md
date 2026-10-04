@@ -1,5 +1,7 @@
 ---
 title: "Calf swelling: look behind the knee"
+slug: bakers-cyst-ultrasound
+seoTitle: "Baker's cyst ultrasound: the calf swelling DVT mimic"
 summary: A ruptured Baker's cyst mimics a DVT. Find the cyst between semimembranosus and the medial head of gastrocnemius, follow any leaked fluid down the calf, then compress the veins anyway.
 category: Vascular
 date: 2026-10-03

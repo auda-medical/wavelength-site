@@ -33,7 +33,7 @@ The C5 and C6 roots join to form the superior trunk just above the clavicle. Inj
 - A known paralysed diaphragm on the other side.
 - A patient who has already had a block on the other side of the neck.
 
-The Wavelength Pearl [Shoulder reduction: low-volume superior trunk block](/learn/superior-trunk-block-trace-the-roots/) summarises the technique.
+The Wavelength Pearl [Shoulder reduction: low-volume superior trunk block](/learn/superior-trunk-block/) summarises the technique.
 
 ## The SHAC block
 
@@ -53,7 +53,7 @@ The first report used 10 to 15 mL of 0.2% ropivacaine with dexamethasone in pati
 
 > **Pitfall** The axillary artery, the axillary vein and the brachial plexus run medial to the coracoid. Keep the needle lateral to it. A swelling tendon and high pressure mean the tip is inside the tendon.
 
-The Wavelength Pearl [SHAC block: block the capsule, not the neck](/learn/shac-block-block-the-capsule/) summarises the technique.
+The Wavelength Pearl [SHAC block: block the capsule, not the neck](/learn/shac-block/) summarises the technique.
 
 ## Choosing
 

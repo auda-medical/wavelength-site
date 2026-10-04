@@ -38,6 +38,17 @@ Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-
 - Topics: `learnTopics` in `data/site.json` groups pearls and Academy modules by `category` (Fundamentals, Heart and vessels, Lung and airway, Abdomen and pelvis, Soft tissue and joints, Eye and scrotum). /learn/ shows a sticky topic bar with search, one section per topic and the matching Academy modules at the foot of each. A new category needs adding to a topic, or it lands under "More pearls". Links like /learn/#topic-lung open one topic.
 - Card images: `python3 tools/pearl-thumbs.py` cuts a 16:10 thumbnail from each `*-pearl.webp` into `content/learn/images/thumbs/` (default crop: the 3D illustration top right; exceptions in `CROP`). Run it after adding a pearl graphic and check the crop. Academy cards use the thumbnail of the module's `image`.
 
+## Search (SEO)
+- Google Search Console: domain property thewavelength.co.uk, verified and owned by Firas's Google account; sitemap submitted. Firas wants dashboard tasks like this done through Claude in Chrome, not handed to him.
+- Every Pearl has `slug` (search-friendly URL, e.g. epss-ultrasound) and `seoTitle` (the search-result title, which names the condition or technique plus "ultrasound", "POCUS" or "block"). `title` stays the hook shown as the H1. Give every new pearl both fields.
+- Old URLs (from the file name) redirect with 301s: the build writes `dist/_redirects` for any pearl whose `slug` differs from its file name, including /test/. Never change a live pearl's `slug` again without keeping that redirect.
+- Pearl test pages (/learn/<slug>/test/), /verify/ and /elearning/verify/ are noindex and out of the sitemap, so the Pearl itself ranks. The question bank /learn/test/ stays indexed.
+- Sitemap carries lastmod for pearls (reviewed or date), Academy modules (published) and /learn/.
+- Topic landing pages: `page`, `heading`, `seoTitle` and `about` on a topic in `learnTopics` (data/site.json) build /learn/<page>/ once the topic has three live pearls. Pearl breadcrumbs and "All ... pearls" links point to it.
+- Link previews: `python3 tools/pearl-social.py` writes a 1200x630 card per pearl to `content/learn/images/social/<slug>.jpg` (title on navy, illustration framed with the crop settings in tools/pearl-thumbs.py). Run it after adding a pearl or changing its title.
+- Course pages show "Read a pearl before the day" from the course's `pearls` list (slugs) in data/courses.json. Drafts appear once live.
+- Page titles: pass `seoTitle` to layout() for the search title; the brand is added. Keep them under about 50 characters before " | Wavelength".
+
 ## Wavelength Academy (certified e-learning)
 - Modules live in `content/academy/<slug>/`: `module.json` (title, CPD hours, pass mark, draft, outcomes, references, review date, conflicts), lesson Markdown files listed in `lessons` (front matter: title, minutes; lesson URL drops the number prefix), and `assessment.md` (`?? question`, `@ lesson-file` to review, options, `: explanation`). Case questions inside lessons stay inline.
 - `draft: true` builds the module unlisted and noindex, reachable by link for review. The Academy menu link appears once one module is live. The name sits in `academy.name` in `data/site.json`; the newsletter box at Academy registration is optional and unticked (`academy.newsletterRequired` false, Worker var `NEWSLETTER_REQUIRED` "false"). Keep it optional: marketing consent must not be a condition of access.

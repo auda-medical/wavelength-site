@@ -1,5 +1,7 @@
 ---
 title: "Portal vein pulsatility: a congestion clue"
+slug: portal-vein-pulsatility
+seoTitle: "Portal vein pulsatility: a venous congestion clue"
 summary: Portal vein flow is normally steady. When pressure backs up from the right heart, it starts to pulse. Read it alongside the IVC, hepatic veins and kidneys, not on its own.
 category: Cardiac
 date: 2026-10-03

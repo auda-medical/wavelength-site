@@ -1,5 +1,7 @@
 ---
 title: "Pleural effusion: find the spine above the diaphragm"
+slug: pleural-effusion-ultrasound
+seoTitle: "Pleural effusion ultrasound: the spine sign"
 summary: In a normal scan the spine stops at the diaphragm, because air-filled lung hides it. When fluid fills the base, the spine carries on above the diaphragm. Add black fluid and you have an effusion.
 category: Lung
 date: 2026-10-03

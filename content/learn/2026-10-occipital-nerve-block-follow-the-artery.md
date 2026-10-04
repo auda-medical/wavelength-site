@@ -1,5 +1,7 @@
 ---
 title: "Occipital nerve block: follow the artery, then find the nerve"
+slug: greater-occipital-nerve-block
+seoTitle: "Ultrasound-guided greater occipital nerve block"
 summary: The greater occipital nerve runs beside the occipital artery at the back of the head. Colour Doppler finds the artery in seconds, which turns a blind injection into a targeted one. Rule out a dangerous headache first.
 category: Nerve blocks
 date: 2026-10-03

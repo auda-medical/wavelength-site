@@ -1,5 +1,7 @@
 ---
 title: "Gallbladder wall: thick does not equal cholecystitis"
+slug: gallbladder-wall-thickening-ultrasound
+seoTitle: "Gallbladder wall thickening: not always cholecystitis"
 summary: A gallbladder wall over 3 mm is a clue, not a diagnosis. Look for stones, focal tenderness, distension and pericholecystic fluid before you call cholecystitis.
 category: Abdomen
 date: 2026-10-04

@@ -1,5 +1,7 @@
 ---
 title: "Testicular torsion: follow the cord"
+slug: testicular-torsion-ultrasound
+seoTitle: "Testicular torsion ultrasound: follow the cord"
 summary: Torsion is a clinical diagnosis and urology comes first. When you do scan, do not stop at the colour box over the testis. Follow the spermatic cord and look for the twist, the whirlpool sign.
 category: Small parts
 date: 2026-10-03

@@ -1,5 +1,7 @@
 ---
 title: "Intussusception: target, then sandwich"
+slug: intussusception-ultrasound
+seoTitle: "Intussusception ultrasound: target, then sandwich"
 summary: A child with colicky pain, drawing up the legs and periods of calm needs a look at the right side of the abdomen. A target in transverse and a sandwich in long axis make the diagnosis. Two planes, one answer.
 category: Abdomen
 date: 2026-10-03

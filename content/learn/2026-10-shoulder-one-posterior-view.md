@@ -1,5 +1,7 @@
 ---
 title: "Shoulder: one posterior view, before and after reduction"
+slug: shoulder-dislocation-ultrasound
+seoTitle: "Shoulder dislocation ultrasound: one posterior view"
 summary: Put the probe below the scapular spine and the glenoid and humeral head sit side by side. Where the head lies in relation to the glenoid tells you if the shoulder is out, which way, and if it has gone back in.
 category: MSK
 date: 2026-10-03

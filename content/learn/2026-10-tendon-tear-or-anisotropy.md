@@ -1,5 +1,7 @@
 ---
 title: "Tendon tear or anisotropy? Heel-toe before you call it"
+slug: tendon-tear-vs-anisotropy
+seoTitle: "Tendon tear or anisotropy on ultrasound?"
 summary: A normal tendon turns dark when the beam hits it at an angle. Rock the probe until the fibres brighten. If the dark area stays, think tear.
 category: MSK
 date: 2026-10-03

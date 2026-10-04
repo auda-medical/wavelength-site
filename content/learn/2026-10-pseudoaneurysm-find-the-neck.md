@@ -1,5 +1,7 @@
 ---
 title: "Pseudoaneurysm: find the neck"
+slug: pseudoaneurysm-ultrasound
+seoTitle: "Femoral pseudoaneurysm ultrasound: find the neck"
 summary: A pulsatile lump after a femoral puncture is a haematoma, an abscess or a pseudoaneurysm. The swirling sac catches your eye, but the neck makes the diagnosis. Find the channel to the artery and sample it.
 category: Vascular
 date: 2026-10-03

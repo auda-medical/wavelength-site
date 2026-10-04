@@ -1,5 +1,7 @@
 ---
 title: "DVT: compress, don't admire"
+slug: dvt-ultrasound
+seoTitle: "DVT ultrasound: compress, don't admire"
 summary: Fresh clot is often black on screen, so a vein full of thrombus looks like a normal vein. The test is whether the walls meet when you press, in transverse, at every site.
 category: Vascular
 date: 2026-10-03

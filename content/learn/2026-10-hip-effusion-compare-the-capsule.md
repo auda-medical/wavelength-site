@@ -1,5 +1,7 @@
 ---
 title: "Hip effusion: compare the capsule distance"
+slug: hip-effusion-ultrasound
+seoTitle: "Hip effusion ultrasound: compare the capsule"
 summary: A limping child or a hot, painful hip raises the question of fluid in the joint. Align the probe with the femoral neck, measure the capsule-to-neck distance, then scan the other hip. Asymmetry is the strongest sign.
 category: MSK
 date: 2026-10-03

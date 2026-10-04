@@ -1,5 +1,7 @@
 ---
 title: "eFAST: look at the liver tip first"
+slug: efast-right-upper-quadrant
+seoTitle: "eFAST right upper quadrant: look at the liver tip"
 summary: In the supine patient, free fluid in the right upper quadrant often collects first at the inferior tip of the liver. Scan the whole view, not just Morison's pouch.
 category: eFAST
 date: 2026-10-03

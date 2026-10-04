@@ -1,5 +1,7 @@
 ---
 title: "Distal biceps rupture: follow the tendon to the tuberosity"
+slug: distal-biceps-rupture-ultrasound
+seoTitle: "Distal biceps rupture ultrasound: follow it to the tuberosity"
 summary: A pop at the elbow while lifting, then weakness and bruising. The tendon can look intact in the elbow crease when it has torn from the bone. Follow it all the way to the radial tuberosity. An empty insertion is the clue.
 category: MSK
 date: 2026-10-03

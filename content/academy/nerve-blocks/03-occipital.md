@@ -5,7 +5,7 @@ minutes: 12
 
 The greater occipital nerve arises from the C2 root, curves up through the back of the neck and pierces the muscles to reach the scalp at the level of the superior nuchal line. There, it runs beside the occipital artery, usually on its medial side. Blocking it can relieve migraine and occipital headache, especially with tenderness over the nerve.
 
-The Wavelength Pearl [Occipital nerve block: follow the artery, then find the nerve](/learn/occipital-nerve-block-follow-the-artery/) summarises the technique.
+The Wavelength Pearl [Occipital nerve block: follow the artery, then find the nerve](/learn/greater-occipital-nerve-block/) summarises the technique.
 
 ## The evidence
 

@@ -3,7 +3,7 @@ title: "The digital nerve block"
 minutes: 12
 ---
 
-The Wavelength Pearl [Digital nerve block: block the base, one deposit on each side](/learn/digital-nerve-block-paired-deposits/) summarises the technique.
+The Wavelength Pearl [Digital nerve block: block the base, one deposit on each side](/learn/ultrasound-guided-digital-nerve-block/) summarises the technique.
 
 ## Anatomy
 

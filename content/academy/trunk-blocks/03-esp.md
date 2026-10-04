@@ -3,7 +3,7 @@ title: "The erector spinae plane block"
 minutes: 15
 ---
 
-The Wavelength Pearl [Erector spinae plane block: bone, muscle, then flood the plane](/learn/erector-spinae-plane-block-bone-muscle/) summarises the technique.
+The Wavelength Pearl [Erector spinae plane block: bone, muscle, then flood the plane](/learn/erector-spinae-plane-block/) summarises the technique.
 
 ## The idea
 

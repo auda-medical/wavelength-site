@@ -5,7 +5,7 @@
     "title": "Core Emergency Ultrasound",
     "level": "Level 1",
     "short": "One day of hands-on scanning in the core emergency ultrasound applications, mapped to the RCEM curriculum. Taught by senior FAMUS-accredited instructors and RCEM-approved ultrasound supervisors.",
-    "seoTitle": "Core Emergency Ultrasound Course (Level 1), mapped to the RCEM curriculum",
+    "seoTitle": "Core emergency ultrasound course: Level 1 POCUS",
     "seoDescription": "One-day Core POCUS course (Level 1 content) mapped to the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. FAMUS-accredited instructors, RCEM-approved supervisors, one instructor to every four or five delegates.",
     "duration": "1 day",
     "hours": "09:00 to 17:00",
@@ -172,6 +172,16 @@
       }
     ],
     "accreditation": [],
-    "ogImage": "/assets/og-core-21dec.png"
+    "ogImage": "/assets/og-core-21dec.png",
+    "pearls": [
+      "ultrasound-knobology",
+      "efast-right-upper-quadrant",
+      "aaa-ultrasound",
+      "absent-lung-sliding-pneumothorax",
+      "pericardial-vs-pleural-effusion",
+      "epss-ultrasound",
+      "rv-strain-ultrasound",
+      "ultrasound-jvp"
+    ]
   }
 ]

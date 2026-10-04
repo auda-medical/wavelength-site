@@ -1,5 +1,7 @@
 ---
 title: "Peritonsillar abscess: scan from the neck"
+slug: peritonsillar-abscess-ultrasound
+seoTitle: "Peritonsillar abscess ultrasound: scan from the neck"
 summary: Trismus and gagging make an intraoral look difficult. A linear probe under the angle of the jaw shows whether there is a collection to drain, and where the carotid artery is before anyone reaches for a needle.
 category: Soft tissue
 date: 2026-10-03

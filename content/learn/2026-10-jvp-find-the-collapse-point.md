@@ -1,5 +1,7 @@
 ---
 title: "Ultrasound JVP: find the collapse point"
+slug: ultrasound-jvp
+seoTitle: "Ultrasound JVP: find the venous collapse point"
 summary: The jugular venous pressure is hard to see in a large neck, a busy room or a breathless patient. Follow the internal jugular vein up from the clavicle until it collapses. That point is the top of the venous column.
 category: Cardiac
 date: 2026-10-03

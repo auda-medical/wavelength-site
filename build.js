@@ -20,8 +20,11 @@ const posts = (fs.existsSync(LEARN_DIR) ? fs.readdirSync(LEARN_DIR) : [])
   .filter((f) => f.endsWith('.md'))
   .map((f) => {
     const { meta, html, questions } = md.parse(fs.readFileSync(path.join(LEARN_DIR, f), 'utf8'));
-    const slug = meta.slug || f.replace(/\.md$/, '').replace(/^\d{4}-\d{2}(-\d{2})?-/, '');
-    return { ...meta, slug, html, questions, date: String(meta.date || '') };
+    // slug: the search-friendly URL (front matter). fileSlug: the original URL from the file name,
+    // which redirects to the new one (see _redirects at the end of the build).
+    const fileSlug = f.replace(/\.md$/, '').replace(/^\d{4}-\d{2}(-\d{2})?-/, '');
+    const slug = meta.slug || fileSlug;
+    return { ...meta, slug, fileSlug, html, questions, date: String(meta.date || '') };
   })
   .filter((p) => SHOW_DRAFTS || (p.draft !== true && p.date <= new Date().toISOString().slice(0, 10)))
   .sort((a, b) => b.date.localeCompare(a.date));
@@ -55,6 +58,10 @@ const liveModules = modules.filter((m) => m.draft !== true);
 const TOPICS = ((site.learnTopics || {}).topics || []).concat([{ slug: 'more', label: 'More pearls', intro: 'Further techniques from the Wavelength faculty.', categories: [] }]);
 const topicOf = (cat) => TOPICS.find((t) => t.categories.includes(cat)) || TOPICS[TOPICS.length - 1];
 const topicRank = (cat) => TOPICS.indexOf(topicOf(cat));
+// Topic landing pages (/learn/<page>/) for topics with a `page` and at least three live pearls.
+const topicHref = (t) => (t.page && posts.filter((p) => p.draft !== true && topicOf(p.category) === t).length >= 3 ? `/learn/${t.page}/` : null);
+// Link-preview image per pearl (python3 tools/pearl-social.py writes content/learn/images/social/<slug>.jpg).
+const socialFor = (p) => (fs.existsSync(path.join(LEARN_DIR, 'images/social', p.slug + '.jpg')) ? `/learn/images/social/${p.slug}.jpg` : null);
 liveModules.sort((a, b) => topicRank(a.category) - topicRank(b.category));
 // Card image: a 16:10 thumbnail of the pearl graphic (tools/pearl-thumbs.py writes content/learn/images/thumbs/).
 const thumbFor = (img) => (img && fs.existsSync(path.join(LEARN_DIR, 'images/thumbs', img)) ? `/learn/images/thumbs/${img}` : null);
@@ -100,9 +107,10 @@ const NAV = [
   { href: '/contact/', label: 'Contact' },
 ];
 
-function layout({ title, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png' }) {
+// seoTitle: the search-result title (brand added). title alone keeps the old "Title | Wavelength" pattern.
+function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png' }) {
   const canonical = url(pathname);
-  const fullTitle = title ? `${title} | ${site.name}` : `${site.name} | Point-of-care ultrasound education`;
+  const fullTitle = seoTitle ? `${seoTitle} | ${site.name}` : title ? `${title} | ${site.name}` : `${site.name} | Point-of-care ultrasound education`;
   const ld = [
     {
       '@context': 'https://schema.org',
@@ -419,7 +427,7 @@ function pearlTopics() {
     items: posts, noun: 'pearl', nouns: 'pearls', ariaLabel: 'Pearl topics', placeholder: 'Search a sign or condition',
     card: (p) => postCard(p, 'h3', { topicView: true }),
     summary: (n) => `<p>${posts.length} pearls in ${n} topics. Each teaches one technique and ends with a short test.</p>${posts.some((x) => x.questions.length) ? `<a class="text-link" href="/learn/test/">Open the question bank</a>` : ''}`,
-    foot: (t) => { const mods = liveModules.filter((m) => topicOf(m.category) === t); return mods.length ? `<div class="topic-modules">${mods.map(moduleStrip).join('')}</div>` : ''; },
+    foot: (t) => { const mods = liveModules.filter((m) => topicOf(m.category) === t); const h = topicHref(t); return (mods.length ? `<div class="topic-modules">${mods.map(moduleStrip).join('')}</div>` : '') + (h ? `<p class="topic-related reveal"><a class="text-link" href="${h}">${esc(t.heading || t.label)}: all ${esc(t.label.toLowerCase())} pearls on one page</a></p>` : ''); },
   });
 }
 
@@ -439,8 +447,9 @@ const generalFaqs = [
 
 // Home
 pages['/'] = layout({
+  seoTitle: 'Emergency ultrasound and POCUS training, UK',
   pathname: '/',
-  description: site.description,
+  description: 'Hands-on emergency ultrasound and POCUS courses for UK clinicians, mapped to the RCEM curriculum. Free ultrasound Pearls, CPD e-learning and a logbook app.',
   jsonld: [{ '@context': 'https://schema.org', '@type': 'WebSite', name: site.name, url: url('/'), inLanguage: 'en-GB' }, faqLd(generalFaqs)],
   body: `
 <section class="hero on-dark">${mesh}
@@ -579,6 +588,7 @@ function directorBlock() {
 // Courses index
 pages['/courses/'] = layout({
   title: 'Point-of-care ultrasound courses',
+  seoTitle: 'POCUS courses for emergency and acute clinicians',
   pathname: '/courses/',
   description: 'Point-of-care ultrasound courses for emergency and acute clinicians, starting with the Level 1 core course, mapped to the RCEM curriculum.',
   jsonld: [
@@ -645,6 +655,13 @@ for (const c of openCourses) {
     </div>
   </div>
 </section>
+${(() => { const prep = (c.pearls || []).map((sl) => posts.find((x) => x.slug === sl && x.draft !== true)).filter(Boolean).slice(0, 6); return prep.length ? `<section class="section sand">
+  <div class="wrap">
+    <div class="section-head"><p class="eyebrow reveal">Prepare for free</p><h2 class="reveal" data-d="1">Read a pearl before the day.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:640px">Free Wavelength Pearls on the applications this course teaches, each with a short test.</p></div>
+    <div class="post-grid">${prep.map((x) => postCard(x, 'h3', { topicView: true })).join('')}</div>
+    <p class="reveal" style="margin-top:32px"><a class="text-link" href="/learn/">All ${posts.length} pearls</a></p>
+  </div>
+</section>` : ''; })()}
 ${c.curriculum && c.curriculum.length ? `<section class="section sand">
   <div class="wrap split">
     <div><p class="eyebrow reveal">Curriculum</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,60px);margin-top:20px">Mapped to RCEM.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">The course covers the core emergency applications in the RCEM curriculum: eFAST, AAA, echo in life support and vascular access. The table shows the training phase in which RCEM introduces each application and the indicative number of supervised logbook scans before sign-off.</p><p class="reveal" data-d="2" style="margin-top:20px;padding:18px 22px;border-left:3px solid var(--teal);background:var(--sand)"><strong>A guide, not a target.</strong> RCEM sign-off rests on an entrustment decision by your supervisor, using your logbook, reflections and observed scans. Reaching a number does not by itself mean sign-off.</p></div>
@@ -666,7 +683,7 @@ ${reviewsBand()}
     ${faqHtml(c.faqs)}
   </div>
 </section>
-${subscribeBand('No dates that suit? <em>Hear first.</em>', 'Subscribe and we email you new dates before they go public, with a practical scanning skill each month.')}
+${subscribeBand('No dates that suit? <em>Hear first.</em>', 'Subscribe and we email you new dates before they go public, with a practical scanning skill each week.')}
 ${ctaBand()}`,
   });
 }
@@ -678,7 +695,7 @@ pages['/faculty/'] = layout({
   description: `Meet the Wavelength team: Course Director ${site.director.name}, Consultant in Emergency Medicine, and General Manager Dr Zahra Habibzadeh, Emergency Medicine Specialist.`,
   jsonld: [
     breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Faculty', href: '/faculty/' }]),
-    { '@context': 'https://schema.org', '@type': 'Person', name: site.director.name, jobTitle: site.director.title, worksFor: { '@id': url('/#org') }, description: site.director.bio[0], ...(site.director.email ? { email: site.director.email } : {}) },
+    { '@context': 'https://schema.org', '@type': 'Person', '@id': url('/faculty/#director'), name: site.director.name, jobTitle: site.director.title, url: url('/faculty/'), worksFor: { '@id': url('/#org') }, description: site.director.bio[0], ...(site.director.photo ? { image: url(site.director.photo) } : {}), knowsAbout: ['Point-of-care ultrasound', 'Emergency ultrasound', 'Emergency medicine', 'Ultrasound-guided regional anaesthesia', 'Medical education'], ...(site.director.email ? { email: site.director.email } : {}) },
     ...(site.team || []).map((m) => ({ '@context': 'https://schema.org', '@type': 'Person', name: m.name, jobTitle: m.role, worksFor: { '@id': url('/#org') }, description: m.bio[0], ...(m.email ? { email: m.email } : {}), ...(m.photo ? { image: url(m.photo) } : {}) })),
   ],
   body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Every course is led by our Course Director and taught by emergency medicine clinicians who are FAMUS-accredited instructors and RCEM-approved ultrasound supervisors. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
@@ -740,6 +757,7 @@ const TRAINING_FAQS = [
 // Training for your department: in-house courses for departments and trusts. Enquiries go to worker/departments.js.
 pages['/training/'] = layout({
   title: 'Training for your department | Point-of-care ultrasound for your team',
+  seoTitle: 'POCUS training for your emergency department',
   pathname: '/training/',
   description: 'Point-of-care ultrasound training for your emergency department, urgent treatment centre or acute unit: the core course or focused sessions for your team, on dates that fit your rota.',
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Training for your department', href: '/training/' }])],
@@ -882,7 +900,7 @@ pages['/subscribe/'] = layout({
 <section class="section"><div class="wrap split">
   <div>
     <p class="eyebrow reveal">What you receive</p>
-    <ul class="checklist reveal" data-d="1" style="margin-top:20px">${['A practical scanning skill each month, written by FAMUS instructors', 'New Learn posts, with images and pitfalls', 'Course dates before they go public', 'No sharing of your details, and one click to unsubscribe'].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
+    <ul class="checklist reveal" data-d="1" style="margin-top:20px">${['A practical scanning skill each week, written by FAMUS instructors', 'New Learn posts, with images and pitfalls', 'Course dates before they go public', 'No sharing of your details, and one click to unsubscribe'].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
   </div>
   <div class="reveal" data-d="1">${subscribeForm({ id: 'sub-page' })}</div>
 </div></section>`,
@@ -909,35 +927,69 @@ pages['/booked/'] = layout({
 // Learn
 pages['/learn/'] = layout({
   title: 'Learn | Point-of-care ultrasound skills',
+  seoTitle: 'Free POCUS tutorials: emergency ultrasound Pearls',
   pathname: '/learn/',
-  description: 'Practical point-of-care ultrasound skills from the Wavelength faculty: probe technique, views, pitfalls and cases for emergency and acute clinicians.',
+  description: `${posts.length} free point-of-care ultrasound tutorials for emergency and acute clinicians: probe position, views, pitfalls and nerve blocks, each with a short test.`,
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }])],
   body: `${pageHero({ eyebrow: 'Wavelength Pearls', title: 'From the scanning room.', lede: 'Free, five-minute point-of-care ultrasound pearls from the Wavelength faculty. One technique, one view or one pitfall at a time, each with a short test.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn' }] })}
 ${learnSwitch('pearls')}${posts.length ? pearlTopics() : `<section class="section sand"><div class="wrap"><div class="empty-dates reveal"><div><h3>First posts arriving soon</h3><p>Subscribe and the first Learn posts reach your inbox the day they go live.</p></div><a class="btn" href="/subscribe/">Subscribe ${arrow}</a></div></div></section>`}
 ${subscribeBand()}`,
 });
+// Topic landing pages: one indexable page per clinical area, linking every pearl and Academy module in it.
+for (const t of TOPICS) {
+  const href = topicHref(t);
+  if (!href) continue;
+  const items = posts.filter((p) => topicOf(p.category) === t);
+  const mods = liveModules.filter((m) => topicOf(m.category) === t);
+  const heading = t.heading || t.label;
+  pages[href] = layout({
+    title: heading,
+    seoTitle: t.seoTitle || heading,
+    pathname: href,
+    description: `${items.length} free ${heading.toLowerCase()} pearls for emergency and acute clinicians. ${t.intro}`,
+    jsonld: [
+      { '@context': 'https://schema.org', '@type': 'CollectionPage', name: heading, description: t.intro, url: url(href), inLanguage: 'en-GB', isPartOf: { '@type': 'WebSite', name: site.name, url: url('/') }, mainEntity: { '@type': 'ItemList', itemListElement: items.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: url(`/learn/${p.slug}/`), name: p.title })) } },
+      breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: heading, href }]),
+    ],
+    body: `${pageHero({ eyebrow: 'Wavelength Pearls', title: esc(heading) + '.', lede: esc(t.intro), crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: heading }] })}
+<section class="section"><div class="wrap"><div class="prose reveal">${(t.about || []).map((a) => `<p>${esc(a)}</p>`).join('')}</div></div></section>
+<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">${items.length} pearls</p><h2 class="reveal" data-d="1">One technique at a time.</h2></div><div class="post-grid">${items.map((p) => postCard(p, 'h3', { topicView: true })).join('')}</div>
+${mods.length ? `<div class="topic-modules">${mods.map(moduleStrip).join('')}</div>` : ''}
+<p class="reveal" style="margin-top:32px"><a class="text-link" href="/learn/">All Wavelength Pearls</a>${items.some((p) => p.questions.length) ? ` · <a class="text-link" href="/learn/test/">Question bank</a>` : ''}</p></div></section>
+<section class="section"><div class="wrap"><div class="post-cta reveal"><div><h3>Practise it with us</h3><p>One instructor to every four or five delegates, FAMUS-accredited instructors and RCEM-approved ultrasound supervisors, and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/">See the courses ${arrow}</a></div></div></section>
+${subscribeBand('Get the next one <em>by email.</em>')}`,
+  });
+}
 function nextReview(p) { const d = new Date((p.reviewed || p.date) + 'T00:00:00Z'); d.setUTCFullYear(d.getUTCFullYear() + 2); return d.toISOString().slice(0, 10); }
 for (const p of posts) {
   const href = `/learn/${p.slug}/`;
   const sameTopic = posts.filter((o) => o.slug !== p.slug && topicOf(o.category) === topicOf(p.category));
   const others = sameTopic.concat(posts.filter((o) => o.slug !== p.slug && !sameTopic.includes(o))).slice(0, 3);
   const topicMods = liveModules.filter((m) => topicOf(m.category) === topicOf(p.category));
+  const t = topicOf(p.category);
+  const tHref = topicHref(t);
+  const trail = [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, ...(tHref ? [{ label: t.heading || t.label, href: tHref }] : [])];
+  const social = socialFor(p);
+  const graphic = (String(p.html).match(/\/learn\/images\/[a-z0-9-]+\.webp/) || [])[0];
+  const isDirector = !p.author || p.author === site.director.name;
   pages[href] = layout({
     title: p.title,
+    seoTitle: p.seoTitle || p.title,
     pathname: href,
     description: p.summary,
     ogType: 'article',
+    ...(social ? { ogImage: social } : {}),
     noindex: p.draft === true,
     jsonld: [
-      { '@context': 'https://schema.org', '@type': 'Article', headline: p.title, description: p.summary, datePublished: p.date, dateModified: p.reviewed || p.date, author: { '@type': 'Person', name: p.author || site.director.name }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), inLanguage: 'en-GB' },
-      breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title, href }]),
+      { '@context': 'https://schema.org', '@type': 'Article', headline: p.seoTitle || p.title, alternativeHeadline: p.title, description: p.summary, ...(graphic || social ? { image: [graphic, social].filter(Boolean).map(url) } : {}), datePublished: p.date, dateModified: p.reviewed || p.date, author: { '@type': 'Person', name: p.author || site.director.name, ...(isDirector ? { '@id': url('/faculty/#director'), jobTitle: site.director.title, url: url('/faculty/') } : {}) }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), articleSection: t.heading || t.label, isAccessibleForFree: true, inLanguage: 'en-GB' },
+      breadcrumbLd([...trail, { label: p.title, href }]),
     ],
-    body: `${pageHero({ eyebrow: (p.category || 'Learn') + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: esc(p.summary || ''), crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title }], extra: `<p class="byline rise">${esc(p.author || site.director.name)}${p.date ? ' · ' + fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}${p.date ? ` · Reviewed ${fmtDate(p.reviewed || p.date, { month: 'long', year: 'numeric' })}, next review ${fmtDate(nextReview(p), { month: 'long', year: 'numeric' })}` : ''}</p>` })}
+    body: `${pageHero({ eyebrow: (p.category || 'Learn') + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: esc(p.summary || ''), crumbs: [...trail, { label: p.title }], extra: `<p class="byline rise">${isDirector ? `<a href="/faculty/">${esc(p.author || site.director.name)}</a>` : esc(p.author)}${p.date ? ' · ' + fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}${p.date ? ` · Reviewed ${fmtDate(p.reviewed || p.date, { month: 'long', year: 'numeric' })}, next review ${fmtDate(nextReview(p), { month: 'long', year: 'numeric' })}` : ''}</p>` })}
 <section class="section"><div class="wrap"><article class="prose post reveal">${p.html}</article>
 ${p.questions.length ? `<div class="test-cta reveal"><div><p class="eyebrow">Test yourself</p><h3>${p.questions.length} questions on this pearl</h3><p>Answer at your own pace. Each answer comes with a short explanation. About ${Math.max(2, Math.round(p.questions.length * 0.6))} minutes.</p></div><a class="btn btn-teal" href="/learn/${p.slug}/test/">Take the test ${arrow}</a></div>` : ''}
 <div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Four or five delegates per instructor, FAMUS-accredited faculty and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
 </div></section>
-${others.length || topicMods.length ? `<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">More on ${esc(topicOf(p.category).label.toLowerCase())}</p></div>${others.length ? `<div class="post-grid">${others.map((o) => postCard(o, 'h3', { topicView: true })).join('')}</div>` : ''}${topicMods.length ? `<div class="topic-modules">${topicMods.map(moduleStrip).join('')}</div>` : ''}<p class="reveal" style="margin-top:32px"><a class="text-link" href="/learn/#topic-${topicOf(p.category).slug}">All ${esc(topicOf(p.category).label.toLowerCase())} pearls</a></p></div></section>` : ''}
+${others.length || topicMods.length ? `<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">More on ${esc(topicOf(p.category).label.toLowerCase())}</p></div>${others.length ? `<div class="post-grid">${others.map((o) => postCard(o, 'h3', { topicView: true })).join('')}</div>` : ''}${topicMods.length ? `<div class="topic-modules">${topicMods.map(moduleStrip).join('')}</div>` : ''}<p class="reveal" style="margin-top:32px"><a class="text-link" href="${tHref || `/learn/#topic-${t.slug}`}">All ${esc(t.label.toLowerCase())} pearls</a></p></div></section>` : ''}
 ${subscribeBand('Get the next one <em>by email.</em>')}`,
   });
 }
@@ -952,7 +1004,8 @@ for (const p of tested) {
     title: `Test yourself: ${p.title}`,
     pathname: href,
     description: `${p.questions.length} questions on ${p.title}, with an explanation for every answer.`,
-    noindex: p.draft === true,
+    // Tests stay out of search so the Pearl page ranks for the topic. Links on them are still followed.
+    noindex: true,
     jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title, href: `/learn/${p.slug}/` }, { label: 'Test yourself', href }])],
     body: `${pageHero({ eyebrow: 'Test yourself' + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: `${p.questions.length} questions. Pick an answer to see whether you are right and why. Your score appears at the end.`, crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: p.title, href: `/learn/${p.slug}/` }, { label: 'Test' }] })}
 <section class="section"><div class="wrap"><div class="prose post test" data-test data-total="${p.questions.length}">
@@ -964,7 +1017,7 @@ ${p.questions.join('\n')}
 </div>
 <div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Four or five delegates per instructor, FAMUS-accredited faculty and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
 </div></section>
-${subscribeBand('A new pearl and test <em>every month.</em>')}`,
+${subscribeBand('A new pearl and test <em>every week.</em>')}`,
   });
 }
 if (tested.length) {
@@ -975,7 +1028,7 @@ if (tested.length) {
     jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: 'Question bank', href: '/learn/test/' }])],
     body: `${pageHero({ eyebrow: 'Question bank', title: 'Test yourself.', lede: 'Short tests on each Wavelength Pearl. Read the pearl, then check what stuck. Every answer comes with an explanation.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: 'Question bank' }] })}
 <section class="section sand"><div class="wrap"><div class="post-grid">${tested.map((p) => `<a class="post-card reveal" href="/learn/${p.slug}/test/"><p class="eyebrow">${esc(p.category || 'Learn')}${p.draft === true ? ' · Draft' : ''}</p><h2>${esc(p.title)}</h2><p>${esc(p.summary || '')}</p><span class="meta">${p.questions.length} questions · Start the test</span></a>`).join('')}</div></div></section>
-${subscribeBand('A new pearl and test <em>every month.</em>')}`,
+${subscribeBand('A new pearl and test <em>every week.</em>')}`,
   });
 }
 
@@ -1015,6 +1068,7 @@ function moduleCard(m, h = 'h3') {
 
 pages['/elearning/'] = layout({
   title: `${AC.name} | Certified point-of-care ultrasound e-learning`,
+  seoTitle: 'Free POCUS e-learning with CPD certificates',
   pathname: '/elearning/',
   description: `Free point-of-care ultrasound e-learning modules with a Wavelength certificate of completion and CPD hours. Lessons, clinical cases and a final assessment, written by consultant emergency physicians.`,
   noindex: !liveModules.length,
@@ -1079,6 +1133,7 @@ for (const m of modules) {
   const base = `/elearning/${m.slug}/`;
   pages[base] = layout({
     title: `${m.title} | ${AC.name}`,
+    seoTitle: `${m.short || m.title}: free e-learning with CPD`,
     pathname: base,
     description: m.summary,
     noindex: m.draft === true,
@@ -1153,6 +1208,7 @@ for (const m of modules) {
 pages['/elearning/verify/'] = layout({
   title: 'Verify a certificate',
   pathname: '/elearning/verify/',
+  noindex: true,
   description: `Check a ${AC.name} certificate is genuine by entering its code.`,
   body: `${pageHero({ eyebrow: AC.name, title: 'Verify a certificate.', lede: 'Enter the code printed on the certificate, for example WL-DVT-7K3M-Q9XA.', crumbs: acCrumbs([{ label: 'Verify' }]) })}
 <section class="section"><div class="wrap"><form class="form ac-verify-form" method="get" action="/elearning/verify/">
@@ -1166,6 +1222,7 @@ pages['/elearning/verify/'] = layout({
 pages['/verify/'] = layout({
   title: 'Verify a certificate or sign-off',
   pathname: '/verify/',
+  noindex: true,
   description: 'Check that a Wavelength Academy certificate, a supervisor sign-off or a verified logbook summary is genuine. Enter the code printed on it.',
   body: `${pageHero({ eyebrow: 'Verify', title: 'Is it genuine?', lede: 'Enter the code printed on any Wavelength certificate, sign-off or logbook summary. No account needed.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Verify' }] })}
 <section class="section"><div class="wrap"><form class="form ac-verify-form" method="get" action="/verify/" id="vform">
@@ -1299,6 +1356,7 @@ pages['/volunteer/unavailable/'] = layout({
   ];
   let html = layout({
     title: 'Wavelength app | Free ultrasound logbook for RCEM, FAMUS, FUSIC, EUSEM, ACEM and more',
+    seoTitle: 'Free ultrasound logbook app: RCEM, FAMUS, FUSIC',
     pathname: '/app/get/',
     description: 'A free point-of-care ultrasound logbook. Log scans and clips, track RCEM, FAMUS, FUSIC, EUSEM, ACEM, CPoCUS and ACEP targets, get signed off and assessed, and export portfolio-ready PDFs with QR-verified summaries. Photos stay on your phone.',
     jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'App', href: '/app/get/' }]), faqLd(appFaqs), { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Wavelength', applicationCategory: 'MedicalApplication', operatingSystem: 'iOS, Android, web', offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' }, url: url('/app/get/') }],
@@ -1472,12 +1530,24 @@ if (fs.existsSync(path.join(LEARN_DIR, 'images'))) copyDir(path.join(LEARN_DIR, 
   for (const f of files) { const p = path.join(appDir, f); fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/__V__/g, BUILD)); }
 }
 
+// Permanent redirects from the original Pearl URLs (file names) to the search-friendly slugs.
+// Drafts are included so links in drafted newsletters keep working once they go live.
+{
+  const all = fs.readdirSync(LEARN_DIR).filter((f) => f.endsWith('.md')).map((f) => md.parse(fs.readFileSync(path.join(LEARN_DIR, f), 'utf8')).meta.slug ? { from: f.replace(/\.md$/, '').replace(/^\d{4}-\d{2}(-\d{2})?-/, ''), to: md.parse(fs.readFileSync(path.join(LEARN_DIR, f), 'utf8')).meta.slug } : null).filter((r) => r && r.from !== r.to);
+  fs.writeFileSync(path.join(DIST, '_redirects'), all.flatMap((r) => [`/learn/${r.from}/ /learn/${r.to}/ 301`, `/learn/${r.from}/test/ /learn/${r.to}/test/ 301`, `/learn/${r.from} /learn/${r.to}/ 301`]).join('\n') + '\n');
+}
+// Last-modified dates for the sitemap: pearls use their review or publication date, Academy modules their publication date.
+const LASTMOD = {};
+for (const p of posts) LASTMOD[`/learn/${p.slug}/`] = p.reviewed || p.date;
+for (const m of liveModules) if (m.published) LASTMOD[`/elearning/${m.slug}/`] = String(m.published).slice(0, 10);
+if (posts.length) LASTMOD['/learn/'] = posts.map((p) => p.date).sort().pop();
 fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /email/\nDisallow: /subscribe/thanks/\nDisallow: /app/sign/\nDisallow: /app/assess/\nAllow: /app/get/\n\nSitemap: ${url('/sitemap.xml')}\n`);
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
     .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !/^\/elearning\/[^/]+\/(learn|assessment)\//.test(p) && !['/elearning/certificate/', '/elearning/account/'].includes(p) && !(p === '/elearning/' && !liveModules.length) && !modules.some((m) => m.draft === true && p.startsWith(`/elearning/${m.slug}/`)) && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => (p === `/learn/${x.slug}/` || p === `/learn/${x.slug}/test/`) && x.draft === true)) && !(p === '/learn/test/' && !posts.some((x) => x.draft !== true && x.questions.length)))
-    .map((p) => `  <url><loc>${url(p)}</loc><priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
+    .filter((p) => !/^\/learn\/[^/]+\/test\/$/.test(p) && !['/verify/', '/elearning/verify/'].includes(p))
+    .map((p) => `  <url><loc>${url(p)}</loc>${/^\d{4}-\d{2}-\d{2}$/.test(LASTMOD[p] || '') ? `<lastmod>${LASTMOD[p]}</lastmod>` : ''}<priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );
 fs.writeFileSync(path.join(DIST, 'site.webmanifest'), JSON.stringify({ name: site.name, short_name: site.name, start_url: '/', icons: [{ src: '/assets/logo-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/logo-512.png', sizes: '512x512', type: 'image/png' }], theme_color: '#0A1526', background_color: '#0A1526', display: 'standalone' }));

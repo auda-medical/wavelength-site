@@ -1,5 +1,7 @@
 ---
 title: "Shoulder reduction: low-volume superior trunk block"
+slug: superior-trunk-block
+seoTitle: "Superior trunk block for shoulder reduction"
 summary: Trace the C5 and C6 roots down the neck until they join as the superior trunk, then surround it with a few millilitres of local anaesthetic. It numbs the shoulder for reduction with less risk to the diaphragm than an interscalene block.
 category: Nerve blocks
 date: 2026-10-03

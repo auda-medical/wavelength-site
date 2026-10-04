@@ -1,5 +1,7 @@
 ---
 title: "Subcostal view: flatten the probe"
+slug: subcostal-view-echo
+seoTitle: "Subcostal echo view: flatten the probe"
 summary: Hold the probe upright under the ribs and the beam goes to the spine. Put your hand on top and lay the probe almost flat, and the beam slides under the ribs to the heart.
 category: Cardiac
 date: 2026-11-02

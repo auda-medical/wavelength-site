@@ -1,5 +1,7 @@
 ---
 title: "Ectopic pregnancy: empty uterus? Find the adnexa"
+slug: ectopic-pregnancy-ultrasound
+seoTitle: "Ectopic pregnancy POCUS: empty uterus, find the adnexa"
 summary: A positive pregnancy test and pain. The bedside scan has one job first, to find a pregnancy inside the uterus. If you cannot, look beyond it, at the adnexa, the pouch of Douglas and the right upper quadrant.
 category: Pelvis
 date: 2026-10-04

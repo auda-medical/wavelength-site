@@ -1,5 +1,7 @@
 ---
 title: "Intubation check: spot the double tract"
+slug: ultrasound-confirm-intubation
+seoTitle: "Ultrasound to confirm intubation: spot the double tract"
 summary: Watch the neck as the tube goes in. One air shadow in the midline means the tube is in the trachea. A second air shadow beside it, where the oesophagus lies, means it is in the wrong place. Pair it with capnography, every time.
 category: Airway
 date: 2026-10-03

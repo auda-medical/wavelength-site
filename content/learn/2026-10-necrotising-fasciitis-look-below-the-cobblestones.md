@@ -1,5 +1,7 @@
 ---
 title: "Necrotising fasciitis: look below the cobblestones"
+slug: necrotising-fasciitis-ultrasound
+seoTitle: "Necrotising fasciitis ultrasound: look below the cobblestones"
 summary: Cobblestoning fits cellulitis. Fluid along the deep fascia and gas in the soft tissue raise the alarm for necrotising fasciitis. Use the scan to escalate faster, never to reassure.
 category: Soft tissue
 date: 2026-10-03

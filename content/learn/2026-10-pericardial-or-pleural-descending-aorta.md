@@ -1,5 +1,7 @@
 ---
 title: "Pericardial or pleural? Find the descending aorta"
+slug: pericardial-vs-pleural-effusion
+seoTitle: "Pericardial or pleural effusion? Find the descending aorta"
 summary: Black fluid behind the heart in the parasternal long-axis view is either pericardial or pleural. The descending thoracic aorta tells you which. Pericardial fluid runs in front of it. Pleural fluid stays behind it.
 category: Cardiac
 date: 2026-10-03

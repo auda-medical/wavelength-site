@@ -1,5 +1,7 @@
 ---
 title: "Hot knee: find the suprapatellar recess"
+slug: knee-effusion-ultrasound
+seoTitle: "Knee effusion ultrasound: find the suprapatellar recess"
 summary: Knee fluid collects in the suprapatellar recess, deep to the quadriceps tendon. Find it, squeeze fluid into it, and use it to guide aspiration. Ultrasound finds fluid. It does not tell you if it is infected.
 category: MSK
 date: 2026-10-04

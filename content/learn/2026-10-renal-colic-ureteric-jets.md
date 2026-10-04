@@ -1,5 +1,7 @@
 ---
 title: "Renal colic: listen with colour"
+slug: renal-colic-ultrasound-ureteric-jets
+seoTitle: "Renal colic ultrasound: ureteric jets with colour Doppler"
 summary: A ureteric jet is urine squirting into the bladder. Colour Doppler shows it. A jet missing on the painful side, with hydronephrosis on that side, supports an obstructing stone. Wait, watch and compare both sides.
 category: Renal
 date: 2026-10-03

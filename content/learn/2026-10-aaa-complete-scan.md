@@ -1,5 +1,7 @@
 ---
 title: "Aorta: when is the scan complete?"
+slug: aaa-ultrasound
+seoTitle: "AAA ultrasound: when is the aorta scan complete?"
 summary: An aortic scan is complete only when you follow the aorta from below the diaphragm to the bifurcation. Anything less is an incomplete scan, not a normal one.
 category: Aorta
 date: 2026-10-19

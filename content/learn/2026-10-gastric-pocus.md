@@ -1,5 +1,7 @@
 ---
 title: "Gastric POCUS: empty, fluid or solid?"
+slug: gastric-pocus
+seoTitle: "Gastric POCUS: empty, fluid or solid stomach?"
 summary: Before sedation, one view of the gastric antrum tells you whether the stomach is empty, holds clear fluid, or holds solid food. Answer that question first.
 category: Abdomen
 date: 2026-10-03

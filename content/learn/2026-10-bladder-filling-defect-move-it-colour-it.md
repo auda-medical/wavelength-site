@@ -1,5 +1,7 @@
 ---
 title: "Bladder filling defect: move it, then add colour"
+slug: bladder-clot-ultrasound
+seoTitle: "Bladder clot or tumour on ultrasound: move it, colour it"
 summary: Something bright sits in the bladder. Roll the patient and add colour Doppler. Clot moves and has no internal flow. A lesion stuck to the wall stays put and may show vessels.
 category: Renal
 date: 2026-10-04

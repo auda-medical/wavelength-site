@@ -3,7 +3,7 @@ title: "The femoral nerve block"
 minutes: 14
 ---
 
-The Wavelength Pearl [Femoral nerve block: artery first, nerve next, then wrap it](/learn/femoral-nerve-block-artery-first/) summarises the technique.
+The Wavelength Pearl [Femoral nerve block: artery first, nerve next, then wrap it](/learn/femoral-nerve-block/) summarises the technique.
 
 ## Anatomy
 

@@ -3,7 +3,7 @@ title: "The rectus sheath block"
 minutes: 14
 ---
 
-The Wavelength Pearl [Rectus sheath block: behind the muscle, in front of the sheath](/learn/rectus-sheath-block-behind-the-muscle/) summarises the technique.
+The Wavelength Pearl [Rectus sheath block: behind the muscle, in front of the sheath](/learn/rectus-sheath-block/) summarises the technique.
 
 ## Anatomy
 

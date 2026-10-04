@@ -1,5 +1,7 @@
 ---
 title: "Femoral nerve block: artery first, nerve next, then wrap it"
+slug: femoral-nerve-block
+seoTitle: "Ultrasound-guided femoral nerve block: artery first"
 summary: A femoral nerve block numbs the front of the thigh, most of the femur and the front of the knee. Find the femoral artery, slide lateral to the nerve under fascia iliaca, and watch the local anaesthetic surround it.
 category: Nerve blocks
 date: 2026-10-03

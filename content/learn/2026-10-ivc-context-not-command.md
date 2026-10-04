@@ -1,5 +1,7 @@
 ---
 title: "IVC: a big vein is not a fluid order"
+slug: ivc-ultrasound-fluid-status
+seoTitle: "IVC ultrasound: a big vein is not a fluid order"
 summary: IVC size and collapse estimate right atrial pressure. They do not tell you whether fluid will help. Read the IVC with the heart, the lungs and the patient.
 category: Cardiac
 date: 2026-10-04

@@ -1,5 +1,7 @@
 ---
 title: "RV strain: three clues beat one ratio"
+slug: rv-strain-ultrasound
+seoTitle: "RV strain on ultrasound: three clues beat one ratio"
 summary: A big right ventricle is a clue. A big right ventricle with a flattened septum, a plethoric IVC and a clot in the leg is a pattern. Build the pattern before you act on it.
 category: Cardiac
 date: 2026-10-04

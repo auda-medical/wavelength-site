@@ -3,6 +3,6 @@
   "cadence": "weekly",
   "sendDay": "Tuesday morning",
   "issues": [
-    { "slug": "dvt-compress-dont-admire", "status": "drafted", "drafted": "2026-10-04" }
+    { "slug": "dvt-ultrasound", "status": "drafted", "drafted": "2026-10-04" }
   ]
 }

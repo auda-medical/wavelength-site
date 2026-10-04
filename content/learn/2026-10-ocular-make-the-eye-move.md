@@ -1,5 +1,7 @@
 ---
 title: "Ocular ultrasound: make the eye move"
+slug: ocular-ultrasound
+seoTitle: "Ocular ultrasound: make the eye move"
 summary: Sudden floaters, flashes or loss of vision raise three questions: retinal detachment, vitreous detachment or vitreous haemorrhage? A still image misleads. Ask the patient to move the eye and watch how the membrane behaves.
 category: Eye
 date: 2026-10-03

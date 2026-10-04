@@ -7,7 +7,7 @@ Rib fractures hurt with every breath. Patients who cannot breathe deeply or coug
 
 The serratus anterior plane block was first described in 2013. Local anaesthetic spread in the plane around serratus anterior reaches the lateral cutaneous branches of the intercostal nerves, numbing the side of the chest wall.
 
-The Wavelength Pearl [Serratus plane block: see the rib, see the pleura, then open the plane](/learn/serratus-plane-block-see-the-rib/) summarises the technique.
+The Wavelength Pearl [Serratus plane block: see the rib, see the pleura, then open the plane](/learn/serratus-anterior-plane-block/) summarises the technique.
 
 ## The evidence
 

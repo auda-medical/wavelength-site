@@ -1,5 +1,7 @@
 ---
 title: "Tubo-ovarian abscess: think complex, thick and tender"
+slug: tubo-ovarian-abscess-ultrasound
+seoTitle: "Tubo-ovarian abscess ultrasound: complex, thick, tender"
 summary: Pelvic pain with fever and a complex, thick-walled, tender adnexal mass should raise concern for a tubo-ovarian abscess. POCUS raises the alarm. Formal imaging and gynaecology confirm it.
 category: Pelvis
 date: 2026-10-04

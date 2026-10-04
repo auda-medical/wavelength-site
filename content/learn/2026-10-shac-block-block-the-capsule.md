@@ -1,5 +1,7 @@
 ---
 title: "SHAC block: block the capsule, not the neck"
+slug: shac-block
+seoTitle: "SHAC block: shoulder anterior capsular block technique"
 summary: The shoulder anterior capsular block places local anaesthetic on the front of the shoulder joint, away from the brachial plexus and the phrenic nerve. Stay lateral to the coracoid, find the subscapularis, and spread along the capsule.
 category: Nerve blocks
 date: 2026-10-03

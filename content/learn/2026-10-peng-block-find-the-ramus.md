@@ -1,5 +1,7 @@
 ---
 title: "PENG block: find the ramus, then lift the tendon"
+slug: peng-block
+seoTitle: "PENG block for hip fracture: ultrasound technique"
 summary: The pericapsular nerve group block targets the small nerve branches to the front of the hip joint, where the psoas tendon crosses the pubic ramus. It relieves hip fracture pain on movement and tends to spare the quadriceps.
 category: Nerve blocks
 date: 2026-10-03

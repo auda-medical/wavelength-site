@@ -1,5 +1,7 @@
 ---
 title: "Serratus plane block: see the rib, see the pleura, then open the plane"
+slug: serratus-anterior-plane-block
+seoTitle: "Serratus anterior plane block for rib fractures"
 summary: Rib fractures hurt every time the patient breathes or coughs. A serratus anterior plane block numbs the side of the chest wall. Find the rib and the pleura first, and use the rib as your backstop.
 category: Nerve blocks
 date: 2026-10-03

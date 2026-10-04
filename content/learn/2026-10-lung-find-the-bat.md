@@ -1,5 +1,7 @@
 ---
 title: "Lung: find the bat before you judge sliding"
+slug: lung-ultrasound-bat-sign
+seoTitle: "Lung ultrasound bat sign: find it before judging sliding"
 summary: Lie the probe along a rib and you see one bright line with black below it. Turn it across two ribs first, and the pleural line sits between the rib shadows where you can trust it.
 category: Lung
 date: 2026-10-26

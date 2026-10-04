@@ -1,5 +1,7 @@
 ---
 title: "Fascia iliaca block, supra-inguinal: go above the ligament for better spread"
+slug: fascia-iliaca-block-supra-inguinal
+seoTitle: "Supra-inguinal fascia iliaca block: ultrasound technique"
 summary: The supra-inguinal approach places the local anaesthetic under fascia iliaca above the inguinal ligament, where it spreads up towards the lumbar plexus and reaches the lateral femoral cutaneous nerve more reliably. Find iliacus in a sagittal view near the anterior superior iliac spine and watch the fluid travel towards the head.
 category: Nerve blocks
 date: 2026-10-03

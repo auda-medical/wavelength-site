@@ -1,5 +1,7 @@
 ---
 title: "Small bowel obstruction: follow the to-and-fro"
+slug: small-bowel-obstruction-ultrasound
+seoTitle: "Small bowel obstruction ultrasound: to-and-fro movement"
 summary: Dilated, fluid-filled small bowel with contents moving back and forth without getting anywhere suggests mechanical obstruction. Follow the dilated loops until they collapse to find the transition point.
 category: Abdomen
 date: 2026-10-03

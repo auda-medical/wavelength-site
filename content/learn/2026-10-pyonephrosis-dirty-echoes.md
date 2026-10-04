@@ -1,5 +1,7 @@
 ---
 title: "Pyonephrosis: hydronephrosis with dirty echoes"
+slug: pyonephrosis-ultrasound
+seoTitle: "Pyonephrosis ultrasound: hydronephrosis with dirty echoes"
 summary: Hydronephrosis in a septic patient is an obstructed, infected kidney until proven otherwise. Debris, layering echoes or a fluid-debris level in the collecting system should make you think of pus and call urology now.
 category: Renal
 date: 2026-10-03

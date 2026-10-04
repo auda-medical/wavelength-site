@@ -366,6 +366,7 @@ section{position:relative}
 .post-card p{color:var(--slate);margin:0}
 .post-card .meta{margin-top:auto;padding-top:8px;font-size:13px;color:var(--slate);letter-spacing:.04em}
 .byline{color:var(--mist);font-size:14px;letter-spacing:.06em;margin-top:8px}
+.byline a{color:var(--cream);text-decoration:underline;text-decoration-color:rgba(127,196,204,.6);text-underline-offset:3px}
 .post{font-size:18px}
 .post h2{font-size:36px}
 .post ol{padding-left:22px}

@@ -3,7 +3,7 @@ title: "The ulnar and superficial radial nerves"
 minutes: 15
 ---
 
-The Wavelength Pearls [Ulnar nerve block: find the artery first, then block its neighbour](/learn/ulnar-nerve-block-beside-the-artery/) and [Radial nerve block: stay lateral, follow the nerve beside the artery](/learn/radial-nerve-block-stay-lateral/) summarise the techniques.
+The Wavelength Pearls [Ulnar nerve block: find the artery first, then block its neighbour](/learn/ulnar-nerve-block/) and [Radial nerve block: stay lateral, follow the nerve beside the artery](/learn/radial-nerve-block/) summarise the techniques.
 
 ## The ulnar nerve
 

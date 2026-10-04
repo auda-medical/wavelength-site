@@ -1,5 +1,7 @@
 ---
 title: "Gallbladder: follow the main lobar fissure"
+slug: gallbladder-ultrasound
+seoTitle: "Gallbladder ultrasound: follow the main lobar fissure"
 summary: Can't find the gallbladder? Find the portal vein, then follow the bright line running from it. The main lobar fissure leads straight to the gallbladder neck.
 category: Abdomen
 date: 2026-10-03

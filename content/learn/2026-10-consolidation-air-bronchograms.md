@@ -1,5 +1,7 @@
 ---
 title: "Consolidation: watch the air bronchograms move"
+slug: lung-consolidation-ultrasound
+seoTitle: "Lung consolidation ultrasound: dynamic air bronchograms"
 summary: Bright dots in consolidated lung are air in the airways. If they move outwards as the patient breathes in, the airway is open and pneumonia is likely. If they stay still, think about collapse.
 category: Lung
 date: 2026-10-03

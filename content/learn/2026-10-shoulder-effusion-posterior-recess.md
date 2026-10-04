@@ -1,5 +1,7 @@
 ---
 title: "Shoulder effusion: start in the posterior recess"
+slug: shoulder-effusion-ultrasound
+seoTitle: "Shoulder effusion ultrasound: start in the posterior recess"
 summary: Glenohumeral fluid shows best behind the joint. From the posterior view, look for a dark space lifting the capsule off the humeral head, and compare with the other shoulder.
 category: MSK
 date: 2026-10-04

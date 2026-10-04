@@ -1,5 +1,7 @@
 ---
 title: "Foreign body: bright, then read the shadow"
+slug: foreign-body-ultrasound
+seoTitle: "Soft tissue foreign body ultrasound: read the shadow"
 summary: X-ray misses wood, plastic and thorns. Ultrasound sees every foreign body as a bright structure, and what lies behind it hints at the material. Find it, map it, then cut.
 category: Soft tissue
 date: 2026-10-03

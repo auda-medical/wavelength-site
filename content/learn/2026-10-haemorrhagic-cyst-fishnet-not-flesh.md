@@ -1,5 +1,7 @@
 ---
 title: "Haemorrhagic cyst: fishnet, not flesh"
+slug: haemorrhagic-ovarian-cyst-ultrasound
+seoTitle: "Haemorrhagic ovarian cyst ultrasound: fishnet, not flesh"
 summary: Lacy internal echoes and a clot with a concave edge and no flow inside it point to a haemorrhagic ovarian cyst. A solid part with blood flow does not, and needs formal imaging.
 category: Pelvis
 date: 2026-10-04

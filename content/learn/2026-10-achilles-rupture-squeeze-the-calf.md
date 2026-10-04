@@ -1,5 +1,7 @@
 ---
 title: "Achilles rupture: scan long, squeeze the calf"
+slug: achilles-tendon-rupture-ultrasound
+seoTitle: "Achilles tendon rupture ultrasound: squeeze the calf"
 summary: A still image of a torn Achilles tendon can look confusing. Scan in long axis, then squeeze the calf or move the ankle while you watch. If the movement stops at a gap, the tendon has ruptured.
 category: MSK
 date: 2026-10-03

@@ -1,5 +1,7 @@
 ---
 title: "Ovarian torsion: follow the pedicle"
+slug: ovarian-torsion-ultrasound
+seoTitle: "Ovarian torsion ultrasound: follow the pedicle"
 summary: Normal Doppler flow does not exclude torsion. Look for an enlarged ovary with peripheral follicles, and follow the vascular pedicle for a whirlpool. Clinical suspicion drives the referral.
 category: Pelvis
 date: 2026-10-04

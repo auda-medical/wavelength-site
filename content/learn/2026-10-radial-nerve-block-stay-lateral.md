@@ -1,5 +1,7 @@
 ---
 title: "Radial nerve block: stay lateral, follow the nerve beside the artery"
+slug: radial-nerve-block
+seoTitle: "Ultrasound-guided radial nerve block"
 summary: The superficial branch of the radial nerve supplies the back of the hand on the thumb side. In the forearm it runs beside the radial artery under brachioradialis. Use light pressure, find the artery, and look lateral for a small nerve.
 category: Nerve blocks
 date: 2026-10-03

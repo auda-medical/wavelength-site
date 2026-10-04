@@ -1,5 +1,7 @@
 ---
 title: "Ulnar nerve block: find the artery first, then block its neighbour"
+slug: ulnar-nerve-block
+seoTitle: "Ultrasound-guided ulnar nerve block"
 summary: A forearm ulnar nerve block numbs the little finger side of the hand. Find the ulnar artery, the nerve lies on its ulnar side under flexor carpi ulnaris. Go a little higher in the forearm and the two separate.
 category: Nerve blocks
 date: 2026-10-03

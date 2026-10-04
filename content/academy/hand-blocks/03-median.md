@@ -3,7 +3,7 @@ title: "The median nerve in the forearm"
 minutes: 14
 ---
 
-The Wavelength Pearl [Median nerve block: find the fascicles, then build a soft halo](/learn/median-nerve-block-build-a-halo/) summarises the technique.
+The Wavelength Pearl [Median nerve block: find the fascicles, then build a soft halo](/learn/median-nerve-block/) summarises the technique.
 
 ## Anatomy
 

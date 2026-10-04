@@ -1,5 +1,7 @@
 ---
 title: "Abscess: make it swirl"
+slug: abscess-ultrasound
+seoTitle: "Abscess ultrasound: make it swirl"
 summary: An abscess can look grey and solid on a still image. Press gently with the probe. If the contents swirl, it is fluid. Then check colour Doppler before anyone reaches for a needle.
 category: Soft tissue
 date: 2026-10-03

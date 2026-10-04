@@ -1,5 +1,7 @@
 ---
 title: "EPSS: when the mitral valve misses the septum"
+slug: epss-ultrasound
+seoTitle: "EPSS ultrasound: when the mitral valve misses the septum"
 summary: In a strong heart, the anterior mitral leaflet swings open almost to the septum. In a weak heart, it falls short. Measure the gap in the parasternal long-axis view for a quick, objective clue to left ventricular function.
 category: Cardiac
 date: 2026-10-03

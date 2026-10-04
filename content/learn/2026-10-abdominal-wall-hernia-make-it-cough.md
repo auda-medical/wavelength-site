@@ -1,5 +1,7 @@
 ---
 title: "Abdominal wall hernia: stand them up and make it cough"
+slug: abdominal-wall-hernia-ultrasound
+seoTitle: "Abdominal wall hernia ultrasound: make it cough"
 summary: A small hernia hides when the patient lies still. Scan the lump at rest, then during a cough, a strain or standing. Show the defect, what passes through it, and whether it goes back.
 category: Soft tissue
 date: 2026-10-04

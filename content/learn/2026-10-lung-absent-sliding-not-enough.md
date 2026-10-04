@@ -1,5 +1,7 @@
 ---
 title: "Lung: absent sliding is not enough"
+slug: absent-lung-sliding-pneumothorax
+seoTitle: "Absent lung sliding: not enough for pneumothorax"
 summary: No sliding means look harder, not pneumothorax. B-lines or a lung pulse rule it out under the probe, and a lung point rules it in.
 category: Lung
 date: 2026-10-03

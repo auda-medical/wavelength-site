@@ -1,5 +1,7 @@
 ---
 title: "Urinary retention: measure the bladder, then look upstream"
+slug: bladder-volume-ultrasound
+seoTitle: "Bladder volume ultrasound in urinary retention"
 summary: Measure the bladder in two planes to confirm it is full. Then scan both kidneys, because a large bladder with hydronephrosis means the obstruction has reached the upper tracts.
 category: Renal
 date: 2026-10-04

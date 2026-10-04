@@ -1,5 +1,7 @@
 ---
 title: "Digital nerve block: block the base, one deposit on each side"
+slug: ultrasound-guided-digital-nerve-block
+seoTitle: "Ultrasound-guided digital nerve block"
 summary: A digital nerve block numbs a finger for a laceration, a nail bed repair or a reduction. The palmar digital nerves run on each side of the flexor tendon sheath. Place a small deposit beside each one, and use ultrasound to see them.
 category: Nerve blocks
 date: 2026-10-03

@@ -1,5 +1,7 @@
 ---
 title: "Common bile duct: find the parallel channel"
+slug: common-bile-duct-ultrasound
+seoTitle: "Common bile duct ultrasound: find the parallel channel"
 summary: Next to the portal vein lie two tubes, the hepatic artery and the bile duct. Add colour Doppler. The tube with no flow is the duct.
 category: Abdomen
 date: 2026-10-04

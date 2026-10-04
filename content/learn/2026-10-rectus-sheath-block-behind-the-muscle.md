@@ -1,5 +1,7 @@
 ---
 title: "Rectus sheath block: behind the muscle, in front of the sheath"
+slug: rectus-sheath-block
+seoTitle: "Rectus sheath block: ultrasound technique"
 summary: A rectus sheath block numbs the skin and muscle of the central abdominal wall. Place the local anaesthetic behind rectus abdominis, in front of the posterior sheath, on both sides for a midline wound.
 category: Nerve blocks
 date: 2026-10-03

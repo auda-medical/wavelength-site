@@ -1,5 +1,7 @@
 ---
 title: "Hydronephrosis: black that branches"
+slug: hydronephrosis-ultrasound
+seoTitle: "Hydronephrosis ultrasound: black that branches"
 summary: True hydronephrosis forms connected, branching black spaces running from the renal pelvis into the calyces. Cysts stay round and separate. Sweep the whole kidney before you decide.
 category: Renal
 date: 2026-10-03

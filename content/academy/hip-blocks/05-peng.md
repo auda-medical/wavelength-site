@@ -3,7 +3,7 @@ title: "The PENG block"
 minutes: 14
 ---
 
-The Wavelength Pearl [PENG block: find the ramus, then lift the tendon](/learn/peng-block-find-the-ramus/) summarises the technique.
+The Wavelength Pearl [PENG block: find the ramus, then lift the tendon](/learn/peng-block/) summarises the technique.
 
 ## The idea
 
