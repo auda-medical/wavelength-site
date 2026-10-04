@@ -255,7 +255,7 @@
   function viewWelcome() {
     var f = function (icon, t, d) { return '<div class="feature"><span class="fi">' + icon + '</span><div><b>' + t + '</b><span>' + d + '</span></div></div>'; };
     authFrame('Your ultrasound logbook.', 'Log every scan, watch your accreditation targets fill up, and get signed off. Built by consultant ultrasound supervisors.',
-      '<div class="features">' + f(I.target, 'RCEM, FAMUS and FUSIC targets', 'One scan counts towards every pathway it fits, with live colour-coded progress.') + f(I.camera, 'Photos stay on your phone', 'Crop and cover identifiers before you save. Images never reach our servers.') + f(I.pen, 'Sign-off in seconds', 'Your supervisor signs on your phone or from a link, with a code anyone can verify.') + f(I.file, 'Portfolio-ready exports', 'PDF, Excel or CSV in the format your assessor expects.') + '</div>' +
+      '<div class="features">' + f(I.target, 'RCEM, FAMUS and FUSIC targets', 'One scan counts towards every pathway it fits, with live colour-coded progress.') + f(I.camera, 'Photos stay on your phone', 'Crop and cover identifiers before you save. Wavelength never sees your images.') + f(I.pen, 'Sign-off in seconds', 'Your supervisor signs on your phone or from a link, with a code anyone can verify.') + f(I.file, 'Portfolio-ready exports', 'PDF, Excel or CSV in the format your assessor expects.') + '</div>' +
       '<a class="btn teal block" href="#/signup">Create your free account</a><div class="btns" style="justify-content:center"><a class="link" href="#/login">I already have an account</a></div>' +
       '<div style="margin-top:22px">' + installButton() + '</div>');
     $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); });

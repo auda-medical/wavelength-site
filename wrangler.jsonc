@@ -12,7 +12,7 @@
     "html_handling": "auto-trailing-slash",
     "run_worker_first": ["/volunteer", "/volunteer/*", "/elearning/*", "/api/*"]
   },
-  "vars": { "NEWSLETTER_REQUIRED": "false", "MAIL_FROM": "academy@thewavelength.co.uk", "MAIL_FROM_NAME": "Wavelength Academy", "MAIL_REPLY_TO": "hello@thewavelength.co.uk", "ZEPTOMAIL_API": "https://api.zeptomail.eu/v1.1/email", "IMAGE_SHARE": "false" },
+  "vars": { "NEWSLETTER_REQUIRED": "false", "MAIL_FROM": "academy@thewavelength.co.uk", "MAIL_FROM_NAME": "Wavelength Academy", "MAIL_REPLY_TO": "hello@thewavelength.co.uk", "ZEPTOMAIL_API": "https://api.zeptomail.eu/v1.1/email", "IMAGE_SHARE": "true" },
   "kv_namespaces": [{ "binding": "SHARED_IMAGES", "id": "2667a6ab05aa43b6b1d58189f81b56fa" }],
   "rules": [{ "type": "Data", "globs": ["**/*.bin"], "fallthrough": true }],
   "d1_databases": [
