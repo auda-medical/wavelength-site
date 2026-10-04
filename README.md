@@ -10,6 +10,7 @@ Edit `data/courses.json`. Each course has a `dates` list. Add a date like this:
 ```
 
 - No `stripeLink` yet: the button becomes "Request a place" (email).
+- `"capacity"`: shows "Maximum N delegates". With a capacity set, "N places left" appears only once `places` drops to 8 or fewer. Update `places` as bookings arrive.
 - `"soldOut": true` or `"places": 0`: shows "Fully booked" with a waiting list button.
 - Past dates disappear automatically on the next build.
 

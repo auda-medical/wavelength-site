@@ -227,6 +227,8 @@ function datesBlock(c) {
       const price = money(d.price != null ? d.price : c.price);
       const full = d.soldOut || d.places === 0;
       const low = !full && d.places != null && d.places <= 3;
+      // Show the remaining count only once places run low (8 or fewer); otherwise show the cap.
+      const showLeft = !full && d.places != null && (!d.capacity || d.places <= 8);
       const book = full
         ? `<a class="btn btn-ghost" href="${mailto(site.bookingsEmail, `Waiting list: ${c.title}, ${d.date}`)}">Join waiting list</a>`
         : d.stripeLink
@@ -235,7 +237,7 @@ function datesBlock(c) {
       return `<div class="date-row reveal">
         <div class="d">${fmtDate(d.date, { day: 'numeric', month: 'short' })}<small>${fmtDate(d.date, { weekday: 'long', year: 'numeric' })}</small></div>
         <div class="c">${esc(d.venue || 'Venue to be confirmed')}<small>${esc(d.city || '')}</small></div>
-        <div class="p">${price || ''}${full ? '<div class="places low">Fully booked</div>' : d.places != null ? `<div class="places${low ? ' low' : ''}">${d.places} place${d.places === 1 ? '' : 's'} left</div>` : ''}</div>
+        <div class="p">${price || ''}${full ? '<div class="places low">Fully booked</div>' : showLeft ? `<div class="places${low ? ' low' : ''}">${d.places} place${d.places === 1 ? '' : 's'} left</div>` : d.capacity ? `<div class="places">Maximum ${d.capacity} delegates</div>` : ''}</div>
         <div>${book}</div>
       </div>`;
     })
