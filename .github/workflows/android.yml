@@ -42,6 +42,17 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/upload.jks"
           export WL_KEYSTORE="$RUNNER_TEMP/upload.jks"
           cd android && chmod +x gradlew && ./gradlew bundleRelease assembleRelease --no-daemon
+      - name: Check the built app
+        # Fails the run if the app would load the website (server.url) or lacks the bundled logbook, and reports the
+        # package, SDK levels and permissions as annotations on the run.
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | grep -E "^package|^sdkVersion|^targetSdkVersion|^uses-permission" > badging.txt
+          echo "::notice title=Package::$(tr '\n' ' ' < badging.txt)"
+          unzip -p "$APK" assets/public/index.html | grep -q 'Content-Security-Policy' || { echo "::error::bundled logbook missing from the app"; exit 1; }
+          if unzip -p "$APK" assets/capacitor.config.json | grep -q '"url"'; then echo "::error::server.url found: the app would load the website"; exit 1; fi
+          echo "::notice title=Bundle::logbook bundled ($(unzip -l "$APK" | grep -c 'assets/public/') files), no server.url"
       - uses: actions/upload-artifact@v4
         with:
           name: wavelength-android-${{ inputs.version }}-${{ github.run_number }}
