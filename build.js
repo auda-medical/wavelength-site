@@ -209,8 +209,8 @@ ${body}
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li></ul>${socialIcons()}</div>
     </div>
     <div class="bottom">
-      <span>© <span data-year>${new Date().getFullYear()}</span> ${site.company}${site.companyNumber ? `, registered in England and Wales no. ${site.companyNumber}` : ''}. Wavelength is a trading name of ${site.company}.${site.registeredOffice ? ` Registered office: ${esc(site.registeredOffice)}.` : ''} Wavelength is an independent education provider. It is not run or endorsed by the NHS, Dartford and Gravesham NHS Trust, RCEM, FAMUS or EUSEM.${site.icoNumber ? ` ICO registration ${esc(site.icoNumber)}.` : ''}</span>
-      <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Booking terms</a> · <a href="/cancellation/">Cancellations</a></span>
+      <span>© <span data-year>${new Date().getFullYear()}</span> ${site.company}${site.companyNumber ? `, registered in England and Wales no. ${site.companyNumber}` : ''}. All rights reserved. Wavelength is a trading name of ${site.company}.${site.registeredOffice ? ` Registered office: ${esc(site.registeredOffice)}.` : ''} Wavelength is an independent education provider. It is not run or endorsed by the NHS, Dartford and Gravesham NHS Trust, RCEM, FAMUS or EUSEM.${site.icoNumber ? ` ICO registration ${esc(site.icoNumber)}.` : ''}</span>
+      <span><a href="/privacy/">Privacy</a> · <a href="/website-terms/">Website terms</a> · <a href="/terms/">Booking terms</a> · <a href="/cancellation/">Cancellations</a></span>
     </div>
   </div>
 </footer>
@@ -1527,6 +1527,21 @@ const legal = {
 <h2>Ending your account</h2><p>Delete your account in the app at any time. This deletes your logbook entries and sign-offs from our servers. Export first if you want a copy.</p>
 <h2>Contact</h2><p><a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></p>`,
   },
+  '/website-terms/': {
+    title: 'Website terms of use',
+    updated: '2026-10-05',
+    body: `<p>These terms apply to your use of the Wavelength website, Pearls, Wavelength Academy, guides and newsletters, provided by ${site.company}, trading as Wavelength${site.companyNumber ? `, registered in England and Wales no. ${site.companyNumber}` : ''}${site.registeredOffice ? `. Registered office: ${esc(site.registeredOffice)}` : ''}. Course bookings follow our <a class="text-link" href="/terms/">booking terms</a>, the app follows the <a class="text-link" href="/app-terms/">logbook terms of use</a>, and the <a class="text-link" href="/privacy/">privacy notice</a> explains how we use personal data. Those documents apply alongside these terms. By using the site you accept them.</p>
+<h2>Education, not clinical advice</h2><p>Wavelength content teaches ultrasound and related skills. It gives no advice about an individual patient and does not replace your clinical judgement, your employer's policies, local protocols or supervised training. You stay responsible for every clinical decision you make. Scan images in our graphics are illustrations, not patient scans, unless a page says otherwise.</p>
+<h2>Certificates and accreditation</h2><p>Wavelength issues its own certificates. No external body accredits them. A certificate confirms you completed a named module and passed its assessment, or attended a course. It does not confirm clinical competence and does not replace sign-off by your supervisor or a professional body. Where we say a course or module is mapped to a curriculum, the body which owns that curriculum has not accredited it unless the page says so.</p>
+<h2>Our content and copyright</h2><p>${site.company}, or its licensors, owns the copyright and other rights in the content of this site, including text, graphics, Pearls, Academy modules, assessments and question banks, guides, course material, software, the Wavelength name and the logo. All rights are reserved.</p>
+<h2>What you are permitted to do</h2><p>You are permitted to read and use the content for your own learning, and to teach your own colleagues from it in a non-commercial setting. You are permitted to link to any page. You are permitted to keep copies of your own certificates, exports and logbook records.</p>
+<h2>What you must not do</h2><p>You must not copy, republish, sell, sublicense or distribute our content without our written permission. You must not remove copyright or brand notices. You must not collect content with scraping or other automated tools, and you must not use our content to train a machine learning model. You must not misuse the site, try to gain unauthorised access, or upload harmful code. If you want to use our material in a course, publication or product, email <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a> first.</p>
+<h2>Other bodies and linked sites</h2><p>We name professional bodies, societies and portfolio systems to describe curricula and requirements. Naming them does not imply their endorsement, and we use their logos only with written permission. We do not control linked sites and accept no responsibility for them.</p>
+<h2>Availability and changes</h2><p>We aim to keep the site available but do not promise uninterrupted access. We update content as practice changes and we change these terms from time to time. The date at the top of this page shows the latest version. If you keep using the site after a change, you accept the new terms.</p>
+<h2>Our liability</h2><p>We prepare our content with reasonable care and skill, but we do not promise it is complete or free of error, so check it against current guidance before you rely on it. We do not exclude liability for death or personal injury caused by our negligence, for fraud, or for anything the law does not allow us to exclude. Your legal rights as a consumer stay unchanged. Subject to that, we are not liable for loss of profit, loss of data, or other indirect loss arising from your use of free content.</p>
+<h2>Governing law</h2><p>The law of England and Wales governs these terms, and the courts of England and Wales have jurisdiction. If you live in Scotland or Northern Ireland, you also have the right to use the courts of your home nation.</p>
+<h2>Contact</h2><p><a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></p>`,
+  },
   '/terms/': {
     title: 'Booking terms',
     body: `<p>These terms apply to every booking with ${site.company}, trading as Wavelength. By booking a place you accept them.</p>
@@ -1554,7 +1569,7 @@ for (const [p, l] of Object.entries(legal)) {
     pathname: p,
     description: `${l.title} for Wavelength ultrasound courses, run by ${site.company}.`,
     jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: l.title, href: p }])],
-    body: `${pageHero({ eyebrow: 'Wavelength', title: esc(l.title), lede: `Last updated ${fmtDate(site.legalUpdated || TODAY, { day: 'numeric', month: 'long', year: 'numeric' })}.`, crumbs: [{ label: 'Home', href: '/' }, { label: l.title }] })}
+    body: `${pageHero({ eyebrow: 'Wavelength', title: esc(l.title), lede: `Last updated ${fmtDate(l.updated || site.legalUpdated || TODAY, { day: 'numeric', month: 'long', year: 'numeric' })}.`, crumbs: [{ label: 'Home', href: '/' }, { label: l.title }] })}
 <section class="section"><div class="wrap"><div class="prose reveal">${l.body}</div></div></section>`,
   });
 }
@@ -1870,7 +1885,7 @@ fs.writeFileSync(
     .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !/^\/elearning\/[^/]+\/(learn|assessment)\//.test(p) && !['/elearning/certificate/', '/elearning/account/'].includes(p) && !(p === '/elearning/' && !liveModules.length) && !modules.some((m) => m.draft === true && p.startsWith(`/elearning/${m.slug}/`)) && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => (p === `/learn/${x.slug}/` || p === `/learn/${x.slug}/test/`) && x.draft === true)) && !(p === '/learn/test/' && !posts.some((x) => x.draft !== true && x.questions.length)))
     .filter((p) => !/^\/learn\/[^/]+\/test\/$/.test(p) && !['/verify/', '/elearning/verify/'].includes(p))
     .filter((p) => !(p === '/guides/' && !liveGuides.length) && !guides.some((g) => g.draft === true && p === `/guides/${g.slug}/`))
-    .map((p) => `  <url><loc>${url(p)}</loc>${/^\d{4}-\d{2}-\d{2}$/.test(LASTMOD[p] || '') ? `<lastmod>${LASTMOD[p]}</lastmod>` : ''}<priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
+    .map((p) => `  <url><loc>${url(p)}</loc>${/^\d{4}-\d{2}-\d{2}$/.test(LASTMOD[p] || '') ? `<lastmod>${LASTMOD[p]}</lastmod>` : ''}<priority>${p === '/' ? '1.0' : p.startsWith('/courses/') ? '0.9' : ['/privacy/', '/website-terms/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );
 fs.writeFileSync(path.join(DIST, 'site.webmanifest'), JSON.stringify({ name: site.name, short_name: site.name, start_url: '/', icons: [{ src: '/assets/logo-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/logo-512.png', sizes: '512x512', type: 'image/png' }], theme_color: '#0A1526', background_color: '#0A1526', display: 'standalone' }));
