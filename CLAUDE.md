@@ -119,8 +119,16 @@ Bookings go through Stripe Payment Links. Discount codes are Stripe promotion co
 - Logo: rounded amplitude "W" wave in a thin circle. Tagline "Tune In · Gain Clarity".
 - UK spelling. Plain, active copy. No em dashes.
 
+## Tests
+- `npm test` (Node 22.5 or later, no installs): Node's test runner against the Worker with node:sqlite standing in for D1 (every file in `migrations/` applied) and a KV stub. `test/helpers/` holds the loader (lets Node import `.json` and `.bin` as Wrangler does) and the env. Covers sign-up, login lockout, session revocation, password reset, logbook ownership between accounts, server-owned sign-off, sync paging and conflicts, supervisor access and admin escaping. Add a test with any change to `worker/`.
+
+## Sessions and sync (October 2026 review)
+- Login cookies are stateless (180 days). A password change or reset sets `learners.sessions_after` (migration `0010_sessions.sql`), which refuses older cookies. The Worker tolerates the column being absent; apply the migration to live for revocation to work.
+- Logbook pulls are keyset-paged on (updated_at, id), 500 a page, with `more` and `after`; the cursor (`now`) trails the clock by a minute so writes in flight are not missed. A push conflict returns the server copy: the app rebases the learner's edit, except a restored backup, which never overwrites a live server copy.
+- Admin HTML: never put submitted text inside an inline script or handler. Use `data-confirm` with `onsubmit="return confirm(this.dataset.confirm)"`.
+
 ## Before pushing
-Build, then check pages at 390px and 1440px (`npm i --no-save playwright@1.56 && node tools/shots.mjs <outdir>`). No horizontal overflow, no console errors.
+Run `npm test`. Build, then check pages at 390px and 1440px (`npm i --no-save playwright@1.56 && node tools/shots.mjs <outdir>`). No horizontal overflow, no console errors.
 
 ## App Store and Google Play
 - `mobile/` holds Capacitor 8 shells (iOS and Android, bundle ID `uk.co.thewavelength.app`) that load the live app from https://thewavelength.co.uk/app/ (`server.url` in `mobile/capacitor.config.json`). Web changes reach store users at once; rebuild the shells only for native changes. Listing text, privacy labels, Data safety answers and review notes: `mobile/STORE.md`.
