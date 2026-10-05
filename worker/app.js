@@ -178,10 +178,26 @@ function cleanEntry(e) {
   return d;
 }
 
+const SYNC_PAGE = 500;
+// A write that was in flight while this query ran (a supervisor's sign-off, another device) can carry an updated_at
+// slightly before the query, and clocks differ a little between Cloudflare machines. The cursor handed back
+// therefore trails the query by a minute, so the next pull re-reads that minute instead of missing a change.
+const SYNC_OVERLAP = 60e3;
+const entryOut = (r) => (r.deleted ? { id: r.id, deleted: true, updatedAt: r.updated_at } : { ...JSON.parse(r.data), id: r.id, updatedAt: r.updated_at });
 async function syncGet(env, l, url) {
   const since = Math.max(0, Number(url.searchParams.get('since')) || 0);
-  const { results = [] } = await env.DB.prepare('SELECT id, data, updated_at, deleted FROM logbook_entries WHERE learner_id = ? AND updated_at > ? ORDER BY updated_at LIMIT 2000').bind(l.id, since).all();
-  return json({ ok: true, now: Date.now(), entries: results.map((r) => (r.deleted ? { id: r.id, deleted: true, updatedAt: r.updated_at } : { ...JSON.parse(r.data), updatedAt: r.updated_at })) });
+  const after = url.searchParams.get('after') || '';
+  const start = Date.now();
+  // Keyset paging on (updated_at, id), so entries sharing one timestamp are never split or skipped between pages.
+  const q = ID.test(after)
+    ? env.DB.prepare('SELECT id, data, updated_at, deleted FROM logbook_entries WHERE learner_id = ? AND (updated_at > ? OR (updated_at = ? AND id > ?)) ORDER BY updated_at, id LIMIT ?').bind(l.id, since, since, after, SYNC_PAGE)
+    : env.DB.prepare('SELECT id, data, updated_at, deleted FROM logbook_entries WHERE learner_id = ? AND updated_at > ? ORDER BY updated_at, id LIMIT ?').bind(l.id, since, SYNC_PAGE);
+  const { results = [] } = await q.all();
+  const more = results.length === SYNC_PAGE;
+  const last = results[results.length - 1];
+  // `now` is the cursor for the next pull (older app versions read only this field).
+  const now = more ? last.updated_at : Math.max(since, start - SYNC_OVERLAP);
+  return json({ ok: true, now, after: more ? last.id : '', more, entries: results.map(entryOut) });
 }
 
 async function syncPost(env, l, req) {
@@ -195,8 +211,9 @@ async function syncPost(env, l, req) {
     if (!ID.test(id)) continue;
     const ex = await env.DB.prepare('SELECT * FROM logbook_entries WHERE id = ?').bind(id).first();
     if (ex && ex.learner_id !== l.id) continue;
-    const clientTime = Number(raw.updatedAt) || now;
-    if (ex && ex.updated_at > clientTime && !raw.force) { saved.push({ id, conflict: true }); continue; }
+    // updatedAt is the server time of the copy the client edited. Missing means a new entry; 0 means a restored backup.
+    const clientTime = raw.updatedAt == null ? now : Number(raw.updatedAt) || 0;
+    if (ex && ex.updated_at > clientTime && !raw.force) { saved.push({ id, conflict: true, server: entryOut(ex) }); continue; }
     if (raw.deleted) {
       if (ex) await env.DB.prepare('UPDATE logbook_entries SET deleted = 1, data = ?, updated_at = ? WHERE id = ?').bind('{}', now, id).run();
       else await env.DB.prepare('INSERT INTO logbook_entries (id, learner_id, scan_type, scan_date, data, updated_at, deleted) VALUES (?,?,?,?,?,?,1)').bind(id, l.id, '', '', '{}', now).run();
