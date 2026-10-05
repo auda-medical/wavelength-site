@@ -1,0 +1,119 @@
+name: Cloudflare Health Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: cloudflare-health-monitor
+  cancel-in-progress: false
+
+env:
+  CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+  CF_TOKEN: ${{ secrets.CLOUDFLARE_MONITOR_TOKEN }}
+  ZONE_NAME: thewavelength.co.uk
+  D1_NAME: wavelength-volunteers
+  D1_ID: 1d2a5805-b54f-4969-b0dc-8decaa5319cf
+  KV_ID: 2667a6ab05aa43b6b1d58189f81b56fa
+  WORKER_NAME: wavelength-site
+
+jobs:
+  health:
+    name: Production health
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Validate monitoring configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+          test -n "$CF_TOKEN" || { echo "::error::CLOUDFLARE_MONITOR_TOKEN is missing"; exit 1; }
+
+      - name: Check Cloudflare control plane
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api_get() {
+            curl -fsS --retry 3 --retry-delay 2               -H "Authorization: Bearer $CF_TOKEN"               -H "Content-Type: application/json"               "$1"
+          }
+
+          echo "### Cloudflare health" >> "$GITHUB_STEP_SUMMARY"
+
+          token_json="$(api_get "https://api.cloudflare.com/client/v4/user/tokens/verify")"
+          jq -e '.success == true and .result.status == "active"' <<<"$token_json" >/dev/null
+          echo "- API token: active" >> "$GITHUB_STEP_SUMMARY"
+
+          zone_json="$(curl -fsSG --retry 3 --retry-delay 2             -H "Authorization: Bearer $CF_TOKEN"             --data-urlencode "name=$ZONE_NAME"             --data-urlencode "account.id=$CF_ACCOUNT_ID"             "https://api.cloudflare.com/client/v4/zones")"
+          jq -e --arg zone "$ZONE_NAME" '.success == true and any(.result[]?; .name == $zone and .status == "active")' <<<"$zone_json" >/dev/null
+          echo "- Zone $ZONE_NAME: active" >> "$GITHUB_STEP_SUMMARY"
+
+          d1_json="$(api_get "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database?name=$D1_NAME")"
+          jq -e --arg id "$D1_ID" --arg name "$D1_NAME" '.success == true and any(.result[]?; .uuid == $id and .name == $name)' <<<"$d1_json" >/dev/null
+          echo "- D1 $D1_NAME: present" >> "$GITHUB_STEP_SUMMARY"
+
+          kv_json="$(api_get "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/storage/kv/namespaces?per_page=100")"
+          jq -e --arg id "$KV_ID" '.success == true and any(.result[]?; .id == $id)' <<<"$kv_json" >/dev/null
+          echo "- KV namespace: present" >> "$GITHUB_STEP_SUMMARY"
+
+          deploy_code="$(curl -sS --retry 2             -o /tmp/deployments.json -w '%{http_code}'             -H "Authorization: Bearer $CF_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$WORKER_NAME/deployments")"
+          if [ "$deploy_code" = "200" ]; then
+            jq -e '.success == true and ((.result.deployments // []) | length > 0)' /tmp/deployments.json >/dev/null
+            latest_deploy="$(jq -r '.result.deployments[0].created_on // "unknown"' /tmp/deployments.json)"
+            echo "- Worker deployment API: visible (latest $latest_deploy)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Worker deployment endpoint returned HTTP $deploy_code. Add Workers Scripts Read if deployment monitoring is required."
+            echo "- Worker deployment API: unavailable to this token (HTTP $deploy_code)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          build_code="$(curl -sS --retry 2             -o /tmp/builds.json -w '%{http_code}'             -H "Authorization: Bearer $CF_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/builds/builds/latest")"
+          if [ "$build_code" = "200" ]; then
+            main_outcome="$(jq -r '
+              [(.result.builds // {} | to_entries[]?.value)
+               | select(.build_trigger_metadata.branch == "main")]
+              | sort_by(.created_at // .start_time // "")
+              | last
+              | .build_outcome // empty
+            ' /tmp/builds.json)"
+            if [ -n "$main_outcome" ]; then
+              echo "- Latest main build: $main_outcome" >> "$GITHUB_STEP_SUMMARY"
+              if [ "$main_outcome" != "success" ] && [ "$main_outcome" != "skipped" ]; then
+                echo "::error::Latest Cloudflare main build outcome is $main_outcome"
+                exit 1
+              fi
+            else
+              echo "- Latest main build: no main-branch result returned" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "::warning::Workers Builds endpoint returned HTTP $build_code. Build-history permission may need adjustment."
+            echo "- Workers Builds API: unavailable to this token (HTTP $build_code)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Check public production endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in             "https://thewavelength.co.uk/"             "https://thewavelength.co.uk/app/"             "https://thewavelength.co.uk/privacy/"
+          do
+            echo "Checking $url"
+            curl -fsS --retry 3 --retry-delay 2 --max-time 20 -o /dev/null "$url"
+          done
+          echo "- Public site, app and privacy page: reachable" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report failure to operations log
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          gh issue comment 5             --repo "${{ github.repository }}"             --body "Cloudflare health monitor failed on **$(date -u '+%Y-%m-%d %H:%M UTC')**. Review the failed checks and logs: $run_url
+
+          This monitor is read-only and made no production changes."
