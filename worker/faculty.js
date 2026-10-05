@@ -8,7 +8,7 @@ const { professions: PROFESSIONS, experience: EXPERIENCE, credentials: CREDENTIA
 
 const clip = (v, n) => String(v || '').trim().slice(0, n);
 const pick = (form, name, allowed) => form.getAll(name).map((x) => clip(x, 120)).filter((x) => allowed.includes(x));
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 export async function applyFaculty(env, req, ctx) {
   const f = await req.formData();
@@ -74,7 +74,7 @@ export async function facultyAdminHtml(env) {
     <td style="white-space:pre-wrap;max-width:420px">${esc(r.details)}</td>
     <td class="actions">
       <form method="post"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="contacted"><button class="btn btn-ghost small" type="submit">${r.contacted ? 'Mark not contacted' : 'Mark contacted'}</button></form>
-      <form method="post" onsubmit="return confirm('Delete ${esc(r.first_name)} ${esc(r.last_name)} permanently?')"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="delete"><button class="btn btn-ghost small danger" type="submit">Delete</button></form>
+      <form method="post" onsubmit="return confirm(this.dataset.confirm)" data-confirm="Delete ${esc(r.first_name)} ${esc(r.last_name)} permanently?"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="delete"><button class="btn btn-ghost small danger" type="submit">Delete</button></form>
     </td></tr>`).join('');
   return `<h2 class="display" style="font-size:34px;margin:0 0 8px">Faculty applications</h2>
   <p class="admin-summary">${results.length} application${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/volunteer/admin/faculty/applications.csv">Download as spreadsheet (CSV)</a> · <a class="text-link" href="/volunteer/admin/">Volunteers</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy</a></p>
