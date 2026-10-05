@@ -75,6 +75,12 @@ await page.evaluate(() => { location.hash = '#/new'; });
 await page.waitForSelector('label[for=t0]');
 await page.click('label[for=t0]');
 await page.waitForSelector('#rest:not([hidden])');
+await page.waitForTimeout(1000);
+// Choosing the application scrolls to the Date and Setting row, with its labels just below the sticky header.
+const land = await page.evaluate(() => ({ head: document.querySelector('.top').getBoundingClientRect().bottom, date: document.querySelector('label[for=date]').getBoundingClientRect().top, setting: document.querySelector('label[for=setting]').getBoundingClientRect().top, y: scrollY, max: document.documentElement.scrollHeight - innerHeight }));
+if (land.date < land.head || land.setting < land.head) fail('Date or Setting hidden under the header after choosing the application: ' + JSON.stringify(land));
+else if (land.date - land.head > 40 && land.y < land.max - 2) fail('form did not scroll to the Date row: ' + JSON.stringify(land));
+else ok('choosing the application scrolls to the Date and Setting row, clear of the header');
 await page.screenshot({ path: `${out}/03-new-scan.png`, fullPage: false });
 await page.locator('input[name=supervision]').first().check({ force: true });
 await page.click('form button[type=submit]');
