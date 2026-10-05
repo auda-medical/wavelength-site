@@ -2,6 +2,15 @@
 
 Site for Wavelength (trading name of Auda Medical Ltd, company 08487817), point-of-care ultrasound courses for emergency and acute clinicians. Owner: Dr Firas Abou-Auda, Course Director. General Manager: Dr Zahra Habibzadeh.
 
+## Before every Wavelength job (AI coordination)
+Claude and ChatGPT both work on this repository. GitHub issue #2 in auda-medical/wavelength-site ("AI coordination log: Claude and ChatGPT") is the shared log and its rules apply. For every job:
+1. Read issue #2, including all comments, before starting.
+2. Update from the latest `main`.
+3. Post a start comment on issue #2: agent, task, branch, PR (if any), and the files or areas you expect to change.
+4. Work on your own branch, never on `main` directly.
+5. Never edit another agent's active branch. Review it and comment instead.
+6. Post an end-of-job handoff comment on issue #2: status, commits or PR, migrations or Cloudflare changes, tests run, deployment status, rollback notes, and any handoff needed.
+
 ## How it works
 - Static site, no framework. `node build.js` builds `dist/` from `data/*.json` and `src/`.
 - Cloudflare Workers (static assets) builds every push to `main`: build `npm run build`, deploy `npx wrangler deploy` using `wrangler.jsonc`. Pushing to `main` publishes the live site.
@@ -123,7 +132,7 @@ Bookings go through Stripe Payment Links. Discount codes are Stripe promotion co
 - `npm test` (Node 22.5 or later, no installs): Node's test runner against the Worker with node:sqlite standing in for D1 (every file in `migrations/` applied) and a KV stub. `test/helpers/` holds the loader (lets Node import `.json` and `.bin` as Wrangler does) and the env. Covers sign-up, login lockout, session revocation, password reset, logbook ownership between accounts, server-owned sign-off, sync paging and conflicts, supervisor access and admin escaping. Add a test with any change to `worker/`.
 
 ## Sessions and sync (October 2026 review)
-- Login cookies are stateless (180 days). A password change or reset sets `learners.sessions_after` (migration `0010_sessions.sql`), which refuses older cookies. The Worker tolerates the column being absent; apply the migration to live for revocation to work.
+- Login cookies are stateless (180 days). A password change or reset sets `learners.sessions_after` (migration `0010_sessions.sql`), which refuses older cookies. `migrations/0010_sessions.sql` was applied to the live production D1 database (wavelength-volunteers) on 5 October 2026. The Worker still tolerates the column being absent.
 - Logbook pulls are keyset-paged on (updated_at, id), 500 a page, with `more` and `after`; the cursor (`now`) trails the clock by a minute so writes in flight are not missed. A push conflict returns the server copy: the app rebases the learner's edit, except a restored backup, which never overwrites a live server copy.
 - Admin HTML: never put submitted text inside an inline script or handler. Use `data-confirm` with `onsubmit="return confirm(this.dataset.confirm)"`.
 
