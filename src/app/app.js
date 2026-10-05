@@ -332,6 +332,14 @@
     var parts = h.split('/');
     return { name: parts[0] || 'home', arg: parts[1] || null, arg2: parts[2] || null, q: new URLSearchParams(location.hash.split('?')[1] || '') };
   }
+  // Scrolls a field into view just below the sticky header (and above the sticky Save bar), so nothing the
+  // learner still has to fill in sits hidden under either.
+  function scrollToField(el, smooth) {
+    if (!el) return;
+    var top = $('.top'), head = top ? top.getBoundingClientRect().bottom : 0;
+    var y = el.getBoundingClientRect().top + window.pageYOffset - Math.max(0, head) - 14;
+    window.scrollTo({ top: Math.max(0, y), behavior: smooth ? 'smooth' : 'auto' });
+  }
   function go(h) { if (location.hash === '#/' + h) render(); else location.hash = '#/' + h; }
   window.addEventListener('hashchange', function () { render(); window.scrollTo(0, 0); });
   window.addEventListener('online', function () { S.online = true; setSyncDot(); sync(); });
@@ -735,7 +743,10 @@
       fd.forEach(function (v, k) { if (k.indexOf('f.') !== 0) return; var id = k.slice(2); var t = TYPES[(form.querySelector('input[name=type]:checked') || {}).value]; var def = t && t.fields.find(function (x) { return x.id === id; }); if (def && def.type === 'multi') (out[id] = out[id] || []).push(v); else if (v !== '') out[id] = def && def.type === 'number' ? Number(v) : v; });
       return out;
     };
-    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; setTimeout(function () { $('#rest').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); }); });
+    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; setTimeout(function () {
+      // The next inputs after the application are the Date and Setting row: its labels land just below the header.
+      scrollToField($('#date').closest('.two'), true);
+    }, 60); }); });
     form.addEventListener('input', function () { form.dataset.dirty = '1'; });
     drawFindings();
     // Images and clips
@@ -786,7 +797,7 @@
       out.exclude = mods.filter(function (m) { return ticked.indexOf(m) < 0; });
       if (!out.type) { err.textContent = T('Choose the application.'); err.hidden = false; return; }
       if (!out.date || out.date > today()) { err.textContent = T('Enter the date of the scan.'); err.hidden = false; return; }
-      if (!out.supervision) { err.textContent = T('Choose the level of supervision.'); err.hidden = false; $('input[name=supervision]').scrollIntoView({ block: 'center' }); return; }
+      if (!out.supervision) { err.textContent = T('Choose the level of supervision.'); err.hidden = false; scrollToField($('input[name=supervision]').closest('.field')); return; }
       var hits = guard(out);
       var finish = function () {
         var keepImgs = existing.filter(function (x) { return removed.indexOf(x.id) < 0; });
