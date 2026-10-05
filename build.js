@@ -1152,7 +1152,7 @@ function registerCard(m) {
   <div data-ac-guest>
     <p class="eyebrow">Free registration</p>
     <h2>Start the module</h2>
-    <p class="form-note">Already registered? Enter the same email and you carry on where you left off.</p>
+    <p class="form-note">Already registered? Enter the same email and we email you a link to carry on where you left off.</p>
     <form class="form" method="post" action="/api/academy/register" data-ac-register>
       <input type="hidden" name="module" value="${m.slug}">
       <label>Title (optional)<select name="title" autocomplete="honorific-prefix"><option value="">None</option>${['Dr', 'Prof', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx'].map((t) => `<option>${t}</option>`).join('')}</select></label>

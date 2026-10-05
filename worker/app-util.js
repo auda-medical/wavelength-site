@@ -84,8 +84,23 @@ function cleanProfile(p, old = {}) {
 }
 function account(l) {
   const p = profileOf(l);
-  return { id: l.id, email: l.email, title: l.title, firstName: l.first_name, lastName: l.last_name, name: fullName(l), role: l.role, organisation: l.organisation, newsletter: !!l.newsletter, declarationAt: l.declaration_at, profile: p };
+  return { id: l.id, email: l.email, title: l.title, firstName: l.first_name, lastName: l.last_name, name: fullName(l), role: l.role, organisation: l.organisation, newsletter: !!l.newsletter, declarationAt: l.declaration_at, profile: p, emailStatus: l.email_status || 'legacy_unverified', emailVerified: l.email_status === 'verified' };
+}
+
+// True once migration 0011 (verification) is applied. Until then the Worker keeps the old behaviour for email,
+// sign-off and assessment flows, and the professional verification endpoints answer "not available yet".
+// Cached per database binding: a positive answer for the life of the isolate, a negative one for a minute.
+const READY = new WeakMap();
+async function verificationReady(env) {
+  if (!env || !env.DB) return false;
+  const c = READY.get(env.DB);
+  if (c && (c.ok || Date.now() - c.at < 60e3)) return c.ok;
+  let ok = true;
+  try { await env.DB.prepare('SELECT email_status FROM learners LIMIT 0').all(); await env.DB.prepare('SELECT supervisor_snapshot FROM signoffs LIMIT 0').all(); await env.DB.prepare('SELECT token_hash FROM email_tokens LIMIT 0').all(); }
+  catch { ok = false; }
+  READY.set(env.DB, { ok, at: Date.now() });
+  return ok;
 }
 
 
-export { LANGS, enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, ALPHABET, b64, unb64, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, canonical, contentHash, body, fullName, profileOf, cleanProfile, account };
+export { LANGS, enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, ALPHABET, b64, unb64, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, canonical, contentHash, body, fullName, profileOf, cleanProfile, account, verificationReady };

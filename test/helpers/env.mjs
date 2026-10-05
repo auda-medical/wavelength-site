@@ -21,9 +21,10 @@ class Stmt {
   _sync() { return this.db.prepare(this.sql).run(...this.args); }
 }
 class D1 {
-  constructor() {
+  // skip: migration file names to leave out, to test the Worker against a database that has not had them yet.
+  constructor(skip = []) {
     this.db = new DatabaseSync(':memory:');
-    for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith('.sql')).sort()) this.db.exec(readFileSync(new URL(f, MIGRATIONS), 'utf8'));
+    for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith('.sql') && !skip.includes(x)).sort()) this.db.exec(readFileSync(new URL(f, MIGRATIONS), 'utf8'));
   }
   prepare(sql) { return new Stmt(this.db, sql); }
   async batch(stmts) {
@@ -39,11 +40,11 @@ class KV {
   async put(k, v) { this.m.set(k, typeof v === 'string' ? v : v); }
   async delete(k) { this.m.delete(k); }
 }
-export function makeEnv(extra = {}) {
+export function makeEnv(extra = {}, { skipMigrations = [] } = {}) {
   const wr = readFileSync(new URL('../../wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, '');
   const vars = JSON.parse(wr).vars;
   return {
-    ...vars, ZEPTOMAIL_TOKEN: '', DB: new D1(), SHARED_IMAGES: new KV(),
+    ...vars, ZEPTOMAIL_TOKEN: '', DB: new D1(skipMigrations), SHARED_IMAGES: new KV(),
     ASSETS: { fetch: async () => new Response('<div id="admin-root"></div>', { headers: { 'Content-Type': 'text/html' } }) },
     ...extra,
   };

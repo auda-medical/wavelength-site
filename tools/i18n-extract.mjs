@@ -25,7 +25,7 @@ lb.pathways.forEach((p) => { add(p.desc); add(p.region); p.modules.forEach((m) =
 lb.destinations.forEach((d) => { add(d.label); d.steps.forEach(add); });
 ['Overall', 'Normal', 'Abnormal', 'Indeterminate', 'Good', 'Adequate', 'Limited', 'Inadequate', 'Female', 'Male', 'Agreed', 'Partly agreed', 'Disagreed', 'UK', 'Europe', 'Australia and New Zealand', 'Canada', 'United States', 'Portfolio', 'Image quality', 'Diagnostic accuracy'].forEach(add);
 // Worker error messages shown to users.
-for (const f of ['worker/app.js', 'worker/supervise.js', 'worker/app-util.js', 'worker/evidence.js']) {
+for (const f of ['worker/app.js', 'worker/supervise.js', 'worker/app-util.js', 'worker/evidence.js', 'worker/email-verify.js']) {
   const s = fs.readFileSync(f, 'utf8');
   for (const m of s.matchAll(/error: '((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
   for (const m of s.matchAll(/error: `([^`$]*)`/g)) add(m[1]);

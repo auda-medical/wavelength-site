@@ -8,6 +8,9 @@
 //   GET  assessments, supervisors, supervise/learner?id=, supervise/signoff?code=, assessment/view?t=
 //   GET  me, sync?since=, signoffs, evidence, signoff/view?t=, verify?code= (SO- sign-offs and EV- evidence summaries)
 //   POST signoff/image?code=&entry=&n= (encrypted bytes), signoff/images (manifest)   GET signoff/image?t=&entry=&n=
+//   POST email/verify (public, token), email/resend, supervisors/accept-invite   (worker/email-verify.js)
+//   GET  professional   POST professional/registration|credential|evidence|withdraw|directory   GET directory (public,
+//        off until DIRECTORY_PUBLIC = "true")   (worker/professional.js, docs/verification-architecture.md)
 // Logbook entries hold text only. Images stay on the learner's device. The one exception is encrypted image
 // sharing in sign-off links (IMAGE_SHARE = "true"): the phone encrypts with AES-GCM and keeps the key in the link's
 // #fragment, so this Worker stores only ciphertext in KV (SHARED_IMAGES), deleted on sign-off, cancel, account
@@ -16,11 +19,13 @@ import { cookieFor, clearCookie, learner, sendMail, revokeSessions } from './aca
 import DATA from './academy-data.json';
 import { createEvidence, listEvidence, withdrawEvidence, verifyEvidence } from './evidence.js';
 import * as SV from './supervise.js';
+import { emailVerifyOn, sendVerification, issueToken, sendTokenEmail, resend as resendEmail, verifyToken, newNonce } from './email-verify.js';
+import { handleProfessional, directorySearch, deleteProfessional, snapshotFor, publicSnapshot, entrySnapshot, professionalOn } from './professional.js';
 
-import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, body, fullName, profileOf, cleanProfile, account } from './app-util.js';
+import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, body, fullName, profileOf, cleanProfile, account, verificationReady } from './app-util.js';
 
 // ---------- Accounts ----------
-async function signup(env, req) {
+async function signup(env, req, ctx) {
   const d = await body(req);
   if (!d) return json({ ok: false, error: 'Something went wrong. Please try again.' }, 400);
   if (d.website) return json({ ok: true });
@@ -34,16 +39,37 @@ async function signup(env, req) {
   if (existing && existing.password_hash) return json({ ok: false, error: 'An account with this email already exists. Log in instead, or reset your password.', exists: true }, 409);
   const hash = await hashPassword(pw);
   const profile = JSON.stringify(cleanProfile({ pathways: [] }));
+  const verifying = await emailVerifyOn(env);
+  if (existing && verifying) {
+    // An Academy learner (email only) is adding a password. Nobody may take over an existing account (and its
+    // certificates) by typing its email address: the password is held with a single-use link sent to that address,
+    // and is set only when the link is opened. The answer is the same whether or not an email went out.
+    const nonce = await newNonce();
+    const t = await issueToken(env, { id: existing.id, email: p.email }, 'claim', { hash, title: p.title, first: p.first, last: p.last, role: p.role, org: p.org, news: p.news, profile, nonce: nonce.hash });
+    if (t) {
+      const l = await env.DB.prepare('SELECT * FROM learners WHERE id = ?').bind(existing.id).first();
+      const mail = sendTokenEmail(env, { ...l, first_name: p.first, last_name: p.last, title: p.title }, t, 'claim');
+      if (ctx && ctx.waitUntil) ctx.waitUntil(mail); else await mail;
+    }
+    return json({ ok: true, checkEmail: true }, 202, { 'Set-Cookie': nonce.cookie });
+  }
   if (existing) {
-    // An Academy learner (email only) is upgrading to a password account.
+    // An Academy learner (email only) is upgrading to a password account. Only when email verification is off
+    // (no ZEPTOMAIL_TOKEN, migration 0011 not applied, or EMAIL_VERIFY = "off"): the behaviour before verification.
     await env.DB.prepare("UPDATE learners SET password_hash = ?, title = ?, first_name = ?, last_name = ?, role = COALESCE(NULLIF(?, ''), role), organisation = COALESCE(NULLIF(?, ''), organisation), newsletter = MAX(newsletter, ?), profile = COALESCE(profile, ?), last_seen = datetime('now') WHERE id = ?")
       .bind(hash, p.title, p.first, p.last, p.role, p.org, p.news, profile, existing.id).run();
+  } else if (await verificationReady(env)) {
+    // A new account works at once (the logbook is offline-first), marked unverified until the emailed link is used.
+    await env.DB.prepare("INSERT INTO learners (email, title, first_name, last_name, role, organisation, newsletter, password_hash, profile, last_seen, email_status) VALUES (?,?,?,?,?,?,?,?,?,datetime('now'),'unverified')")
+      .bind(p.email, p.title, p.first, p.last, p.role, p.org, p.news, hash, profile).run();
   } else {
     await env.DB.prepare("INSERT INTO learners (email, title, first_name, last_name, role, organisation, newsletter, password_hash, profile, last_seen) VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))")
       .bind(p.email, p.title, p.first, p.last, p.role, p.org, p.news, hash, profile).run();
   }
   const row = await env.DB.prepare('SELECT * FROM learners WHERE email = ?').bind(p.email).first();
-  return json({ ok: true, account: account(row) }, 200, { 'Set-Cookie': await cookieFor(env, row.id) });
+  // Sent before answering, so the person can be told it is on its way.
+  if (verifying && !existing) await sendVerification(env, row, 'verify').catch(() => false);
+  return json({ ok: true, account: account(row), verifyEmailSent: verifying && !existing }, 200, { 'Set-Cookie': await cookieFor(env, row.id) });
 }
 
 async function login(env, req) {
@@ -70,7 +96,7 @@ async function me(env, l) {
     env.DB.prepare('SELECT module, MAX(score) AS best, COUNT(*) AS tries FROM attempts WHERE learner_id = ? GROUP BY module').bind(l.id).all(),
   ]);
   const modules = Object.values(DATA.modules).filter((m) => !m.draft).map((m) => ({ slug: m.slug, title: m.title, cpdHours: m.cpdHours }));
-  return json({ ok: true, account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules, imageShare: imgOn(env), clipShare: imgOn(env) && env.CLIP_SHARE === 'true' });
+  return json({ ok: true, account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules, imageShare: imgOn(env), clipShare: imgOn(env) && env.CLIP_SHARE === 'true', verification: { email: await emailVerifyOn(env), professional: professionalOn(env) && (await verificationReady(env)), directory: env.DIRECTORY_PUBLIC === 'true' } });
 }
 
 async function saveProfile(env, l, req) {
@@ -140,6 +166,8 @@ async function resetComplete(env, req) {
   ]);
   // Whoever knew the old password is logged out everywhere.
   await revokeSessions(env, row.learner_id);
+  // The reset link was delivered to this address, so the email is now proven too.
+  if (await verificationReady(env)) await env.DB.prepare("UPDATE learners SET email_status = 'verified', email_verified_at = COALESCE(email_verified_at, datetime('now')) WHERE id = ?").bind(row.learner_id).run();
   const l = await env.DB.prepare('SELECT * FROM learners WHERE id = ?').bind(row.learner_id).first();
   return json({ ok: true, account: account(l) }, 200, { 'Set-Cookie': await cookieFor(env, l.id) });
 }
@@ -156,6 +184,7 @@ async function deleteAccount(env, l, req) {
     env.DB.prepare('DELETE FROM evidence_summaries WHERE learner_id = ?').bind(l.id),
     env.DB.prepare('DELETE FROM password_resets WHERE learner_id = ?').bind(l.id),
     ...(await SV.deleteSupervision(env, l)),
+    ...((await verificationReady(env)) ? deleteProfessional(env, l) : []),
   ];
   if (d.keepCertificates && hasCerts.n) stmts.push(env.DB.prepare('UPDATE learners SET password_hash = NULL, profile = NULL, declaration_at = NULL, organisation = NULL, role = NULL WHERE id = ?').bind(l.id));
   else stmts.push(env.DB.prepare('DELETE FROM attempts WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM certificates WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM learners WHERE id = ?').bind(l.id));
@@ -254,7 +283,7 @@ function cleanSupervisor(d) {
 }
 const RATING = ['g', 'a', 'r'];
 function cleanRating(r) { if (!r || typeof r !== 'object') return null; const o = {}; for (const k of ['image', 'accuracy']) if (RATING.includes(r[k])) o[k] = r[k]; return Object.keys(o).length ? o : null; }
-async function applySignoff(env, so, decisions, sup, method, ratings = {}) {
+async function applySignoff(env, so, decisions, sup, method, ratings = {}, snap = null) {
   const at = new Date().toISOString();
   const now = Date.now();
   for (const e of JSON.parse(so.snapshot)) {
@@ -267,6 +296,8 @@ async function applySignoff(env, so, decisions, sup, method, ratings = {}) {
     if (hash !== (await contentHash(e))) continue; // edited since the request: skip
     data.signoff = { code: so.id, status, name: sup.name, role: sup.role, reg: sup.reg, accreditation: sup.accreditation, basis: sup.basis, method, at, hash };
     const rt = cleanRating((ratings || {})[e.id]); if (rt) data.signoff.rating = rt;
+    // What Wavelength had verified about the signer at this moment. Server-owned like the rest of signoff.
+    const vs = entrySnapshot(snap); if (vs) data.signoff.verification = vs;
     delete data.signoffVoid;
     await env.DB.prepare('UPDATE logbook_entries SET data = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(data), now, e.id).run();
   }
@@ -305,11 +336,13 @@ async function signoffComplete(env, req, ctx) {
   if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box with your finger or mouse.' }, 400);
   const decisions = d.decisions && typeof d.decisions === 'object' ? d.decisions : {};
   const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
-  const done = await env.DB.prepare("UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL WHERE id = ? AND status = 'pending'")
-    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, so.id).run();
+  // Whoever holds a link signs as themselves: the snapshot records the details as declared, not verified.
+  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote' });
+  const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
+    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
   // A double tap or a second tab: only the first submission signs.
   if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This sign-off link is no longer valid.' }, 410);
-  await applySignoff(env, so, decisions, sup, 'remote', ratings);
+  await applySignoff(env, so, decisions, sup, 'remote', ratings, snap);
   await deleteSharedImages(env, so.id);
   const mail = notifyLearner(env, so, decisions, sup);
   if (ctx && ctx.waitUntil) ctx.waitUntil(mail); else await mail;
@@ -352,9 +385,11 @@ async function signoffInPerson(env, l, req) {
   const decisions = Object.fromEntries(entries.map((e) => [e.id, (d.decisions || {})[e.id] === 'query' ? 'query' : 'confirmed']));
   const so = { id, learner_id: l.id, snapshot: JSON.stringify(snapshotOf(entries)) };
   const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
-  await env.DB.prepare("INSERT INTO signoffs (id, learner_id, method, entry_ids, snapshot, status, supervisor_name, supervisor_role, supervisor_reg, supervisor_email, accreditation, basis, comment, decisions, ratings, signature, signed_at) VALUES (?,?,?,?,?,'signed',?,?,?,?,?,?,?,?,?,?,datetime('now'))")
-    .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig).run();
-  await applySignoff(env, so, decisions, sup, 'in-person', ratings);
+  // Signed on the learner's own phone: the signer's details are declared, not verified.
+  const snap = await snapshotFor(env, { entries, declared: sup, method: 'in-person' });
+  await env.DB.prepare(`INSERT INTO signoffs (id, learner_id, method, entry_ids, snapshot, status, supervisor_name, supervisor_role, supervisor_reg, supervisor_email, accreditation, basis, comment, decisions, ratings, signature, signed_at${snap ? ', supervisor_snapshot' : ''}) VALUES (?,?,?,?,?,'signed',?,?,?,?,?,?,?,?,?,?,datetime('now')${snap ? ',?' : ''})`)
+    .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, ...(snap ? [JSON.stringify(snap)] : [])).run();
+  await applySignoff(env, so, decisions, sup, 'in-person', ratings, snap);
   return json({ ok: true, code: id });
 }
 
@@ -428,11 +463,13 @@ async function verify(env, url) {
   const c = clip(url.searchParams.get('code'), 20).toUpperCase().replace(/\s+/g, '');
   if (c.startsWith('EV-')) return verifyEvidence(env, c, json);
   if (c.startsWith('AS-')) return SV.verifyAssessment(env, c);
-  const so = c && await env.DB.prepare("SELECT s.id, s.method, s.supervisor_name, s.supervisor_role, s.accreditation, s.basis, s.signed_at, s.signature IS NOT NULL AS signed_by_hand, s.decisions, s.snapshot, l.title, l.first_name, l.last_name FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.id = ? AND s.status = 'signed'").bind(c).first();
+  const ready = await verificationReady(env);
+  const so = c && await env.DB.prepare(`SELECT s.id, s.method, s.supervisor_name, s.supervisor_role, s.accreditation, s.basis, s.signed_at, s.signature IS NOT NULL AS signed_by_hand, s.decisions, s.snapshot${ready ? ', s.supervisor_snapshot' : ''}, l.title, l.first_name, l.last_name FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.id = ? AND s.status = 'signed'`).bind(c).first();
   if (!so) return json({ ok: false, error: 'No signed record matches that code.' }, 404);
   const dec = JSON.parse(so.decisions || '{}');
   const snap = JSON.parse(so.snapshot || '[]');
-  return json({ ok: true, code: so.id, learner: fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand, method: so.method, signedAt: so.signed_at, confirmed: Object.values(dec).filter((x) => x === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })) });
+  // supervisorCheck: what Wavelength had verified about the signer when they signed (null for older sign-offs).
+  return json({ ok: true, code: so.id, learner: fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand, method: so.method, signedAt: so.signed_at, confirmed: Object.values(dec).filter((x) => x === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })), supervisorCheck: publicSnapshot(so.supervisor_snapshot) });
 }
 
 // ---------- Router ----------
@@ -443,7 +480,8 @@ export async function handleApp(req, env, ctx) {
   if (req.method === 'POST') {
     const origin = req.headers.get('Origin');
     if (!origin || origin !== url.origin) return json({ ok: false, error: 'Forbidden' }, 403);
-    if (p === 'signup') return signup(env, req);
+    if (p === 'signup') return signup(env, req, ctx);
+    if (p === 'email/verify') return verifyToken(env, req);
     if (p === 'login') return login(env, req);
     if (p === 'logout') return json({ ok: true }, 200, { 'Set-Cookie': clearCookie });
     if (p === 'reset/request') return resetRequest(env, req, ctx);
@@ -469,15 +507,20 @@ export async function handleApp(req, env, ctx) {
     if (p === 'supervisors/add') return SV.supervisorAdd(env, l, req, ctx);
     if (p === 'supervisors/remove') return SV.supervisorRemove(env, l, req);
     if (p === 'supervisors/accept') return SV.supervisorAccept(env, l, req);
+    if (p === 'supervisors/accept-invite') return SV.supervisorAcceptInvite(env, l, req);
+    if (p === 'email/resend') return resendEmail(env, l);
     if (p === 'supervise/signoff') return SV.superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, (so, dec, sup) => { const m = notifyLearner(env, so, dec, sup); if (ctx && ctx.waitUntil) ctx.waitUntil(m); });
     if (p === 'supervise/assessment') return SV.superviseAssessmentComplete(env, l, req);
     if (p === 'supervise/assessment/new') return SV.superviseAssessmentNew(env, l, req);
+    const pro = await handleProfessional(env, l, req, url, p);
+    if (pro) return pro;
     return json({ ok: false }, 404);
   }
   if (p === 'signoff/view') return signoffView(env, url);
   if (p === 'signoff/image') return signoffImageGet(env, url);
   if (p === 'verify') return verify(env, url);
   if (p === 'assessment/view') return SV.assessmentView(env, url);
+  if (p === 'directory') return directorySearch(env, url);
   const l = await learner(env, req);
   if (p === 'me') return l && l.password_hash ? me(env, l) : json({ ok: false, auth: false, academy: !!l });
   if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
@@ -488,5 +531,7 @@ export async function handleApp(req, env, ctx) {
   if (p === 'supervisors') return SV.supervisorLinks(env, l);
   if (p === 'supervise/learner') return SV.superviseLearner(env, l, url);
   if (p === 'supervise/signoff') return SV.superviseSignoffView(env, l, url);
+  const pro = await handleProfessional(env, l, req, url, p);
+  if (pro) return pro;
   return json({ ok: false }, 404);
 }

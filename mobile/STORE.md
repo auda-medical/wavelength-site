@@ -60,3 +60,12 @@ Not collected: photos and videos (they stay on the device; images shared in a si
 ## App Review notes (Apple) and access instructions (Google)
 
 Wavelength is a training logbook for clinicians who use point-of-care ultrasound. Log in with the review account below. To see the main features: tap + to log a scan (any image works), open Progress to see pathway targets, tap a scan and choose Sign off to see in-person sign-off, and open Me to change language or delete the account. The app loads its interface from our website so that clinicians on the web and in the app share one logbook. It uses the camera and photo library only when the user adds an image. There are no purchases.
+
+## Pending: professional verification (not live yet)
+
+Email verification (built October 2026) needs no change to these answers. Professional and credential verification is off until `PROFESSIONAL_VERIFY = "true"` (see `docs/verification-architecture.md`). Before switching it on:
+- Apple App Privacy: add Other Data (professional registration number, credential evidence), linked to the user, for app functionality.
+- Google Data safety: add Personal info > Other info (registration number, credential evidence), collected, not shared, for app functionality and account management.
+- Review notes: mark the review account's email as verified, and say that Professional verification is optional and reviewed by the Wavelength team.
+- Separately, see the flags in `docs/verification-integrations.md` section 5: no app-level `PrivacyInfo.xcprivacy` in the iOS project, and whether scan findings and encrypted image sharing should be declared.
+
