@@ -1420,5 +1420,8 @@
 "Choose a password of at most 200 characters.": "Elija una contraseña de 200 caracteres como máximo.",
 "Confirm password": "Confirmar contraseña",
 "Passwords do not match.": "Las contraseñas no coinciden.",
-"Passwords match.": "Las contraseñas coinciden."
+"Passwords match.": "Las contraseñas coinciden.",
+"GMC, NMC or HCPC": "GMC, NMC o HCPC",
+"Learners send sign-off requests straight to your own dashboard.": "Los alumnos envían las solicitudes de validación directamente a su propio panel.",
+"Apply to teach on Wavelength ultrasound courses.": "Solicite enseñar en los cursos de ecografía de Wavelength."
 }

@@ -91,8 +91,12 @@ await V.page.fill('#as-r', 'Consultant'); await V.page.selectOption('#as-a', 'EU
 await V.page.locator('label.tl-g').first().click(); await V.page.locator('label.tl-r').nth(1).click();
 await sign(V.page); await V.page.check('input[name=confirm]');
 await V.page.screenshot({ path: `${out}/sign-fr-390.png`, fullPage: true });
+// Signer details: name, role, registration and accreditation boxes share one left edge and one width.
+const boxes = await V.page.evaluate(() => ['#as-n', '#as-r', '#as-g', '#as-a'].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return Math.round(r.left) + '/' + Math.round(r.width); }));
+if (new Set(boxes).size !== 1) fail('signer detail boxes not aligned: ' + boxes.join(' '));
 await noOverflow(V.page, 'sign-fr');
 await V.page.click('#sf button.teal'); await V.page.waitForSelector('.ok', { timeout: 8000 }).catch(() => fail('link sign-off did not complete'));
+await V.page.waitForTimeout(300); await V.page.screenshot({ path: `${out}/sign-done-fr-390.png`, fullPage: true });
 const lede = await V.page.textContent('#root');
 if (!/Merci|Thank/.test(lede)) fail('sign result text');
 

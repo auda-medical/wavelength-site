@@ -15,7 +15,16 @@
   function post(url, d) { return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(d) }).then(function (r) { return r.json(); }); }
   function err(msg) { return '<div class="err">' + esc(T(msg)) + '</div>'; }
 
-  function pearlCta() { return '<div class="card"><h3 style="margin-bottom:6px">' + esc(T('One ultrasound Pearl a week')) + '</h3><p class="small muted" style="margin-bottom:12px">' + esc(T('Free practical scanning tips for clinicians who scan, supervise or teach. Optional, and you can leave at any time.')) + '</p><a class="btn ghost block" href="/subscribe/?utm_source=verify&amp;utm_medium=web">' + esc(T('Get the weekly Pearl')) + '</a><p class="small muted" style="margin-top:12px">' + esc(T('Do you supervise scanning?')) + ' <a href="/faculty/join/?utm_source=verify&amp;utm_medium=web">' + esc(T('Teach with us')) + '</a> · <a href="/app/?utm_source=verify#/signup">' + esc(T('Supervise in the free app')) + '</a></p></div>'; }
+  // After a sign-off or a check: the weekly Pearl, then two separate offers for supervisors, each saying what it is.
+  function pearlCta() {
+    var chev = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M2 2l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var offer = function (href, title, text) { return '<a href="' + href + '"><span class="t"><b>' + esc(T(title)) + '</b><span class="small">' + esc(T(text)) + '</span></span>' + chev + '</a>'; };
+    return '<div class="card"><h3 style="margin-bottom:6px">' + esc(T('One ultrasound Pearl a week')) + '</h3><p class="small muted" style="margin-bottom:14px">' + esc(T('Free practical scanning tips for clinicians who scan, supervise or teach. Optional, and you can leave at any time.')) + '</p><a class="btn ghost block" href="/subscribe/?utm_source=verify&amp;utm_medium=web">' + esc(T('Get the weekly Pearl')) + '</a></div>' +
+      '<div class="card"><h3 style="margin-bottom:6px">' + esc(T('Do you supervise scanning?')) + '</h3><div class="offers">' +
+      offer('/app/?utm_source=verify#/signup', T('Supervise in the free app'), T('Learners send sign-off requests straight to your own dashboard.')) +
+      offer('/faculty/join/?utm_source=verify&amp;utm_medium=web', T('Teach with us'), T('Apply to teach on Wavelength ultrasound courses.')) +
+      '</div></div>';
+  }
 
   function evidenceHtml(r) {
     var n = function (v) { return v === '' || v == null ? '' : String(v); };

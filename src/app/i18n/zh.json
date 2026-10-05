@@ -1404,5 +1404,8 @@
 "Choose a password of at most 200 characters.": "密码不能超过 200 个字符。",
 "Confirm password": "确认密码",
 "Passwords do not match.": "两次输入的密码不一致。",
-"Passwords match.": "两次输入的密码一致。"
+"Passwords match.": "两次输入的密码一致。",
+"GMC, NMC or HCPC": "GMC、NMC 或 HCPC",
+"Learners send sign-off requests straight to your own dashboard.": "学员会将签核请求直接发送到您自己的控制面板。",
+"Apply to teach on Wavelength ultrasound courses.": "申请在 Wavelength 超声课程中授课。"
 }
