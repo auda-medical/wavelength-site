@@ -7,8 +7,10 @@ eyebrow: Guide · FUSIC
 summary: How to gain Focused Ultrasound in Intensive Care accreditation from the Intensive Care Society, module by module, within the 12-month logbook window.
 date: 2026-10-04
 reviewed: 2026-10-04
+updated: 2026-10-05
 author: Dr Firas Abou-Auda
 order: 4
+pathway: fusic
 draft: false
 ---
 
@@ -129,6 +131,24 @@ The Society notes that accreditation confirms you met the standard at the point 
 
 - **Emergency medicine.** RCEM lists FUSIC as complementary learning evidence for PoCUS. It does not replace RCEM sign-off.
 - **Acute medicine.** SAM recommends FUSIC Heart for focused echo, as FAMUS has no cardiac module.
+
+## Common mistakes that delay accreditation
+
+This is Wavelength's advice on where learners most often run out of time, built on the ICS requirements above.
+
+- **Starting the clock too early.** The 12-month window starts with your first logbook scan. Start when you have a mentor or trainer and regular patient access.
+- **Too many healthy volunteers.** No more than 10% of logbook studies may be on volunteers.
+- **Counting course scans as supervised.** They no longer count as directly supervised.
+- **Missing views.** Attempt every view on every scan. Your logbook must show you obtain all of them.
+- **Your own report template.** Every training scan goes on the standard FUSIC reporting form.
+- **Review left to the end.** Meet your mentor or trainer every few weeks, so problems surface while there is time to fix them.
+- **A late extension request.** Apply at least four weeks before the window closes.
+
+## How the Wavelength logbook organises your FUSIC evidence
+
+Choose FUSIC in the free [Wavelength POCUS logbook](/pocus-logbook/) and it sets up Heart, Lung, Abdomen, DVT and Vascular with the ICS totals and directly supervised minimums, the 10% cap on healthy volunteers, the vascular line-by-line quotas and the 12-month window from your first scan. Your assessor can also record the triggered assessment in the app as a final assessment, so the module shows as complete. Haemodynamics is not yet set up in the app.
+
+The app does not replace the ICS paperwork. You still use the standard FUSIC reporting form for every scan, and submit your summary training record through the FUSIC portal. Share the exported PDF and its verification link with your mentor or trainer so they see your progress at each review.
 
 ## Sources
 
