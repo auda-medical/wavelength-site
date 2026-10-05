@@ -129,7 +129,7 @@ export async function sendCertificate(env, cert, person) {
   const { html, text } = certificateEmail(cert, person.first_name);
   const token = env.ZEPTOMAIL_TOKEN.replace(/^Zoho-enczapikey\s+/i, '');
   try {
-    const res = await fetch(env.ZEPTOMAIL_API || 'https://api.zeptomail.eu/v1.1/email', {
+    const res = await fetch(env.ZEPTOMAIL_API || 'https://cpaas.zoho.eu/v1.1/email', {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Zoho-enczapikey ${token}` },
       body: JSON.stringify({
@@ -164,7 +164,7 @@ export async function sendMail(env, { to, toName, subject, heading, paragraphs =
 <tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;padding:44px 48px 36px 48px;font-family:Arial,Helvetica,sans-serif;border-radius:0 0 14px 14px;"><h1 style="margin:0 0 22px 0;font-family:Georgia,serif;font-weight:normal;font-size:30px;color:#0F1E33;">${esc(heading)}</h1>${paragraphs.map((x) => `<p style="${p}">${esc(x)}</p>`).join('')}${btn}<p style="margin:24px 0 0 0;font-size:11px;line-height:1.6;color:#8796A8;">Wavelength is a trading name of Auda Medical Ltd, company number 08487817.</p></td></tr></table></td></tr></table></body></html>`;
   const tok = env.ZEPTOMAIL_TOKEN.replace(/^Zoho-enczapikey\s+/i, '');
   try {
-    const res = await fetch(env.ZEPTOMAIL_API || 'https://api.zeptomail.eu/v1.1/email', {
+    const res = await fetch(env.ZEPTOMAIL_API || 'https://cpaas.zoho.eu/v1.1/email', {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Zoho-enczapikey ${tok}` },
       body: JSON.stringify({ from: { address: env.APP_MAIL_FROM || env.MAIL_FROM || 'academy@thewavelength.co.uk', name: 'Wavelength' }, to: [{ email_address: { address: to, name: toName || to } }], reply_to: [{ address: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', name: 'Wavelength' }], subject, htmlbody: html, textbody: text || paragraphs.join('\n\n'), track_clicks: false, track_opens: false }),
