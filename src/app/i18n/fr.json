@@ -1394,5 +1394,21 @@
 "Choose your password.": "Choisissez votre mot de passe.",
 "To finish creating your account, choose the password you will use to log in.": "Pour terminer la création de votre compte, choisissez le mot de passe que vous utiliserez pour vous connecter.",
 "Your email is confirmed. This account already has a password, so log in with it.": "Votre e-mail est confirmé. Ce compte a déjà un mot de passe : connectez-vous avec.",
-"This link has expired or has already been used. Open the Wavelength app to send a new one.": "Ce lien a expiré ou a déjà été utilisé. Ouvrez l'application Wavelength pour en demander un nouveau."
+"This link has expired or has already been used. Open the Wavelength app to send a new one.": "Ce lien a expiré ou a déjà été utilisé. Ouvrez l'application Wavelength pour en demander un nouveau.",
+"App lock is off: this phone has no fingerprint or face unlock set up.": "Verrouillage désactivé : ce téléphone n'a pas de déverrouillage par empreinte ou par visage configuré.",
+"App lock off.": "Verrouillage désactivé.",
+"App lock on.": "Verrouillage activé.",
+"Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.": "Demande votre empreinte ou votre visage à l'ouverture de Wavelength, et après un moment en arrière-plan.",
+"Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body's portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.": "Choisissez votre organisme d'accréditation : Wavelength organise vos examens, évaluations et validations selon les exigences de son portfolio, prêts à être soumis. Exportez en PDF, Excel ou CSV avec un résumé vérifiable par QR code.",
+"Lock the app with fingerprint or face": "Verrouiller l'application par empreinte ou visage",
+"Logbook locked": "Carnet verrouillé",
+"Security": "Sécurité",
+"Set up fingerprint or face unlock in your phone settings first.": "Configurez d'abord le déverrouillage par empreinte ou par visage dans les réglages du téléphone.",
+"Turn on app lock": "Activer le verrouillage",
+"Unlock": "Déverrouiller",
+"Unlock Wavelength": "Déverrouiller Wavelength",
+"Unlock your Wavelength logbook": "Déverrouillez votre carnet Wavelength",
+"Your logbook is locked.": "Votre carnet est verrouillé.",
+"Your portfolio, tailored to your accrediting body": "Votre portfolio, adapté à votre organisme d'accréditation",
+"Your ultrasound logbook": "Votre carnet d'échographie"
 }

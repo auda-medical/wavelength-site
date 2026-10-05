@@ -1,4 +1,4 @@
-# Builds the iOS app shell in mobile/ and uploads it to App Store Connect (TestFlight).
+# Builds the iOS app in mobile/ (the logbook ships inside it, assembled in mobile/www) and uploads it to App Store Connect (TestFlight).
 # Run it from GitHub: Actions > iOS app > Run workflow.
 # Secrets: APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the full text of the App Store Connect API key .p8 file,
 # role App Manager). Xcode signs automatically with that key, so no certificates or profiles need uploading.
@@ -20,6 +20,8 @@ jobs:
         with: { node-version: 22 }
       - run: sudo xcode-select -s /Applications/Xcode_26.0.app || sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
       - run: npm ci
+      - name: Build the logbook bundle (mobile/www)
+        run: node scripts/build-www.mjs
       - run: npx cap sync ios
       - name: Archive and upload
         env:

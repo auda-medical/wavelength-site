@@ -15,6 +15,8 @@
 // sharing in sign-off links (IMAGE_SHARE = "true"): the phone encrypts with AES-GCM and keeps the key in the link's
 // #fragment, so this Worker stores only ciphertext in KV (SHARED_IMAGES), deleted on sign-off, cancel, account
 // deletion or after 14 days. See the DPIA before changing any of this.
+import { isNativeOrigin } from './native.js';
+import { zohoSubscribe } from './newsletter.js';
 import { cookieFor, clearCookie, learner, sendMail, revokeSessions } from './academy.js';
 import DATA from './academy-data.json';
 import { createEvidence, listEvidence, withdrawEvidence, verifyEvidence } from './evidence.js';
@@ -37,6 +39,12 @@ async function signup(env, req, ctx) {
   if (!d.terms) return json({ ok: false, error: 'Tick the box to accept the privacy notice and terms of use.' }, 400);
   const existing = await env.DB.prepare('SELECT id, password_hash FROM learners WHERE email = ?').bind(p.email).first();
   if (existing && existing.password_hash) return json({ ok: false, error: 'An account with this email already exists. Log in instead, or reset your password.', exists: true }, 409);
+  // The store apps cannot post the website's newsletter form, so they ask the server to subscribe. Zoho still sends
+  // its own confirmation email (double opt-in) before adding anyone, so nobody joins by having their address typed.
+  if (p.news && req.headers.get('X-Wavelength-Client') === 'app') {
+    const sub = zohoSubscribe(env, { email: p.email, first: p.first, role: p.role, source: 'App sign-up' }).catch(() => false);
+    if (ctx && ctx.waitUntil) ctx.waitUntil(sub); else await sub;
+  }
   const hash = await hashPassword(pw);
   const profile = JSON.stringify(cleanProfile({ pathways: [] }));
   const verifying = await emailVerifyOn(env);
@@ -479,7 +487,8 @@ export async function handleApp(req, env, ctx) {
   if (!env.DB) return json({ ok: false, error: 'The app is not available right now.' }, 503);
   if (req.method === 'POST') {
     const origin = req.headers.get('Origin');
-    if (!origin || origin !== url.origin) return json({ ok: false, error: 'Forbidden' }, 403);
+    // Same-origin pages, or the store apps (bundled logbook, Bearer token, see worker/native.js).
+    if (!origin || (origin !== url.origin && !isNativeOrigin(origin))) return json({ ok: false, error: 'Forbidden' }, 403);
     if (p === 'signup') return signup(env, req, ctx);
     if (p === 'email/verify') return verifyToken(env, req);
     if (p === 'login') return login(env, req);

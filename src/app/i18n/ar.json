@@ -1458,5 +1458,21 @@
 "Choose your password.": "اختر كلمة المرور.",
 "To finish creating your account, choose the password you will use to log in.": "لإكمال إنشاء حسابك، اختر كلمة المرور التي ستستخدمها لتسجيل الدخول.",
 "Your email is confirmed. This account already has a password, so log in with it.": "تم تأكيد بريدك الإلكتروني. لهذا الحساب كلمة مرور بالفعل، فسجّل الدخول بها.",
-"This link has expired or has already been used. Open the Wavelength app to send a new one.": "انتهت صلاحية هذا الرابط أو سبق استخدامه. افتح تطبيق Wavelength لطلب رابط جديد."
+"This link has expired or has already been used. Open the Wavelength app to send a new one.": "انتهت صلاحية هذا الرابط أو سبق استخدامه. افتح تطبيق Wavelength لطلب رابط جديد.",
+"App lock is off: this phone has no fingerprint or face unlock set up.": "قفل التطبيق متوقف: لم يُضبط فتح القفل بالبصمة أو الوجه على هذا الهاتف.",
+"App lock off.": "تم إيقاف قفل التطبيق.",
+"App lock on.": "تم تشغيل قفل التطبيق.",
+"Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.": "يطلب بصمتك أو وجهك عند فتح Wavelength، وبعد بقائه في الخلفية لبعض الوقت.",
+"Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body's portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.": "اختر جهة الاعتماد الخاصة بك، فيرتب Wavelength فحوصك وتقييماتك واعتماداتك وفق متطلبات ملفها، جاهزة للتقديم. صدّر بصيغة PDF أو Excel أو CSV مع ملخص يمكن التحقق منه برمز QR.",
+"Lock the app with fingerprint or face": "قفل التطبيق بالبصمة أو الوجه",
+"Logbook locked": "السجل مقفل",
+"Security": "الأمان",
+"Set up fingerprint or face unlock in your phone settings first.": "اضبط أولاً فتح القفل بالبصمة أو الوجه في إعدادات الهاتف.",
+"Turn on app lock": "تشغيل قفل التطبيق",
+"Unlock": "فتح القفل",
+"Unlock Wavelength": "فتح قفل Wavelength",
+"Unlock your Wavelength logbook": "افتح قفل سجل Wavelength الخاص بك",
+"Your logbook is locked.": "سجلك مقفل.",
+"Your portfolio, tailored to your accrediting body": "ملفك، مصمم وفق جهة الاعتماد الخاصة بك",
+"Your ultrasound logbook": "سجل الموجات فوق الصوتية الخاص بك"
 }

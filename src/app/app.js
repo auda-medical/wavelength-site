@@ -11,6 +11,8 @@
   var KIND = {}; (C.assessmentKinds || []).forEach(function (k) { KIND[k.id] = k; });
   var OUTCOME = {}; (C.assessmentOutcomes || []).forEach(function (o) { OUTCOME[o.id] = o; });
   var F = window.WLForms;
+  // Store apps (mobile/): server address, login token, website links, haptics and app lock. Inert on the website.
+  var NAT = window.WLNative || { on: false, origin: location.origin, host: location.host, site: function (p) { return p; }, net: function (p, o) { return fetch(p, o); }, haptic: function () {}, openExternal: function (u) { window.open(u, '_blank'); }, lockOn: function () { return false; }, plugin: function () { return null; } };
   var app = document.getElementById('app');
   var S = { account: null, me: null, entries: [], kv: {}, db: null, online: navigator.onLine, syncing: false, installEvt: null, urls: {}, assessments: [], links: null };
 
@@ -93,7 +95,7 @@
   function api(path, data) {
     var opt = { credentials: 'same-origin', headers: { Accept: 'application/json', 'Accept-Language': LANG } };
     if (data !== undefined) { opt.method = 'POST'; opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(data); }
-    return fetch(path, opt).then(function (r) {
+    return NAT.net(path, opt).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { signedOut(); } return j; });
     });
   }
@@ -277,10 +279,10 @@
 
   // ---------- Install ("Download the app") ----------
   // Store shells: Android's WebView has no Web Share, so text and link shares use the native Share plugin.
-  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.Share && !navigator.share) {
-    try { navigator.share = function (d) { if (d && d.files) return Promise.reject(new Error('files')); return window.Capacitor.Plugins.Share.share({ title: d.title, text: d.text, url: d.url }); }; } catch (e) {}
+  if (NAT.on && NAT.plugin('Share') && !navigator.share) {
+    try { navigator.share = function (d) { if (d && d.files) return Promise.reject(new Error('files')); return NAT.plugin('Share').share({ title: d.title, text: d.text, url: d.url }); }; } catch (e) {}
   }
-  var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true || /WavelengthApp/.test(navigator.userAgent);
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true || /WavelengthApp/.test(navigator.userAgent) || NAT.on;
   var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); S.installEvt = e; $$('[data-install]').forEach(function (b) { b.hidden = false; }); });
   window.addEventListener('appinstalled', function () { S.installEvt = null; toast(T('Wavelength is on your home screen.')); $$('[data-install]').forEach(function (b) { b.hidden = true; }); });
@@ -368,7 +370,7 @@
       busy(b, true, T('Creating your account…'));
       api('/api/app/signup', d).then(function (res) {
         if (!res.ok) throw new Error(res.error);
-        if (d.newsletter) joinNewsletter(d);
+        if (d.newsletter && !NAT.on) joinNewsletter(d); // the store apps subscribe through the server (worker/app.js signup)
         // This email already has Academy certificates: the account is finished from a link sent to that address.
         if (res.checkEmail) { authFrame(T('Check your email.'), T('This email already has a Wavelength Academy record. To keep it safe, we have sent a link to {email}. Open it within 24 hours to finish creating your account. Check your junk folder too.', { email: d.email }), '<a class="btn block" href="#/login">' + esc(T('Back to log in')) + '</a>'); return; }
         return saveLangAfter(res.account);
@@ -423,8 +425,11 @@
       });
     });
   }
+  // The account is cached on this device so the logbook opens offline (a hospital basement, a flight).
+  function cacheAccount(acc) { try { if (acc) localStorage.setItem('wl-acc', JSON.stringify(acc)); else localStorage.removeItem('wl-acc'); } catch (e) { /* storage blocked */ } }
+  function cachedAccount() { try { return JSON.parse(localStorage.getItem('wl-acc') || 'null'); } catch (e) { return null; } }
   function signedIn(acc) {
-    S.account = acc;
+    S.account = acc; cacheAccount(acc);
     var pl = (acc.profile || {}).lang;
     var stored = null; try { stored = localStorage.getItem('wl-lang'); } catch (e) { /* blocked */ }
     if (pl && pl !== LANG && !stored && LOCALES[pl]) { setLang(pl); return Promise.resolve(); }
@@ -448,9 +453,9 @@
       else if (res.error) toast(res.error, 5000);
     }).catch(function () { /* offline: try again next time */ });
   }
-  function signedOut() { S.account = null; S.db = null; S.entries = []; S.me = null; S.assessments = []; S.links = null; location.hash = '#/welcome'; render(); }
-  function loadMe() { return api('/api/app/me').then(function (res) { if (res.ok) { S.me = res; S.account = res.account; if (route().name === 'home' || route().name === 'me') render(true); } }); }
-  function loadLinks() { return api('/api/app/supervisors').then(function (res) { if (res.ok) { S.links = res; if (['home', 'me', 'supervise', 'supervisors'].indexOf(route().name) >= 0 && !document.querySelector('.sheet-bg')) render(true); } }); }
+  function signedOut() { cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.assessments = []; S.links = null; location.hash = '#/welcome'; render(); }
+  function loadMe() { return api('/api/app/me').then(function (res) { if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); } }).catch(function () { /* offline: the cached account stays */ }); }
+  function loadLinks() { return api('/api/app/supervisors').then(function (res) { if (res.ok) { S.links = res; if (['home', 'me', 'supervise', 'supervisors'].indexOf(route().name) >= 0 && !document.querySelector('.sheet-bg')) render(true); } }).catch(function () { /* offline: try again on the next sync */ }); }
 
   // ---------- Onboarding ----------
   function pathwayPicker(chosen) {
@@ -758,7 +763,7 @@
           .concat(removed.map(function (id) { return del('images', id); }));
         if (draftImages.length && navigator.storage && navigator.storage.persist) navigator.storage.persist();
         Promise.all(jobs).then(function () { return saveLocal(out); }).then(function () {
-          setKv('lastSetting', out.setting); draftImages = [];
+          setKv('lastSetting', out.setting); draftImages = []; NAT.haptic('success');
           delete form.dataset.dirty;
           sheet('<h2>' + esc(T('Scan saved')) + '</h2><p class="muted">' + esc(T((TYPES[out.type] || {}).label || '')) + ', ' + esc(fmt(out.date)) + '.</p>' + nextTargetsHtml(out) +
             '<div class="btns"><a class="btn teal block" href="#/new?copy=' + out.id + '" data-close>' + esc(T('Another scan, same patient')) + '</a><a class="btn ghost block" href="#/new" data-close data-fresh>' + esc(T('New patient')) + '</a><a class="btn ghost block" href="#/entry/' + out.id + '" data-close>' + esc(T('View this scan')) + '</a></div>');
@@ -1074,7 +1079,7 @@
         var b = $('button.teal', f); busy(b, true, T('Signing…'));
         api('/api/app/signoff/inperson', d).then(function (res) {
           if (!res.ok) throw new Error(res.error); closeSheet();
-          return sync().then(function () { sheet('<h2>' + esc(T('Signed off')) + '</h2><p>' + T('Code <b>{code}</b>. Anyone can verify it at thewavelength.co.uk/verify.', { code: esc(res.code) }) + '</p><div class="btns"><button class="btn teal block" data-close>' + esc(T('Done')) + '</button></div>'); viewSignoff(route()); });
+          return sync().then(function () { NAT.haptic('success'); sheet('<h2>' + esc(T('Signed off')) + '</h2><p>' + T('Code <b>{code}</b>. Anyone can verify it at thewavelength.co.uk/verify.', { code: esc(res.code) }) + '</p><div class="btns"><button class="btn teal block" data-close>' + esc(T('Done')) + '</button></div>'); viewSignoff(route()); });
         }).catch(function (ex) { busy(b, false); var err = $('.err', f); err.textContent = ex.message || T('Could not sign. Check the connection.'); err.hidden = false; });
       });
     });
@@ -1095,7 +1100,7 @@
               return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: new TextEncoder().encode(code + ':' + st.entry + ':' + n) }, key, buf);
             }).then(function (ct) {
               var out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
-              return fetch('/api/app/signoff/image?code=' + encodeURIComponent(code) + '&entry=' + encodeURIComponent(st.entry) + '&n=' + n + (isClip(rec) ? '&kind=clip' : ''), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' }, body: out });
+              return NAT.net('/api/app/signoff/image?code=' + encodeURIComponent(code) + '&entry=' + encodeURIComponent(st.entry) + '&n=' + n + (isClip(rec) ? '&kind=clip' : ''), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' }, body: out });
             }).then(function (r) { return r.json(); }).then(function (j) {
               if (!j.ok) throw new Error(T(j.error || 'Could not upload an image.'));
               list.push({ entry: st.entry, n: n, w: rec.w || 0, h: rec.h || 0, kind: isClip(rec) ? 'clip' : 'image', type: isClip(rec) ? rec.blob.type : 'image/jpeg' });
@@ -1166,7 +1171,7 @@
       (a.status === 'signed' ? '<div class="ok"><b>' + esc(T((OUTCOME[a.outcome] || {}).label || '')) + '</b><br>' + esc(T('Assessed by {name}{role} on {date}. Code {code}.', { name: a.supervisor_name, role: a.supervisor_role ? ', ' + a.supervisor_role : '', date: fmt(a.assessed_on), code: a.id })) + '</div><div class="detail"><dl>' + (d.topic ? '<dt>' + esc(T('Focus')) + '</dt><dd>' + esc(T(d.topic)) + '</dd>' : '') + dom + '</dl></div>' + txt('strengths', 'What went well') + txt('development', 'What to develop') + txt('actions', 'Agreed actions') + (a.signature ? '<img alt="' + esc(T('Signature')) + '" src="' + a.signature + '" style="max-width:220px;background:#fff;border-radius:8px;margin-top:12px">' : '') + '<div class="btns"><button class="btn ghost block" data-copyas>' + esc(T('Copy verification link')) + '</button></div>'
         : '<p>' + esc(T('Waiting for your assessor.')) + '</p><div class="btns"><button class="btn ghost block" data-cancelas>' + esc(T('Cancel request')) + '</button></div>') +
       '<div class="btns"><button class="btn block" data-close>' + esc(T('Close')) + '</button></div>', function (root) {
-      var c = $('[data-copyas]', root); if (c) c.onclick = function () { copy(location.origin + '/app/verify/?code=' + a.id); };
+      var c = $('[data-copyas]', root); if (c) c.onclick = function () { copy(NAT.origin + '/app/verify/?code=' + a.id); };
       var x = $('[data-cancelas]', root); if (x) x.onclick = function () { api('/api/app/assessment/cancel', { code: a.id }).then(function () { closeSheet(); toast(T('Request cancelled.')); loadAssessments().then(function () { render(true); }); }); };
     });
   }
@@ -1432,14 +1437,14 @@
         return '<div class="card"><div class="row"><div class="grow"><b>' + esc(x.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(T((DEST[x.destination] || {}).label || 'Portfolio')) + '<br>' + esc(T('{from} to {to} · created {at}', { from: fmt(x.period_from), to: fmt(x.period_to), at: fmt(x.created_at) })) + '</p></div><span class="chip ' + (x.withdrawn ? 'amber' : 'green') + '">' + esc(x.withdrawn ? T('Withdrawn') : T('Live')) + '</span></div>' +
           (x.withdrawn ? '' : '<div class="btns"><button class="btn sm" data-copy="' + esc(x.id) + '">' + esc(T('Copy link')) + '</button><button class="btn sm ghost" data-wd="' + esc(x.id) + '">' + esc(T('Withdraw')) + '</button></div>') + '</div>';
       }).join('');
-      $$('[data-copy]', box).forEach(function (bt) { bt.onclick = function () { copy(location.origin + '/app/verify/?code=' + bt.dataset.copy); }; });
+      $$('[data-copy]', box).forEach(function (bt) { bt.onclick = function () { copy(NAT.origin + '/app/verify/?code=' + bt.dataset.copy); }; });
       $$('[data-wd]', box).forEach(function (bt) { bt.onclick = function () { if (!confirm(T('Withdraw {code}? Anyone who checks this code will see it is withdrawn.', { code: bt.dataset.wd }))) return; api('/api/app/evidence/withdraw', { code: bt.dataset.wd }).then(function () { toast(T('Withdrawn.')); viewEvidence(); }); }; });
     });
   }
   function fetchSignoffs() { return navigator.onLine ? api('/api/app/signoffs').then(function (r) { return r.signoffs || []; }).catch(function () { return []; }) : Promise.resolve([]); }
   // In the App Store and Google Play shells, web downloads and Web Share do not work inside the WebView,
   // so files go through the native Filesystem and Share plugins (mobile/), saved to the app cache first.
-  var NATIVE = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins;
+  var NATIVE = NAT.on ? { Filesystem: NAT.plugin('Filesystem'), Share: NAT.plugin('Share') } : null;
   function nativeShare(blob, name) {
     return new Promise(function (ok, fail) { var r = new FileReader(); r.onload = function () { ok(String(r.result).split(',')[1]); }; r.onerror = fail; r.readAsDataURL(blob); })
       .then(function (data) { return NATIVE.Filesystem.writeFile({ path: name.replace(/[^\w.-]+/g, '-'), data: data, directory: 'CACHE' }); })
@@ -1509,7 +1514,7 @@
       { name: 'Sign-offs', rows: [['Code', 'Date', 'Supervisor', 'Role', 'Registration', 'Accreditation', 'Method', 'Scans', 'Confirmed', 'Comment']].concat(signoffs.filter(function (s) { return s.status === 'signed'; }).map(function (s) { return [s.id, (s.signed_at || '').slice(0, 10), s.supervisor_name, s.supervisor_role, s.supervisor_reg || '', s.accreditation || '', s.method, s.entry_ids.length, Object.values(s.decisions || {}).filter(function (x) { return x === 'confirmed'; }).length, s.comment || '']; })), widths: [16, 11, 24, 30, 14, 30, 10, 7, 9, 50] }
     ];
     if (d.assessments) sheets.push({ name: 'Assessments', rows: [['Code', 'Date', 'Pathway', 'Module', 'Type', 'Outcome', 'Assessor', 'Method']].concat(asmRows(d.from, d.to)), widths: [16, 11, 10, 30, 30, 40, 30, 12] });
-    sheets.push({ name: 'About', rows: [['Wavelength ultrasound logbook', ''], ['Name', acc.name], ['Email', acc.email], ['Grade or role', profile().grade || acc.role || ''], ['Registration', profile().registration || ''], ['Period', fmtEn(d.from) + ' to ' + fmtEn(d.to)], ['Scans', list.length], ['Generated', fmtEn(today())], ['Verified summary', evd ? evd.code : 'Not created'], ['Check it at', evd ? evd.link : location.host + '/verify'], ['Patient data', 'This record holds no patient identifiers.']], widths: [22, 60] });
+    sheets.push({ name: 'About', rows: [['Wavelength ultrasound logbook', ''], ['Name', acc.name], ['Email', acc.email], ['Grade or role', profile().grade || acc.role || ''], ['Registration', profile().registration || ''], ['Period', fmtEn(d.from) + ' to ' + fmtEn(d.to)], ['Scans', list.length], ['Generated', fmtEn(today())], ['Verified summary', evd ? evd.code : 'Not created'], ['Check it at', evd ? evd.link : NAT.host + '/verify'], ['Patient data', 'This record holds no patient identifiers.']], widths: [22, 60] });
     return { blob: WLZip.xlsx(sheets), name: 'Wavelength-logbook-' + dateStamp() + '.xlsx' };
   }
   function blobToDataUrl(b) { return new Promise(function (ok) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.readAsDataURL(b); }); }
@@ -1521,7 +1526,7 @@
     for (var r = 0; r < n; r++) for (var k = 0; k < n; k++) if (q.isDark(r, k)) g.fillRect((k + m) * sz, (r + m) * sz, sz, sz);
     return c.toDataURL('image/png');
   }
-  function verifyUrl(code) { return location.origin + '/app/verify/?code=' + code; }
+  function verifyUrl(code) { return NAT.origin + '/app/verify/?code=' + code; }
   function evRows(evd) {
     var rows = [];
     evd.summary.pathways.forEach(function (p) {
@@ -1554,7 +1559,7 @@
         doc.setTextColor.apply(doc, teal); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text('VERIFIED SUMMARY', 22, y + 9);
         doc.setTextColor.apply(doc, navy); doc.setFontSize(16); doc.text(evd.code, 22, y + 18);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
-        doc.text(doc.splitTextToSize('Scan the QR code, or enter the code at ' + location.host + '/verify, to see this summary as Wavelength holds it. The progress figures, sign-offs and assessments come from the learner\'s synced logbook on the Wavelength server, not from this file. Created ' + fmtEn(evd.createdAt, { day: 'numeric', month: 'long', year: 'numeric' }) + '.', W - 32 - 54), 22, y + 25);
+        doc.text(doc.splitTextToSize('Scan the QR code, or enter the code at ' + NAT.host + '/verify, to see this summary as Wavelength holds it. The progress figures, sign-offs and assessments come from the learner\'s synced logbook on the Wavelength server, not from this file. Created ' + fmtEn(evd.createdAt, { day: 'numeric', month: 'long', year: 'numeric' }) + '.', W - 32 - 54), 22, y + 25);
         y += 52;
       }
       doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor.apply(doc, navy); doc.text('Summary of training', 16, y);
@@ -1574,7 +1579,7 @@
       var ar = d.assessments ? asmRows(d.from, d.to) : [];
       if (ar.length) {
         doc.addPage(); doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text('Assessment register', 16, 18);
-        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text('Verify any code at ' + location.host + '/verify, or scan its QR code', 16, 24);
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text('Verify any code at ' + NAT.host + '/verify, or scan its QR code', 16, 24);
         var aq = ar.map(function (r) { return qrPng(verifyUrl(r[0]), 200); });
         doc.autoTable({ startY: 28, head: [['Code', 'Date', 'Pathway and module', 'Type', 'Outcome', 'Assessor', 'Verify']], body: ar.map(function (r) { return [r[0], r[1], r[2] + '\n' + r[3], r[4], r[5], r[6] + '\n' + r[7], '']; }), styles: { fontSize: 7.5, cellPadding: 1.6, valign: 'middle', minCellHeight: 18 }, headStyles: { fillColor: navy }, columnStyles: { 6: { cellWidth: 18 } },
           didDrawCell: function (h) { if (h.section === 'body' && h.column.index === 6) { try { doc.addImage(aq[h.row.index], 'PNG', h.cell.x + 1.5, h.cell.y + 1.5, 15, 15); } catch (e) { /* skip */ } } } });
@@ -1583,7 +1588,7 @@
       var sos = signoffs.filter(function (s) { return s.status === 'signed' && ids[s.id]; });
       if (sos.length) {
         doc.addPage(); doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text('Sign-off register', 16, 18);
-        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text('Verify any code at ' + location.host + '/verify, or scan its QR code', 16, 24);
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text('Verify any code at ' + NAT.host + '/verify, or scan its QR code', 16, 24);
         var qrs = sos.map(function (s) { return qrPng(verifyUrl(s.id), 200); });
         doc.autoTable({ startY: 28, head: [['Code', 'Date', 'Supervisor', 'Registration', 'Accreditation', 'Method', 'Scans', 'Signature', 'Verify']], body: sos.map(function (s) { return [s.id, (s.signed_at || '').slice(0, 10), s.supervisor_name + (s.supervisor_role ? '\n' + s.supervisor_role : ''), s.supervisor_reg || '', s.accreditation || '', (s.method === 'in-person' ? 'In person' : s.method === 'dashboard' ? 'Dashboard' : 'By link') + (s.basis ? '\n' + ({ witnessed: 'Witnessed', reviewed: 'Reviewed images', both: 'Witnessed and reviewed' })[s.basis] : ''), String(s.entry_ids.length), '', '']; }), styles: { fontSize: 8, cellPadding: 1.8, valign: 'middle', minCellHeight: 18 }, headStyles: { fillColor: navy }, columnStyles: { 7: { cellWidth: 30 }, 8: { cellWidth: 18 } },
           didDrawCell: function (h) { if (h.section === 'body' && h.column.index === 8) { try { doc.addImage(qrs[h.row.index], 'PNG', h.cell.x + 1.5, h.cell.y + 1.5, 15, 15); } catch (e) { /* skip */ } } if (h.section === 'body' && h.column.index === 7) { var s = sos[h.row.index]; if (s && s.signature) { try { doc.addImage(s.signature, 'PNG', h.cell.x + 1, h.cell.y + 1, 28, Math.min(h.cell.height - 2, 12)); } catch (e) { /* skip */ } } } } });
@@ -1601,7 +1606,7 @@
       }, Promise.resolve());
       return addImages.then(function () {
         var n = doc.getNumberOfPages();
-        for (var i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(120, 130, 145); doc.text('Wavelength ultrasound logbook · ' + acc.name + ' · Page ' + i + ' of ' + n, 16, 290); doc.text('This record holds no patient identifiers. ' + (evd ? 'Verified summary ' + evd.code + '. ' : '') + 'Codes verify at ' + location.host + '/verify', 16, 294); }
+        for (var i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(120, 130, 145); doc.text('Wavelength ultrasound logbook · ' + acc.name + ' · Page ' + i + ' of ' + n, 16, 290); doc.text('This record holds no patient identifiers. ' + (evd ? 'Verified summary ' + evd.code + '. ' : '') + 'Codes verify at ' + NAT.host + '/verify', 16, 294); }
         return { blob: doc.output('blob'), name: 'Wavelength-logbook-' + dateStamp() + '.pdf' };
       });
     });
@@ -1693,7 +1698,7 @@
       '<h2 class="sec">' + esc(T('Certificates')) + ' <a href="/elearning/account/">' + esc(T('All')) + '</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="' + esc(T('Share certificate')) + '">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">' + esc(T('Pass a free Academy module to earn a verifiable CPD certificate.')) + '</p><a class="btn sm" href="/elearning/">' + esc(T('Browse modules')) + '</a></div>') +
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div><div class="field"><label for="m4">' + esc(T('Organisation')) + '</label><input id="m4" name="organisation" type="text" value="' + esc(acc.organisation || '') + '"></div><div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
       '<h2 class="sec">' + esc(T('Notifications')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="nte"' + (p.notifyEmail === false ? '' : ' checked') + '><span>' + esc(T('Email me when a supervisor signs off or queries my scans by link or from their dashboard')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('The app also shows new sign-offs on your home screen and logbook.')) + '</p></div>' +
-      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/backup">' + esc(T('Back up or restore photos and clips')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
+      lockCard() + '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/backup">' + esc(T('Back up or restore photos and clips')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
       '<h2 class="sec">' + esc(T('Account')) + '</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">' + esc(T('Current password')) + '</label><input id="c1" name="current" type="password" autocomplete="current-password"></div><div class="field"><label for="c2">' + esc(T('New password')) + '</label><input id="c2" name="password" type="password" minlength="10" autocomplete="new-password"></div><button class="btn sm ghost">' + esc(T('Change password')) + '</button></form></div>' +
       '<div class="btns"><button class="btn ghost block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
       '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
@@ -1703,7 +1708,8 @@
     $('#mf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); saveProfile({ grade: d.grade, registration: d.registration, supervisor: !!d.supervisor }, { firstName: d.firstName, lastName: d.lastName, organisation: d.organisation }).then(function () { toast(T('Profile saved.')); render(true); }).catch(function (ex) { toast(ex.message); }); });
     $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; api('/api/app/password', formData(f)).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
     $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? T('Sign-off emails on.') : T('Sign-off emails off.')); }).catch(function (ex) { toast(ex.message); }); };
-    $('#lo').onclick = function () { api('/api/app/logout', {}).then(signedOut); };
+    bindLockCard();
+    $('#lo').onclick = function () { api('/api/app/logout', {}).then(signedOut, signedOut); };
     $('#dl').onclick = function () {
       sheet('<h2>' + esc(T('Delete your account?')) + '</h2><p class="muted small">' + esc(T('This deletes your logbook, sign-offs, assessments, supervisor links and account from Wavelength. Back up or export first if you want a copy. Images and clips on this phone are removed too.')) + '</p><form id="df"><div class="field"><label for="dp">' + esc(T('Your password')) + '</label><input id="dp" type="password" autocomplete="current-password" required></div>' + (certs.length ? '<label class="check"><input type="checkbox" id="kc" checked><span>' + esc(T('Keep my Academy certificates verifiable')) + '</span></label>' : '') + '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn danger block">' + esc(T('Delete everything')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {
         $('#df', root).addEventListener('submit', function (ev) {
@@ -1717,12 +1723,12 @@
     };
   }
   function shareCertificate(code, title) {
-    var link = location.origin + '/elearning/certificate/' + code + '/';
+    var link = NAT.origin + '/elearning/certificate/' + code + '/';
     var text = T('My Wavelength Academy CPD certificate: {title}. Verify it at {link}', { title: title, link: link });
     sheet('<h2>' + esc(T('Share your certificate')) + '</h2><p class="muted small">' + esc(T('Anyone with the link sees your name, the module, CPD hours and date, never your score. Add it to your e-portfolio, appraisal or LinkedIn.')) + '</p><div class="card" style="word-break:break-all;font-size:13px">' + esc(link) + '</div><div class="btns">' + (navigator.share ? '<button class="btn teal block" data-s>' + I.share + ' ' + esc(T('Share')) + '</button>' : '') + '<button class="btn block" data-pdf>' + esc(T('Share the PDF')) + '</button><button class="btn ghost block" data-c>' + esc(T('Copy link')) + '</button><a class="btn ghost block" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(link) + '">' + esc(T('Post on LinkedIn')) + '</a></div>', function (root) {
       var s = $('[data-s]', root); if (s) s.onclick = function () { navigator.share({ title: title, text: text, url: link }).catch(function () {}); };
       $('[data-c]', root).onclick = function () { copy(link); };
-      $('[data-pdf]', root).onclick = function () { fetch('/elearning/certificate/' + code + '.pdf', { credentials: 'same-origin' }).then(function (r) { return r.blob(); }).then(function (b) { closeSheet(); deliver(new Blob([b], { type: 'application/pdf' }), 'Wavelength-certificate-' + code + '.pdf'); }); };
+      $('[data-pdf]', root).onclick = function () { NAT.net('/elearning/certificate/' + code + '.pdf', { credentials: 'same-origin' }).then(function (r) { return r.blob(); }).then(function (b) { closeSheet(); deliver(new Blob([b], { type: 'application/pdf' }), 'Wavelength-certificate-' + code + '.pdf'); }); };
     });
   }
   // ---------- Email confirmation ----------
@@ -1777,7 +1783,8 @@
   // Nothing here is decided in the app: the server checks every claim and returns the status. A badge appears only
   // for what has been verified, never for what someone has only typed.
   var STATUS_CHIP = { verified: 'green', expired: 'red', rejected: 'red', revoked: 'red', mismatch: 'red', not_current: 'red', not_found: 'amber' };
-  function statusChip(st) { return '<span class="chip ' + (STATUS_CHIP[st] || 'amber') + '">' + esc(T(st === 'verified' ? 'Verified' : st === 'manual_verification_required' || st === 'manual_review' ? 'With the Wavelength team' : st === 'evidence_required' || st === 'more_evidence' ? 'Evidence needed' : st === 'source_unavailable' ? 'Will retry' : st === 'not_current' ? 'Not current' : st === 'not_found' ? 'Not found' : st === 'mismatch' ? 'Name differs' : st === 'expired' ? 'Expired' : st === 'rejected' ? 'Not verified' : st === 'revoked' ? 'Withdrawn by Wavelength' : 'Checking')) + '</span>'; }
+  // Professional verification status (a different chip from the logbook's sign-off statusChip above).
+  function verifyChip(st) { return '<span class="chip ' + (STATUS_CHIP[st] || 'amber') + '">' + esc(T(st === 'verified' ? 'Verified' : st === 'manual_verification_required' || st === 'manual_review' ? 'With the Wavelength team' : st === 'evidence_required' || st === 'more_evidence' ? 'Evidence needed' : st === 'source_unavailable' ? 'Will retry' : st === 'not_current' ? 'Not current' : st === 'not_found' ? 'Not found' : st === 'mismatch' ? 'Name differs' : st === 'expired' ? 'Expired' : st === 'rejected' ? 'Not verified' : st === 'revoked' ? 'Withdrawn by Wavelength' : 'Checking')) + '</span>'; }
   function badgeHtml(b, i) { return '<button type="button" class="chip ' + (b.kind === 'wavelength-supervisor' ? 'teal' : 'green') + '" data-badge="' + i + '" style="border:0;cursor:pointer;margin:0 6px 6px 0">' + esc(T(b.label)) + '</button>'; }
   function badgeSheet(b) {
     var dl = function (k, v) { return v ? '<dt>' + esc(T(k)) + '</dt><dd>' + esc(v) + '</dd>' : ''; };
@@ -1793,8 +1800,8 @@
       var needEmail = P.emailStatus !== 'verified';
       var regOpts = P.regulators.map(function (g) { return '<option value="' + esc(g.id) + '">' + esc(g.short + ' · ' + g.name) + '</option>'; }).join('');
       var credOpts = P.credentialTypes.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(T(t.label) + ' · ' + t.issuer) + '</option>'; }).join('');
-      var regs = P.registrations.map(function (g) { return '<div class="card"><div class="row"><div class="grow"><h3>' + esc(g.regulatorShort + ' ' + g.number) + '</h3><p class="small muted" style="margin:0">' + esc([T(g.profession || ''), g.organisation].filter(Boolean).join(' · ')) + '</p></div>' + statusChip(g.status) + '</div><p class="small">' + esc(T(g.message)) + (g.lastCheckedAt ? ' ' + esc(T('Last checked {date}.', { date: fmt(g.lastCheckedAt) })) : '') + '</p><div class="btns">' + (['mismatch', 'manual_review', 'manual_verification_required', 'not_found'].indexOf(g.status) >= 0 ? '<button class="btn ghost sm" data-ev="registration:' + g.id + '">' + esc(T('Add a note or evidence')) + '</button>' : '') + '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(g.registerUrl) + '">' + esc(T('Official register')) + '</a><button class="btn ghost sm" data-wd="registration:' + g.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('');
-      var creds = P.credentials.map(function (c) { return '<div class="card"><div class="row"><div class="grow"><h3>' + esc(T(c.label)) + '</h3><p class="small muted" style="margin:0">' + esc(c.issuer + ((c.moduleLabels || []).length ? ' · ' + c.moduleLabels.map(T).join(', ') : '')) + '</p></div>' + statusChip(c.status) + '</div><p class="small">' + esc(T(c.message)) + (c.expiresOn ? ' ' + esc(T('Expires {date}.', { date: fmt(c.expiresOn) })) : '') + '</p>' + ((c.evidence || []).length ? '<p class="small muted">' + esc(T('Evidence: {list}', { list: c.evidence.map(function (e) { return e.fileName || e.description || T(e.kind); }).join(', ') })) + '</p>' : '') + '<div class="btns">' + (c.status !== 'verified' ? '<button class="btn ghost sm" data-ev="credential:' + c.id + '">' + esc(T('Add evidence')) + '</button>' : '') + '<button class="btn ghost sm" data-wd="credential:' + c.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('');
+      var regs = P.registrations.map(function (g) { return '<div class="card"><div class="row"><div class="grow"><h3>' + esc(g.regulatorShort + ' ' + g.number) + '</h3><p class="small muted" style="margin:0">' + esc([T(g.profession || ''), g.organisation].filter(Boolean).join(' · ')) + '</p></div>' + verifyChip(g.status) + '</div><p class="small">' + esc(T(g.message)) + (g.lastCheckedAt ? ' ' + esc(T('Last checked {date}.', { date: fmt(g.lastCheckedAt) })) : '') + '</p><div class="btns">' + (['mismatch', 'manual_review', 'manual_verification_required', 'not_found'].indexOf(g.status) >= 0 ? '<button class="btn ghost sm" data-ev="registration:' + g.id + '">' + esc(T('Add a note or evidence')) + '</button>' : '') + '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(g.registerUrl) + '">' + esc(T('Official register')) + '</a><button class="btn ghost sm" data-wd="registration:' + g.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('');
+      var creds = P.credentials.map(function (c) { return '<div class="card"><div class="row"><div class="grow"><h3>' + esc(T(c.label)) + '</h3><p class="small muted" style="margin:0">' + esc(c.issuer + ((c.moduleLabels || []).length ? ' · ' + c.moduleLabels.map(T).join(', ') : '')) + '</p></div>' + verifyChip(c.status) + '</div><p class="small">' + esc(T(c.message)) + (c.expiresOn ? ' ' + esc(T('Expires {date}.', { date: fmt(c.expiresOn) })) : '') + '</p>' + ((c.evidence || []).length ? '<p class="small muted">' + esc(T('Evidence: {list}', { list: c.evidence.map(function (e) { return e.fileName || e.description || T(e.kind); }).join(', ') })) + '</p>' : '') + '<div class="btns">' + (c.status !== 'verified' ? '<button class="btn ghost sm" data-ev="credential:' + c.id + '">' + esc(T('Add evidence')) + '</button>' : '') + '<button class="btn ghost sm" data-wd="credential:' + c.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('');
       var appr = P.approvals.length ? '<div class="card"><p class="small">' + esc(T('The Wavelength team has approved you as a supervisor for:')) + '</p><p>' + P.approvals.map(function (a) { return '<span class="chip ' + (a.current ? 'teal' : 'amber') + '">' + esc(a.label) + (a.current ? '' : ' · ' + esc(T('paused'))) + '</span>'; }).join(' ') + '</p><p class="small muted">' + esc(T('Approval is per pathway module. It pauses automatically if your registration stops being verified.')) + '</p></div>' : '<div class="card"><p class="small muted">' + esc(T('Once your registration and supervisor credentials are verified, the Wavelength team can approve you as a supervisor for the pathway modules they cover.')) + '</p></div>';
       var D = P.directory || {};
       var dir = '<form id="dirf" class="card"><label class="check"><input type="checkbox" name="listed" value="1"' + (D.listed ? ' checked' : '') + (D.eligible ? '' : ' disabled') + '><span>' + esc(T('List me in the public "Find an ultrasound supervisor" directory')) + '</span></label>' +
@@ -1838,7 +1845,7 @@
         if (f && f.size > 1048576) return fail(T('Files can be up to 1 MB. Save a smaller PDF or photo.'));
         busy(b, true);
         var q = 'subject=' + subject + '&id=' + id + '&kind=' + encodeURIComponent(d.kind) + '&description=' + encodeURIComponent(d.description || '') + '&url=' + encodeURIComponent(d.url || '');
-        var send = f ? fetch('/api/app/professional/evidence?' + q + '&name=' + encodeURIComponent(f.name), { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': f.type || 'application/octet-stream' }, body: f }).then(function (r) { return r.json(); })
+        var send = f ? NAT.net('/api/app/professional/evidence?' + q + '&name=' + encodeURIComponent(f.name), { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': f.type || 'application/octet-stream' }, body: f }).then(function (r) { return r.json(); })
           : api('/api/app/professional/evidence', { subject: subject, id: id, kind: d.kind, description: d.description, url: d.url });
         send.then(function (res) { if (!res.ok) return fail(T(res.error || 'Something went wrong.')); closeSheet(); toast(T('Sent. The Wavelength team will review it.')); viewProfessional(); }).catch(function () { fail(T('Could not send. Check your connection.')); });
       });
@@ -1846,8 +1853,64 @@
   }
   function viewDeclaration() { mount(shell({ title: T('Your responsibility'), back: 'me' }, declarationHtml() + '<p class="small muted" style="margin-top:12px">' + esc(T('You accepted this on {date}.', { date: fmt(S.account.declarationAt) })) + '</p>')); }
 
+  // ---------- Store apps: back button, returning to the app, app lock ----------
+  // Android back: close an open sheet, then follow the header's back link, then return to Home, then leave the app.
+  window.addEventListener('wl:back', function (e) {
+    if (document.querySelector('.app-lock')) return;
+    if (document.querySelector('.sheet-bg')) { e.preventDefault(); closeSheet(); return; }
+    var b = document.querySelector('header.top a.back');
+    if (b) { e.preventDefault(); location.hash = b.getAttribute('href'); return; }
+    var r = route().name;
+    if (S.account ? r !== 'home' : (r === 'login' || r === 'signup' || r === 'reset')) { e.preventDefault(); go(S.account ? '' : 'welcome'); }
+  });
+  var LOCK_AFTER = 90e3; // a quick trip to the camera or the share sheet does not lock the logbook
+  var lockBusy = false;
+  window.addEventListener('wl:resume', function (e) {
+    if (S.account && !lockBusy && NAT.lockOn() && e.detail && e.detail.away > LOCK_AFTER) showLock();
+    sync();
+  });
+  function lockOnStart() { if (S.account && NAT.lockOn()) showLock(); }
+  function hideLock(all) { $$('.app-lock').forEach(function (x) { x.remove(); }); if (all) lockBusy = false; }
+  function showLock() {
+    if (document.querySelector('.app-lock')) return unlock();
+    var el = document.createElement('div');
+    el.className = 'app-lock'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', T('Logbook locked'));
+    el.innerHTML = '<div class="app-lock-in">' + MARK(64, 'rgba(247,245,240,.7)') + '<div class="wm">WAVELENGTH</div><p>' + esc(T('Your logbook is locked.')) + '</p><button class="btn teal block" type="button" data-unlock>' + esc(T('Unlock')) + '</button><button class="btn ghost block" type="button" data-lockout>' + esc(T('Log out')) + '</button></div>';
+    document.body.appendChild(el);
+    $('[data-unlock]', el).onclick = unlock;
+    $('[data-lockout]', el).onclick = function () { api('/api/app/logout', {}).then(signedOut, signedOut); };
+    unlock();
+  }
+  function unlock() {
+    if (lockBusy) return;
+    lockBusy = true;
+    NAT.lockAvailable().then(function (ok) {
+      if (!ok) { NAT.setLock(false); hideLock(); toast(T('App lock is off: this phone has no fingerprint or face unlock set up.'), 5000); return; }
+      return NAT.verify({ reason: T('Unlock your Wavelength logbook'), title: T('Unlock Wavelength'), subtitle: T('Your ultrasound logbook'), cancel: T('Cancel') }).then(function (yes) { if (yes) { hideLock(); NAT.haptic('success'); } });
+    }).then(function () { lockBusy = false; }, function () { lockBusy = false; });
+  }
+  function lockCard() {
+    if (!NAT.on) return '';
+    return '<h2 class="sec">' + esc(T('Security')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="lck"' + (NAT.lockOn() ? ' checked' : '') + '><span>' + esc(T('Lock the app with fingerprint or face')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.')) + '</p></div>';
+  }
+  function bindLockCard() {
+    var c = $('#lck'); if (!c) return;
+    c.onchange = function () {
+      var want = c.checked;
+      if (!want) { NAT.setLock(false); toast(T('App lock off.')); return; }
+      c.disabled = true; lockBusy = true;
+      NAT.lockAvailable().then(function (ok) {
+        if (!ok) { c.checked = false; toast(T('Set up fingerprint or face unlock in your phone settings first.'), 5000); return; }
+        return NAT.verify({ reason: T('Turn on app lock'), title: T('Turn on app lock'), subtitle: T('Your ultrasound logbook'), cancel: T('Cancel') }).then(function (yes) {
+          if (!yes) { c.checked = false; return; }
+          return NAT.setLock(true).then(function () { NAT.haptic('success'); toast(T('App lock on.')); });
+        });
+      }).then(function () { c.disabled = false; lockBusy = false; }, function () { c.disabled = false; lockBusy = false; c.checked = false; });
+    };
+  }
+
   // ---------- Start ----------
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(function () {});
+  if ('serviceWorker' in navigator && !NAT.on) navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(function () {});
   function boot() {
     var qs = new URLSearchParams(location.search);
     var hr = route();
@@ -1859,12 +1922,15 @@
     if (qs.get('reset')) location.hash = '#/reset';
     else if (qs.get('login') && !/supervise/.test(location.hash)) location.hash = '#/login';
     app.innerHTML = '<div class="auth"><div class="auth-head" style="padding-top:30vh">' + MARK(64, 'rgba(247,245,240,.6)') + '<div class="wm">WAVELENGTH</div></div></div>';
+    var offline = function () { var c = cachedAccount(); if (c && c.id && (!NAT.on || NAT.signedIn())) return signedIn(c).then(lockOnStart); render(); };
     api('/api/app/me').then(function (res) {
-      if (res.ok) { S.me = res; return signedIn(res.account); }
+      if (res.ok) { S.me = res; return signedIn(res.account).then(lockOnStart); }
+      if (res._status >= 500) return offline();
+      cacheAccount(null);
       if (qs.get('login')) location.hash = '#/login';
       else if (res.academy && !location.hash.match(/login|signup|reset/)) location.hash = '#/signup';
       render();
-    }).catch(function () { render(); });
+    }).catch(offline);
   }
   var want = pickLang();
   if (want === 'en') { setLangVars('en'); boot(); }

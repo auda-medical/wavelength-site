@@ -104,13 +104,13 @@ Sources (official; some read from search extracts, as marked in the research not
 
 | Requirement | Current state in this repo | Effect of this change |
 |---|---|---|
-| Apple 4.2 minimum functionality (repackaged websites) | A server.url shell, with offline logbook, on-device images, signatures, native share and filesystem, exports | None. New screens add app-like workflow. Keep this utility visible in review notes |
-| Apple 2.5.2 (code that changes features) | Live web content inside WebKit | New features arrive by web deploy. Do not change the app's purpose after review. Verification fits the advertised purpose |
+| Apple 4.2 minimum functionality (repackaged websites) | Since PR #13 the logbook ships inside the app (no `server.url`): offline logbook, on-device images, signatures, app lock, native share and filesystem, exports | None. New screens add app-like workflow. Keep this utility visible in review notes |
+| Apple 2.5.2 (code that changes features) | The app runs bundled code; the server provides data only | New features arrive in store builds. Do not change the app's purpose after review |
 | Apple 5.1.1(v) / Google account deletion | In-app deletion plus /app/delete-account/ | Deletion now also removes registrations, credentials, evidence, approvals, directory data, tokens and events |
 | Apple 4.8 Sign in with Apple | Own email and password only (exempt) | No third-party login added |
 | Apple 2.1 demo account | appreview@thewavelength.co.uk | Mark the review account's email as verified before submission. If Professional verification is switched on, say in review notes that it is optional and works by admin review |
 | Xcode 26 / iOS 26 SDK uploads (from 28 April 2026); deployment target | iOS 15.0 (Capacitor 8) | No change |
-| **Privacy manifest (PrivacyInfo.xcprivacy)** | **No app-level privacy manifest found in `mobile/ios/App/App/`** | Not caused by this change, but **flagged**: App Store Connect rejects apps using required-reason APIs without one. Check whether Capacitor and the Filesystem plugin ship their own; add an app manifest (UserDefaults CA92.1, file timestamp C617.1 if used) in a separate native job |
+| Privacy manifest (PrivacyInfo.xcprivacy) | Added 5 October 2026 in `mobile/ios/App/App/` and the app target (no tracking; name, email, user ID, user content; UserDefaults CA92.1, file timestamps C617.1) | Add professional registration and credential evidence before `PROFESSIONAL_VERIFY` goes live |
 | Google Play target API | targetSdk 36 and compileSdk 36 (meets the 31 August 2026 requirement for API 36) | No change |
 | Google health apps declaration | STORE.md: "Medical: clinical reference and education tools" | No change |
 | Apple App Privacy / Google Data safety | STORE.md declares name, email, user content, user ID; photos not collected; no health | **Before `PROFESSIONAL_VERIFY` goes live:** add "Other data / Other info: professional registration number and credential evidence (app functionality, linked to user)". Also review the separate, existing question of whether scan findings should be declared as health data and whether encrypted image sharing counts as collection (research suggests declaring both is the safer reading; owner decision) |
@@ -119,7 +119,7 @@ Sources (official; some read from search extracts, as marked in the research not
 
 ## 6. Pre-existing issues noticed (not changed here)
 
-- **Cold start offline:** the app's `boot()` needs `/api/app/me` before it opens the local logbook. Opened with no connection, the PWA shows the welcome screen; the native shell shows its offline page. A cached-account fallback would make cold starts offline-capable. That is a separate change, because it touches login state on shared devices.
+- **Cold start offline:** fixed in PR #13. The account is cached on the device, so the logbook opens with no connection.
 - **Account enumeration:**
   - App sign-up still answers 409 "account exists" for password accounts. App login still says an email "is registered for Academy modules". Academy registration answers differently for new and existing emails.
   - Closing these fully needs verify-before-login for every sign-up. That is an owner decision on friction.

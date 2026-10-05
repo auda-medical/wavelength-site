@@ -2,20 +2,26 @@
   "name": "wavelength-mobile",
   "private": true,
   "version": "1.0.0",
-  "description": "App Store and Google Play shells for the Wavelength app at thewavelength.co.uk/app/",
+  "description": "App Store and Google Play apps for the Wavelength logbook. The logbook ships inside the app (www/, built by scripts/build-www.mjs).",
   "scripts": {
-    "sync": "cap sync",
+    "www": "node scripts/build-www.mjs",
+    "sync": "node scripts/build-www.mjs && cap sync",
     "assets": "capacitor-assets generate --ios --android --iconBackgroundColor '#0A1526' --splashBackgroundColor '#0A1526'"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.2",
-    "@capacitor/core": "^8.5.2",
-    "@capacitor/filesystem": "^8.1.4",
-    "@capacitor/ios": "^8.5.2",
-    "@capacitor/share": "^8.0.3"
+    "@capacitor/android": "8.5.1",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/core": "8.5.1",
+    "@capacitor/filesystem": "8.1.4",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.1",
+    "@capacitor/preferences": "8.0.1",
+    "@capacitor/share": "8.0.3",
+    "@capgo/capacitor-native-biometric": "8.7.0"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^8.5.2"
+    "@capacitor/cli": "8.5.1"
   }
 }

@@ -9,6 +9,7 @@
 //   /elearning/certificate/<code>/ and <code>.pdf               public, by code
 //   /elearning/verify/?code=   /elearning/account/   /elearning/logout/
 // Email goes through Zoho ZeptoMail. Set the Worker secret ZEPTOMAIL_TOKEN to switch it on.
+import { bearer } from './native.js';
 import DATA from './academy-data.json';
 import TEMPLATE from './cert-template.bin';
 import TEMPLATE_META from './cert-template.json';
@@ -50,7 +51,9 @@ export async function cookieFor(env, id) {
 }
 export const clearCookie = `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 export async function learner(env, req) {
-  const m = (req.headers.get('Cookie') || '').match(new RegExp(COOKIE + '=(\\d+)\\.(\\d+)\\.([A-Za-z0-9_-]+)'));
+  // The website sends the cookie. The store apps send the same value as a Bearer token (worker/native.js).
+  const tok = bearer(req);
+  const m = tok ? tok.match(/^(\d+)\.(\d+)\.([A-Za-z0-9_-]+)$/) : (req.headers.get('Cookie') || '').match(new RegExp(COOKIE + '=(\\d+)\\.(\\d+)\\.([A-Za-z0-9_-]+)'));
   if (!m || Number(m[2]) < Date.now()) return null;
   let ok = false;
   try { ok = await crypto.subtle.verify('HMAC', await secret(env), unb64u(m[3]), enc.encode(`${m[1]}.${m[2]}`)); } catch { ok = false; }
