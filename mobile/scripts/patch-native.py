@@ -45,7 +45,7 @@ if 'WL_KEYSTORE' not in g:
     }
     buildTypes {''', 1)
     g = g.replace('            minifyEnabled false\n', '            minifyEnabled false\n            if (System.getenv("WL_KEYSTORE")) signingConfig signingConfigs.release\n', 1)
-    g = re.sub(r'versionCode \d+', 'versionCode (System.getenv("WL_VERSION_CODE") ?: "1").toInteger()', g)
-    g = re.sub(r'versionName "[^"]*"', 'versionName (System.getenv("WL_VERSION_NAME") ?: "1.0.0")', g)
+    g = re.sub(r'versionCode \d+', 'versionCode(Integer.parseInt(System.getenv("WL_VERSION_CODE") ?: "1"))', g)
+    g = re.sub(r'versionName "[^"]*"', 'versionName(System.getenv("WL_VERSION_NAME") ?: "1.0.0")', g)
 gradle.write_text(g)
 print('patched')
