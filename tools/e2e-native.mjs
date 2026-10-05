@@ -8,90 +8,18 @@
 // Checks: sign-up, token kept across restarts, offline start, logging a scan, haptics, website links in the in-app
 // browser, Android back button, app lock (on, cold start, resume, failed unlock), export through the native share
 // sheet, log out, Content Security Policy and console errors, and layout at phone and tablet widths with insets.
-import { chromium } from 'playwright';
 import fs from 'node:fs';
-import path from 'node:path';
+import { harness, net, SITE } from './native-harness.mjs';
 
 const out = process.argv[2] || 'native-shots';
 const API = process.argv[3] || 'http://localhost:8787';
-const WWW = path.resolve('mobile/www');
-const SITE = 'https://thewavelength.co.uk';
 fs.mkdirSync(out, { recursive: true });
-if (!fs.existsSync(path.join(WWW, 'index.html'))) throw new Error('Build the bundle first: node mobile/scripts/build-www.mjs');
 
 const errors = [];
 const fail = (m) => { errors.push(m); console.log('FAIL', m); };
 const ok = (m) => console.log('ok  ', m);
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json' };
 
-// A stand-in for the Android native bridge: plugin headers, promise calls and listener callbacks, all recorded.
-const BRIDGE = `(() => {
-  window.androidBridge = { postMessage() {} };
-  const calls = (window.__calls = []);
-  const listeners = {};
-  let cbid = 1;
-  const prefs = () => JSON.parse(localStorage.getItem('__prefs') || '{}');
-  const savePrefs = (p) => localStorage.setItem('__prefs', JSON.stringify(p));
-  window.__bio = { available: true, pass: true };
-  const impl = {
-    Preferences: {
-      get: (o) => ({ value: prefs()[o.key] ?? null }),
-      set: (o) => { const p = prefs(); p[o.key] = o.value; savePrefs(p); return {}; },
-      remove: (o) => { const p = prefs(); delete p[o.key]; savePrefs(p); return {}; },
-    },
-    Browser: { open: () => ({}) },
-    Haptics: { impact: () => ({}), notification: () => ({}) },
-    Share: { share: () => ({ activityType: 'test' }) },
-    Filesystem: { writeFile: (o) => ({ uri: 'file:///cache/' + o.path }) },
-    App: { exitApp: () => ({}) },
-    NativeBiometric: {
-      isAvailable: () => ({ isAvailable: window.__bio.available, biometryType: 3 }),
-      verifyIdentity: () => { if (!window.__bio.pass) throw new Error('Authentication failed'); return {}; },
-    },
-  };
-  const header = (name, methods, cb = []) => ({ name, methods: methods.map((m) => ({ name: m, rtype: 'promise' })).concat(cb.map((m) => ({ name: m, rtype: 'callback' }))) });
-  window.Capacitor = {
-    Plugins: {},
-    PluginHeaders: Object.entries(impl).map(([n, o]) => header(n, Object.keys(o), n === 'App' ? ['addListener', 'removeListener'] : [])),
-    nativePromise(plugin, method, options) {
-      calls.push({ plugin, method, options });
-      try { return Promise.resolve(impl[plugin][method](options || {})); } catch (e) { return Promise.reject(e); }
-    },
-    nativeCallback(plugin, method, options, callback) {
-      calls.push({ plugin, method, options });
-      if (method === 'addListener') { const id = String(cbid++); (listeners[plugin + ':' + options.eventName] = listeners[plugin + ':' + options.eventName] || []).push(callback); return id; }
-      return '0';
-    },
-  };
-  window.__fire = (plugin, event, data) => (listeners[plugin + ':' + event] || []).forEach((f) => f(data));
-  document.addEventListener('securitypolicyviolation', (e) => console.error('CSP violation: ' + e.violatedDirective + ' ' + e.blockedURI));
-})();`;
-
-const browser = await chromium.launch();
-let offline = false;
-async function newApp(width = 390, height = 844) {
-  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, isMobile: width < 600, hasTouch: true, locale: 'en-GB', serviceWorkers: 'block' });
-  await ctx.addInitScript(BRIDGE);
-  // The bundle, served as Capacitor serves it from the phone. Paths without a file fall back to index.html.
-  await ctx.route('https://localhost/**', async (route) => {
-    const u = new URL(route.request().url());
-    let f = path.join(WWW, decodeURIComponent(u.pathname));
-    if (!f.startsWith(WWW)) return route.fulfill({ status: 403, body: '' });
-    if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(WWW, 'index.html');
-    return route.fulfill({ status: 200, headers: { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }, body: fs.readFileSync(f) });
-  });
-  // The Wavelength server, played by the local Worker. Offline mode drops every call.
-  await ctx.route(SITE + '/**', async (route) => {
-    if (offline) return route.abort('internetdisconnected');
-    const req = route.request();
-    const res = await route.fetch({ url: req.url().replace(SITE, API) });
-    return route.fulfill({ response: res });
-  });
-  const page = await ctx.newPage();
-  page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });
-  page.on('pageerror', (e) => errors.push('pageerror: ' + String(e)));
-  return { ctx, page };
-}
+const { browser, newApp } = await harness({ api: API, errors });
 const calls = (p, plugin, method) => p.evaluate(([a, b]) => window.__calls.filter((c) => c.plugin === a && (!b || c.method === b)), [plugin, method]);
 const clearCalls = (p) => p.evaluate(() => { window.__calls.length = 0; });
 const prefs = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('__prefs') || '{}'));
@@ -212,14 +140,14 @@ if (await page.$('.app-lock')) fail('lock screen stuck when the phone has no bio
 await page.evaluate(() => { window.__bio.available = true; });
 
 // Offline start: the logbook opens from the device with the scan in it.
-offline = true;
+net.offline = true;
 await page.goto('https://localhost/');
 await page.waitForSelector('nav.tabs', { timeout: 15000 }).then(() => ok('offline start opens the logbook'), () => fail('offline start did not open the logbook'));
 await page.evaluate(() => { location.hash = '#/log'; });
 await page.waitForTimeout(500);
 if (!(await page.$('.entry'))) fail('offline logbook shows no scans'); else ok('offline logbook shows the saved scan');
 await page.screenshot({ path: `${out}/06-offline-log.png` });
-offline = false;
+net.offline = false;
 
 // Export goes through the native share sheet.
 await page.goto('https://localhost/#/export');
