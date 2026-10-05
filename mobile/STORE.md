@@ -20,6 +20,18 @@ Releases: web changes no longer reach store users on deploy. A change to `src/ap
 - Review account: appreview@thewavelength.co.uk (password kept outside the repo, given to Firas). Keep it in the live D1 `learners` table, onboarded, with a few sample scans.
 - Test without a phone: `node tools/e2e-native.mjs <outdir>` runs the real bundle with a stand-in native bridge against a local Worker.
 
+## Before submitting: real phone checks
+
+The automated harness (`tools/e2e-native.mjs`) does not replace real phones. On one Android phone (signed .apk from the Android workflow, then the internal testing track) and, before TestFlight, one iPhone, check:
+- Fresh install, sign up, log in, and the review account.
+- Cold start with flight mode on, log a scan offline, reconnect, and confirm it syncs.
+- Take photo and record clip (camera hand-off), choose from gallery, crop and cover editor.
+- App lock: turn on, close the app, reopen, background for over 90 seconds.
+- Export PDF, Excel and CSV through the share sheet; certificate PDF; backup and restore.
+- Website links open in the in-app browser; Android back button on every screen.
+- Log out, log back in; delete account; reinstall.
+- iPhone only: images and clips still present after force-closing the app, restarting the phone, low storage and an app update. If any are lost, move images to native file storage on iOS before release.
+
 ## Listing images
 
 `mobile/store/`: six phone screenshots (1080x1920, captioned, from the real app with an invented sample logbook), the Google Play feature graphic (1024x500) and the 512 px icon. Regenerate after visible app changes: build the bundle, run the local Worker, then `node tools/store-shots.mjs <outdir>` and copy the `play-*.png` files here as RGB PNGs.
@@ -67,7 +79,7 @@ Not collected: photos and videos (they stay on the device; images shared in a si
 ## Google Play Data safety
 
 - Data collected: Personal info (name, email address, other info: role and organisation), App activity (other user-generated content: logbook text entries). Purpose: app functionality, account management. Not shared with third parties. Optional fields: role and organisation.
-- Photos and videos: not collected (processed on device; shared images are end-to-end encrypted).
+- Photos and videos: OWNER DECISION PENDING before submission. Images and clips stay on the phone, but when a learner chooses to share them in a sign-off link they travel to our server as AES-GCM ciphertext the server cannot read, held until sign-off, cancel or 14 days. Cautious answer (recommended): Photos and Videos, collected, optional, not shared, encrypted in transit, ephemeral, purpose app functionality. Apple App Privacy needs the same decision. Check both against each store's current definitions on the day of submission.
 - Data encrypted in transit: yes.
 - Fingerprint and face unlock: handled by the phone; the app receives only pass or fail. Not collected.
 - Users can request deletion: yes, in the app and at https://thewavelength.co.uk/app/delete-account/

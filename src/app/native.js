@@ -23,9 +23,25 @@
   function setPref(key, v) { if (!Prefs) return Promise.resolve(); return (v ? Prefs.set({ key: key, value: String(v) }) : Prefs.remove({ key: key })).catch(function () {}); }
 
   // ---------- Server and login token ----------
+  // The login token lives in the phone's secure storage (Android Keystore-encrypted, iOS Keychain) through the
+  // biometric plugin's data store. Preferences keeps settings only. A token left in Preferences by an earlier build
+  // moves across on first start.
+  var Bio = plugin('NativeBiometric');
+  var SECURE_KEY = 'wavelength.session';
   var TOKEN = '', LOCK = false;
-  var ready = on ? Promise.all([pref('wl-token'), pref('wl-lock')]).then(function (v) { TOKEN = v[0]; LOCK = v[1] === '1'; }) : Promise.resolve();
-  function setToken(t) { TOKEN = t || ''; setPref('wl-token', TOKEN); }
+  function readToken() {
+    var secure = Bio ? Bio.getData({ key: SECURE_KEY }).then(function (r) { return (r && r.value) || ''; }, function () { return ''; }) : Promise.resolve('');
+    return secure.then(function (v) {
+      if (v || !Bio) return v || pref('wl-token');
+      return pref('wl-token').then(function (old) { if (old) { saveToken(old); setPref('wl-token', ''); } return old; });
+    });
+  }
+  function saveToken(t) {
+    if (!Bio) return setPref('wl-token', t);
+    return (t ? Bio.setData({ key: SECURE_KEY, value: t }) : Bio.deleteData({ key: SECURE_KEY })).catch(function () {});
+  }
+  var ready = on ? Promise.all([readToken(), pref('wl-lock')]).then(function (v) { TOKEN = v[0]; LOCK = v[1] === '1'; }) : Promise.resolve();
+  function setToken(t) { if ((t || '') === TOKEN) return; TOKEN = t || ''; saveToken(TOKEN); }
   // A path on the Wavelength website as an absolute address (the website itself keeps relative paths).
   function site(path) { return /^[a-z]+:/i.test(path) ? path : SITE + path; }
   // fetch() for the Wavelength server. In the app: absolute address, token header, no cookies, token kept fresh.
@@ -77,7 +93,6 @@
   }
 
   // ---------- App lock (fingerprint, face or device biometrics) ----------
-  var Bio = plugin('NativeBiometric');
   function lockAvailable() {
     if (!Bio) return Promise.resolve(false);
     return Bio.isAvailable({ useFallback: false }).then(function (r) { return !!(r && r.isAvailable); }, function () { return false; });

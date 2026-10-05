@@ -23,6 +23,7 @@ const { browser, newApp } = await harness({ api: API, errors });
 const calls = (p, plugin, method) => p.evaluate(([a, b]) => window.__calls.filter((c) => c.plugin === a && (!b || c.method === b)), [plugin, method]);
 const clearCalls = (p) => p.evaluate(() => { window.__calls.length = 0; });
 const prefs = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('__prefs') || '{}'));
+const secure = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('__secure') || '{}'));
 const hash = (p) => p.evaluate(() => location.hash);
 const back = async (p) => { await p.evaluate(() => window.__fire('App', 'backButton', { canGoBack: true })); await p.waitForTimeout(250); };
 const noOverflow = async (p, name) => { if (await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) fail('horizontal overflow on ' + name); };
@@ -45,11 +46,12 @@ await page.fill('input[name=email]', email);
 await page.fill('input[name=password]', 'longpassword1');
 await page.check('input[name=terms]');
 await page.click('#f button[type=submit]');
-await page.waitForFunction(() => JSON.parse(localStorage.getItem('__prefs') || '{}')['wl-token'] || document.querySelector('#f .err:not([hidden])'), null, { timeout: 15000 });
+await page.waitForFunction(() => JSON.parse(localStorage.getItem('__secure') || '{}')['wavelength.session'] || document.querySelector('#f .err:not([hidden])'), null, { timeout: 15000 });
 await page.waitForTimeout(800);
-let p = await prefs(page);
-if (!/^\d+\.\d+\.[\w-]+$/.test(p['wl-token'] || '')) fail('no token stored after sign-up: ' + JSON.stringify(p));
-else ok('sign-up stored the login token in Preferences');
+let p = await secure(page);
+if (!/^\d+\.\d+\.[\w-]+$/.test(p['wavelength.session'] || '')) fail('no token in secure storage after sign-up: ' + JSON.stringify(p));
+else ok('sign-up stored the login token in secure storage');
+if ((await prefs(page))['wl-token']) fail('login token also written to Preferences'); else ok('no login token in Preferences');
 const signupErr = await page.evaluate(() => (document.querySelector('.err:not([hidden])') || {}).textContent || '');
 if (signupErr) fail('sign-up error: ' + signupErr);
 
@@ -185,8 +187,24 @@ await page.evaluate(() => { location.hash = '#/me'; });
 await page.waitForSelector('#lo', { timeout: 15000 });
 await page.click('#lo');
 await page.waitForTimeout(800);
-p = await prefs(page);
-if (p['wl-token']) fail('token still stored after log out'); else ok('log out cleared the token');
+p = await secure(page);
+if (p['wavelength.session'] || (await prefs(page))['wl-token']) fail('token still stored after log out'); else ok('log out cleared the token');
+
+// An earlier build kept the token in Preferences: it moves to secure storage on start.
+{
+  const m = await newApp();
+  await m.page.goto('https://localhost/');
+  await m.page.waitForSelector('#app .auth, #app form', { timeout: 15000 });
+  const t2 = Date.now();
+  const r2 = await m.page.evaluate((e) => window.WLNative.net('/api/app/signup', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ firstName: 'Old', lastName: 'Build', email: e, password: 'longpassword1', terms: true }) }).then((r) => r.json()), `oldbuild${t2}@example.com`);
+  if (!r2.ok) fail('migration sign-up ' + JSON.stringify(r2));
+  await m.page.evaluate(() => { const s = JSON.parse(localStorage.getItem('__secure') || '{}'); const tok = s['wavelength.session']; localStorage.setItem('__secure', '{}'); localStorage.setItem('__prefs', JSON.stringify({ 'wl-token': tok })); });
+  await m.page.goto('https://localhost/');
+  await m.page.waitForTimeout(1500);
+  const sp = await secure(m.page), pp = await prefs(m.page);
+  if (sp['wavelength.session'] && !pp['wl-token']) ok('a token from Preferences moved to secure storage'); else fail('token migration: ' + JSON.stringify({ sp, pp }));
+  await m.ctx.close();
+}
 
 await ctx.close();
 await browser.close();

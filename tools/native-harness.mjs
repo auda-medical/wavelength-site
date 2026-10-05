@@ -31,6 +31,10 @@ export const BRIDGE = `(() => {
     Filesystem: { writeFile: (o) => ({ uri: 'file:///cache/' + o.path }) },
     App: { exitApp: () => ({}) },
     NativeBiometric: {
+      // Secure data store (Keystore / Keychain on a phone), kept apart from Preferences so tests can tell them apart.
+      setData: (o) => { const d = JSON.parse(localStorage.getItem('__secure') || '{}'); d[o.key] = o.value; localStorage.setItem('__secure', JSON.stringify(d)); return {}; },
+      getData: (o) => { const d = JSON.parse(localStorage.getItem('__secure') || '{}'); if (!(o.key in d)) throw new Error('No data found'); return { value: d[o.key] }; },
+      deleteData: (o) => { const d = JSON.parse(localStorage.getItem('__secure') || '{}'); delete d[o.key]; localStorage.setItem('__secure', JSON.stringify(d)); return {}; },
       isAvailable: () => ({ isAvailable: window.__bio.available, biometryType: 3 }),
       verifyIdentity: () => { if (!window.__bio.pass) throw new Error('Authentication failed'); return {}; },
     },
