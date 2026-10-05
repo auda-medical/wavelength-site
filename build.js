@@ -1779,13 +1779,44 @@ ${body}
   }
 }
 
+// ---------- Image dimensions ----------
+// Markdown images (pearl and lesson graphics) get width and height from the file, so the browser reserves the
+// space before the image loads and the text below does not jump (Cumulative Layout Shift).
+const imageSizes = {};
+function imageSize(file) {
+  if (file in imageSizes) return imageSizes[file];
+  let size = null;
+  try {
+    const b = fs.readFileSync(file);
+    if (b.toString('ascii', 1, 4) === 'PNG') size = [b.readUInt32BE(16), b.readUInt32BE(20)];
+    else if (b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP') {
+      const chunk = b.toString('ascii', 12, 16);
+      if (chunk === 'VP8 ') size = [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
+      else if (chunk === 'VP8L') { const n = b.readUInt32LE(21); size = [(n & 0x3fff) + 1, ((n >> 14) & 0x3fff) + 1]; }
+      else if (chunk === 'VP8X') size = [b.readUIntLE(24, 3) + 1, b.readUIntLE(27, 3) + 1];
+    } else if (b[0] === 0xff && b[1] === 0xd8) {
+      for (let i = 2; i < b.length - 9;) {
+        if (b[i] !== 0xff) { i++; continue; }
+        const m = b[i + 1];
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) { size = [b.readUInt16BE(i + 7), b.readUInt16BE(i + 5)]; break; }
+        i += 2 + b.readUInt16BE(i + 2);
+      }
+    }
+  } catch { size = null; }
+  return (imageSizes[file] = size && size[0] && size[1] ? size : null);
+}
+const sizeImages = (html) => html.replace(/<img src="\/learn\/images\/([^"?#]+)"(?![^>]*\swidth=)/g, (tag, f) => {
+  const size = imageSize(path.join(LEARN_DIR, 'images', decodeURIComponent(f)));
+  return size ? `${tag} width="${size[0]}" height="${size[1]}"` : tag;
+});
+
 // ---------- Write output ----------
 fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(DIST, { recursive: true });
 for (const [p, html] of Object.entries(pages)) {
   const dir = path.join(DIST, p);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'index.html'), html);
+  fs.writeFileSync(path.join(dir, 'index.html'), sizeImages(html));
 }
 fs.writeFileSync(path.join(DIST, '404.html'), notFound);
 
