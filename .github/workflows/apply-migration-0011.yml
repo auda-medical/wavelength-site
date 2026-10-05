@@ -1,0 +1,131 @@
+name: Apply D1 migration 0011
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-production-migration
+  cancel-in-progress: false
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_MIGRATION_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+  D1_DATABASE: wavelength-volunteers
+  REVIEWED_PR7_SHA: e6ebfdc71fd5c1ca0e92973c4730dc17bb4f9cbc
+
+jobs:
+  migrate:
+    name: Apply and verify migration 0011
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Validate configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::CLOUDFLARE_D1_MIGRATION_TOKEN is missing"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+
+      - name: Check out reviewed PR 7 revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REVIEWED_PR7_SHA }}
+
+      - name: Record recovery timestamp
+        id: recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          ts="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "timestamp=$ts" >> "$GITHUB_OUTPUT"
+          echo "### D1 migration 0011" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Recovery timestamp before migration: `$ts`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Reviewed source commit: `$REVIEWED_PR7_SHA`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Inspect production before migration
+        id: before
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE" --remote --command="SELECT COUNT(*) AS learner_count FROM learners;" --json > before.json
+          count="$(jq -r '.[0].results[0].learner_count' before.json)"
+          test "$count" != "null" && test -n "$count"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "- Learners before: $count" >> "$GITHUB_STEP_SUMMARY"
+
+          # Refuse to reapply an ALTER migration if it is already present.
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE" --remote --command="PRAGMA table_info(learners);" --json > learner_schema.json
+          if jq -e '.[0].results[] | select(.name == "email_status")' learner_schema.json >/dev/null; then
+            echo "::error::Migration 0011 appears to be already applied because learners.email_status exists. No SQL was run."
+            exit 1
+          fi
+
+      - name: Apply migration 0011
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f migrations/0011_verification.sql
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE" --remote --file=migrations/0011_verification.sql
+
+      - name: Verify production after migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE" --remote --command="
+            SELECT COUNT(*) AS learner_count,
+                   SUM(CASE WHEN email_status = 'legacy_unverified' THEN 1 ELSE 0 END) AS legacy_count
+            FROM learners;
+          " --json > after.json
+          after_count="$(jq -r '.[0].results[0].learner_count' after.json)"
+          legacy_count="$(jq -r '.[0].results[0].legacy_count' after.json)"
+          before_count="${{ steps.before.outputs.count }}"
+
+          if [ "$after_count" != "$before_count" ]; then
+            echo "::error::Learner count changed from $before_count to $after_count"
+            exit 1
+          fi
+          if [ "$legacy_count" != "$after_count" ]; then
+            echo "::error::Not every existing learner is legacy_unverified: $legacy_count of $after_count"
+            exit 1
+          fi
+
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE" --remote --command="
+            SELECT name FROM sqlite_master
+            WHERE type = 'table'
+              AND name IN (
+                'email_tokens',
+                'professional_registrations',
+                'credentials',
+                'credential_evidence',
+                'supervisor_approvals',
+                'verification_events',
+                'directory_profiles'
+              )
+            ORDER BY name;
+          " --json > tables.json
+          table_count="$(jq '.[0].results | length' tables.json)"
+          if [ "$table_count" -ne 7 ]; then
+            echo "::error::Expected 7 verification tables, found $table_count"
+            exit 1
+          fi
+
+          for check in             "learners:email_status"             "learners:email_verified_at"             "supervisor_links:invite_hash"             "supervisor_links:invite_expires"             "signoffs:supervisor_snapshot"             "assessments:supervisor_snapshot"
+          do
+            table="${check%%:*}"
+            column="${check##*:}"
+            npx --yes wrangler@4 d1 execute "$D1_DATABASE" --remote --command="PRAGMA table_info($table);" --json > schema.json
+            jq -e --arg c "$column" '.[0].results[] | select(.name == $c)' schema.json >/dev/null || {
+              echo "::error::Missing expected column $table.$column"
+              exit 1
+            }
+          done
+
+          echo "- Learners after: $after_count" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Existing learners marked legacy_unverified: $legacy_count" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Verification tables present: 7/7" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Required new columns: present" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Result: migration 0011 applied and verified" >> "$GITHUB_STEP_SUMMARY"
