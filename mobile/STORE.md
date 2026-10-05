@@ -79,7 +79,7 @@ Not collected: photos and videos (they stay on the device; images shared in a si
 ## Google Play Data safety
 
 - Data collected: Personal info (name, email address, other info: role and organisation), App activity (other user-generated content: logbook text entries). Purpose: app functionality, account management. Not shared with third parties. Optional fields: role and organisation.
-- Photos and videos: OWNER DECISION PENDING before submission. Images and clips stay on the phone, but when a learner chooses to share them in a sign-off link they travel to our server as AES-GCM ciphertext the server cannot read, held until sign-off, cancel or 14 days. Cautious answer (recommended): Photos and Videos, collected, optional, not shared, encrypted in transit, ephemeral, purpose app functionality. Apple App Privacy needs the same decision. Check both against each store's current definitions on the day of submission.
+- Photos and videos: not collected (owner's decision, 5 October 2026). Images and clips stay on the phone. When a learner chooses to share them in a sign-off link, the phone encrypts them (AES-GCM) and the key travels only in the link, so neither Auda Medical nor any intermediary can read what the server holds; it is deleted at sign-off, cancel or 14 days. Google exempts end-to-end encrypted data from collection, and Apple counts only data readable by the developer or a third party. The privacy notice explains the encrypted sharing. Answer "collected" instead if the server ever holds a key, a readable copy, or a thumbnail. Apple App Privacy: same answer.
 - Data encrypted in transit: yes.
 - Fingerprint and face unlock: handled by the phone; the app receives only pass or fail. Not collected.
 - Users can request deletion: yes, in the app and at https://thewavelength.co.uk/app/delete-account/
@@ -96,5 +96,5 @@ Email verification (built October 2026) needs no change to these answers. Profes
 - Apple App Privacy: add Other Data (professional registration number, credential evidence), linked to the user, for app functionality.
 - Google Data safety: add Personal info > Other info (registration number, credential evidence), collected, not shared, for app functionality and account management.
 - Review notes: mark the review account's email as verified, and say that Professional verification is optional and reviewed by the Wavelength team.
-- Separately, see the flags in `docs/verification-integrations.md` section 5: no app-level `PrivacyInfo.xcprivacy` in the iOS project, and whether scan findings and encrypted image sharing should be declared.
+- The iOS privacy manifest (`ios/App/App/PrivacyInfo.xcprivacy`) is in place: add the new data types there too. Scan findings stay declared as user content (they describe anonymous patients, not the user's own health), and encrypted image sharing stays not collected, as above.
 
