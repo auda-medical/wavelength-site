@@ -334,7 +334,7 @@
 
   // ---------- Auth views ----------
   function authFrame(title, lede, body) {
-    app.innerHTML = '<div class="auth"><div class="auth-head"><div class="auth-lang">' + langPicker('lang-a') + '</div>' + MARK(64, 'rgba(247,245,240,.6)') + '<div class="wm">WAVELENGTH</div><div class="tag">TUNE IN · GAIN CLARITY</div>' + (title ? '<h1>' + esc(title) + '</h1>' : '') + (lede ? '<p>' + esc(lede) + '</p>' : '') + '</div><div class="auth-body"><div class="inner">' + body + '</div></div></div>';
+    app.innerHTML = '<div class="auth"><div class="auth-head"><div class="auth-lang">' + langPicker('lang-a') + '</div><a class="home-link" href="/">' + MARK(64, 'rgba(247,245,240,.6)') + '<div class="wm">WAVELENGTH</div><div class="tag">TUNE IN · GAIN CLARITY</div></a>' + (title ? '<h1>' + esc(title) + '</h1>' : '') + (lede ? '<p>' + esc(lede) + '</p>' : '') + '</div><div class="auth-body"><div class="inner">' + body + '</div></div></div>';
     bindLang(app);
   }
   function viewWelcome() {
@@ -504,7 +504,7 @@
     var pending = ents.length - signed;
     var name = S.account.firstName;
     var hour = new Date().getHours(), hi = hour < 12 ? T('Good morning, {name}.', { name: name }) : hour < 18 ? T('Good afternoon, {name}.', { name: name }) : T('Good evening, {name}.', { name: name });
-    var hero = '<header class="top" style="padding-bottom:4px">' + MARK(34, 'rgba(247,245,240,.5)') + '<h1 style="font:600 13px var(--sans);letter-spacing:.38em">WAVELENGTH</h1><span class="sync-dot" aria-hidden="true"></span></header>' +
+    var hero = '<header class="top" style="padding-bottom:4px"><a class="brand-link" href="/">' + MARK(34, 'rgba(247,245,240,.5)') + '<h1 style="font:600 13px var(--sans);letter-spacing:.38em">WAVELENGTH</h1></a><span class="sync-dot" aria-hidden="true"></span></header>' +
       '<section class="hero"><p class="hi">' + esc(hi) + '</p><p class="sub">' + esc(ents.length ? T('{scans} in your logbook.', { scans: plural(ents.length, 'scan') }) : T('Log your first scan to start tracking your targets.')) + '</p>' +
       '<div class="stats"><div class="stat"><b>' + ents.length + '</b><span>' + esc(T('Scans')) + '</span></div><div class="stat"><b>' + ents.filter(function (e) { return e.date.slice(0, 7) === month; }).length + '</b><span>' + esc(T('This month')) + '</span></div><div class="stat"><b>' + signed + '</b><span>' + esc(T('Signed off')) + '</span></div><div class="stat"><b>' + signedAssessments().length + '</b><span>' + esc(T('Assessments')) + '</span></div></div></section>';
     var quick = '<div class="card" style="margin-top:16px;padding:10px"><div class="quick">' +
