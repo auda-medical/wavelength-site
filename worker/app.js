@@ -12,7 +12,7 @@
 // sharing in sign-off links (IMAGE_SHARE = "true"): the phone encrypts with AES-GCM and keeps the key in the link's
 // #fragment, so this Worker stores only ciphertext in KV (SHARED_IMAGES), deleted on sign-off, cancel, account
 // deletion or after 14 days. See the DPIA before changing any of this.
-import { cookieFor, clearCookie, learner, sendMail } from './academy.js';
+import { cookieFor, clearCookie, learner, sendMail, revokeSessions } from './academy.js';
 import DATA from './academy-data.json';
 import { createEvidence, listEvidence, withdrawEvidence, verifyEvidence } from './evidence.js';
 import * as SV from './supervise.js';
@@ -95,7 +95,9 @@ async function changePassword(env, l, req) {
   const pw = String(d.password || '');
   if (pw.length < 10 || pw.length > 200) return json({ ok: false, error: 'Choose a password of at least 10 characters.' }, 400);
   await env.DB.prepare('UPDATE learners SET password_hash = ? WHERE id = ?').bind(await hashPassword(pw), l.id).run();
-  return json({ ok: true });
+  // Log out every other device, then give this one a fresh cookie.
+  await revokeSessions(env, l.id);
+  return json({ ok: true }, 200, { 'Set-Cookie': await cookieFor(env, l.id) });
 }
 
 async function resetRequest(env, req, ctx) {
@@ -105,6 +107,9 @@ async function resetRequest(env, req, ctx) {
   if (!EMAIL.test(email)) return out;
   const row = await env.DB.prepare('SELECT * FROM learners WHERE email = ? AND password_hash IS NOT NULL').bind(email).first();
   if (!row || !env.ZEPTOMAIL_TOKEN) return out;
+  // One reset email per account every five minutes, so the form cannot be used to flood someone's inbox.
+  const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM password_resets WHERE learner_id = ? AND used = 0 AND expires_at > ?').bind(row.id, Date.now() + 3300e3).first();
+  if (recent && recent.n) return out;
   const t = token();
   await env.DB.prepare('INSERT INTO password_resets (token_hash, learner_id, expires_at) VALUES (?,?,?)').bind(await sha256(t), row.id, Date.now() + 3600e3).run();
   const link = `${SITE}/app/?reset=${t}`;
@@ -125,10 +130,16 @@ async function resetComplete(env, req) {
   if (pw.length < 10 || pw.length > 200) return json({ ok: false, error: 'Choose a password of at least 10 characters.' }, 400);
   const row = await env.DB.prepare('SELECT * FROM password_resets WHERE token_hash = ?').bind(await sha256(clip(d.token, 100))).first();
   if (!row || row.used || row.expires_at < Date.now()) return json({ ok: false, error: 'This reset link has expired. Ask for a new one.' }, 400);
+  const hash = await hashPassword(pw);
+  // Claim the token atomically so two submissions of the same link cannot both succeed.
+  const claim = await env.DB.prepare('UPDATE password_resets SET used = 1 WHERE token_hash = ? AND used = 0').bind(row.token_hash).run();
+  if (!(claim.meta && claim.meta.changes)) return json({ ok: false, error: 'This reset link has expired. Ask for a new one.' }, 400);
   await env.DB.batch([
-    env.DB.prepare('UPDATE password_resets SET used = 1 WHERE token_hash = ?').bind(row.token_hash),
-    env.DB.prepare('UPDATE learners SET password_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?').bind(await hashPassword(pw), row.learner_id),
+    env.DB.prepare('UPDATE password_resets SET used = 1 WHERE learner_id = ?').bind(row.learner_id),
+    env.DB.prepare('UPDATE learners SET password_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?').bind(hash, row.learner_id),
   ]);
+  // Whoever knew the old password is logged out everywhere.
+  await revokeSessions(env, row.learner_id);
   const l = await env.DB.prepare('SELECT * FROM learners WHERE id = ?').bind(row.learner_id).first();
   return json({ ok: true, account: account(l) }, 200, { 'Set-Cookie': await cookieFor(env, l.id) });
 }
