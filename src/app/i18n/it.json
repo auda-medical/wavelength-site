@@ -1394,5 +1394,21 @@
 "Choose your password.": "Scegli la tua password.",
 "To finish creating your account, choose the password you will use to log in.": "Per completare la creazione dell'account, scegli la password che userai per accedere.",
 "Your email is confirmed. This account already has a password, so log in with it.": "La tua email è confermata. Questo account ha già una password: accedi con quella.",
-"This link has expired or has already been used. Open the Wavelength app to send a new one.": "Questo link è scaduto o è già stato usato. Apri l'app Wavelength per richiederne uno nuovo."
+"This link has expired or has already been used. Open the Wavelength app to send a new one.": "Questo link è scaduto o è già stato usato. Apri l'app Wavelength per richiederne uno nuovo.",
+"App lock is off: this phone has no fingerprint or face unlock set up.": "Blocco disattivato: su questo telefono non è configurato lo sblocco con impronta o volto.",
+"App lock off.": "Blocco disattivato.",
+"App lock on.": "Blocco attivato.",
+"Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.": "Chiede l'impronta o il volto quando apri Wavelength e dopo un po' in background.",
+"Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body's portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.": "Scegli il tuo ente di accreditamento e Wavelength organizza esami, valutazioni e convalide secondo i requisiti del suo portfolio, pronti da inviare. Esporta in PDF, Excel o CSV con un riepilogo verificabile tramite QR.",
+"Lock the app with fingerprint or face": "Blocca l'app con impronta o volto",
+"Logbook locked": "Registro bloccato",
+"Security": "Sicurezza",
+"Set up fingerprint or face unlock in your phone settings first.": "Configura prima lo sblocco con impronta o volto nelle impostazioni del telefono.",
+"Turn on app lock": "Attiva il blocco",
+"Unlock": "Sblocca",
+"Unlock Wavelength": "Sblocca Wavelength",
+"Unlock your Wavelength logbook": "Sblocca il tuo registro Wavelength",
+"Your logbook is locked.": "Il tuo registro è bloccato.",
+"Your portfolio, tailored to your accrediting body": "Il tuo portfolio, su misura per il tuo ente di accreditamento",
+"Your ultrasound logbook": "Il tuo registro di ecografia"
 }

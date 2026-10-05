@@ -1378,5 +1378,21 @@
 "Choose your password.": "设置您的密码。",
 "To finish creating your account, choose the password you will use to log in.": "要完成创建账户，请设置您将用于登录的密码。",
 "Your email is confirmed. This account already has a password, so log in with it.": "您的电子邮箱已确认。此账户已有密码，请用该密码登录。",
-"This link has expired or has already been used. Open the Wavelength app to send a new one.": "该链接已过期或已被使用。请打开 Wavelength 应用申请新的链接。"
+"This link has expired or has already been used. Open the Wavelength app to send a new one.": "该链接已过期或已被使用。请打开 Wavelength 应用申请新的链接。",
+"App lock is off: this phone has no fingerprint or face unlock set up.": "应用锁已关闭：此手机未设置指纹或面容解锁。",
+"App lock off.": "应用锁已关闭。",
+"App lock on.": "应用锁已开启。",
+"Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.": "打开 Wavelength 时以及在后台停留一段时间后，会要求验证指纹或面容。",
+"Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body's portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.": "选择您的认证机构，Wavelength 会按照该机构的档案要求整理您的扫描、评估和签核，随时可以提交。可导出为 PDF、Excel 或 CSV，并附带可通过二维码验证的摘要。",
+"Lock the app with fingerprint or face": "使用指纹或面容锁定应用",
+"Logbook locked": "记录本已锁定",
+"Security": "安全",
+"Set up fingerprint or face unlock in your phone settings first.": "请先在手机设置中设置指纹或面容解锁。",
+"Turn on app lock": "开启应用锁",
+"Unlock": "解锁",
+"Unlock Wavelength": "解锁 Wavelength",
+"Unlock your Wavelength logbook": "解锁您的 Wavelength 记录本",
+"Your logbook is locked.": "您的记录本已锁定。",
+"Your portfolio, tailored to your accrediting body": "按您的认证机构定制的档案",
+"Your ultrasound logbook": "您的超声记录本"
 }

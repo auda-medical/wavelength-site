@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wavelength deep navy: behind the status and navigation bars. -->
+    <color name="wl_deep">#0A1526</color>
+</resources>

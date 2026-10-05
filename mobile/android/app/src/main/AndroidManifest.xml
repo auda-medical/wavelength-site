@@ -31,6 +31,16 @@
         </provider>
     </application>
 
+    <!-- Camera and video apps the logbook hands off to for "Take photo" and "Record clip" (no camera permission needed). -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.VIDEO_CAPTURE" />
+        </intent>
+    </queries>
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />

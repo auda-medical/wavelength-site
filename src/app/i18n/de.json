@@ -1394,5 +1394,21 @@
 "Choose your password.": "Wählen Sie Ihr Passwort.",
 "To finish creating your account, choose the password you will use to log in.": "Um Ihr Konto fertig anzulegen, wählen Sie das Passwort, mit dem Sie sich anmelden werden.",
 "Your email is confirmed. This account already has a password, so log in with it.": "Ihre E-Mail-Adresse ist bestätigt. Dieses Konto hat bereits ein Passwort: Melden Sie sich damit an.",
-"This link has expired or has already been used. Open the Wavelength app to send a new one.": "Dieser Link ist abgelaufen oder wurde schon verwendet. Öffnen Sie die Wavelength-App, um einen neuen anzufordern."
+"This link has expired or has already been used. Open the Wavelength app to send a new one.": "Dieser Link ist abgelaufen oder wurde schon verwendet. Öffnen Sie die Wavelength-App, um einen neuen anzufordern.",
+"App lock is off: this phone has no fingerprint or face unlock set up.": "App-Sperre aus: Auf diesem Telefon ist keine Entsperrung per Fingerabdruck oder Gesicht eingerichtet.",
+"App lock off.": "App-Sperre aus.",
+"App lock on.": "App-Sperre an.",
+"Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.": "Fragt beim Öffnen von Wavelength und nach einer Weile im Hintergrund nach Fingerabdruck oder Gesicht.",
+"Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body's portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.": "Wählen Sie Ihre Akkreditierungsstelle, und Wavelength ordnet Ihre Untersuchungen, Beurteilungen und Abzeichnungen nach deren Portfolio-Anforderungen, bereit zur Einreichung. Export als PDF, Excel oder CSV mit QR-geprüfter Zusammenfassung.",
+"Lock the app with fingerprint or face": "App mit Fingerabdruck oder Gesicht sperren",
+"Logbook locked": "Logbuch gesperrt",
+"Security": "Sicherheit",
+"Set up fingerprint or face unlock in your phone settings first.": "Richten Sie zuerst die Entsperrung per Fingerabdruck oder Gesicht in den Telefoneinstellungen ein.",
+"Turn on app lock": "App-Sperre einschalten",
+"Unlock": "Entsperren",
+"Unlock Wavelength": "Wavelength entsperren",
+"Unlock your Wavelength logbook": "Entsperren Sie Ihr Wavelength-Logbuch",
+"Your logbook is locked.": "Ihr Logbuch ist gesperrt.",
+"Your portfolio, tailored to your accrediting body": "Ihr Portfolio, passend zu Ihrer Akkreditierungsstelle",
+"Your ultrasound logbook": "Ihr Ultraschall-Logbuch"
 }

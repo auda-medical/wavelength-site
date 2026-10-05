@@ -1426,5 +1426,21 @@
 "Choose your password.": "Выберите пароль.",
 "To finish creating your account, choose the password you will use to log in.": "Чтобы завершить создание аккаунта, выберите пароль для входа.",
 "Your email is confirmed. This account already has a password, so log in with it.": "Ваш адрес почты подтверждён. У этого аккаунта уже есть пароль, войдите с ним.",
-"This link has expired or has already been used. Open the Wavelength app to send a new one.": "Срок действия ссылки истёк, или она уже использована. Откройте приложение Wavelength и запросите новую."
+"This link has expired or has already been used. Open the Wavelength app to send a new one.": "Срок действия ссылки истёк, или она уже использована. Откройте приложение Wavelength и запросите новую.",
+"App lock is off: this phone has no fingerprint or face unlock set up.": "Блокировка выключена: на этом телефоне не настроена разблокировка по отпечатку или лицу.",
+"App lock off.": "Блокировка выключена.",
+"App lock on.": "Блокировка включена.",
+"Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.": "Запрашивает отпечаток или лицо при открытии Wavelength и после некоторого времени в фоне.",
+"Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body's portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.": "Выберите аккредитующую организацию, и Wavelength упорядочит ваши исследования, оценки и подтверждения по требованиям её портфолио, готовые к подаче. Экспорт в PDF, Excel или CSV со сводкой, проверяемой по QR-коду.",
+"Lock the app with fingerprint or face": "Блокировать приложение отпечатком или лицом",
+"Logbook locked": "Журнал заблокирован",
+"Security": "Безопасность",
+"Set up fingerprint or face unlock in your phone settings first.": "Сначала настройте разблокировку по отпечатку или лицу в настройках телефона.",
+"Turn on app lock": "Включить блокировку",
+"Unlock": "Разблокировать",
+"Unlock Wavelength": "Разблокировать Wavelength",
+"Unlock your Wavelength logbook": "Разблокируйте журнал Wavelength",
+"Your logbook is locked.": "Ваш журнал заблокирован.",
+"Your portfolio, tailored to your accrediting body": "Ваше портфолио под требования вашей аккредитующей организации",
+"Your ultrasound logbook": "Ваш журнал УЗИ"
 }
