@@ -1474,5 +1474,15 @@
 "Unlock your Wavelength logbook": "افتح قفل سجل Wavelength الخاص بك",
 "Your logbook is locked.": "سجلك مقفل.",
 "Your portfolio, tailored to your accrediting body": "ملفك، مصمم وفق جهة الاعتماد الخاصة بك",
-"Your ultrasound logbook": "سجل الموجات فوق الصوتية الخاص بك"
+"Your ultrasound logbook": "سجل الموجات فوق الصوتية الخاص بك",
+"A lowercase letter": "حرف صغير",
+"A number": "رقم",
+"A symbol, such as ! ? # or %": "رمز، مثل ! ? # أو %",
+"An uppercase letter": "حرف كبير",
+"At least 10 characters": "10 أحرف على الأقل",
+"Choose a password of at least 10 characters with an uppercase letter, a lowercase letter, a number and a symbol.": "اختر كلمة مرور من 10 أحرف على الأقل تتضمن حرفًا كبيرًا وحرفًا صغيرًا ورقمًا ورمزًا.",
+"Choose a password of at most 200 characters.": "اختر كلمة مرور لا تزيد على 200 حرف.",
+"Confirm password": "تأكيد كلمة المرور",
+"Passwords do not match.": "كلمتا المرور غير متطابقتين.",
+"Passwords match.": "كلمتا المرور متطابقتان."
 }

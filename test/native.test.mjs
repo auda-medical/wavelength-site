@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { makeEnv, ctx, ORIGIN } from './helpers/env.mjs';
 import worker from '../worker/index.js';
 
-const PASSWORD = 'correct horse battery';
+const PASSWORD = 'Correct horse battery 1!';
 const ANDROID = 'https://localhost';
 const IOS = 'capacitor://localhost';
 
@@ -94,7 +94,7 @@ test('a password change gives the app a new token and retires older ones', async
   assert.equal((await tablet.call('/api/app/login', { email: 'rotate@x.co', password: PASSWORD })).status, 200);
   const before = phone.token;
   await new Promise((r) => setTimeout(r, 5));
-  assert.equal((await phone.call('/api/app/password', { current: PASSWORD, password: 'a brand new password' })).status, 200);
+  assert.equal((await phone.call('/api/app/password', { current: PASSWORD, password: 'A brand new password 2!' })).status, 200);
   assert.notEqual(phone.token, before);
   assert.equal((await phone.call('/api/app/me')).status, 200);
   assert.equal((await tablet.call('/api/app/me')).body.auth, false);

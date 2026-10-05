@@ -21,7 +21,7 @@ await page.waitForSelector('#app .auth, #app form', { timeout: 15000 });
 const call = (p, data) => page.evaluate(([p, data]) => window.WLNative.net(p, data === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(data) }).then((r) => r.json()), [p, data]);
 const stamp = Date.now().toString(36);
 // The sample account lives only in the local test database. If an earlier run left it, delete it and start clean.
-const email = 'alex.morgan@example.com', password = 'sample-logbook-1';
+const email = 'alex.morgan@example.com', password = 'Sample-logbook-1';
 const signup = () => call('/api/app/signup', { title: 'Dr', firstName: 'Alex', lastName: 'Morgan', email, password, terms: true, role: 'ST4 emergency medicine' });
 let r = await signup();
 if (r.exists) { await call('/api/app/login', { email, password }); await call('/api/app/account/delete', { password }); r = await signup(); }

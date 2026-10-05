@@ -1442,5 +1442,15 @@
 "Unlock your Wavelength logbook": "Разблокируйте журнал Wavelength",
 "Your logbook is locked.": "Ваш журнал заблокирован.",
 "Your portfolio, tailored to your accrediting body": "Ваше портфолио под требования вашей аккредитующей организации",
-"Your ultrasound logbook": "Ваш журнал УЗИ"
+"Your ultrasound logbook": "Ваш журнал УЗИ",
+"A lowercase letter": "Строчная буква",
+"A number": "Цифра",
+"A symbol, such as ! ? # or %": "Символ, например ! ? # или %",
+"An uppercase letter": "Заглавная буква",
+"At least 10 characters": "Не менее 10 символов",
+"Choose a password of at least 10 characters with an uppercase letter, a lowercase letter, a number and a symbol.": "Выберите пароль не короче 10 символов, с заглавной и строчной буквой, цифрой и символом.",
+"Choose a password of at most 200 characters.": "Выберите пароль не длиннее 200 символов.",
+"Confirm password": "Подтвердите пароль",
+"Passwords do not match.": "Пароли не совпадают.",
+"Passwords match.": "Пароли совпадают."
 }

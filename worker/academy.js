@@ -186,7 +186,7 @@ async function register(env, req, ctx) {
   const mod = DATA.modules[clip(d.module, 40)];
   const isJson = (req.headers.get('Accept') || '').includes('json');
   const fail = (error) => (isJson ? json({ ok: false, error }, 400) : redirect(`/elearning/${mod ? mod.slug : ''}/?error=1#register`));
-  if (d.website) return isJson ? json({ ok: true, next: '/elearning/' }) : redirect('/elearning/'); // honeypot
+  if (d.wl_trap) return isJson ? json({ ok: true, next: '/elearning/' }) : redirect('/elearning/'); // honeypot
   const TITLES = ['Dr', 'Prof', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx'];
   const p = { title: TITLES.includes(clip(d.title, 10)) ? clip(d.title, 10) : '', first: clip(d.first_name, 80), last: clip(d.last_name, 80), email: clip(d.email, 160).toLowerCase(), role: clip(d.role, 80), org: clip(d.organisation, 160), news: d.newsletter ? 1 : 0 };
   if (!mod) return fail('That module was not found.');

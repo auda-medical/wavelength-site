@@ -95,8 +95,18 @@ textarea { min-height: 96px; resize: vertical; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(42,127,138,.15); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .two > * { min-width: 0; }
-.check { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.45; cursor: pointer; }
+.check, .field > label.check { display: flex; gap: 14px; align-items: center; margin: 0; font-size: 15px; font-weight: 500; line-height: 1.45; cursor: pointer; }
 .check input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--teal); }
+.check span { flex: 1; min-width: 0; }
+/* New password checklist and confirm message */
+.pw-rules { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.pw-rules li { display: flex; align-items: center; gap: 10px; }
+.pw-rules li::before { content: ''; width: 16px; height: 16px; flex: none; border-radius: 50%; border: 1.5px solid var(--line); box-sizing: border-box; }
+.pw-rules li.met { color: var(--green); }
+.pw-rules li.met::before { border-color: var(--green); background: var(--green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 5.2l2 2 4-4.4' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center; }
+.pw-match { font-size: 13px; margin: 8px 0 0; }
+.pw-match.met { color: var(--green); }
+.pw-match.bad { color: var(--red); }
 .err { background: var(--red-bg); color: var(--red); border-radius: 12px; padding: 10px 14px; font-size: 14px; margin: 0 0 14px; }
 .ok { background: var(--green-bg); color: var(--green); border-radius: 12px; padding: 10px 14px; font-size: 14px; margin: 0 0 14px; }
 .warn { background: var(--amber-bg); color: #7a4f10; border-radius: 12px; padding: 12px 14px; font-size: 14px; margin: 0 0 14px; }

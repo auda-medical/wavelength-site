@@ -103,14 +103,14 @@ test('an Academy-only account cannot be taken over by signing up with its email'
     await box.settle();
     // Someone else signs up in the app with Ann's email and their own password.
     const attacker = client(handleApp, env);
-    const r = await attacker.call('/api/app/signup', { firstName: 'Mal', lastName: 'Ory', email: 'ann@x.co', password: 'attacker password 1', terms: true });
+    const r = await attacker.call('/api/app/signup', { firstName: 'Mal', lastName: 'Ory', email: 'ann@x.co', password: 'Attacker password 1!', terms: true });
     assert.equal(r.status, 202);
     assert.deepEqual(r.body, { ok: true, checkEmail: true });
     assert.ok(!/wl_learn=/.test(attacker.cookie), 'no login');
     const row = await env.DB.prepare('SELECT password_hash, first_name FROM learners WHERE email = ?').bind('ann@x.co').first();
     assert.equal(row.password_hash, null, 'no password set without the email link');
     assert.equal(row.first_name, 'Ann');
-    assert.equal((await attacker.call('/api/app/login', { email: 'ann@x.co', password: 'attacker password 1' })).status, 401);
+    assert.equal((await attacker.call('/api/app/login', { email: 'ann@x.co', password: 'Attacker password 1!' })).status, 401);
   });
 });
 
@@ -121,7 +121,7 @@ test('an Academy learner adds a password through the emailed link, which logs ou
     await register(academyTab, 'bea@x.co');
     await new Promise((r) => setTimeout(r, 5));
     const app = client(handleApp, env);
-    assert.equal((await app.call('/api/app/signup', { firstName: 'Bea', lastName: 'Tan', email: 'bea@x.co', password: 'my new password 1', terms: true })).status, 202);
+    assert.equal((await app.call('/api/app/signup', { firstName: 'Bea', lastName: 'Tan', email: 'bea@x.co', password: 'My new password 1!', terms: true })).status, 202);
     await box.settle();
     const t = box.tokens().pop();
     const claim = await app.call('/api/app/email/verify', { token: t });
@@ -130,7 +130,7 @@ test('an Academy learner adds a password through the emailed link, which logs ou
     assert.equal(claim.body.account.emailStatus, 'verified');
     assert.equal((await app.call('/api/app/me')).body.ok, true, 'the browser that opened the link is logged in');
     assert.equal((await academyTab.call('/api/academy/me')).body.loggedIn, false, 'the old email-only session is logged out');
-    assert.equal((await client(handleApp, env).call('/api/app/login', { email: 'bea@x.co', password: 'my new password 1' })).status, 200);
+    assert.equal((await client(handleApp, env).call('/api/app/login', { email: 'bea@x.co', password: 'My new password 1!' })).status, 200);
   });
 });
 
@@ -174,7 +174,7 @@ test('a claim link opened in another browser asks the opener for a password and 
     await register(academy(env), 'eve@x.co');
     // Someone signs up in the app with Eve's email and a password of their choosing.
     const attacker = client(handleApp, env);
-    assert.equal((await attacker.call('/api/app/signup', { firstName: 'Mal', lastName: 'Ory', email: 'eve@x.co', password: 'attacker password 1', terms: true })).status, 202);
+    assert.equal((await attacker.call('/api/app/signup', { firstName: 'Mal', lastName: 'Ory', email: 'eve@x.co', password: 'Attacker password 1!', terms: true })).status, 202);
     await box.settle();
     const t = box.tokens().pop();
     // Eve opens the email in her own browser.
@@ -182,11 +182,11 @@ test('a claim link opened in another browser asks the opener for a password and 
     const first = await eve.call('/api/app/email/verify', { token: t });
     assert.equal(first.status, 400);
     assert.equal(first.body.needPassword, true);
-    const done = await eve.call('/api/app/email/verify', { token: t, password: 'eves own password 1' });
+    const done = await eve.call('/api/app/email/verify', { token: t, password: 'Eves own password 1!' });
     assert.equal(done.status, 200, JSON.stringify(done.body));
     assert.equal(done.body.account.firstName, 'Ann', 'the typed name is not applied');
-    assert.equal((await client(handleApp, env).call('/api/app/login', { email: 'eve@x.co', password: 'attacker password 1' })).status, 401, "the attacker's password was never set");
-    assert.equal((await client(handleApp, env).call('/api/app/login', { email: 'eve@x.co', password: 'eves own password 1' })).status, 200);
+    assert.equal((await client(handleApp, env).call('/api/app/login', { email: 'eve@x.co', password: 'Attacker password 1!' })).status, 401, "the attacker's password was never set");
+    assert.equal((await client(handleApp, env).call('/api/app/login', { email: 'eve@x.co', password: 'Eves own password 1!' })).status, 200);
   });
 });
 
@@ -275,6 +275,6 @@ test('a completed password reset also confirms the email', async () => {
   const id = await idOf(env, 'reset-verify@x.co');
   const token = 'reset-token-for-verify-0123456789';
   await env.DB.prepare('INSERT INTO password_resets (token_hash, learner_id, expires_at) VALUES (?,?,?)').bind(await sha256(token), id, Date.now() + 3600e3).run();
-  assert.equal((await client(handleApp, env).call('/api/app/reset/complete', { token, password: 'a new password 123' })).status, 200);
+  assert.equal((await client(handleApp, env).call('/api/app/reset/complete', { token, password: 'A new password 123!' })).status, 200);
   assert.equal((await env.DB.prepare('SELECT email_status FROM learners WHERE id = ?').bind(id).first()).email_status, 'verified');
 });

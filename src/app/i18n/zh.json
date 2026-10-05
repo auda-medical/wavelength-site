@@ -1394,5 +1394,15 @@
 "Unlock your Wavelength logbook": "解锁您的 Wavelength 记录本",
 "Your logbook is locked.": "您的记录本已锁定。",
 "Your portfolio, tailored to your accrediting body": "按您的认证机构定制的档案",
-"Your ultrasound logbook": "您的超声记录本"
+"Your ultrasound logbook": "您的超声记录本",
+"A lowercase letter": "一个小写字母",
+"A number": "一个数字",
+"A symbol, such as ! ? # or %": "一个符号，例如 ! ? # 或 %",
+"An uppercase letter": "一个大写字母",
+"At least 10 characters": "至少 10 个字符",
+"Choose a password of at least 10 characters with an uppercase letter, a lowercase letter, a number and a symbol.": "请设置至少 10 个字符的密码，并包含大写字母、小写字母、数字和符号。",
+"Choose a password of at most 200 characters.": "密码不能超过 200 个字符。",
+"Confirm password": "确认密码",
+"Passwords do not match.": "两次输入的密码不一致。",
+"Passwords match.": "两次输入的密码一致。"
 }

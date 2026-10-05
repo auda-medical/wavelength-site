@@ -867,7 +867,7 @@ pages['/faculty/join/'] = layout({
     <fieldset class="vol-dates"><legend>Applications you scan and teach with confidence</legend>${boxes('applications', FACULTY_FORM.applications)}</fieldset>
     <fieldset class="vol-dates"><legend>How would you like to work with us?</legend>${boxes('interests', FACULTY_FORM.interests)}</fieldset>
     <label>Your experience and credentials<textarea name="details" required maxlength="3000" rows="7" placeholder="Your ultrasound training and accreditation, the courses you have taught on, how often you scan, and anything else we should know."></textarea></label>
-    <label class="ac-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+    <label class="ac-hp" aria-hidden="true">Leave blank<input name="wl_trap" tabindex="-1" autocomplete="off"></label>
     <label class="consent"><input type="checkbox" name="confirm_privacy" value="yes" required><span>Wavelength stores my details to consider my application and contact me about faculty work, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
     <div><button class="btn btn-teal" type="submit">Send my application ${arrow}</button></div>
     <p class="form-note">Prefer email? Write to <a class="text-link" href="${mailto(site.enquiriesEmail, 'Faculty enquiry')}">${site.enquiriesEmail}</a>.</p>
@@ -935,7 +935,7 @@ pages['/training/'] = layout({
     <fieldset class="vol-dates"><legend>Scans your team wants to learn (optional)</legend>${boxes('topics', DEPT_FORM.topics)}</fieldset>
     <div class="sub-row"><label>Number of staff<select name="group_size" required><option value="">Choose one</option>${DEPT_FORM.sizes.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label><label>Preferred dates (optional)<input name="timing" maxlength="200" placeholder="For example, March 2027, weekdays"></label></div>
     <label>Anything else we should know (optional)<textarea name="details" maxlength="3000" rows="5" placeholder="Your team's experience, the machines you have, a service you are setting up, or a budget to work to."></textarea></label>
-    <label class="ac-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+    <label class="ac-hp" aria-hidden="true">Leave blank<input name="wl_trap" tabindex="-1" autocomplete="off"></label>
     <label class="consent"><input type="checkbox" name="confirm_privacy" value="yes" required><span>Wavelength stores my details to answer this enquiry, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
     <div><button class="btn btn-teal" type="submit">Send my enquiry ${arrow}</button></div>
   </form>
@@ -1332,7 +1332,7 @@ function registerCard(m) {
       <label>Email<input name="email" type="email" autocomplete="email" maxlength="160" required></label>
       <label>Role<select name="role" required><option value="">Choose your role</option>${ROLES.map((r) => `<option>${r}</option>`).join('')}</select></label>
       <label>Workplace (optional)<input name="organisation" autocomplete="organization" maxlength="160"></label>
-      <label class="ac-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+      <label class="ac-hp" aria-hidden="true">Leave blank<input name="wl_trap" tabindex="-1" autocomplete="off"></label>
       <label class="consent"><input type="checkbox" name="newsletter" value="yes"${AC.newsletterRequired ? ' required' : ''}><span>Send me the Wavelength newsletter: a weekly ultrasound Pearl, new modules, and course dates. ${AC.newsletterRequired ? 'Joining the newsletter is part of free Academy registration. ' : ''}I can unsubscribe at any time.</span></label>
       <label class="consent"><input type="checkbox" name="privacy" value="yes" required><span>Wavelength stores my details to run the Academy, issue and verify my certificate, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
       <p class="form-error" data-ac-error hidden></p>

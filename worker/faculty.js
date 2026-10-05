@@ -12,7 +12,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</
 
 export async function applyFaculty(env, req, ctx) {
   const f = await req.formData();
-  if (clip(f.get('website'), 200)) return '/faculty/join/thanks/'; // honeypot: bots fill it, people never see it
+  if (clip(f.get('wl_trap'), 200)) return '/faculty/join/thanks/'; // honeypot: bots fill it, people never see it
   const d = {
     first: clip(f.get('first_name'), 80),
     last: clip(f.get('last_name'), 80),

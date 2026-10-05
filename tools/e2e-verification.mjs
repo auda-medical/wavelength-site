@@ -39,7 +39,7 @@ const supEmail = `sup${t}@example.com`, lEmail = `learner${t}@example.com`, invE
 // ---- 1. Sign up in the "native shell" (WavelengthApp user agent), see the confirm-email card ----
 const app = await ctxFor('app', { ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 WavelengthApp' });
 await app.page.goto(BASE + '/app/#/signup');
-await app.page.fill('#fn', 'John'); await app.page.fill('#ln', 'Smith'); await app.page.fill('#em', supEmail); await app.page.fill('#pw', 'longpassword1');
+await app.page.fill('#fn', 'John'); await app.page.fill('#ln', 'Smith'); await app.page.fill('#em', supEmail); await app.page.fill('#pw', 'Long-password-1');
 await app.page.fill('#org', 'Darent Valley Hospital');
 await app.page.check('input[name=terms]'); await app.page.click('#f button[type=submit]');
 await app.page.waitForSelector('.pathcard'); // onboarding
@@ -129,7 +129,7 @@ await app.page.locator('.sheet-bg [data-close]').click();
 // ---- 6. Dashboard sign-off carries the snapshot; the verify page shows it ----
 const L = await ctxFor('learner');
 await L.page.goto(BASE + '/app/');
-await post(L.page, '/api/app/signup', { firstName: 'Sam', lastName: 'Patel', email: lEmail, password: 'longpassword2', terms: true });
+await post(L.page, '/api/app/signup', { firstName: 'Sam', lastName: 'Patel', email: lEmail, password: 'Long-password-2', terms: true });
 await post(L.page, '/api/app/profile', { declaration: true, profile: { pathways: ['famus'], onboarded: true } });
 await post(L.page, '/api/app/sync', { entries: [{ id: 'l' + t.toString(36) + 'a', type: 'lung', date: '2026-09-02', supervision: 'direct' }] });
 await post(L.page, '/api/app/supervisors/add', { email: supEmail });
@@ -184,7 +184,7 @@ await A2.page.waitForURL(/\/elearning\//, { timeout: 10000 }).then(() => ok('sig
 
 // ---- 10. Wide layouts ----
 const W = await ctxFor('wide', { w: 1440 });
-await W.page.goto(BASE + '/app/'); await post(W.page, '/api/app/login', { email: supEmail, password: 'longpassword1' });
+await W.page.goto(BASE + '/app/'); await post(W.page, '/api/app/login', { email: supEmail, password: 'Long-password-1' });
 await W.page.goto(BASE + '/app/?w=1#/professional'); await W.page.waitForSelector('#rgf'); await shot(W.page, 'professional-1440');
 
 await browser.close();
