@@ -21,7 +21,7 @@ const LIST_NAME = 'Wavelength newsletter';
 const FROM_EMAIL = 'hello@thewavelength.co.uk';
 const FROM_NAME = 'Wavelength';
 
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 async function getSettings(env) {
   const { results = [] } = await env.DB.prepare("SELECT key, value FROM settings WHERE key LIKE 'zoho_%' OR key LIKE 'newsletter_%'").all();

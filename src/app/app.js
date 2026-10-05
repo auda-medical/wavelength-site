@@ -172,17 +172,44 @@
   }
   function doSync() {
     var dirty = S.entries.filter(function (e) { return e._dirty; });
+    var pushed = {}; dirty.forEach(function (e) { pushed[e.id] = e; });
+    var conflicts = 0;
     var push = dirty.length ? api('/api/app/sync', { entries: dirty.map(strip) }).then(function (res) {
       if (!res.ok) throw new Error(res.error || 'Sync failed');
       return Promise.all((res.saved || []).map(function (s) {
-        if (s.conflict) return null;
         var local = S.entries.find(function (x) { return x.id === s.id; });
+        if (s.conflict) return resolveConflict(local, s.server) && ++conflicts;
+        // Edited again while this push was in flight: keep the newer local edit and send it next time.
+        if (local && local !== pushed[s.id]) { local.updatedAt = s.updatedAt; conflicts++; return put('entries', local); }
         if (s.deleted) { S.entries = S.entries.filter(function (x) { return x.id !== s.id; }); return del('entries', s.id); }
         var merged = Object.assign({}, s); if (local && local._new) delete merged._new;
         return saveLocal(merged);
       }));
     }) : Promise.resolve();
-    return push.then(function () { return api('/api/app/sync?since=' + (S.kv.lastSync || 0)); }).then(function (res) {
+    return push.then(function () { return pullAll(); }).then(function () {
+      return api('/api/app/signoffs').then(function (r) { if (r.ok) return setPending(r.signoffs); });
+    }).then(loadAssessments).catch(function () { /* offline or server error: try again later */ }).then(function () {
+      S.syncing = false; setSyncDot();
+      // Send rebased edits straight away, at most twice in a row so a misbehaving server cannot loop us.
+      if (!conflicts) S.rebases = 0; else if (!S.again && (S.rebases = (S.rebases || 0) + 1) <= 2) sync();
+      if (['home', 'log', 'progress', 'entry', 'assess'].indexOf(route().name) >= 0 && !document.querySelector('form[data-dirty]') && !document.querySelector('.sheet-bg')) render(true);
+    });
+  }
+  // The server had a newer copy than the one this device edited (another device, or a supervisor's sign-off).
+  // A restored backup never overwrites a live server copy: the server copy wins. Otherwise the learner's latest
+  // edit wins, rebased on the server copy so it saves next time; the server keeps the sign-off only if the
+  // signed fields are unchanged. Returns true when the entry needs pushing again.
+  function resolveConflict(local, server) {
+    if (!local || !server) return false;
+    if (local._restored && !server.deleted) { saveLocal(server); return false; }
+    local.updatedAt = server.updatedAt;
+    put('entries', local);
+    return true;
+  }
+  // Pull every change since the last sync, a page at a time.
+  function pullAll(guard) {
+    var q = '/api/app/sync?since=' + (S.kv.lastSync || 0) + (S.kv.lastSyncAfter ? '&after=' + encodeURIComponent(S.kv.lastSyncAfter) : '');
+    return api(q).then(function (res) {
       if (!res.ok) throw new Error(res.error || 'Sync failed');
       var fresh = [];
       return Promise.all((res.entries || []).map(function (e) {
@@ -197,12 +224,9 @@
         var keep = news().filter(function (n) { return !fresh.some(function (f) { return f.id === n.id; }); });
         toast(newsText(fresh), 4000);
         return setKv('news', keep.concat(fresh).slice(-50));
-      }).then(function () { return setKv('lastSync', res.now); });
-    }).then(function () {
-      return api('/api/app/signoffs').then(function (r) { if (r.ok) return setPending(r.signoffs); });
-    }).then(loadAssessments).catch(function () { /* offline or server error: try again later */ }).then(function () {
-      S.syncing = false; setSyncDot();
-      if (['home', 'log', 'progress', 'entry', 'assess'].indexOf(route().name) >= 0 && !document.querySelector('form[data-dirty]') && !document.querySelector('.sheet-bg')) render(true);
+      }).then(function () { return setKv('lastSyncAfter', res.after || ''); }).then(function () { return setKv('lastSync', res.now); }).then(function () {
+        if (res.more && (guard || 0) < 200) return pullAll((guard || 0) + 1);
+      });
     });
   }
   function dropImages(entryId) { return imagesFor(entryId).then(function (list) { return Promise.all(list.map(function (r) { return del('images', r.id); })); }).catch(function () {}); }
@@ -1628,7 +1652,7 @@
       man = JSON.parse(new TextDecoder().decode(man));
       if (man.account && man.account !== S.account.email && !confirm(T('This backup belongs to {email}. Restore it into this account anyway?', { email: man.account }))) return;
       var known = {}; S.entries.forEach(function (e) { known[e.id] = 1; });
-      var jobs = (man.entries || []).filter(function (e) { return !known[e.id]; }).map(function (e) { e._dirty = true; e.updatedAt = 0; return saveLocal(e); });
+      var jobs = (man.entries || []).filter(function (e) { return !known[e.id]; }).map(function (e) { e._dirty = true; e._restored = true; e.updatedAt = 0; return saveLocal(e); });
       var n = 0;
       jobs = jobs.concat((man.images || []).map(function (im) {
         var data = files[im.file]; if (!data) return null;

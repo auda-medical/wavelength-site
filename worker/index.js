@@ -30,7 +30,7 @@ function withHeaders(res, extra = {}) {
   return r;
 }
 const redirect = (to, extra = {}) => withHeaders(new Response(null, { status: 303, headers: { Location: to } }), extra);
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 let SETTINGS = null;
 async function settings(env) {
@@ -128,7 +128,7 @@ async function adminPage(env, req) {
     <td>${r.future_contact ? 'Yes' : 'No'}</td>
     <td class="actions">
       <form method="post"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="contacted"><button class="btn btn-ghost small" type="submit">${r.contacted ? 'Mark not contacted' : 'Mark contacted'}</button></form>
-      <form method="post" onsubmit="return confirm('Delete ${esc(r.first_name)} ${esc(r.last_name)} permanently?')"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="delete"><button class="btn btn-ghost small danger" type="submit">Delete</button></form>
+      <form method="post" onsubmit="return confirm(this.dataset.confirm)" data-confirm="Delete ${esc(r.first_name)} ${esc(r.last_name)} permanently?"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="delete"><button class="btn btn-ghost small danger" type="submit">Delete</button></form>
     </td></tr>`).join('');
   const table = results.length
     ? `<p class="admin-summary">${results.length} volunteer${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/volunteer/admin/export.csv">Download as spreadsheet (CSV)</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy learners and certificates</a> · <a class="text-link" href="/volunteer/admin/faculty/">Faculty applications</a> · <a class="text-link" href="/volunteer/admin/departments/">Department enquiries</a> · <a class="text-link" href="/volunteer/admin/newsletter/">Newsletter</a></p>

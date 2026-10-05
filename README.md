@@ -25,6 +25,9 @@ Copy a file in `content/learn/`, change the front matter and text, and set `draf
 ## Build
 `node build.js` writes the site to `dist/`.
 
+## Tests
+`npm test` runs the Worker tests in `test/` (Node 22.5 or later, nothing to install).
+
 ## Hosting (Cloudflare Workers)
 - Build command: `npm run build`
 - Deploy command: `npx wrangler deploy` (reads wrangler.jsonc)

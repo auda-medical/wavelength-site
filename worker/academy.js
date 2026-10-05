@@ -18,7 +18,7 @@ const COOKIE = 'wl_learn';
 const DAYS = 180;
 const enc = new TextEncoder();
 const SITE = 'https://thewavelength.co.uk';
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 const HEAD = { 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store', 'Referrer-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; object-src 'none'", 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' };
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...HEAD, ...extra } });
@@ -54,7 +54,16 @@ export async function learner(env, req) {
   let ok = false;
   try { ok = await crypto.subtle.verify('HMAC', await secret(env), unb64u(m[3]), enc.encode(`${m[1]}.${m[2]}`)); } catch { ok = false; }
   if (!ok) return null;
-  return env.DB.prepare('SELECT * FROM learners WHERE id = ?').bind(Number(m[1])).first();
+  const row = await env.DB.prepare('SELECT * FROM learners WHERE id = ?').bind(Number(m[1])).first();
+  // A password change or reset sets sessions_after: cookies issued before it no longer work (migration 0010).
+  if (row && row.sessions_after && Number(m[2]) - DAYS * 864e5 < row.sessions_after) return null;
+  return row;
+}
+// Log a learner out everywhere: every cookie issued before now stops working. Call cookieFor afterwards to keep
+// the current device logged in. Tolerates a database without migration 0010 so a deploy never breaks login.
+export async function revokeSessions(env, id) {
+  try { await env.DB.prepare('UPDATE learners SET sessions_after = ? WHERE id = ?').bind(Date.now(), id).run(); }
+  catch (e) { console.warn('revokeSessions: apply migrations/0010_sessions.sql', e && e.message); }
 }
 
 // ---------- Certificates ----------
