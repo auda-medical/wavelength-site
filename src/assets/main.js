@@ -214,6 +214,11 @@
   function acEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   var acArrow = '<svg class="arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+  function acCheckEmail(form, email) {
+    var box = form.closest('[data-ac-guest]') || form;
+    box.innerHTML = '<p class="eyebrow">Check your email</p><h2>We have sent you a link</h2><p>' + (email ? 'If <strong>' + acEsc(email) + '</strong> is already registered, we have' : 'We have') + ' sent a sign-in link to that address. Open it within 30 minutes to carry on. Check your junk folder too.</p><p class="form-note">This keeps your certificates safe: nobody can sign in as you by typing your email address.</p>';
+  }
+  if (/[?&]check=1/.test(location.search)) document.querySelectorAll('[data-ac-register]').forEach(function (form) { acCheckEmail(form, ''); });
   // Registration: save the learner, join the newsletter through the Zoho form, then go to lesson one.
   document.querySelectorAll('[data-ac-register]').forEach(function (form) {
     var err = form.querySelector('[data-ac-error]');
@@ -227,6 +232,8 @@
       acPost('/api/academy/register', data).then(function (res) {
         if (res.login) { location.href = res.login; return; }
         if (!res.ok) throw new Error(res.error || 'Something went wrong. Please try again.');
+        // Returning learners sign in from a link sent to their email, so nobody can sign in as them by typing it.
+        if (res.checkEmail) { acCheckEmail(form, data.email); return; }
         var z = document.querySelector('[data-zoho-academy]');
         var go = function () { location.href = res.next; };
         if (!z || !data.newsletter) return go();

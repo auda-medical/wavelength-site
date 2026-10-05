@@ -319,12 +319,13 @@
   function render(soft) {
     var r = route();
     if (soft) keepScroll = window.scrollY;
+    if (r.name === 'verify-email') return viewVerifyEmail(r);
     if (!S.account) {
       var authViews = { signup: viewSignup, login: viewLogin, reset: viewReset };
       return (authViews[r.name] || viewWelcome)(r);
     }
     if (!S.account.declarationAt || !(profile().onboarded)) return viewOnboard(r);
-    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise };
+    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional };
     (views[r.name] || viewHome)(r);
     setSyncDot();
     if (soft) window.scrollTo(0, keepScroll);
@@ -368,6 +369,8 @@
       api('/api/app/signup', d).then(function (res) {
         if (!res.ok) throw new Error(res.error);
         if (d.newsletter) joinNewsletter(d);
+        // This email already has Academy certificates: the account is finished from a link sent to that address.
+        if (res.checkEmail) { authFrame(T('Check your email.'), T('This email already has a Wavelength Academy record. To keep it safe, we have sent a link to {email}. Open it within 24 hours to finish creating your account. Check your junk folder too.', { email: d.email }), '<a class="btn block" href="#/login">' + esc(T('Back to log in')) + '</a>'); return; }
         return saveLangAfter(res.account);
       }).catch(function (ex) { busy(b, false); err.textContent = ex.message || T('Something went wrong. Please try again.'); err.hidden = false; });
     });
@@ -431,8 +434,19 @@
       var next = new URLSearchParams(location.search).get('next');
       if (next && /^\/elearning\//.test(next)) { location.href = next; return; }
       if (location.search) history.replaceState(null, '', '/app/' + location.hash);
-      render(); sync(); loadMe(); loadLinks();
+      render(); sync(); loadMe(); loadLinks(); acceptPendingInvite();
     });
+  }
+  // A supervisor invitation link carries a one-time token (#/supervise?invite=...). It is kept for this tab until
+  // the person has logged in or created their account, then used once. Accepting with it also confirms the email.
+  function acceptPendingInvite() {
+    var t = null; try { t = sessionStorage.getItem('wl-invite'); } catch (e) { /* storage blocked */ }
+    if (!t) return;
+    api('/api/app/supervisors/accept-invite', { token: t }).then(function (res) {
+      if (res.ok || res._status === 404) { try { sessionStorage.removeItem('wl-invite'); } catch (e) { /* blocked */ } }
+      if (res.ok) { S.account.emailStatus = 'verified'; S.account.emailVerified = true; toast(T('Invitation accepted. Your email is confirmed.'), 4000); loadLinks(); go('supervise'); }
+      else if (res.error) toast(res.error, 5000);
+    }).catch(function () { /* offline: try again next time */ });
   }
   function signedOut() { S.account = null; S.db = null; S.entries = []; S.me = null; S.assessments = []; S.links = null; location.hash = '#/welcome'; render(); }
   function loadMe() { return api('/api/app/me').then(function (res) { if (res.ok) { S.me = res; S.account = res.account; if (route().name === 'home' || route().name === 'me') render(true); } }); }
@@ -498,7 +512,7 @@
     var install = canInstall() ? '<div style="margin:0 0 12px">' + installButton() + '</div>' : '';
     var nw = news(), nq = nw.some(function (n) { return n.status === 'query'; });
     var newsCard = nw.length ? '<div class="card" style="border-color:#b9dcc4;background:var(--green-bg)"><div class="row"><span style="color:var(--green)">' + I.pen + '</span><div class="grow"><h3>' + esc(T('New sign-off')) + '</h3><p class="small" style="margin:0">' + esc(newsText(nw)) + '</p></div></div><div class="btns"><a class="btn sm" href="#/log' + (nq ? '?s=todo' : '?s=signed') + '">' + esc(T('See scans')) + '</a><button class="btn ghost sm" type="button" id="nwx">' + esc(T('Dismiss')) + '</button></div></div>' : '';
-    var sup = newsCard + superviseCard();
+    var sup = newsCard + emailCard() + superviseCard();
     var focus = focusNext(), focusHtml = '';
     if (focus) {
       var fs = focus.s;
@@ -1674,7 +1688,7 @@
       '<div class="card dark"><div class="row"><span style="width:52px;height:52px;border-radius:50%;background:var(--teal);display:grid;place-items:center;font:600 20px var(--sans);color:#fff;flex:none">' + esc((acc.firstName || '?').charAt(0) + (acc.lastName || '').charAt(0)) + '</span><div class="grow"><h3>' + esc(acc.name) + '</h3><p class="muted small" style="margin:0">' + esc(acc.email) + (p.grade ? ' · ' + esc(p.grade) : '') + '</p></div></div></div>' +
       (canInstall() ? installButton() : '') +
       '<div class="card"><div class="row"><span>' + I.globe + '</span><b class="grow">' + esc(T('Language')) + '</b>' + langPicker('lang-m') + '</div><p class="small muted" style="margin:8px 0 0">' + esc(T('Exports and certificates stay in English so any assessor can read them.')) + '</p></div>' +
-      '<h2 class="sec">' + esc(T('Supervision')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/supervisors">' + esc(T('Your supervisors')) + (nSup ? ' (' + nSup + ')' : '') + '</a><a href="#/assess">' + esc(T('Your assessments')) + '</a>' + ((L2.learners || []).length || (L2.invites || []).length || p.supervisor ? '<a href="#/supervise">' + esc(T('Learners you supervise')) + ((L2.invites || []).length ? ' · ' + esc(plural(L2.invites.length, 'new invitation')) : '') + '</a>' : '') + '</div></div>' +
+      emailCard() + '<h2 class="sec">' + esc(T('Supervision')) + '</h2><div class="card"><div style="display:grid;gap:12px">' + (S.me && S.me.verification && S.me.verification.professional ? '<a href="#/professional">' + esc(T('Professional verification')) + '</a>' : '') + '<a href="#/supervisors">' + esc(T('Your supervisors')) + (nSup ? ' (' + nSup + ')' : '') + '</a><a href="#/assess">' + esc(T('Your assessments')) + '</a>' + ((L2.learners || []).length || (L2.invites || []).length || p.supervisor ? '<a href="#/supervise">' + esc(T('Learners you supervise')) + ((L2.invites || []).length ? ' · ' + esc(plural(L2.invites.length, 'new invitation')) : '') + '</a>' : '') + '</div></div>' +
       '<h2 class="sec">' + esc(T('Pathways')) + '</h2><form id="pf" class="card">' + pathwayPicker(p.pathways || []) + '<div class="btns"><button class="btn sm">' + esc(T('Save pathways')) + '</button></div></form>' +
       '<h2 class="sec">' + esc(T('Certificates')) + ' <a href="/elearning/account/">' + esc(T('All')) + '</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="' + esc(T('Share certificate')) + '">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">' + esc(T('Pass a free Academy module to earn a verifiable CPD certificate.')) + '</p><a class="btn sm" href="/elearning/">' + esc(T('Browse modules')) + '</a></div>') +
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div><div class="field"><label for="m4">' + esc(T('Organisation')) + '</label><input id="m4" name="organisation" type="text" value="' + esc(acc.organisation || '') + '"></div><div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
@@ -1711,12 +1725,137 @@
       $('[data-pdf]', root).onclick = function () { fetch('/elearning/certificate/' + code + '.pdf', { credentials: 'same-origin' }).then(function (r) { return r.blob(); }).then(function (b) { closeSheet(); deliver(new Blob([b], { type: 'application/pdf' }), 'Wavelength-certificate-' + code + '.pdf'); }); };
     });
   }
+  // ---------- Email confirmation ----------
+  // Shown until the email is confirmed. Existing accounts (legacy_unverified) keep full use of the app meanwhile.
+  function emailCard() {
+    var acc = S.account, v = S.me && S.me.verification;
+    if (!acc || acc.emailStatus === 'verified' || !v || !v.email) return '';
+    var legacy = acc.emailStatus === 'legacy_unverified';
+    setTimeout(bindEmailResend, 0);
+    return '<div class="card" style="border-color:#e6d3a8;background:var(--amber-bg)"><div class="row"><span style="color:var(--amber)">' + I.lock + '</span><div class="grow"><h3>' + esc(T('Confirm your email')) + '</h3><p class="small" style="margin:0">' + esc(legacy ? T('Confirming {email} protects your account and lets you accept supervisor invitations and verify your professional registration. Your logbook works as normal either way.', { email: acc.email }) : T('We sent a link to {email}. Your logbook works as normal while you wait. You need a confirmed email to accept supervisor invitations and verify your registration.', { email: acc.email })) + '</p></div></div><div class="btns"><button class="btn sm" type="button" data-evr>' + esc(legacy ? T('Send me the link') : T('Send it again')) + '</button></div></div>';
+  }
+  function bindEmailResend() {
+    $$('[data-evr]').forEach(function (b) {
+      b.onclick = function () {
+        if (!navigator.onLine) { toast(T('You are offline. Connect to the internet and try again.')); return; }
+        busy(b, true);
+        api('/api/app/email/resend', {}).then(function (res) {
+          busy(b, false);
+          if (res.verified) { S.account.emailStatus = 'verified'; render(true); return; }
+          toast(res.emailOn === false ? T('Email is not switched on yet. Contact hello@thewavelength.co.uk.') : T('If we have not sent one in the last few minutes, a link is on its way. Check your junk folder too.'), 5000);
+        }).catch(function () { busy(b, false); toast(T('Could not send. Check your connection.')); });
+      };
+    });
+  }
+  // /app/#/verify-email/<token>: works with or without a login, in a browser or the installed app.
+  function viewVerifyEmail(r) {
+    var t = r.arg || '';
+    history.replaceState(null, '', '/app/#/verified'); // the token leaves the address bar and history at once
+    authFrame(T('Confirming your email…'), '', '<p class="muted" id="vst">' + esc(T('Please wait…')) + '</p>');
+    var done = function (title, lede, body) { authFrame(title, lede, body); };
+    var send = function (extra) { return api('/api/app/email/verify', Object.assign({ token: t }, extra || {})); };
+    var handle = function (res) {
+      // Opened in a different browser from the one that started the account: the person opening it chooses the password.
+      if (res.needPassword) {
+        done(T('Choose your password.'), T('To finish creating your account, choose the password you will use to log in.'), '<form id="f"><div class="err" hidden></div><div class="field"><label for="pw">' + esc(T('Password')) + '</label><p class="hint">' + esc(T('At least 10 characters.')) + '</p><input id="pw" type="password" autocomplete="new-password" minlength="10" required></div><button class="btn teal block">' + esc(T('Save and log in')) + '</button></form>');
+        $('#f').addEventListener('submit', function (e) { e.preventDefault(); var b = $('button', this); busy(b, true); send({ password: $('#pw').value }).then(function (r2) { if (r2.needPassword) { busy(b, false); var er = $('.err'); er.textContent = r2.error; er.hidden = false; return; } handle(r2); }); });
+        return;
+      }
+      return finish(res);
+    };
+    send().then(handle).catch(function () { done(T('You are offline.'), T('Connect to the internet and open the link again.'), ''); });
+    function finish(res) {
+      if (!res.ok) { done(T('This link has expired.'), res.error || T('Open the Wavelength app and send a new link.'), '<a class="btn teal block" href="/app/?verified=0">' + esc(T('Open Wavelength')) + '</a>'); return; }
+      if (res.purpose === 'signin' && res.next) { location.replace(res.next); return; }
+      if (res.purpose === 'claim' && res.account) { S.me = null; return signedIn(res.account); }
+      if (S.account) S.account.emailStatus = 'verified';
+      done(T('Email confirmed.'), T('Thank you. If you use the Wavelength app on your phone, switch back to it: it picks this up the next time it connects.'), '<a class="btn teal block" href="/app/?verified=1">' + esc(T('Open Wavelength')) + '</a>');
+    }
+  }
+
+  // ---------- Professional verification (registration, credentials, supervisor status, directory) ----------
+  // Nothing here is decided in the app: the server checks every claim and returns the status. A badge appears only
+  // for what has been verified, never for what someone has only typed.
+  var STATUS_CHIP = { verified: 'green', expired: 'red', rejected: 'red', revoked: 'red', mismatch: 'red', not_current: 'red', not_found: 'amber' };
+  function statusChip(st) { return '<span class="chip ' + (STATUS_CHIP[st] || 'amber') + '">' + esc(T(st === 'verified' ? 'Verified' : st === 'manual_verification_required' || st === 'manual_review' ? 'With the Wavelength team' : st === 'evidence_required' || st === 'more_evidence' ? 'Evidence needed' : st === 'source_unavailable' ? 'Will retry' : st === 'not_current' ? 'Not current' : st === 'not_found' ? 'Not found' : st === 'mismatch' ? 'Name differs' : st === 'expired' ? 'Expired' : st === 'rejected' ? 'Not verified' : st === 'revoked' ? 'Withdrawn by Wavelength' : 'Checking')) + '</span>'; }
+  function badgeHtml(b, i) { return '<button type="button" class="chip ' + (b.kind === 'wavelength-supervisor' ? 'teal' : 'green') + '" data-badge="' + i + '" style="border:0;cursor:pointer;margin:0 6px 6px 0">' + esc(T(b.label)) + '</button>'; }
+  function badgeSheet(b) {
+    var dl = function (k, v) { return v ? '<dt>' + esc(T(k)) + '</dt><dd>' + esc(v) + '</dd>' : ''; };
+    sheet('<h2>' + esc(T(b.label)) + '</h2><div class="detail"><dl>' + dl('Issued by', b.issuer) + dl('Credential', b.credential) + dl('Modules', (b.modules || []).join(', ')) + dl('Approved for', (b.scopes || []).map(function (s) { return s.label; }).join(', ')) + dl('How it was checked', b.source ? T(b.source) : '') + dl('Verified', fmt(b.verifiedAt)) + dl('Last checked', fmt(b.lastChecked)) + dl('Expires', fmt(b.expiresOn)) + dl('Review due', fmt(b.reviewOn)) + '</dl></div>' + (b.note ? '<p class="small muted">' + esc(T(b.note)) + '</p>' : '') + (b.kind === 'wavelength-supervisor' ? '<p class="small muted">' + esc(T('Wavelength approves supervisors one pathway module at a time, from verified registration and credentials.')) + '</p>' : '') + '<div class="btns"><button class="btn block" data-close>' + esc(T('Done')) + '</button></div>');
+  }
+  function viewProfessional() {
+    mount(shell({ title: T('Professional verification'), back: 'me' }, '<p class="muted">' + esc(navigator.onLine ? T('Loading…') : T('You are offline. Connect to the internet to see your verification. Your logbook works as normal.')) + '</p>'));
+    if (!navigator.onLine) return;
+    api('/api/app/professional').then(function (P) {
+      if (route().name !== 'professional') return;
+      if (!P.ok) { mount(shell({ title: T('Professional verification'), back: 'me' }, '<div class="card"><p class="small">' + esc(P.error || T('Professional verification is not available yet.')) + '</p></div>')); return; }
+      S.account.emailStatus = P.emailStatus;
+      var needEmail = P.emailStatus !== 'verified';
+      var regOpts = P.regulators.map(function (g) { return '<option value="' + esc(g.id) + '">' + esc(g.short + ' · ' + g.name) + '</option>'; }).join('');
+      var credOpts = P.credentialTypes.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(T(t.label) + ' · ' + t.issuer) + '</option>'; }).join('');
+      var regs = P.registrations.map(function (g) { return '<div class="card"><div class="row"><div class="grow"><h3>' + esc(g.regulatorShort + ' ' + g.number) + '</h3><p class="small muted" style="margin:0">' + esc([T(g.profession || ''), g.organisation].filter(Boolean).join(' · ')) + '</p></div>' + statusChip(g.status) + '</div><p class="small">' + esc(T(g.message)) + (g.lastCheckedAt ? ' ' + esc(T('Last checked {date}.', { date: fmt(g.lastCheckedAt) })) : '') + '</p><div class="btns">' + (['mismatch', 'manual_review', 'manual_verification_required', 'not_found'].indexOf(g.status) >= 0 ? '<button class="btn ghost sm" data-ev="registration:' + g.id + '">' + esc(T('Add a note or evidence')) + '</button>' : '') + '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(g.registerUrl) + '">' + esc(T('Official register')) + '</a><button class="btn ghost sm" data-wd="registration:' + g.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('');
+      var creds = P.credentials.map(function (c) { return '<div class="card"><div class="row"><div class="grow"><h3>' + esc(T(c.label)) + '</h3><p class="small muted" style="margin:0">' + esc(c.issuer + ((c.moduleLabels || []).length ? ' · ' + c.moduleLabels.map(T).join(', ') : '')) + '</p></div>' + statusChip(c.status) + '</div><p class="small">' + esc(T(c.message)) + (c.expiresOn ? ' ' + esc(T('Expires {date}.', { date: fmt(c.expiresOn) })) : '') + '</p>' + ((c.evidence || []).length ? '<p class="small muted">' + esc(T('Evidence: {list}', { list: c.evidence.map(function (e) { return e.fileName || e.description || T(e.kind); }).join(', ') })) + '</p>' : '') + '<div class="btns">' + (c.status !== 'verified' ? '<button class="btn ghost sm" data-ev="credential:' + c.id + '">' + esc(T('Add evidence')) + '</button>' : '') + '<button class="btn ghost sm" data-wd="credential:' + c.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('');
+      var appr = P.approvals.length ? '<div class="card"><p class="small">' + esc(T('The Wavelength team has approved you as a supervisor for:')) + '</p><p>' + P.approvals.map(function (a) { return '<span class="chip ' + (a.current ? 'teal' : 'amber') + '">' + esc(a.label) + (a.current ? '' : ' · ' + esc(T('paused'))) + '</span>'; }).join(' ') + '</p><p class="small muted">' + esc(T('Approval is per pathway module. It pauses automatically if your registration stops being verified.')) + '</p></div>' : '<div class="card"><p class="small muted">' + esc(T('Once your registration and supervisor credentials are verified, the Wavelength team can approve you as a supervisor for the pathway modules they cover.')) + '</p></div>';
+      var D = P.directory || {};
+      var dir = '<form id="dirf" class="card"><label class="check"><input type="checkbox" name="listed" value="1"' + (D.listed ? ' checked' : '') + (D.eligible ? '' : ' disabled') + '><span>' + esc(T('List me in the public "Find an ultrasound supervisor" directory')) + '</span></label>' +
+        (D.eligible ? '' : '<p class="small muted">' + esc(T('Not yet:')) + ' ' + (D.reasons || []).map(function (x) { return esc(T(x)); }).join(' ') + '</p>') +
+        '<p class="small muted">' + esc(T('The directory shows your name, profession, organisation, region, verified credentials and supervisor modules. It never shows your email or registration number unless you add a contact address below and tick to show it.')) + (D.open ? '' : ' ' + esc(T('The directory is not open yet. Your choice is saved for when it opens.'))) + '</p>' +
+        '<div class="two"><div class="field"><label for="dr1">' + esc(T('Region')) + '</label><input id="dr1" type="text" name="region" value="' + esc(D.region || '') + '" placeholder="' + esc(T('For example Kent')) + '"></div><div class="field"><label for="dr2">' + esc(T('Country code')) + '</label><input id="dr2" type="text" name="country" maxlength="2" value="' + esc(D.country || '') + '" placeholder="GB"></div></div>' +
+        '<div class="field"><label for="dr3">' + esc(T('Specialty')) + '</label><input id="dr3" type="text" name="specialty" value="' + esc(D.specialty || '') + '"></div>' +
+        '<div class="field"><label for="dr4">' + esc(T('Contact email for learners (optional)')) + '</label><input id="dr4" name="contactEmail" type="email" value="' + esc(D.contactEmail || '') + '"></div>' +
+        '<label class="check"><input type="checkbox" name="showContact" value="1"' + (D.showContact ? ' checked' : '') + '><span>' + esc(T('Show this contact email in the directory')) + '</span></label><div class="btns"><button class="btn sm">' + esc(T('Save directory settings')) + '</button></div></form>';
+      mount(shell({ title: T('Professional verification'), back: 'me' },
+        '<p class="small muted">' + esc(T('Five separate things: your email, your professional registration, credentials from other bodies (such as FAMUS or FUSIC), Wavelength supervisor approval, and directory listing. Each is checked on its own.')) + '</p>' +
+        (P.badges.length ? '<div class="card"><p class="eyebrow" style="margin:0 0 8px">' + esc(T('Verified')) + '</p>' + P.badges.map(badgeHtml).join('') + '<p class="small muted" style="margin:6px 0 0">' + esc(T('Tap a badge to see who issued it and how it was checked.')) + '</p></div>' : '') +
+        (needEmail ? emailCardFor() : '') +
+        '<h2 class="sec">' + esc(T('Professional registration')) + '</h2>' + regs +
+        '<form id="rgf" class="card"><div class="field"><label for="rg1">' + esc(T('Regulator')) + '</label><select id="rg1" name="regulator">' + regOpts + '</select></div><div class="field"><label for="rg2">' + esc(T('Profession')) + '</label><select id="rg2" name="profession"></select></div><div class="field"><label for="rg3" id="rg3l">' + esc(T('Registration number')) + '</label><p class="hint" id="rg3h"></p><input id="rg3" type="text" name="number" required autocomplete="off" autocapitalize="characters"></div><div class="field"><label for="rg4">' + esc(T('Organisation')) + '</label><input id="rg4" type="text" name="organisation" value="' + esc(S.account.organisation || '') + '"></div><div class="field"><label for="rg5">' + esc(T('Role or grade')) + '</label><input id="rg5" type="text" name="role" value="' + esc(profile().grade || '') + '"></div><p class="small muted" id="rg6"></p><div class="err" hidden></div><div class="btns"><button class="btn teal sm"' + (needEmail ? ' disabled' : '') + '>' + esc(T('Check my registration')) + '</button></div></form>' +
+        '<h2 class="sec">' + esc(T('Credentials from other bodies')) + '</h2>' + creds +
+        '<form id="crf" class="card"><div class="field"><label for="cr1">' + esc(T('Credential')) + '</label><select id="cr1" name="type">' + credOpts + '</select></div><div class="field" id="crm"></div><div class="two"><div class="field"><label for="cr3">' + esc(T('Awarded on (optional)')) + '</label><input id="cr3" name="issuedOn" type="date"></div><div class="field"><label for="cr4">' + esc(T('Expires on (optional)')) + '</label><input id="cr4" name="expiresOn" type="date"></div></div><div class="field"><label for="cr2">' + esc(T('Certificate or reference number (optional)')) + '</label><input id="cr2" type="text" name="reference" autocomplete="off"></div><div class="field"><label for="cr5">' + esc(T('Note for the Wavelength team (optional)')) + '</label><textarea id="cr5" name="note" rows="2"></textarea></div><p class="small muted">' + esc(T('Wavelength checks credentials against each body\'s own records where it is allowed to, and otherwise against evidence you add. Never upload a passport or driving licence: we do not need one.')) + '</p><div class="err" hidden></div><div class="btns"><button class="btn teal sm"' + (needEmail ? ' disabled' : '') + '>' + esc(T('Add credential')) + '</button></div></form>' +
+        '<h2 class="sec">' + esc(T('Wavelength supervisor')) + '</h2>' + appr +
+        '<h2 class="sec">' + esc(T('Supervisor directory')) + '</h2>' + dir));
+      bindEmailResend();
+      $$('[data-badge]').forEach(function (b) { b.onclick = function () { badgeSheet(P.badges[Number(b.dataset.badge)]); }; });
+      var rg = $('#rg1'), setReg = function () { var g = P.regulators.filter(function (x) { return x.id === rg.value; })[0] || P.regulators[0]; $('#rg2').innerHTML = g.professions.map(function (x) { return '<option value="' + esc(x) + '">' + esc(T(x)) + '</option>'; }).join(''); $('#rg3l').textContent = T(g.numberLabel); $('#rg3h').textContent = T(g.numberHint); $('#rg6').textContent = g.automatic ? T('Checked automatically against the register.') : T('{body} has no automated check Wavelength may use yet, so the Wavelength team checks the public register by hand.', { body: g.short }); };
+      rg.onchange = setReg; setReg();
+      var cr = $('#cr1'), setCred = function () { var t = P.credentialTypes.filter(function (x) { return x.id === cr.value; })[0] || P.credentialTypes[0]; $('#crm').innerHTML = '<label>' + esc(T('Modules')) + '</label>' + t.modules.map(function (m) { return '<label class="check"><input type="checkbox" name="modules" value="' + esc(m.id) + '"><span>' + esc(T(m.label)) + '</span></label>'; }).join(''); };
+      cr.onchange = setCred; setCred();
+      var post = function (form, path, data) { var b = $('button', form), er = $('.err', form); busy(b, true); if (er) er.hidden = true; return api(path, data).then(function (res) { busy(b, false); if (!res.ok) { if (er) { er.textContent = res.error || T('Something went wrong.'); er.hidden = false; } else toast(res.error); return; } viewProfessional(); }).catch(function () { busy(b, false); toast(T('Could not save. Check your connection.')); }); };
+      $('#rgf').addEventListener('submit', function (e) { e.preventDefault(); post(this, '/api/app/professional/registration', formData(this)); });
+      $('#crf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); d.modules = $$('input[name=modules]:checked', this).map(function (i) { return i.value; }); post(this, '/api/app/professional/credential', d); });
+      $('#dirf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); d.listed = !!d.listed; d.showContact = !!d.showContact; api('/api/app/professional/directory', d).then(function (res) { toast(res.ok ? (res.listed ? T('You are listed.') : T('Saved. You are not listed.')) : res.error); if (res.ok) viewProfessional(); }); });
+      $$('[data-wd]').forEach(function (b) { b.onclick = function () { if (!confirm(T('Remove this? Its badge disappears. You can add it again later.'))) return; var x = b.dataset.wd.split(':'); api('/api/app/professional/withdraw', { subject: x[0], id: Number(x[1]) }).then(viewProfessional); }; });
+      $$('[data-ev]').forEach(function (b) { b.onclick = function () { var x = b.dataset.ev.split(':'); evidenceSheet(x[0], Number(x[1])); }; });
+    }).catch(function () { toast(T('Could not load. Check your connection.')); });
+  }
+  function emailCardFor() { var html = emailCard(); return html || '<div class="card"><p class="small">' + esc(T('Confirm your email address first. Use the link we sent you.')) + '</p><div class="btns"><button class="btn sm" type="button" data-evr>' + esc(T('Send it again')) + '</button></div></div>'; }
+  function evidenceSheet(subject, id) {
+    sheet('<h2>' + esc(T('Add evidence')) + '</h2><p class="small muted">' + esc(T('A certificate, a letter from your department or the awarding body, or a link to an official public listing. PDF, JPEG or PNG up to 1 MB. Cover anything that is not needed, such as your date of birth or home address. The file is deleted once the team has decided.')) + '</p><form id="evf"><div class="field"><label for="ev1">' + esc(T('Type')) + '</label><select id="ev1" name="kind"><option value="certificate">' + esc(T('Certificate')) + '</option><option value="letter">' + esc(T('Letter or email confirming the role')) + '</option><option value="institution">' + esc(T('NHS or institutional confirmation')) + '</option><option value="body_correspondence">' + esc(T('Correspondence from the awarding body')) + '</option><option value="public_profile">' + esc(T('Official public listing (link)')) + '</option><option value="other">' + esc(T('Other')) + '</option></select></div><div class="field"><label for="ev2">' + esc(T('Description')) + '</label><input id="ev2" type="text" name="description" maxlength="500"></div><div class="field"><label for="ev3">' + esc(T('Link (optional)')) + '</label><input id="ev3" name="url" type="url" placeholder="https://"></div><div class="field"><label for="ev4">' + esc(T('File (optional)')) + '</label><input id="ev4" type="file" accept="application/pdf,image/jpeg,image/png"></div><div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Send to the Wavelength team')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {
+      $('#evf', root).addEventListener('submit', function (e) {
+        e.preventDefault();
+        var f = $('#ev4', root).files[0], d = formData(this), b = $('button', this), er = $('.err', this);
+        var fail = function (msg) { busy(b, false); er.textContent = msg; er.hidden = false; };
+        if (f && f.size > 1048576) return fail(T('Files can be up to 1 MB. Save a smaller PDF or photo.'));
+        busy(b, true);
+        var q = 'subject=' + subject + '&id=' + id + '&kind=' + encodeURIComponent(d.kind) + '&description=' + encodeURIComponent(d.description || '') + '&url=' + encodeURIComponent(d.url || '');
+        var send = f ? fetch('/api/app/professional/evidence?' + q + '&name=' + encodeURIComponent(f.name), { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': f.type || 'application/octet-stream' }, body: f }).then(function (r) { return r.json(); })
+          : api('/api/app/professional/evidence', { subject: subject, id: id, kind: d.kind, description: d.description, url: d.url });
+        send.then(function (res) { if (!res.ok) return fail(T(res.error || 'Something went wrong.')); closeSheet(); toast(T('Sent. The Wavelength team will review it.')); viewProfessional(); }).catch(function () { fail(T('Could not send. Check your connection.')); });
+      });
+    });
+  }
   function viewDeclaration() { mount(shell({ title: T('Your responsibility'), back: 'me' }, declarationHtml() + '<p class="small muted" style="margin-top:12px">' + esc(T('You accepted this on {date}.', { date: fmt(S.account.declarationAt) })) + '</p>')); }
 
   // ---------- Start ----------
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(function () {});
   function boot() {
     var qs = new URLSearchParams(location.search);
+    var hr = route();
+    if (hr.name === 'supervise' && hr.q.get('invite')) {
+      try { sessionStorage.setItem('wl-invite', hr.q.get('invite')); } catch (e) { /* storage blocked */ }
+      history.replaceState(null, '', location.pathname + location.search + '#/supervise');
+    }
+    if (hr.name === 'verify-email') { render(); return; }
     if (qs.get('reset')) location.hash = '#/reset';
     else if (qs.get('login') && !/supervise/.test(location.hash)) location.hash = '#/login';
     app.innerHTML = '<div class="auth"><div class="auth-head" style="padding-top:30vh">' + MARK(64, 'rgba(247,245,240,.6)') + '<div class="wm">WAVELENGTH</div></div></div>';

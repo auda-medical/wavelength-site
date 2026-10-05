@@ -48,7 +48,15 @@ r = await post(L.page, '/api/app/supervisors/add', { email: sEmail });
 if (!r.ok || !r.hasAccount) fail('add supervisor ' + JSON.stringify(r));
 r = await get(S.page, '/api/app/supervisors');
 if (!r.invites || r.invites.length !== 1) fail('invites ' + JSON.stringify(r));
-r = await post(S.page, '/api/app/supervisors/accept', { id: r.invites[0].id });
+const inviteId = r.invites[0].id;
+// With email verification on (ZEPTOMAIL_TOKEN in .dev.vars), a supervisor confirms their email before accepting.
+// MAIL_LOG is the file a local ZeptoMail stand-in writes (ZEPTOMAIL_API points at it); see tools/e2e-verification.mjs.
+if (process.env.MAIL_LOG) {
+  const mail = fs.readFileSync(process.env.MAIL_LOG, 'utf8').split('\n').filter(Boolean).map((x) => JSON.parse(x)).filter((m) => m.to[0].email_address.address === sEmail);
+  const tok = mail.map((m) => (String(m.textbody).match(/verify-email\/([A-Za-z0-9_-]+)/) || [])[1]).filter(Boolean).pop();
+  if (!(await post(S.page, '/api/app/email/verify', { token: tok })).verified) fail('supervisor email verification');
+}
+r = await post(S.page, '/api/app/supervisors/accept', { id: inviteId });
 if (!r.ok) fail('accept ' + JSON.stringify(r));
 r = await get(L.page, '/api/app/supervisors');
 const link = r.supervisors.find((x) => x.status === 'active');
