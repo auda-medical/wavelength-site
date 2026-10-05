@@ -13,6 +13,7 @@ import DATA from './academy-data.json';
 import TEMPLATE from './cert-template.bin';
 import TEMPLATE_META from './cert-template.json';
 import { stampCertificate } from './cert.js';
+import { emailVerifyOn, issueToken, sendTokenEmail, sendVerification, newNonce } from './email-verify.js';
 
 const COOKIE = 'wl_learn';
 const DAYS = 180;
@@ -177,7 +178,7 @@ async function body(req) {
   const o = {}; for (const [k, v] of f) o[k] = v; return o;
 }
 
-async function register(env, req) {
+async function register(env, req, ctx) {
   const d = await body(req);
   const mod = DATA.modules[clip(d.module, 40)];
   const isJson = (req.headers.get('Accept') || '').includes('json');
@@ -196,11 +197,35 @@ async function register(env, req) {
     const back = `/app/?login=${encodeURIComponent(p.email)}&next=${encodeURIComponent(Object.values(mod.lessons)[0].path)}`;
     return isJson ? json({ ok: false, error: 'This email has a Wavelength account with a password. Log in to continue.', login: back }, 409) : redirect(back);
   }
-  await env.DB.prepare(`INSERT INTO learners (email, title, first_name, last_name, role, organisation, newsletter, last_seen) VALUES (?,?,?,?,?,?,?,datetime('now'))
-    ON CONFLICT(email) DO UPDATE SET title = excluded.title, first_name = excluded.first_name, last_name = excluded.last_name, role = excluded.role, organisation = COALESCE(NULLIF(excluded.organisation, ''), learners.organisation), newsletter = MAX(learners.newsletter, excluded.newsletter), last_seen = datetime('now')`)
-    .bind(p.email, p.title, p.first, p.last, p.role, p.org, p.news).run();
-  const row = await env.DB.prepare('SELECT id FROM learners WHERE email = ?').bind(p.email).first();
   const next = Object.values(mod.lessons)[0].path;
+  const verifying = await emailVerifyOn(env);
+  let returning = !!existing;
+  if (!existing && verifying) {
+    const ins = await env.DB.prepare(`INSERT INTO learners (email, title, first_name, last_name, role, organisation, newsletter, last_seen, email_status) VALUES (?,?,?,?,?,?,?,datetime('now'),'unverified') ON CONFLICT(email) DO NOTHING`)
+      .bind(p.email, p.title, p.first, p.last, p.role, p.org, p.news).run();
+    returning = !(ins.meta && ins.meta.changes); // a second submission raced the first: treat it as returning
+  }
+  if (returning && verifying) {
+    const prior = existing || await env.DB.prepare('SELECT id FROM learners WHERE email = ?').bind(p.email).first();
+    // Returning learner: typing an email address no longer logs anyone in. A sign-in link goes to that address and
+    // carries the details typed here, so a corrected name still reaches the next certificate. Same answer whether or
+    // not the email exists or was throttled.
+    const nonce = await newNonce();
+    const t = await issueToken(env, { id: prior.id, email: p.email }, 'signin', { title: p.title, first: p.first, last: p.last, role: p.role, org: p.org, news: p.news, next, nonce: nonce.hash });
+    if (t) {
+      const mail = sendTokenEmail(env, { email: p.email, first_name: p.first, last_name: p.last, title: p.title }, t, 'signin');
+      if (ctx && ctx.waitUntil) ctx.waitUntil(mail); else await mail;
+    }
+    return isJson ? json({ ok: true, checkEmail: true }, 202, { 'Set-Cookie': nonce.cookie }) : redirect(`/elearning/${mod.slug}/?check=1#register`, { 'Set-Cookie': nonce.cookie });
+  }
+  if (!verifying) {
+    // Email verification off (no ZEPTOMAIL_TOKEN, migration 0011 not applied, or EMAIL_VERIFY = "off"): as before.
+    await env.DB.prepare(`INSERT INTO learners (email, title, first_name, last_name, role, organisation, newsletter, last_seen) VALUES (?,?,?,?,?,?,?,datetime('now'))
+    ON CONFLICT(email) DO UPDATE SET title = excluded.title, first_name = excluded.first_name, last_name = excluded.last_name, role = excluded.role, organisation = COALESCE(NULLIF(excluded.organisation, ''), learners.organisation), newsletter = MAX(learners.newsletter, excluded.newsletter), last_seen = datetime('now')`)
+      .bind(p.email, p.title, p.first, p.last, p.role, p.org, p.news).run();
+  }
+  const row = await env.DB.prepare('SELECT * FROM learners WHERE email = ?').bind(p.email).first();
+  if (verifying) { const mail = sendVerification(env, row, 'verify'); if (ctx && ctx.waitUntil) ctx.waitUntil(mail); else await mail; }
   const cookie = await cookieFor(env, row.id);
   return isJson ? json({ ok: true, next }, 200, { 'Set-Cookie': cookie }) : redirect(next, { 'Set-Cookie': cookie });
 }
@@ -336,7 +361,7 @@ export async function handleAcademy(req, env, ctx) {
   if (req.method === 'POST') {
     const origin = req.headers.get('Origin');
     if (origin && origin !== url.origin) return json({ ok: false, error: 'Forbidden' }, 403);
-    if (p === '/api/academy/register') return register(env, req);
+    if (p === '/api/academy/register') return register(env, req, ctx);
     if (p === '/api/academy/submit') return submit(env, req, ctx);
     if (p === '/api/academy/feedback') return feedback(env, req);
     if (p === '/api/academy/resend') return resend(env, req);

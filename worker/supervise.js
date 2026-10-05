@@ -4,9 +4,11 @@
 // Supervisor links: a learner invites a supervisor by email. Once the supervisor accepts in their own app, they see
 // the learner's progress and the written logbook (never images), and sign-off or assessment requests addressed to them.
 import LOGBOOK from '../data/logbook.json';
-import { SITE, json, clip, EMAIL, sha256, token, code, body, fullName, profileOf, contentHash, SIGNED_FIELDS } from './app-util.js';
+import { SITE, json, clip, EMAIL, sha256, token, code, body, fullName, profileOf, contentHash, SIGNED_FIELDS, verificationReady } from './app-util.js';
 import { buildSummary, signedAssessments } from './evidence.js';
 import { sendMail } from './academy.js';
+import { mustVerify, sendVerification } from './email-verify.js';
+import { snapshotFor, publicSnapshot, logEvent } from './professional.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
 const KINDS = (LOGBOOK.assessmentKinds || []).map((k) => k.id);
@@ -49,9 +51,12 @@ function formError(f, kind) {
   if (!Object.keys(f.domains).length) return 'Rate at least one domain.';
   return null;
 }
-async function finishAssessment(env, row, f, sup, sig, supervisorId) {
-  const r = await env.DB.prepare("UPDATE assessments SET status = 'signed', outcome = ?, assessed_on = ?, data = ?, supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL, supervisor_id = COALESCE(?, supervisor_id) WHERE id = ? AND status = 'pending'")
-    .bind(f.outcome, f.date, JSON.stringify({ ...JSON.parse(row.data || '{}'), ...f }), sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sig, supervisorId || null, row.id).run();
+// The assessor's verified status is captured with the signature and never changed afterwards. Only the dashboard
+// route identifies the assessor by their Wavelength account; in person and by link, the details are as declared.
+async function finishAssessment(env, row, f, sup, sig, supervisorId, method) {
+  const snap = await snapshotFor(env, { pathway: row.pathway, module: row.module, declared: sup, method, accountId: supervisorId || null });
+  const r = await env.DB.prepare(`UPDATE assessments SET status = 'signed', outcome = ?, assessed_on = ?, data = ?, supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL, supervisor_id = COALESCE(?, supervisor_id)${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
+    .bind(f.outcome, f.date, JSON.stringify({ ...JSON.parse(row.data || '{}'), ...f }), sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sig, supervisorId || null, ...(snap ? [JSON.stringify(snap)] : []), row.id).run();
   return !!(r.meta && r.meta.changes); // false when another submission signed it first
 }
 const publicRow = (r) => ({
@@ -87,7 +92,7 @@ export async function assessmentInPerson(env, l, req) {
   const id = code('AS');
   await env.DB.prepare("INSERT INTO assessments (id, learner_id, pathway, module, kind, method, entry_ids, snapshot, data) VALUES (?,?,?,?,?,'in-person',?,?,'{}')")
     .bind(id, l.id, d.pathway, d.module, d.kind, JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snap(entries))).run();
-  await finishAssessment(env, { id, data: '{}' }, f, sup, sig, null);
+  await finishAssessment(env, { id, data: '{}', pathway: d.pathway, module: d.module }, f, sup, sig, null, 'in-person');
   return json({ ok: true, code: id });
 }
 export async function assessmentList(env, l) {
@@ -124,7 +129,7 @@ export async function assessmentComplete(env, req) {
   if (err) return json({ ok: false, error: err }, 400);
   if (!sup.name || !sup.role || !d.confirm) return json({ ok: false, error: 'Enter your name and role, and tick the confirmation.' }, 400);
   if (!SIG.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box with your finger or mouse.' }, 400);
-  if (!(await finishAssessment(env, a, f, sup, sig, null))) return json({ ok: false, error: 'This assessment link is no longer valid.' }, 410);
+  if (!(await finishAssessment(env, a, f, sup, sig, null, 'remote'))) return json({ ok: false, error: 'This assessment link is no longer valid.' }, 410);
   return json({ ok: true, code: a.id });
 }
 
@@ -139,13 +144,21 @@ export async function supervisorAdd(env, l, req, ctx) {
   const sup = await env.DB.prepare('SELECT id FROM learners WHERE email = ? AND password_hash IS NOT NULL').bind(email).first();
   await env.DB.prepare("INSERT INTO supervisor_links (learner_id, supervisor_email, supervisor_id, status) VALUES (?,?,?,'pending') ON CONFLICT (learner_id, supervisor_email) DO UPDATE SET status = 'pending', supervisor_id = excluded.supervisor_id, ended_at = NULL, created_at = datetime('now')")
     .bind(l.id, email, sup ? sup.id : null).run();
+  // The invitation carries a single-use token (hashed in D1, 30 days). Accepting with it proves the supervisor
+  // received this email, so it also verifies their address.
+  let invite = '';
+  if (await verificationReady(env)) {
+    const t = token();
+    await env.DB.prepare('UPDATE supervisor_links SET invite_hash = ?, invite_expires = ? WHERE learner_id = ? AND supervisor_email = ?').bind(await sha256(t), Date.now() + 30 * 864e5, l.id, email).run();
+    invite = `?invite=${t}`;
+  }
   let emailed = false;
   if (env.ZEPTOMAIL_TOKEN) {
-    const link = `${SITE}/app/?login=${encodeURIComponent(email)}#/supervise`;
+    const link = `${SITE}/app/?login=${encodeURIComponent(email)}#/supervise${invite}`;
     ctx.waitUntil(sendMail(env, {
       to: email, subject: `${fullName(l)} asks you to supervise their ultrasound logbook`,
       heading: 'Supervise an ultrasound logbook',
-      paragraphs: [`${fullName(l)} uses the free Wavelength ultrasound logbook and has named you as a supervisor.`, 'Once you accept, you see their progress against their pathway targets and their written scan records, never their images. They can send sign-off and assessment requests straight to your dashboard.', sup ? 'Log in to Wavelength with this email address to accept.' : 'Create a free Wavelength account with this email address to accept.'],
+      paragraphs: [`${fullName(l)} uses the free Wavelength ultrasound logbook and has named you as a supervisor.`, 'Once you accept, you see their progress against their pathway targets and their written scan records, never their images. They can send sign-off and assessment requests straight to your dashboard.', sup ? 'Log in to Wavelength with this email address to accept.' : 'Create a free Wavelength account with this email address to accept.', 'Afterwards you can add your professional registration and supervisor credentials, so learners and reviewers see what has been verified.'],
       button: { href: link, label: sup ? 'Log in and accept' : 'Create your account' },
       text: `${fullName(l)} has named you as an ultrasound supervisor on Wavelength.\n\nAccept here: ${link}\n\nIf you do not know them, ignore this email.`,
     }).catch(() => {}));
@@ -162,9 +175,31 @@ export async function supervisorRemove(env, l, req) {
 export async function supervisorAccept(env, l, req) {
   const d = await body(req);
   const id = Number(d && d.id);
+  // An invitation is addressed to an email. Only someone who has proved they own that email may accept it.
+  if (await mustVerify(env, l)) {
+    await sendVerification(env, l, 'verify');
+    return json({ ok: false, needVerify: true, error: 'Confirm your email address to accept. Use the link in the invitation email, or the confirmation link we have just sent.' }, 403);
+  }
   const r = await env.DB.prepare("UPDATE supervisor_links SET status = 'active', supervisor_id = ?, accepted_at = datetime('now') WHERE id = ? AND supervisor_email = ? AND status = 'pending'").bind(l.id, id, String(l.email).toLowerCase()).run();
   if (!(r.meta && r.meta.changes)) return json({ ok: false, error: 'This invitation is no longer open.' }, 404);
   return json({ ok: true });
+}
+// Accept with the token from the invitation email. Works for an unverified account, because the token proves the
+// email, and marks the address verified.
+export async function supervisorAcceptInvite(env, l, req) {
+  const d = await body(req);
+  if (!(await verificationReady(env))) return json({ ok: false, error: 'This invitation is no longer open.' }, 404);
+  const h = await sha256(clip(d && d.token, 100));
+  const row = await env.DB.prepare('SELECT * FROM supervisor_links WHERE invite_hash = ?').bind(h).first();
+  if (!row || row.status !== 'pending' || !row.invite_expires || row.invite_expires < Date.now()) return json({ ok: false, error: 'This invitation is no longer open. Ask the learner to invite you again.' }, 404);
+  if (row.supervisor_email !== String(l.email).toLowerCase()) return json({ ok: false, wrongEmail: true, error: 'This invitation was sent to a different email address. Log in with the address it was sent to.' }, 403);
+  const r = await env.DB.prepare("UPDATE supervisor_links SET status = 'active', supervisor_id = ?, accepted_at = datetime('now'), invite_hash = NULL WHERE id = ? AND status = 'pending' AND invite_hash = ?").bind(l.id, row.id, h).run();
+  if (!(r.meta && r.meta.changes)) return json({ ok: false, error: 'This invitation is no longer open. Ask the learner to invite you again.' }, 404);
+  if (l.email_status !== 'verified') {
+    await env.DB.prepare("UPDATE learners SET email_status = 'verified', email_verified_at = COALESCE(email_verified_at, datetime('now')) WHERE id = ? AND email = ?").bind(l.id, l.email).run();
+    await logEvent(env, { learnerId: l.id, subjectType: 'email', subjectId: l.id, action: 'verified', outcome: 'verified', actor: 'learner', method: 'supervisor_invitation' });
+  }
+  return json({ ok: true, verified: true });
 }
 export async function supervisorLinks(env, l) {
   const mine = await env.DB.prepare("SELECT s.id, s.supervisor_email, s.status, s.created_at, s.accepted_at, t.title, t.first_name, t.last_name, t.role FROM supervisor_links s LEFT JOIN learners t ON t.id = s.supervisor_id WHERE s.learner_id = ? AND s.status != 'ended' ORDER BY s.created_at DESC").bind(l.id).all();
@@ -220,10 +255,12 @@ export async function superviseSignoffComplete(env, l, req, applySignoff, cleanS
   if (!SIG.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box.' }, 400);
   const decisions = d.decisions && typeof d.decisions === 'object' ? d.decisions : {};
   const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
-  const done = await env.DB.prepare("UPDATE signoffs SET status = 'signed', method = 'dashboard', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = ?, accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL WHERE id = ? AND status = 'pending'")
-    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, so.id).run();
+  // Signed from the supervisor's own logged-in account: capture their verified status as it is now.
+  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'dashboard', accountId: l.id });
+  const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', method = 'dashboard', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = ?, accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
+    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
   if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This request is no longer open.' }, 404);
-  await applySignoff(env, so, decisions, sup, 'dashboard', ratings);
+  await applySignoff(env, so, decisions, sup, 'dashboard', ratings, snap);
   await deleteSharedImages(env, so.id);
   if (notify) notify(so, decisions, sup);
   return json({ ok: true, code: so.id });
@@ -237,7 +274,7 @@ export async function superviseAssessmentComplete(env, l, req) {
   if (err) return json({ ok: false, error: err }, 400);
   if (!sup.name || !sup.role || !d.confirm) return json({ ok: false, error: 'Enter your name and role, and tick the confirmation.' }, 400);
   if (!SIG.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box.' }, 400);
-  if (!(await finishAssessment(env, a, f, sup, sig, l.id))) return json({ ok: false, error: 'This request is no longer open.' }, 404);
+  if (!(await finishAssessment(env, a, f, sup, sig, l.id, 'dashboard'))) return json({ ok: false, error: 'This request is no longer open.' }, 404);
   await env.DB.prepare("UPDATE assessments SET method = 'dashboard' WHERE id = ?").bind(a.id).run();
   return json({ ok: true, code: a.id });
 }
@@ -256,7 +293,7 @@ export async function superviseAssessmentNew(env, l, req) {
   const id = code('AS');
   await env.DB.prepare("INSERT INTO assessments (id, learner_id, pathway, module, kind, method, entry_ids, snapshot, data, supervisor_id) VALUES (?,?,?,?,?,'dashboard',?,?,'{}',?)")
     .bind(id, t.id, d.pathway, d.module, d.kind, JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snap(entries)), l.id).run();
-  await finishAssessment(env, { id, data: '{}' }, f, sup, sig, l.id);
+  await finishAssessment(env, { id, data: '{}', pathway: d.pathway, module: d.module }, f, sup, sig, l.id, 'dashboard');
   return json({ ok: true, code: id });
 }
 
@@ -265,7 +302,7 @@ export async function verifyAssessment(env, c) {
   if (!a) return json({ ok: false, error: 'No completed assessment matches that code.' }, 404);
   const pw = PATHS[a.pathway], m = moduleOf(a.pathway, a.module), kind = (LOGBOOK.assessmentKinds || []).find((k) => k.id === a.kind);
   const outcome = (LOGBOOK.assessmentOutcomes || []).find((o) => o.id === a.outcome);
-  return json({ ok: true, kind: 'assessment', code: a.id, learner: fullName(a), pathway: pw ? pw.name : a.pathway, module: m ? m.label : a.module, type: kind ? kind.label : a.kind, outcome: outcome ? outcome.label : a.outcome, outcomeId: a.outcome, assessedOn: a.assessed_on, assessor: a.supervisor_name, role: a.supervisor_role, accreditation: a.accreditation, method: a.method, handSigned: !!a.signature, scans: JSON.parse(a.entry_ids || '[]').length });
+  return json({ ok: true, kind: 'assessment', code: a.id, learner: fullName(a), pathway: pw ? pw.name : a.pathway, module: m ? m.label : a.module, type: kind ? kind.label : a.kind, outcome: outcome ? outcome.label : a.outcome, outcomeId: a.outcome, assessedOn: a.assessed_on, assessor: a.supervisor_name, role: a.supervisor_role, accreditation: a.accreditation, method: a.method, handSigned: !!a.signature, scans: JSON.parse(a.entry_ids || '[]').length, supervisorCheck: publicSnapshot(a.supervisor_snapshot) });
 }
 
 export async function deleteSupervision(env, l) {
