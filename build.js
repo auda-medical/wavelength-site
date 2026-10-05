@@ -1123,7 +1123,7 @@ ${subscribeBand('Get the next one <em>by email.</em>')}`,
 // Guides: /guides/ index and one page per guide, with a contents list built from the ## headings.
 if (guides.length) {
   const gCrumbs = (extra = []) => [{ label: 'Home', href: '/' }, { label: 'Learn', href: '/learn/' }, { label: 'Guides', href: '/guides/' }, ...extra];
-  const guideCard = (g, h = 'h2') => `<a class="post-card reveal" href="/guides/${g.slug}/"><p class="eyebrow">${esc(g.eyebrow || 'Guide')}${g.draft === true ? ' · Draft' : ''}</p><${h}>${esc(g.title)}</${h}><p>${esc(g.summary || '')}</p><span class="meta">${readMins(g.html)} min read${g.reviewed || g.date ? ` · Checked ${fmtDate(g.reviewed || g.date, { month: 'long', year: 'numeric' })}` : ''}</span></a>`;
+  const guideCard = (g, h = 'h2') => `<a class="post-card reveal" href="/guides/${g.slug}/"><p class="eyebrow">${esc(g.eyebrow || 'Guide')}${g.draft === true ? ' · Draft' : ''}</p><${h}>${esc(g.title)}</${h}><p>${esc(g.summary || '')}</p><span class="meta">${readMins(g.html)} min read${g.reviewed ? ` · Checked ${fmtDate(g.reviewed, { month: 'long', year: 'numeric' })}` : ''}</span></a>`;
   const glanceHref = (x) => `/guides/${x.guide}/at-a-glance/`;
   const glanceCard = (x, h = 'h3') => `<a class="post-card reveal" href="${glanceHref(x)}"><p class="eyebrow">One-page summary</p><${h}>${esc(x.title)}</${h}><p>${esc(x.summary || '')}</p><span class="meta">Prints on one A4 page${glancePdf(x) ? ' · PDF' : ''}</span></a>`;
   const listedGlances = glances.filter((x) => (SHOW_DRAFTS ? guides : liveGuides).some((g) => g.slug === x.guide));
@@ -1131,7 +1131,7 @@ if (guides.length) {
     title: 'Ultrasound sign-off and accreditation guides',
     seoTitle: 'POCUS sign-off and accreditation guides',
     pathname: '/guides/',
-    description: 'Free POCUS accreditation guides: RCEM sign-off, FAMUS and FUSIC step by step, international pathways compared, one-page summaries and logbook advice.',
+    description: 'Free POCUS accreditation guides: RCEM sign-off, FAMUS and FUSIC step by step, the UK pathways compared, one-page checklists and logbook advice.',
     noindex: !liveGuides.length,
     jsonld: [breadcrumbLd(gCrumbs()), { '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: liveGuides.map((g, i) => ({ '@type': 'ListItem', position: i + 1, url: url(`/guides/${g.slug}/`), name: g.title })) }],
     body: `${pageHero({ eyebrow: 'Guides', title: 'Get signed off.', lede: 'Step-by-step guides to the UK ultrasound pathways and the logbook behind them, checked against each body\'s current documents.', crumbs: gCrumbs().slice(0, -1).concat([{ label: 'Guides' }]) })}
@@ -1154,7 +1154,8 @@ ${subscribeBand('Pathway changes, <em>in your inbox.</em>')}`,
     const href = `/guides/${g.slug}/`;
     const isDirector = !g.author || g.author === site.director.name;
     const others = (g.draft === true ? guides : liveGuides).filter((o) => o !== g);
-    const checked = g.reviewed || g.date;
+    // Only a guide with `reviewed` was checked against the official sources; the byline says so only then.
+    const checked = g.reviewed;
     const gl = glanceFor(g);
     const cta = GUIDE_CTA[g.pathway] || GUIDE_CTA.all;
     const related = (GUIDE_TOPICS[g.pathway] || []).map((sl) => TOPICS.find((t) => t.slug === sl)).filter((t) => t && topicHref(t));
@@ -1167,7 +1168,7 @@ ${subscribeBand('Pathway changes, <em>in your inbox.</em>')}`,
       ogType: 'article',
       noindex: g.draft === true,
       jsonld: [
-        { '@context': 'https://schema.org', '@type': 'Article', headline: g.seoTitle || g.title, alternativeHeadline: g.title, description: g.summary, datePublished: g.date, dateModified: [checked, g.updated].filter(Boolean).map(String).sort().pop(), author: { '@type': 'Person', name: g.author || site.director.name, ...(isDirector ? { '@id': url('/faculty/#director'), jobTitle: site.director.title, url: url('/faculty/') } : {}) }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), isAccessibleForFree: true, inLanguage: 'en-GB', ...(gl ? { hasPart: { '@type': 'WebPage', name: gl.title, url: url(glanceHref(gl)) } } : {}) },
+        { '@context': 'https://schema.org', '@type': 'Article', headline: g.seoTitle || g.title, alternativeHeadline: g.title, description: g.summary, datePublished: g.date, dateModified: [checked || g.date, g.updated].filter(Boolean).map(String).sort().pop(), author: { '@type': 'Person', name: g.author || site.director.name, ...(isDirector ? { '@id': url('/faculty/#director'), jobTitle: site.director.title, url: url('/faculty/') } : {}) }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), isAccessibleForFree: true, inLanguage: 'en-GB', ...(gl ? { hasPart: { '@type': 'WebPage', name: gl.title, url: url(glanceHref(gl)) } } : {}) },
         breadcrumbLd([...gCrumbs(), { label: g.title, href }]),
       ],
       body: `${pageHero({ eyebrow: (g.eyebrow || 'Guide') + (g.draft === true ? ' · Draft, not published' : ''), title: esc(g.title), lede: esc(g.summary || ''), crumbs: gCrumbs([{ label: g.short || g.title }]), extra: `<p class="byline rise">${isDirector ? `<a href="/faculty/">${esc(g.author || site.director.name)}</a>` : esc(g.author)}${checked ? ` · Checked against official sources ${fmtDate(checked, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''} · ${readMins(g.html)} min read</p>${gl ? `<div class="hero-ctas rise" style="margin-top:28px"><a class="btn btn-ghost light" href="${glanceHref(gl)}">One-page summary</a></div>` : ''}` })}
@@ -1182,20 +1183,22 @@ ${subscribeBand('Pathway changes, <em>in your inbox.</em>')}`,
     // One-page summary of the guide.
     const gHref = glanceHref(gl);
     const pdf = glancePdf(gl);
-    const glChecked = gl.reviewed || checked;
+    const glChecked = gl.reviewed || checked || g.date;
     pages[gHref] = layout({
       title: gl.title,
       seoTitle: gl.seoTitle || gl.title,
       pathname: gHref,
       description: gl.summary,
       ogType: 'article',
-      noindex: g.draft === true,
+      // The full guide is the page for search; this one is the printable and phone companion, so it stays out of the index.
+      noindex: true,
       jsonld: [
         { '@context': 'https://schema.org', '@type': 'Article', headline: gl.seoTitle || gl.title, alternativeHeadline: gl.title, description: gl.summary, datePublished: glChecked, dateModified: glChecked, author: { '@type': 'Person', name: g.author || site.director.name, ...(isDirector ? { '@id': url('/faculty/#director'), jobTitle: site.director.title, url: url('/faculty/') } : {}) }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(gHref), isPartOf: { '@type': 'Article', headline: g.title, url: url(href) }, ...(pdf ? { associatedMedia: { '@type': 'MediaObject', contentUrl: url(pdf), encodingFormat: 'application/pdf' } } : {}), isAccessibleForFree: true, inLanguage: 'en-GB' },
         breadcrumbLd([...gCrumbs(), { label: g.short || g.title, href }, { label: 'At a glance', href: gHref }]),
       ],
       body: `${pageHero({ eyebrow: 'One-page summary' + (g.draft === true ? ' · Draft, not published' : ''), title: esc(gl.title), lede: esc(gl.summary || ''), crumbs: gCrumbs([{ label: g.short || g.title, href }, { label: 'At a glance' }]), extra: `<div class="hero-ctas rise">${pdf ? `<a class="btn btn-teal" href="${pdf}" download>Download the PDF ${arrow}</a>` : ''}<button class="btn ${pdf ? 'btn-ghost light' : 'btn-teal'}" type="button" data-print hidden>Print or save as PDF</button><a class="btn btn-ghost light" href="${href}">Read the full guide</a></div>` })}
 <section class="section glance-section"><div class="wrap">
+<p class="glance-lead reveal">This is the one-page checklist to save or print. For what each step means, the evidence that counts and the official sources, <a class="text-link" href="${href}">read the full ${esc(g.short || g.title)} guide</a>.</p>
 <article class="glance" aria-labelledby="glance-title">
   <header class="glance-head"><span class="glance-brand">${mark({ size: 34 })}<b>WAVELENGTH</b></span><div><p class="eyebrow">At a glance · Checked ${fmtDate(glChecked, { day: 'numeric', month: 'long', year: 'numeric' })}</p><h2 id="glance-title">${esc(gl.pathway || g.short || g.title)}</h2></div></header>
   <div class="glance-body prose">${gl.html}</div>
@@ -1594,16 +1597,6 @@ const APP_LD = {
     'Works offline',
   ],
 };
-// Every pathway the app tracks, with a link to its Wavelength guide or the comparison guide.
-function pathwayLinks() {
-  const rows = PATHWAYS.filter((p) => p.id !== 'eusem2').map((p) => {
-    const g = guideHref(p.id);
-    const href = g || (hasAccreditationHub() ? '/guides/pocus-accreditation/#pathways-outside-the-uk' : null);
-    const label = g ? `${p.id === 'rcem' ? 'RCEM sign-off' : `${p.label} accreditation`} guide` : `${p.label} in the pathway comparison`;
-    return `<li><b>${esc(p.label)}</b><span>${esc(p.desc || p.name)}${href ? ` <a class="text-link" href="${href}">${esc(label)}</a>` : ''}</span></li>`;
-  });
-  return `<ul class="l-paths reveal" data-d="2">${rows.join('')}<li><b>+</b><span>A general logbook for any application, with targets you set yourself.</span></li></ul>`;
-}
 
 // Wavelength app landing page (/app/get/). The app itself is static in src/app/.
 {
@@ -1611,12 +1604,8 @@ function pathwayLinks() {
   const appFaqs = [
     { q: 'Is it free?', a: 'Yes. The logbook, progress tracking, sign-off, exports and backups are free.' },
     { q: 'Does Wavelength see my scan photos?', a: 'No. Photos stay on your phone and in backup files you save to your own iCloud Drive, Google Drive or OneDrive. Only the written record syncs to your account, and it must never contain patient identifiers. Images and clips you include in a sign-off link are encrypted on your phone first, so Wavelength stores files it cannot open, and deletes them once your supervisor signs.' },
-    { q: 'Which pathways does it track?', a: 'RCEM PoCUS, FAMUS, FUSIC, the EUSEM core compendium (basic and advanced), ACEM, CPoCUS and ACEP, plus a general logbook for any application with targets you set. One scan counts towards every pathway it fits, and structured assessments (DOPS, formative and summative) count too.' },
     { q: 'Is it in my language?', a: 'The app works in English, French, Spanish, German, Italian, Polish, Arabic, Russian and Chinese. Choose a language on the first screen or in Me. Exports, certificates and verification records stay in English so every reviewer reads them the same way.' },
     { q: 'Do I need an account?', a: 'Yes. The app, its exports and its downloads need a free Wavelength account. Every scan, sign-off and verified summary then belongs to a named clinician, which is what makes it trustworthy evidence.' },
-    { q: 'How does it get into my e-portfolio?', a: 'Choose where the export is going (the RCEM e-portfolio on risr/advance, formerly Kaizen, the JRCPTB ePortfolio, FAMUS, FUSIC or appraisal) and the app builds the PDF and shows the steps for that portfolio. Wavelength is not yet connected directly to these systems, so you attach the file and paste the verification link. We are working towards direct links.' },
-    { q: 'What is a verified summary?', a: 'A record of your progress against each pathway, created by Wavelength from your synced logbook, with a code and QR code on the PDF. Your supervisor, ARCP panel or accrediting body scans it and sees the same figures and sign-offs online, so they know the file has not been edited. It shows counts and dates only, never findings or images. You withdraw a summary at any time.' },
-    { q: 'Will my college or accrediting body accept it?', a: 'The logbook records what the published curricula ask for, and verified summaries let reviewers check your evidence online. Your supervisor and the accrediting body decide what they accept, so check with them. Wavelength is independent of RCEM, JRCPTB, the Society for Acute Medicine and the Intensive Care Society.' },
     { q: 'Can I upload images I already have?', a: 'Yes. Tap Choose on any scan to add images from your photos or files, several at once, up to 12 per scan. This includes images copied from the ultrasound machine to a USB drive, once your trust\'s removable media and information governance policy allows it. Every image opens in the editor before it is saved.' },
     { q: 'Can I edit images in the app?', a: 'Yes. The built-in editor crops, rotates, trims the patient banner from the top of the screen and blacks out any name, number, date or label, with undo. You do not need your phone\'s photo editor. Saving re-encodes the image, which removes hidden location and device data.' },
     { q: 'How fast is sign-off?', a: 'Immediate in person: your supervisor signs on your phone after the scan. By link, they open it on their own phone, confirm or query each scan and sign with a finger, and the sign-off appears in your logbook straight away. Include your images and clips in the link and your supervisor reviews them on their own phone before signing. They are encrypted on your phone, Wavelength cannot open them, and they delete when your supervisor signs.' },
@@ -1677,11 +1666,11 @@ function pathwayLinks() {
   <p class="reveal" style="color:#B9C4D0;font-size:14px;margin-top:28px;max-width:760px">Wavelength is independent of RCEM, JRCPTB, the Society for Acute Medicine and the Intensive Care Society, and is not yet connected directly to their portfolio systems. You attach the PDF and paste the verification link. A free account is needed to use the app and its exports.</p>
 </div></section>
 <section class="section"><div class="wrap split">
-  <div><p class="eyebrow reveal">Pathways and guides</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,60px);margin-top:20px">Your portfolio, tailored to your accrediting body.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">See how the logbook builds your portfolio for each pathway on the <a class="text-link" href="/pocus-logbook/">POCUS logbook and portfolio</a> page.</p></div>
-  ${pathwayLinks()}
+  <div><p class="eyebrow reveal">Pathways and portfolios</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,60px);margin-top:20px">Working towards accreditation?</h2></div>
+  <div class="reveal" data-d="2"><p class="lede">Which pathways the app tracks, how your evidence is organised for each accrediting body, what goes into your e-portfolio and whether your college will accept it are all on the <a class="text-link" href="/pocus-logbook/">POCUS logbook and portfolio</a> page.</p>${hasAccreditationHub() ? '<p class="lede" style="margin-top:18px">Not sure which pathway you need? <a class="text-link" href="/guides/pocus-accreditation/">Compare the accreditation pathways</a>.</p>' : ''}</div>
 </div></section>
 <section class="section sand"><div class="wrap split">
-  <div><p class="eyebrow reveal">Good to know</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,64px);margin-top:20px">Questions.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">Read the <a class="text-link" href="/app-terms/">logbook terms of use</a> and <a class="text-link" href="/privacy/">privacy notice</a>.</p></div>
+  <div><p class="eyebrow reveal">Good to know</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,64px);margin-top:20px">Questions.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">Read the <a class="text-link" href="/app-terms/">logbook terms of use</a> and <a class="text-link" href="/privacy/">privacy notice</a>. Questions about pathways, e-portfolios and verified summaries are answered on the <a class="text-link" href="/pocus-logbook/#faq">POCUS logbook page</a>.</p></div>
   ${faqHtml(appFaqs)}
 </div></section>
 ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open it on your phone and add it to your home screen.')}`,
@@ -1695,15 +1684,18 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
 // so the page always lists what the app actually tracks. /app/get/ stays the download page.
 {
   const LOGBOOK_PAGE_REVIEWED = '2026-10-05';
+  const UK_TARGETS_CHECKED = PATHWAYS.filter((p) => p.region === 'UK').map((p) => p.checked).filter(Boolean).sort().pop() || LOGBOOK_PAGE_REVIEWED;
   const regionOf = (p) => p.region || 'Any country';
+  // Outside the UK the programme details have not been checked against each body's documents, so the card names only the organisation.
+  const nameOf = (p) => (!p.region || p.region === 'UK' ? p.name : p.name.replace(/\s*\(.*\)$/, '').replace(/,.*$/, ''));
   const pwCard = (p) => {
     const g = guideHref(p.id);
     const mods = (p.modules || []).map((m) => m.label);
     const link = g ? `<a class="text-link" href="${g}">${esc(p.id === 'rcem' ? 'RCEM sign-off guide' : `${p.label} accreditation guide`)}</a>` : (hasAccreditationHub() ? `<a class="text-link" href="/guides/pocus-accreditation/#pathways-outside-the-uk">${esc(p.label)} in the pathway comparison</a>` : '');
-    return `<article class="pw-card reveal" id="pathway-${p.id}"><p class="eyebrow">${esc(regionOf(p))}</p><h3>${esc(p.label)}</h3><p class="pw-name">${esc(p.name)}</p><p class="pw-mods"><b>The app tracks:</b> ${esc(andList(mods))}.</p>${link ? `<p class="pw-link">${link}</p>` : ''}</article>`;
+    return `<article class="pw-card reveal" id="pathway-${p.id}"><p class="eyebrow">${esc(regionOf(p))}</p><h3>${esc(p.label)}</h3><p class="pw-name">${esc(nameOf(p))}</p><p class="pw-mods"><b>The app tracks:</b> ${esc(andList(mods))}.</p>${link ? `<p class="pw-link">${link}</p>` : ''}</article>`;
   };
   const steps = [
-    ['Choose your pathway', `Pick ${PATHWAY_LIST}, several at once, or a general logbook with your own targets. Targets come from each body's published documents, and you can adjust any of them.`],
+    ['Choose your pathway', `Pick ${PATHWAY_LIST}, several at once, or a general logbook with your own targets. You can adjust any target to match what your supervisor or accrediting body asks for.`],
     ['Log every scan', 'Choose the scan type, tick the findings, record the supervision level and add images or a short clip. The app warns you if text looks like a patient identifier.'],
     ['Get signed off', 'Your supervisor signs on your phone, from a secure link on their own phone, or from their supervisor dashboard. Each sign-off has its own verification code.'],
     ['Record assessments', 'DOPS, formative, summative and final or triggered assessments, rated across six domains with an outcome and a signature. Summative, DOPS and final assessments count once judged competent.'],
@@ -1711,14 +1703,14 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
     ['Export your portfolio', 'Choose where it is going and the app builds a PDF, Excel or CSV file, with the steps for that destination. A verified summary adds a code and QR code that reviewers scan to check your figures online.'],
   ];
   const faqs = [
-    { q: 'Is the Wavelength POCUS logbook free?', a: 'Yes. The logbook, progress tracking, sign-off, assessments, exports and backups are free. You need a free Wavelength account, so every scan and sign-off belongs to a named clinician.' },
-    { q: 'Which accrediting bodies and pathways does it support?', a: `${PATHWAYS.filter((p) => p.id !== 'eusem2').map((p) => `${p.label} (${regionOf(p)})`).join(', ')}, plus a general logbook for any application with targets you set. One scan counts towards every pathway it fits.` },
+    { q: 'What is a POCUS logbook?', a: 'A record of every point-of-care ultrasound scan you perform while training: the scan type, the clinical question, your findings, how you were supervised and who reviewed it. Accrediting bodies and ARCP panels use it, with your assessments and reflections, to judge your progress towards sign-off.' },
+    { q: 'What should a POCUS logbook record?', a: 'For each scan: a training reference (never a patient identifier), the date, the scan type and pathway module, the setting, the clinical question, the views obtained, image quality, findings, the supervision level, who supervised or reviewed it, formal imaging or outcome, and a reflection. RCEM accepts any logbook that captures its minimum dataset within data protection rules. FAMUS and FUSIC have their own report sheets and forms.' },
+    { q: 'Which accrediting bodies and pathways does it support?', a: `${PATHWAYS.filter((p) => p.id !== 'eusem2').map((p) => `${p.label} (${regionOf(p)})`).join(', ')}, plus a general logbook for any application with targets you set.` },
+    { q: 'Can one scan count towards more than one pathway?', a: 'Yes. Choose every pathway you are working towards and each scan counts towards every module it fits, with supervised counts, pathology quotas and time windows tracked separately for each pathway.' },
     { q: 'Will RCEM, SAM or the Intensive Care Society accept it?', a: 'RCEM accepts any logbook platform that captures the minimum dataset and meets data protection rules, although its preferred platform is the RCEM e-portfolio. FAMUS and FUSIC have their own report sheets, reporting forms and final paperwork, which you still complete. Your supervisor and the accrediting body decide what they accept. Wavelength is independent of all of them.' },
     { q: 'Does it replace my e-portfolio?', a: 'No. It organises your scans, sign-offs and assessments and builds a file for your portfolio. Choose the destination (the RCEM e-portfolio on risr/advance, the JRCPTB ePortfolio, FAMUS, FUSIC or appraisal) and the app shows the steps. It is not yet connected directly to any of these systems.' },
     { q: 'What is a QR-verified summary?', a: 'When you export, Wavelength can compute your progress against each pathway from your synced logbook and store a snapshot with a code and QR code. Your supervisor, ARCP panel or accrediting body scans it and sees the same figures and sign-offs online. It shows counts and dates only, never findings or images, and you can withdraw it at any time.' },
-    { q: 'Does Wavelength store my scan images?', a: 'No. Photos and clips stay on your phone and in backups you save to your own cloud storage. Only the written record syncs, and it must never contain patient identifiers. Images you include in a sign-off link are encrypted on your phone first, so Wavelength stores files it cannot open, and deletes them once your supervisor signs.' },
-    { q: 'Can I use it outside the UK?', a: 'Yes. It tracks the European EUSEM curriculum, ACEM in Australia and New Zealand, CPoCUS in Canada and ACEP in the United States, and the app works in nine languages. Exports and verification records stay in English so every reviewer reads them the same way.' },
-    { q: 'Can my supervisor sign off scans on their own phone?', a: 'Yes. Send a secure link by WhatsApp, Teams or email. Your supervisor opens it, reviews the scans and any images you chose to share, and signs with a finger. If you link your supervisor to your account, requests also appear on their supervisor dashboard.' },
+    { q: 'Can I use it outside the UK?', a: 'Yes. It has pathways for the EUSEM curriculum in Europe, ACEM in Australia and New Zealand, CPoCUS in Canada and ACEP in the United States. Their starting targets have not been re-checked against each body\'s current documents, so set them to match what your supervisor or credentialing committee asks for.' },
   ];
   const href = '/pocus-logbook/';
   pages[href] = layout({
@@ -1754,7 +1746,7 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
 <section class="section" id="pathways"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal">Pathways it tracks</p><h2 class="reveal" data-d="1">Organised for your accrediting body.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:680px">One scan counts towards every pathway it fits. A lung scan, for example, counts towards FAMUS Thoracic and FUSIC Lung at the same time, with pathology quotas, supervised counts and training windows tracked for you.</p></div>
   <div class="pw-grid">${PATHWAYS.filter((p) => p.id !== 'eusem2').map(pwCard).join('')}</div>
-  <p class="source reveal" style="max-width:780px;margin-top:28px">Targets were checked against each body's published documents on ${fmtDate(pathwaysChecked || LOGBOOK_PAGE_REVIEWED, { day: 'numeric', month: 'long', year: 'numeric' })}, and EUSEM also has an advanced tier in the app. Curricula change, so confirm requirements with your supervisor and the accrediting body. Wavelength is independent and is not run or endorsed by RCEM, the Society for Acute Medicine, the Intensive Care Society, EUSEM, ACEM, CPoCUS, ACEP or any other body.${hasAccreditationHub() ? ' <a class="text-link" href="/guides/pocus-accreditation/">Compare the pathways</a>.' : ''}</p>
+  <p class="source reveal" style="max-width:780px;margin-top:28px">The RCEM, FAMUS and FUSIC targets follow each body's published documents, checked on ${fmtDate(UK_TARGETS_CHECKED, { day: 'numeric', month: 'long', year: 'numeric' })}. The EUSEM, ACEM, CPoCUS and ACEP starting targets have not been re-checked against those bodies' current documents, so adjust them to match what you are asked for. Curricula change, so confirm requirements with your supervisor and the accrediting body. Wavelength is independent and is not run or endorsed by RCEM, the Society for Acute Medicine, the Intensive Care Society, EUSEM, ACEM, CPoCUS, ACEP or any other body.${hasAccreditationHub() ? ' <a class="text-link" href="/guides/pocus-accreditation/">Compare the pathways</a>.' : ''}</p>
 </div></section>
 <section class="section on-dark" style="background:var(--navy)"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal" style="color:var(--teal-l)">Evidence reviewers can check</p><h2 class="reveal" data-d="1" style="color:var(--cream)">Every record carries a code.</h2><p class="reveal" data-d="2" style="color:#B9C4D0;max-width:640px">A paper logbook or spreadsheet asks reviewers to take the numbers on trust. Wavelength records carry verification codes anyone can check at <a class="text-link" href="/verify/" style="color:var(--teal-l)">thewavelength.co.uk/verify</a>, with no account.</p></div>
@@ -1779,8 +1771,8 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
     <p class="lede" style="margin-top:18px">When you share images with your supervisor in a sign-off link, your phone encrypts them first. Wavelength stores files it cannot open, and deletes them once your supervisor signs. The logbook must never contain patient-identifiable information. Read the <a class="text-link" href="/app-terms/">logbook terms</a> and <a class="text-link" href="/privacy/">privacy notice</a>.</p>
   </div>
 </div></section>
-<section class="section sand"><div class="wrap split">
-  <div><p class="eyebrow reveal">Questions</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,64px);margin-top:20px">Good to know.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">Installing on iPhone or Android? See <a class="text-link" href="/app/get/">download the app</a>.</p></div>
+<section class="section sand" id="faq"><div class="wrap split">
+  <div><p class="eyebrow reveal">Questions</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,64px);margin-top:20px">Good to know.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">Installing on iPhone or Android, or asking about cost, images or sign-off on a phone? See <a class="text-link" href="/app/get/">download the app</a>.</p></div>
   ${faqHtml(faqs)}
 </div></section>
 <section class="section"><div class="wrap">
@@ -2179,7 +2171,6 @@ const LASTMOD = {};
 for (const p of posts) LASTMOD[`/learn/${p.slug}/`] = p.reviewed || p.date;
 for (const m of liveModules) if (m.published) LASTMOD[`/elearning/${m.slug}/`] = String(m.published).slice(0, 10);
 for (const g of liveGuides) LASTMOD[`/guides/${g.slug}/`] = [g.reviewed || g.date, g.updated].filter(Boolean).map(String).sort().pop();
-for (const x of glances) if (liveGuides.some((g) => g.slug === x.guide)) LASTMOD[`/guides/${x.guide}/at-a-glance/`] = x.reviewed || LASTMOD[`/guides/${x.guide}/`];
 if (pages['/pocus-logbook/']) LASTMOD['/pocus-logbook/'] = [pathwaysChecked, '2026-10-05'].filter(Boolean).sort().pop();
 if (liveGuides.length) LASTMOD['/guides/'] = liveGuides.map((g) => LASTMOD[`/guides/${g.slug}/`]).sort().pop();
 if (posts.length) LASTMOD['/learn/'] = posts.map((p) => p.date).sort().pop();
@@ -2190,14 +2181,14 @@ fs.writeFileSync(
     .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !/^\/elearning\/[^/]+\/(learn|assessment)\//.test(p) && !['/elearning/certificate/', '/elearning/account/'].includes(p) && !(p === '/elearning/' && !liveModules.length) && !modules.some((m) => m.draft === true && p.startsWith(`/elearning/${m.slug}/`)) && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => (p === `/learn/${x.slug}/` || p === `/learn/${x.slug}/test/`) && x.draft === true)) && !(p === '/learn/test/' && !posts.some((x) => x.draft !== true && x.questions.length)))
     .filter((p) => !/^\/learn\/[^/]+\/test\/$/.test(p) && !['/verify/', '/elearning/verify/'].includes(p))
     .filter((p) => !(p === '/guides/' && !liveGuides.length) && !guides.some((g) => g.draft === true && p.startsWith(`/guides/${g.slug}/`)))
-    // Utility pages that should stay reachable but are not search landing pages.
-    .filter((p) => !['/app/delete-account/'].includes(p))
+    // Utility pages that should stay reachable but are not search landing pages. One-page guides are noindex: the full guide ranks.
+    .filter((p) => !['/app/delete-account/'].includes(p) && !/^\/guides\/[^/]+\/at-a-glance\/$/.test(p))
     .map((p) => `  <url><loc>${url(p)}</loc>${/^\d{4}-\d{2}-\d{2}$/.test(LASTMOD[p] || '') ? `<lastmod>${LASTMOD[p]}</lastmod>` : ''}<priority>${p === '/' ? '1.0' : p.startsWith('/courses/') || p === '/pocus-logbook/' ? '0.9' : p.startsWith('/guides/') ? '0.8' : ['/privacy/', '/website-terms/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );
 fs.writeFileSync(path.join(DIST, 'site.webmanifest'), JSON.stringify({ name: site.name, short_name: site.name, start_url: '/', icons: [{ src: '/assets/logo-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/logo-512.png', sizes: '512x512', type: 'image/png' }], theme_color: '#0A1526', background_color: '#0A1526', display: 'standalone' }));
 fs.writeFileSync(
   path.join(DIST, '_headers'),
-  `/assets/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/assets/*\n  Cache-Control: public, max-age=86400\n/app/sw.js\n  Cache-Control: no-cache\n/app/\n  Cache-Control: no-cache\n/app/vendor/*\n  Cache-Control: public, max-age=2592000\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
+  `/assets/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/assets/*\n  Cache-Control: public, max-age=86400\n/assets/guides/*\n  X-Robots-Tag: noindex\n/app/sw.js\n  Cache-Control: no-cache\n/app/\n  Cache-Control: no-cache\n/app/vendor/*\n  Cache-Control: public, max-age=2592000\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
 );
 console.log(`Built ${Object.keys(pages).length} pages to dist/`);

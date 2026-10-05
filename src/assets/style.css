@@ -781,11 +781,12 @@ html:lang(zh-Hans) .split-words,html:lang(zh-Hans) h1{word-break:normal;line-bre
 .glance-qr{display:block;width:112px}
 .glance-qr .qr{width:112px;height:112px}
 .glance-more{max-width:980px;margin:28px auto 0;font-size:15px}
+.glance-lead{max-width:980px;margin:0 auto 24px;font-size:16px;color:var(--slate)}
 @media (max-width:520px){.glance{padding:22px 16px}.glance-body .md-table thead th{letter-spacing:.06em;font-size:10px}.glance-body .md-table tbody th,.glance-body .md-table td{font-size:13px}.glance-body .md-table th,.glance-body .md-table td{padding-right:8px}.glance-foot{grid-template-columns:1fr}.glance-qr{width:96px}.glance-qr .qr{width:96px;height:96px}}
 @page glance{size:A4;margin:10mm 11mm}
 @media print{
   html:has(.glance) body{background:#fff;font-size:10pt}
-  html:has(.glance) .site-header,html:has(.glance) .site-footer,html:has(.glance) .mobile-menu,html:has(.glance) .hero,html:has(.glance) .sub-band,html:has(.glance) .skip,html:has(.glance) .lang-offer,html:has(.glance) .glance-more{display:none!important}
+  html:has(.glance) .site-header,html:has(.glance) .site-footer,html:has(.glance) .mobile-menu,html:has(.glance) .hero,html:has(.glance) .sub-band,html:has(.glance) .skip,html:has(.glance) .lang-offer,html:has(.glance) .glance-more,html:has(.glance) .glance-lead{display:none!important}
   .glance-section{padding:0}
   .glance-section .wrap{padding:0;max-width:none}
   .glance{page:glance;max-width:none;padding:0;border:0;border-radius:0}
