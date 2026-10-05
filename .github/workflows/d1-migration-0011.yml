@@ -1,0 +1,102 @@
+# One-time, guarded application of migrations/0011_verification.sql to the production D1 database
+# wavelength-volunteers (PR #7, verified professional and supervisor network).
+#
+# Runs ONLY by hand (Actions > "Apply D1 migration 0011 (production)" > Run workflow, on main), and only when the
+# confirmation box reads exactly APPLY-0011-TO-PRODUCTION. Nothing triggers it automatically.
+#
+# What it does (tools/d1/migrate-0011.sh):
+#   - takes migrations/0011_verification.sql from the reviewed PR #7 commit and checks its SHA-256
+#   - refuses if learners.email_status (or any other part of 0011) already exists
+#   - records the learner count, then the UTC time and the D1 Time Travel bookmark immediately before migrating
+#   - applies that one file, then checks the learner count is unchanged, every learner is legacy_unverified,
+#     the 7 new tables, the 6 new columns and the key indexes exist; any failure fails the run
+# What it never does: deploy, merge, change Worker vars (PROFESSIONAL_VERIFY, DIRECTORY_PUBLIC stay off), or touch
+# KV, routes, DNS, bindings or other Cloudflare settings. Its token is CLOUDFLARE_D1_MIGRATION_TOKEN only.
+#
+# Local test (no Cloudflare access): apply migrations 0001-0010 with `wrangler d1 execute wavelength-volunteers
+# --local --file ...`, then `bash tools/d1/migrate-0011.sh --local` from the repository root.
+name: Apply D1 migration 0011 (production)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type APPLY-0011-TO-PRODUCTION to apply migration 0011 to the production D1 database"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-production-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply and verify migration 0011
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Add required reviewers to this environment (Settings > Environments) for a second approval before it runs.
+    environment: production-d1
+    env:
+      D1_DATABASE: wavelength-volunteers
+      # PR #7 commit reviewed by ChatGPT (final re-review, issue #2). The migration file is taken from here.
+      REVIEWED_SHA: e6ebfdc71fd5c1ca0e92973c4730dc17bb4f9cbc
+      # SHA-256 of migrations/0011_verification.sql at REVIEWED_SHA.
+      EXPECTED_SHA256: 9c56f28bb861c150801b4a27b316e8800f0f3ee819f9790fe6283d94105da379
+      WRANGLER: npx --yes wrangler@4.147.0
+
+    steps:
+      - name: Check the confirmation, branch and configuration
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_D1_MIGRATION_TOKEN != '' }}
+          ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          [ "$CONFIRM" = "APPLY-0011-TO-PRODUCTION" ] || { echo "::error::Confirmation text does not match. Nothing was run."; exit 1; }
+          [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "::error::Run this workflow from main only. Nothing was run."; exit 1; }
+          [ "$HAS_TOKEN" = "true" ] || { echo "::error::Secret CLOUDFLARE_D1_MIGRATION_TOKEN is not set. Nothing was run."; exit 1; }
+          [ -n "$ACCOUNT_ID" ] || { echo "::error::Variable CLOUDFLARE_ACCOUNT_ID is not set. Nothing was run."; exit 1; }
+          echo "Confirmation and configuration present."
+
+      - name: Check out this workflow's commit (runner script)
+        uses: actions/checkout@v4
+        with:
+          path: runner
+          persist-credentials: false
+
+      - name: Check out the reviewed PR 7 commit (migration file)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REVIEWED_SHA }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply migration 0011 with checks
+        shell: bash
+        working-directory: source
+        env:
+          # The only Cloudflare credential this workflow uses, and only in this step. GitHub masks it in logs.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_MIGRATION_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          MIGRATION_FILE: migrations/0011_verification.sql
+          OUT_DIR: ${{ runner.temp }}/d1-0011
+        run: bash ../runner/tools/d1/migrate-0011.sh --remote
+
+      - name: Keep the recovery reference
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-0011-recovery-reference
+          path: |
+            ${{ runner.temp }}/d1-0011/recovery_timestamp.txt
+            ${{ runner.temp }}/d1-0011/recovery_bookmark.txt
+          if-no-files-found: ignore
+          retention-days: 90
