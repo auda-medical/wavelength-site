@@ -13,7 +13,7 @@ Releases: web changes no longer reach store users on deploy. A change to `src/ap
 
 - Bundle ID / package name: `uk.co.thewavelength.app`
 - Builds: GitHub Actions, workflows "Android app" and "iOS app" (`.github/workflows/`). Secrets are listed at the top of each workflow. The Android run also attaches a signed `.apk` for installing on a test phone.
-- After `npx cap add` or a Capacitor upgrade, run `python3 scripts/patch-native.py` (portrait, permissions text, Face ID text, camera hand-off visibility on Android, no Android cloud backup, release signing, navy system bar background) and `npm run assets` (icons and splash from `assets/`).
+- After `npx cap add` or a Capacitor upgrade, run `python3 scripts/patch-native.py` (portrait, permissions text, Face ID text, camera hand-off visibility on Android, no Android cloud backup, release signing, navy system bar background) and `npm run assets` (icons and splash from `assets/`, then `../tools/app-icons.mjs` redraws the Android launcher icons full size with a themed-icon layer; needs Playwright).
 - Capacitor is pinned to 8.5.1: 8.5.2 injects wrong safe-area values on Android (ionic-team/capacitor#8623). Upgrade only to a release that fixes it.
 - Account deletion page for both stores: https://thewavelength.co.uk/app/delete-account/
 - Privacy policy: https://thewavelength.co.uk/privacy/ · Terms: https://thewavelength.co.uk/app-terms/ · Support: https://thewavelength.co.uk/contact/

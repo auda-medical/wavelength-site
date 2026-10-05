@@ -6,7 +6,7 @@
   "scripts": {
     "www": "node scripts/build-www.mjs",
     "sync": "node scripts/build-www.mjs && cap sync",
-    "assets": "capacitor-assets generate --ios --android --iconBackgroundColor '#0A1526' --splashBackgroundColor '#0A1526'"
+    "assets": "capacitor-assets generate --ios --android --iconBackgroundColor '#0A1526' --splashBackgroundColor '#0A1526' && node ../tools/app-icons.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.1",
