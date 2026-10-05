@@ -110,7 +110,7 @@ ${btn(`${SITE}/courses/core-emergency-ultrasound/?utm_source=academy&utm_medium=
 <tr><td bgcolor="#0F1E33" style="background:#0F1E33;padding:32px 48px;border-radius:0 0 14px 14px;font-family:Arial,Helvetica,sans-serif;color:#B9C4D0;">
 <p style="margin:0 0 6px 0;font-size:13px;letter-spacing:4px;color:#F7F5F0;">WAVELENGTH</p>
 <p style="margin:0 0 14px 0;font-size:13px;line-height:1.6;">Questions about your certificate? Reply to this email or write to <a href="mailto:hello@thewavelength.co.uk" style="color:#F7F5F0;">hello@thewavelength.co.uk</a>.</p>
-<p style="margin:0;padding-top:14px;border-top:1px solid #24364F;font-size:11px;line-height:1.6;color:#8796A8;">You receive this email because you completed a Wavelength Academy module. Wavelength is a trading name of Auda Medical Ltd. Registered in England and Wales, company number 08487817. Registered office: 99 Ericson Gardens, Bromley BR2 9FZ.</p>
+<p style="margin:0;padding-top:14px;border-top:1px solid #24364F;font-size:11px;line-height:1.6;color:#8796A8;">You receive this email because you completed a Wavelength Academy module. Wavelength is a trading name of Auda Medical Ltd. Registered in England and Wales, company number 08487817. Registered office: 99 Erickson Gardens, Bromley BR2 9FZ.</p>
 </td></tr></table></td></tr></table></body></html>`;
   const text = `Congratulations, ${first}.\n\nYou passed ${cert.module_title} with a score of ${cert.score}%. Your certificate is attached as a PDF, worth ${hours} of CPD.\n\nName on certificate: ${cert.name}\nCompleted: ${fmtDate(cert.issued_on)}\nCertificate number: ${cert.code}\n\nView your certificate: ${link}\nVerify: ${SITE}/elearning/verify/\n\nWavelength, a trading name of Auda Medical Ltd, company 08487817.`;
   return { html, text };
