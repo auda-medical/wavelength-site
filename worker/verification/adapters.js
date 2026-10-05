@@ -13,12 +13,14 @@
 //     -> { outcome: 'found' | 'not_found' | 'unavailable' | 'manual', source, records: [{ name, organisation, modules, role,
 //          registrationNumber?, expiresOn? }] }
 // 'unavailable' means the source failed (timeout, 5xx): the engine keeps the current status and retries later, and
-// never treats it as a lapse. 'manual' means no supported automated source exists.
+// never treats it as a lapse. 'manual' means Wavelength has no authorised automated access: either no official
+// source exists, or one does (e.g. the HCPC Employer Check API, `officialApi` in data/credentials.json) and access and
+// terms have not been granted yet.
 //
 // No adapter may scrape a public register, bypass CAPTCHA or bot protection, or call an undocumented endpoint.
 // Live adapters need a written agreement or licence from the body (see 'access' in data/credentials.json).
 
-// No supported automated source: the claim waits for an administrator.
+// No authorised automated source: the claim waits for an administrator.
 export const manual = {
   id: 'manual', mode: 'manual', version: 'manual-v1', label: 'Manual verification by the Wavelength team',
   available: () => false,

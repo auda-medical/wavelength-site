@@ -97,7 +97,9 @@ The engine never talks to a register directly. `data/credentials.json` names an 
 - **Contract:**
   - `lookupRegistration(env, { regulator, number })` returns `found`, `not_found`, `unavailable` or `manual`, plus a minimal record.
   - `findCredential(env, { type, modules, person })` returns the candidate records.
-- **`manual`:** every live regulator and body today. No supported automated source exists (see the research), so claims go to the admin queue as `manual_verification_required` or `evidence_required`. **No automation is pretended.**
+- **`manual`:** every live regulator and body today, because Wavelength holds no authorised automated access to any of them (see the research), so claims go to the admin queue as `manual_verification_required` or `evidence_required`. **No automation is pretended.**
+  - Some bodies do offer an official API Wavelength has not yet been granted. Config records it as `officialApi` with `status: "not_authorised"` (today: the **HCPC Employer Check API**). A test keeps every such body on `manual` until the status is `authorised`, which needs credentials and confirmed written terms.
+  - When HCPC grants access: add an `hcpc-employer-check` adapter (`mode: 'api'`) using `lookupRegistration`, set `officialApi.status` to `authorised`, record the agreement in `access`, then switch `adapter`.
 - **`mock`:** tests only. It needs `VERIFY_MOCK = "true"` plus fixture data. A test fails if `wrangler.jsonc` mentions it, and another fails if any config entry names a non-manual adapter.
 - **`unavailable`** is never a lapse. The current status is kept, `failure_state` records it, and a retry is scheduled with back-off.
 

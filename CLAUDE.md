@@ -115,7 +115,7 @@ Claude and ChatGPT both work on this repository. GitHub issue #2 in auda-medical
   - Accepting a supervisor invitation needs a verified email, or the invitation's own token.
   - The logbook is never gated.
   - `EMAIL_VERIFY = "off"` is the emergency switch.
-- Regulators and bodies live in `data/credentials.json`. Every adapter is `manual` (no permitted automated source yet), so claims go to `/volunteer/admin/supervisors/`.
+- Regulators and bodies live in `data/credentials.json`. Every adapter is `manual` (no authorised automated access yet), so claims go to `/volunteer/admin/supervisors/`. The HCPC offers an official Employer Check API (`officialApi` in the config, `not_authorised`): build its adapter only once the HCPC grants access and terms are confirmed.
   - `worker/verification/adapters.js` defines the adapter contract. `mock` is for tests only (`VERIFY_MOCK`, never in wrangler.jsonc).
   - Never scrape a register, bypass CAPTCHA or use an undocumented endpoint. A live adapter needs the body's written permission or licence.
 - Name matching: `worker/verification/names.js` (`names-v1`). Formatting differences match; initials, middle-name use and partial surnames go to review. Bump `VERSION` when the rules change.

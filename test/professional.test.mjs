@@ -201,6 +201,29 @@ test('the mock adapter can never be switched on from wrangler.jsonc, and the dir
   assert.deepEqual(cfg.rules.filter((r) => r.status === 'active' && !r.source), [], 'active rules need a source');
 });
 
+test('an official API that Wavelength is not authorised to use is recorded but never switched on (HCPC Employer Check API)', () => {
+  const cfg = JSON.parse(readFileSync(new URL('../data/credentials.json', import.meta.url), 'utf8'));
+  const hcpc = cfg.regulators.find((r) => r.id === 'hcpc');
+  assert.equal(hcpc.officialApi.name, 'HCPC Employer Check API');
+  assert.equal(hcpc.officialApi.status, 'not_authorised');
+  assert.match(hcpc.officialApi.url, /^https:\/\/www\.hcpc-uk\.org\//);
+  assert.ok(hcpc.officialApi.fields.includes('registration status'));
+  assert.equal(hcpc.adapter, 'manual', 'no live adapter until access and terms are confirmed');
+  for (const x of [...cfg.regulators, ...cfg.credentialTypes].filter((e) => e.officialApi)) {
+    assert.ok(['not_authorised', 'authorised'].includes(x.officialApi.status), `${x.id}: officialApi.status`);
+    if (x.officialApi.status !== 'authorised') assert.equal(x.adapter, 'manual', `${x.id}: an unauthorised API must stay manual`);
+  }
+});
+
+test('an HCPC registration still goes to manual verification', async () => {
+  const env = makeEnv({ PROFESSIONAL_VERIFY: 'true' });
+  const c = await verifiedAccount(env, 'para@x.co');
+  const r = await c.call('/api/app/professional/registration', { regulator: 'hcpc', number: 'PA123456', profession: 'Paramedic' });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.registration.status, 'manual_verification_required');
+  assert.equal((await c.call('/api/app/professional')).body.regulators.find((g) => g.id === 'hcpc').automatic, false);
+});
+
 test('mock results are hidden outside tests', async () => {
   const env = mockEnv();
   const c = await verifiedAccount(env, 'hide@x.co');
