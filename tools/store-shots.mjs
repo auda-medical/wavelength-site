@@ -20,7 +20,11 @@ await page.goto('https://localhost/');
 await page.waitForSelector('#app .auth, #app form', { timeout: 15000 });
 const call = (p, data) => page.evaluate(([p, data]) => window.WLNative.net(p, data === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(data) }).then((r) => r.json()), [p, data]);
 const stamp = Date.now().toString(36);
-let r = await call('/api/app/signup', { title: 'Dr', firstName: 'Alex', lastName: 'Morgan', email: `alex.${stamp}@example.com`, password: 'sample-logbook-1', terms: true, role: 'ST4 emergency medicine' });
+// The sample account lives only in the local test database. If an earlier run left it, delete it and start clean.
+const email = 'alex.morgan@example.com', password = 'sample-logbook-1';
+const signup = () => call('/api/app/signup', { title: 'Dr', firstName: 'Alex', lastName: 'Morgan', email, password, terms: true, role: 'ST4 emergency medicine' });
+let r = await signup();
+if (r.exists) { await call('/api/app/login', { email, password }); await call('/api/app/account/delete', { password }); r = await signup(); }
 if (!r.ok) throw new Error('signup ' + JSON.stringify(r));
 r = await call('/api/app/profile', { declaration: true, profile: { pathways: ['rcem', 'famus'], grade: 'ST4 emergency medicine', onboarded: true }, organisation: 'Teaching hospital' });
 if (!r.ok) throw new Error('profile ' + JSON.stringify(r));
@@ -44,7 +48,8 @@ await page.goto('https://localhost/');
 await page.waitForSelector('nav.tabs', { timeout: 15000 });
 await page.waitForTimeout(1500);
 const shots = [];
-async function shot(name, hash, prep) {
+// hero: the part of the screen each listing image enlarges as a callout, so every swipe shows something new.
+async function shot(name, hash, prep, hero) {
   await page.evaluate((h) => { document.querySelectorAll('.sheet-bg,.toast').forEach((s) => s.remove()); location.hash = h; }, hash);
   await page.waitForTimeout(900);
   if (prep) await prep(); else await page.evaluate(() => window.scrollTo(0, 0));
@@ -53,23 +58,30 @@ async function shot(name, hash, prep) {
   const f = path.join(out, 'raw', name + '.png');
   await page.screenshot({ path: f });
   shots.push(f);
+  if (hero) {
+    const el = page.locator(hero).first();
+    if (await el.count()) { await el.scrollIntoViewIfNeeded(); await el.screenshot({ path: path.join(out, 'raw', name + '-hero.png') }); }
+    else console.log('note: no hero element for ' + name);
+  }
 }
-await shot('home', '#/');
-await shot('progress', '#/progress');
-await shot('log', '#/log', async () => { const b = page.locator('button, a, label').filter({ hasText: /^Signed off · \d+$/ }).first(); if (await b.count()) { await b.click(); await page.waitForTimeout(500); } });
+await shot('home', '#/', null, '.stats');
+await shot('progress', '#/progress', async () => { await page.evaluate(() => { let best = null, top = -1; document.querySelectorAll('main .mod-head').forEach((h) => { const v = parseInt((h.querySelector('.ring') || h).textContent, 10) || 0; if (v > top && v < 100) { top = v; best = h; } }); if (best) best.parentElement.setAttribute('data-hero', '1'); window.scrollTo(0, 0); }); }, '[data-hero]');
+await shot('log', '#/log', async () => { const b = page.locator('button, a, label').filter({ hasText: /^Signed off · \d+$/ }).first(); if (await b.count()) { await b.click(); await page.waitForTimeout(500); } }, 'main .entry');
 await shot('new', '#/new', async () => { await page.click('label[for=t0]'); await page.waitForTimeout(400); await page.evaluate(() => window.scrollTo(0, 0)); });
-await shot('entry', '#/entry/' + entries[0].id);
-await shot('me', '#/me', async () => { await page.evaluate(() => { const c = document.querySelector('#lck'); if (c) { c.checked = true; const h = c.closest('.card').previousElementSibling; (h || c).scrollIntoView({ block: 'start' }); window.scrollBy(0, -90); } }); });
+await shot('entry', '#/entry/' + entries[0].id, null, '.signbox');
+await shot('me', '#/me', async () => { await page.evaluate(() => { const c = document.querySelector('#lck'); if (c) c.checked = true; window.scrollTo(0, 0); }); }, '.card:has(#lck)');
 await ctx.close();
 
 // ---- Framed listing images ----
+// [eyebrow, heading, subline]. Name only the verified UK pathways (RCEM, FAMUS, FUSIC); the international ones are
+// editable trackers, so the store artwork must not imply accreditation with them.
 const CAPTIONS = {
-  home: ['Your ultrasound logbook', 'Every scan, target and sign-off in one place.'],
-  progress: ['Watch your targets fill up', 'RCEM, FAMUS, FUSIC, EUSEM, ACEM and more.'],
-  log: ['Signed off the same day', 'In person, by secure link or from a dashboard.'],
-  new: ['Log a scan in seconds', 'Works offline. Images stay on your phone.'],
-  entry: ['Verifiable evidence', 'Every sign-off carries a code anyone can check.'],
-  me: ['Locked to you', 'Fingerprint or face unlock keeps your logbook private.'],
+  home: ['POCUS LOGBOOK', 'Every scan, in your pocket', 'Log scans, track targets and get signed off.'],
+  progress: ['PROGRESS', 'Watch your targets fill up', 'Track RCEM, FAMUS and FUSIC, or set your own.'],
+  log: ['SIGN-OFF', 'Signed off the same day', 'In person, by secure link or from a dashboard.'],
+  new: ['WORKS OFFLINE', 'Log a scan in seconds', 'No signal needed. Images stay on your phone.'],
+  entry: ['VERIFIABLE', 'Evidence anyone can check', 'Every sign-off carries its own code.'],
+  me: ['PRIVATE', 'Locked to you', 'Fingerprint or face unlock guards your logbook.'],
 };
 const fontDir = path.resolve('mobile/www/assets/fonts');
 const font = (f) => 'data:font/woff2;base64,' + fs.readFileSync(path.join(fontDir, f)).toString('base64');
@@ -81,17 +93,22 @@ const fp = await frameCtx.newPage();
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 for (const f of shots) {
   const key = path.basename(f, '.png');
-  const [h, sub] = CAPTIONS[key];
+  const [eye, h, sub] = CAPTIONS[key];
+  const heroFile = path.join(out, 'raw', key + '-hero.png');
+  const hero = fs.existsSync(heroFile) ? 'data:image/png;base64,' + fs.readFileSync(heroFile).toString('base64') : '';
   const img = 'data:image/png;base64,' + fs.readFileSync(f).toString('base64');
   await fp.setContent(`<!doctype html><html><head><style>
     ${FONTS}
     html,body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #163049 0%, #0A1526 62%); color: #F7F5F0; }
-    .cap { text-align: center; padding: 104px 70px 0; }
-    h1 { font: 500 92px/1.02 Cormorant, Georgia, serif; margin: 0 0 26px; letter-spacing: -.5px; }
+    .cap { text-align: center; padding: 92px 64px 0; }
+    .eye { display: inline-block; font: 600 26px DMSans, sans-serif; letter-spacing: .32em; color: #7FC4CC; padding-bottom: 14px; margin-bottom: 26px; border-bottom: 2px solid rgba(127,196,204,.55); }
+    h1 { font: 500 86px/1.02 Cormorant, Georgia, serif; margin: 0 0 24px; letter-spacing: -.5px; }
     p { font: 500 38px/1.35 DMSans, sans-serif; color: #B9C4D0; margin: 0; }
-    .phone { position: absolute; left: 50%; top: 400px; width: 780px; height: 1386px; transform: translateX(-50%); border-radius: 64px; background: #050B14; padding: 22px; box-shadow: 0 40px 120px rgba(0,0,0,.55), 0 0 0 2px rgba(127,196,204,.25); }
+    .phone { position: absolute; left: 50%; top: 470px; width: 780px; height: 1386px; transform: translateX(-50%); border-radius: 64px; background: #050B14; padding: 22px; box-shadow: 0 40px 120px rgba(0,0,0,.55), 0 0 0 2px rgba(127,196,204,.25); }
     .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 44px; display: block; }
-  </style></head><body><div class="cap"><h1>${esc(h)}</h1><p>${esc(sub)}</p></div><div class="phone"><img src="${img}"></div></body></html>`, { waitUntil: 'load' });
+    .hero { position: absolute; left: 50%; bottom: 150px; width: 940px; transform: translateX(-50%); border-radius: 30px; overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,.6), 0 0 0 3px rgba(127,196,204,.75), 0 0 60px rgba(42,127,138,.45); }
+    .hero img { width: 100%; display: block; }
+  </style></head><body><div class="cap"><div class="eye">${esc(eye)}</div><h1>${esc(h)}</h1><p>${esc(sub)}</p></div><div class="phone"><img src="${img}"></div>${hero ? `<div class="hero"><img src="${hero}"></div>` : ''}</body></html>`, { waitUntil: 'load' });
   await fp.waitForTimeout(300);
   await fp.screenshot({ path: path.join(out, `play-${String(shots.indexOf(f) + 1).padStart(2, '0')}-${key}.png`) });
 }
