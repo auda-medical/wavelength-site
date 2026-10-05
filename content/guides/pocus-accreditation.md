@@ -4,7 +4,7 @@ short: POCUS accreditation
 slug: pocus-accreditation
 seoTitle: "POCUS accreditation: UK and international pathways"
 eyebrow: Guide · Accreditation
-summary: Which POCUS pathway fits you and what each asks for: RCEM, FAMUS and FUSIC compared side by side, with links to EUSEM, ACEM, CPoCUS and ACEP outside the UK.
+summary: Which POCUS pathway fits you: RCEM, FAMUS and FUSIC compared side by side, with links to international pathways and frameworks from EUSEM, ACEM, CPoCUS and ACEP.
 date: 2026-10-05
 author: Dr Firas Abou-Auda
 order: 0
@@ -14,9 +14,9 @@ draft: false
 
 In the UK, each specialty body runs its own point-of-care ultrasound (POCUS) pathway, with its own scans, assessments, supervisors and paperwork. The one you need depends on your specialty, where you work and what your employer asks for.
 
-This guide compares the three main UK pathways side by side, then points to the main pathways outside the UK. Each pathway is run by the organisation named against it. Wavelength is an independent education provider and does not accredit, credential or sign off anyone.
+This guide compares the three main UK pathways side by side, then points to the main international pathways and frameworks. Each pathway is run by the organisation named against it. Wavelength is an independent education provider and does not accredit, credential or sign off anyone.
 
-The UK details summarise our full RCEM, FAMUS and FUSIC guides, each checked against that body's own documents on 4 October 2026 and cited there. The section on pathways outside the UK has not been checked against those bodies' documents, so it gives no requirements: follow the links to the official sources.
+The UK details summarise our full RCEM, FAMUS and FUSIC guides, each checked against that body's own documents on 4 October 2026 and cited there. The section on international pathways and frameworks has not been checked against those bodies' documents, so it gives no requirements: follow the links to the official sources.
 
 > **In one line** Emergency medicine trainees in the UK work towards RCEM sign-off. Acute physicians usually take FAMUS from the Society for Acute Medicine. Intensive care clinicians, and anyone who wants focused echo, usually take FUSIC from the Intensive Care Society. Outside the UK, check your college, society or hospital for the rules that apply to you.
 
@@ -39,7 +39,7 @@ None of these comes from attending a course on its own. A course is one source o
 | An acute or internal medicine clinician in the UK | [FAMUS accreditation](/guides/famus-accreditation/) | Society for Acute Medicine |
 | An intensive care, anaesthetic or acute clinician who wants focused echo | [FUSIC accreditation](/guides/fusic-accreditation/), often FUSIC Heart first | Intensive Care Society |
 | An emergency clinician in Europe | The EUSEM ultrasound curriculum, with your national rules | European Society for Emergency Medicine |
-| An emergency clinician in Australia or New Zealand | ACEM policy P733 on ultrasound credentialing, and your health service's rules | Australasian College for Emergency Medicine |
+| An emergency clinician in Australia or New Zealand | Your health service's credentialing, using ACEM's recommended framework (policy P733) | Your health service, with a framework from the Australasian College for Emergency Medicine |
 | An acute care clinician in Canada | The CPoCUS Acute Care CORE pathway | Canadian Point of Care Ultrasound Society |
 | An emergency physician in the United States | ACEP's ultrasound guidelines, and your hospital's credentialing rules | American College of Emergency Physicians |
 
@@ -82,9 +82,9 @@ FUSIC is modular too. You find an approved mentor or trainer, register and pay, 
 
 Read the [FUSIC accreditation guide](/guides/fusic-accreditation/) or the [one-page FUSIC summary](/guides/fusic-accreditation/at-a-glance/).
 
-## Pathways outside the UK
+## International pathways and frameworks
 
-Wavelength has not checked these pathways against each body's current documents, so this page names them and links to the official sources rather than listing requirements. Scan numbers, assessments, time limits and renewal rules come from the body and from your country, health service or hospital: confirm them there before you plan your training.
+Wavelength has not checked these pathways and frameworks against each body's current documents, so this page names them and links to the official sources rather than listing requirements. Scan numbers, assessments, time limits and renewal rules come from the body and from your country, health service or hospital: confirm them there before you plan your training.
 
 ### Europe: EUSEM
 
@@ -92,7 +92,7 @@ The European Society for Emergency Medicine has an ultrasound section and publis
 
 ### Australia and New Zealand: ACEM
 
-The Australasian College for Emergency Medicine publishes policy P733, [Recommendations for Health Service Credentialing: EM Ultrasonography](https://policy.acem.org.au/index.php/policies-menu/p733-recommendations-for-health-service-credentialing-em-ultrasonography). Check the current version and your health service's credentialing rules.
+The Australasian College for Emergency Medicine publishes policy P733, [Recommendations for Health Service Credentialing: EM Ultrasonography](https://policy.acem.org.au/index.php/policies-menu/p733-recommendations-for-health-service-credentialing-em-ultrasonography). ACEM provides a recommended framework: credentialing itself is the responsibility of your health service, not ACEM. Check the current version and your health service's credentialing rules.
 
 ### Canada: CPoCUS
 
@@ -126,7 +126,7 @@ These come up again and again across the pathways. Each one is avoidable.
 Wavelength teaches point-of-care ultrasound and gives you tools to organise your evidence. It does not accredit anyone.
 
 - **Learn.** Free [Wavelength Pearls](/learn/) and [Academy modules](/elearning/) cover the applications in each pathway. The [Core Emergency Ultrasound course](/courses/core-emergency-ultrasound/) is mapped to the RCEM curriculum. It is not RCEM, FAMUS or FUSIC accredited.
-- **Log.** The free [Wavelength POCUS logbook](/pocus-logbook/) tracks your scans against RCEM, FAMUS and FUSIC targets at once, with sign-offs, assessments and training windows. It also has EUSEM, ACEM, CPoCUS and ACEP pathways with targets you can adjust.
+- **Log.** The free [Wavelength POCUS logbook](/pocus-logbook/) tracks your scans against RCEM, FAMUS and FUSIC targets, with sign-offs, assessments and training windows. Wavelength can apply one scan to multiple selected pathway trackers when it meets their configured criteria. Acceptance remains subject to each organisation, supervisor or local credentialing process. It also has editable international frameworks for EUSEM, ACEM, CPoCUS and ACEP, as starting points you adapt to local requirements.
 - **Submit.** Exports in PDF, Excel or CSV carry a verification code and QR code, and the app shows the steps for your portfolio. It is not yet connected directly to any accrediting body's system, so you still complete each body's own forms.
 
 ## Sources
@@ -138,7 +138,7 @@ The UK figures come from the full guides, which were checked against these and f
 - [SAM: FAMUS, how to accredit](https://www.acutemedicine.org.uk/famus/how-to-accredit/)
 - [Intensive Care Society: FUSIC](https://ics.ac.uk/learning/fusic.html)
 
-Official pages for the pathways outside the UK. Wavelength has not checked this page's wording against them, so treat them as the authority:
+Official pages for the international pathways and frameworks. Wavelength has not checked this page's wording against them, so treat them as the authority:
 
 - [EUSEM: Ultrasound section](https://eusem.org/sections-and-committees/sections/ultrasound-section)
 - [ACEM P733: Recommendations for Health Service Credentialing, EM Ultrasonography](https://policy.acem.org.au/index.php/policies-menu/p733-recommendations-for-health-service-credentialing-em-ultrasonography)

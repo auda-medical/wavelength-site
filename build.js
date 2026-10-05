@@ -275,6 +275,9 @@ const GUIDE_FOR = { rcem: 'rcem-ultrasound-sign-off', famus: 'famus-accreditatio
 const guideHref = (id) => (GUIDE_FOR[id] && liveGuides.some((g) => g.slug === GUIDE_FOR[id]) ? `/guides/${GUIDE_FOR[id]}/` : null);
 const andList = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs.join(''));
 const PATHWAY_LIST = andList(PATHWAYS.map((p) => p.label.replace(/ advanced$/, '')).filter((x, i, a) => a.indexOf(x) === i));
+// UK pathways (checked against each body's documents) and the editable international frameworks, named apart in public copy.
+const UK_PATHWAY_LIST = andList(PATHWAYS.filter((p) => p.region === 'UK').map((p) => p.label));
+const INTL_PATHWAY_LIST = andList(PATHWAYS.filter((p) => p.region && p.region !== 'UK').map((p) => p.label.replace(/ advanced$/, '')).filter((x, i, a) => a.indexOf(x) === i));
 const pathwaysChecked = PATHWAYS.map((p) => p.checked).filter(Boolean).sort().pop();
 const hasAccreditationHub = () => liveGuides.some((g) => g.slug === 'pocus-accreditation');
 
@@ -290,16 +293,16 @@ const PEARL_LOG_SLUG = {
 function logStrip(p) {
   const types = p.slug in PEARL_LOG_SLUG ? PEARL_LOG_SLUG[p.slug] : PEARL_LOG_CATEGORY[p.category] || null;
   const hub = hasAccreditationHub() ? ' · <a class="text-link" href="/guides/pocus-accreditation/">Compare accreditation pathways</a>' : '';
-  if (!types) return `<aside class="log-strip reveal"><p class="eyebrow">Logging your scans?</p><p>Record every scan as you learn. The free <a class="text-link" href="/pocus-logbook/">Wavelength POCUS logbook</a> tracks your scans, sign-offs and assessments against ${esc(PATHWAY_LIST)} targets, or targets you set yourself.</p></aside>`;
+  if (!types) return `<aside class="log-strip reveal"><p class="eyebrow">Logging your scans?</p><p>Record every scan as you learn. The free <a class="text-link" href="/pocus-logbook/">Wavelength POCUS logbook</a> tracks your scans, sign-offs and assessments against ${esc(UK_PATHWAY_LIST)} targets, editable international frameworks (${esc(INTL_PATHWAY_LIST)}), or targets you set yourself.</p></aside>`;
   const uk = [], intl = [];
   for (const pw of PATHWAYS) for (const m of pw.modules || []) {
     if (!(m.types || []).some((t) => types.includes(t))) continue;
     if (GUIDE_FOR[pw.id]) { const l = `${pw.label} ${m.label}`; if (!uk.includes(l)) uk.push(l); } else { const l = pw.label.replace(/ advanced$/, ''); if (!intl.includes(l)) intl.push(l); }
   }
   const labels = types.map((t) => (logbook.types.find((x) => x.id === t) || {}).label).filter(Boolean);
-  const counts = [uk.length ? andList(uk.map(esc)) : '', intl.length ? `${uk.length ? 'and ' : ''}${andList(intl.map(esc))} targets` : ''].filter(Boolean).join(', ');
+  const counts = [uk.length ? `the ${andList(uk.map(esc))} ${uk.length > 1 ? 'trackers' : 'tracker'}` : '', intl.length ? `${uk.length ? 'and ' : ''}the editable ${andList(intl.map(esc))} ${intl.length > 1 ? 'frameworks' : 'framework'}` : ''].filter(Boolean).join(', ');
   const guidesLinks = PATHWAYS.filter((pw) => guideHref(pw.id) && uk.some((l) => l.startsWith(pw.label + ' '))).map((pw) => `<a class="text-link" href="${guideHref(pw.id)}">${esc(pw.label)} ${pw.id === 'rcem' ? 'sign-off' : 'accreditation'} guide</a>`);
-  return `<aside class="log-strip reveal"><p class="eyebrow">Logging this scan?</p><p>In the free <a class="text-link" href="/pocus-logbook/">Wavelength POCUS logbook</a>, a scan logged as ${labels.map((l) => `<b>${esc(l)}</b>`).join(' or ')} counts towards ${counts}.</p>${guidesLinks.length || hub ? `<p class="log-strip-links">${guidesLinks.join(' · ')}${guidesLinks.length ? hub : hub.replace(/^ · /, '')}</p>` : ''}</aside>`;
+  return `<aside class="log-strip reveal"><p class="eyebrow">Logging this scan?</p><p>In the free <a class="text-link" href="/pocus-logbook/">Wavelength POCUS logbook</a>, a scan logged as ${labels.map((l) => `<b>${esc(l)}</b>`).join(' or ')} can count towards ${counts}, when it meets their criteria. Acceptance remains with each organisation and your supervisor.</p>${guidesLinks.length || hub ? `<p class="log-strip-links">${guidesLinks.join(' · ')}${guidesLinks.length ? hub : hub.replace(/^ · /, '')}</p>` : ''}</aside>`;
 }
 
 function datesBlock(c) {
@@ -584,7 +587,7 @@ pages['/'] = layout({
       ${posts.length ? `<a class="pillar reveal" data-d="1" href="/learn/" style="text-decoration:none;color:inherit"><div class="num">Pearls</div><h3>Five-minute techniques</h3><p>${posts.length} free Wavelength Pearls, one view or pitfall at a time, each with a short test.</p><span class="text-link">Read the Pearls</span></a>` : ''}
       ${liveModules.length ? `<a class="pillar reveal" data-d="2" href="/elearning/" style="text-decoration:none;color:inherit"><div class="num">Academy</div><h3>Certified e-learning</h3><p>Free modules with lessons, clinical cases, an assessment and a CPD certificate anyone can verify online.</p><span class="text-link">Start a module</span></a>` : ''}
     </div>
-    <a class="bank-link reveal" href="/pocus-logbook/" style="margin-top:28px;background:var(--navy)"><span><span class="eyebrow" style="color:var(--teal-l)">The Wavelength app</span><strong>Your ultrasound logbook: log scans from a photo or an upload, get signed off the same day, track RCEM, FAMUS, FUSIC, EUSEM, ACEM, CPoCUS and ACEP targets, get assessed, and send QR-verified evidence to your portfolio. In nine languages. Free.</strong></span>${arrow}</a>
+    <a class="bank-link reveal" href="/pocus-logbook/" style="margin-top:28px;background:var(--navy)"><span><span class="eyebrow" style="color:var(--teal-l)">The Wavelength app</span><strong>Your ultrasound logbook: log scans from a photo or an upload, get signed off the same day, track the verified UK pathways (RCEM, FAMUS and FUSIC) and editable international frameworks (EUSEM, ACEM, CPoCUS and ACEP), get assessed, and send QR-verified evidence to your portfolio. In nine languages. Free.</strong></span>${arrow}</a>
     ${hasAccreditationHub() ? `<a class="bank-link reveal" href="/guides/pocus-accreditation/" style="background:var(--teal-ink)"><span><span class="eyebrow" style="color:var(--cream)">Free accreditation guides</span><strong>RCEM sign-off, FAMUS and FUSIC step by step, with international pathways compared.</strong></span>${arrow}</a>` : ''}
     ${liveModules.length ? `<div class="ac-verify reveal" style="margin-top:28px"><div><h3>Certificates you can prove</h3><p>Every Academy certificate shows your name, CPD hours and a unique code. Your educational supervisor, appraiser or employer checks it online in seconds.</p></div><a class="btn btn-ghost" href="/elearning/verify/">Verify a certificate ${arrow}</a></div>` : ''}
   </div>
@@ -1145,7 +1148,7 @@ ${subscribeBand('Pathway changes, <em>in your inbox.</em>')}`,
     rcem: ['Your RCEM evidence, organised', 'Choose RCEM in the free Wavelength logbook and it tracks the six modalities, your reflections and DOPS, then exports a PDF with a QR-verified summary for your e-portfolio.'],
     famus: ['Your FAMUS logbook, organised', 'Choose FAMUS in the free Wavelength logbook and it tracks each module\'s supervised scans, minimum training time and core pathology, then exports a PDF with a QR-verified summary.'],
     fusic: ['Your FUSIC logbook, organised', 'Choose FUSIC in the free Wavelength logbook and it tracks totals, supervised scans, the 12-month window and the 10% cap on healthy volunteers, then exports a PDF with a QR-verified summary.'],
-    all: ['Your portfolio, tailored to your accrediting body', 'Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body\'s portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.'],
+    all: ['Your portfolio, tailored to your accrediting body', 'For supported UK pathways, Wavelength arranges your scans, assessments and sign-offs around published portfolio requirements. International trackers provide editable starting frameworks that you can adapt to your local requirements. Export as PDF, Excel or CSV with a QR-verified summary.'],
   };
   const GUIDE_TOPICS = { rcem: ['heart', 'abdomen', 'lung'], famus: ['lung', 'abdomen', 'heart'], fusic: ['heart', 'lung', 'abdomen'] };
   const topicCard = (t) => { const n = posts.filter((p) => p.draft !== true && topicOf(p.category) === t).length; return `<a class="post-card reveal" href="${topicHref(t)}"><p class="eyebrow">Wavelength Pearls</p><h3>${esc(t.heading || t.label)}</h3><p>${esc(t.intro)}</p><span class="meta">${n} free pearls, each with a short test</span></a>`; };
@@ -1589,7 +1592,7 @@ const APP_LD = {
   inLanguage: ['en', 'fr', 'es', 'de', 'it', 'pl', 'ar', 'ru', 'zh-Hans'],
   featureList: [
     'Point-of-care ultrasound scan logbook, with images and clips kept on the device',
-    `Progress against ${PATHWAY_LIST} targets, or targets you set`,
+    `Progress against ${UK_PATHWAY_LIST} targets, editable international frameworks (${INTL_PATHWAY_LIST}), or targets you set`,
     'Supervisor sign-off in person, by secure link or from a supervisor dashboard',
     'Structured assessments: DOPS, formative, summative and final',
     'Portfolio export as PDF, Excel or CSV',
@@ -1617,7 +1620,7 @@ const APP_LD = {
     title: 'Wavelength app | Free ultrasound logbook for RCEM, FAMUS, FUSIC, EUSEM, ACEM and more',
     seoTitle: 'Download the Wavelength ultrasound logbook app',
     pathname: '/app/get/',
-    description: 'A free point-of-care ultrasound logbook. Log scans and clips, track RCEM, FAMUS, FUSIC, EUSEM, ACEM, CPoCUS and ACEP targets, get signed off and assessed, and export portfolio-ready PDFs with QR-verified summaries. Photos stay on your phone.',
+    description: 'A free point-of-care ultrasound logbook. Log scans and clips, track RCEM, FAMUS and FUSIC or editable international frameworks, get signed off and assessed, and export portfolio-ready PDFs with QR-verified summaries. Photos stay on your phone.',
     jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'App', href: '/app/get/' }]), faqLd(appFaqs), APP_LD],
     body: `<section class="hero on-dark">${mesh}<div class="wrap hero-inner app-hero">
   <div>
@@ -1687,15 +1690,16 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
   const UK_TARGETS_CHECKED = PATHWAYS.filter((p) => p.region === 'UK').map((p) => p.checked).filter(Boolean).sort().pop() || LOGBOOK_PAGE_REVIEWED;
   const regionOf = (p) => p.region || 'Any country';
   // Outside the UK the programme details have not been checked against each body's documents, so the card names only the organisation.
+  const intlOf = (p) => p.region && p.region !== 'UK';
   const nameOf = (p) => (!p.region || p.region === 'UK' ? p.name : p.name.replace(/\s*\(.*\)$/, '').replace(/,.*$/, ''));
   const pwCard = (p) => {
     const g = guideHref(p.id);
     const mods = (p.modules || []).map((m) => m.label);
-    const link = g ? `<a class="text-link" href="${g}">${esc(p.id === 'rcem' ? 'RCEM sign-off guide' : `${p.label} accreditation guide`)}</a>` : (hasAccreditationHub() ? `<a class="text-link" href="/guides/pocus-accreditation/#pathways-outside-the-uk">${esc(p.label)} in the pathway comparison</a>` : '');
-    return `<article class="pw-card reveal" id="pathway-${p.id}"><p class="eyebrow">${esc(regionOf(p))}</p><h3>${esc(p.label)}</h3><p class="pw-name">${esc(nameOf(p))}</p><p class="pw-mods"><b>The app tracks:</b> ${esc(andList(mods))}.</p>${link ? `<p class="pw-link">${link}</p>` : ''}</article>`;
+    const link = g ? `<a class="text-link" href="${g}">${esc(p.id === 'rcem' ? 'RCEM sign-off guide' : `${p.label} accreditation guide`)}</a>` : (hasAccreditationHub() ? `<a class="text-link" href="/guides/pocus-accreditation/#international-pathways-and-frameworks">${esc(p.label)} in international pathways and frameworks</a>` : '');
+    return `<article class="pw-card reveal" id="pathway-${p.id}"><p class="eyebrow">${esc(regionOf(p))}${intlOf(p) ? ' · International framework' : ''}</p><h3>${esc(p.label)}</h3><p class="pw-name">${esc(nameOf(p))}</p><p class="pw-mods"><b>${intlOf(p) ? 'Editable tracker' : 'The app tracks'}:</b> ${esc(andList(mods))}.</p>${link ? `<p class="pw-link">${link}</p>` : ''}</article>`;
   };
   const steps = [
-    ['Choose your pathway', `Pick ${PATHWAY_LIST}, several at once, or a general logbook with your own targets. You can adjust any target to match what your supervisor or accrediting body asks for.`],
+    ['Choose your pathway', `Pick ${UK_PATHWAY_LIST}, an editable international framework (${INTL_PATHWAY_LIST}), several at once, or a general logbook with your own targets. You can adjust any target to match what your supervisor or local credentialing process asks for.`],
     ['Log every scan', 'Choose the scan type, tick the findings, record the supervision level and add images or a short clip. The app warns you if text looks like a patient identifier.'],
     ['Get signed off', 'Your supervisor signs on your phone, from a secure link on their own phone, or from their supervisor dashboard. Each sign-off has its own verification code.'],
     ['Record assessments', 'DOPS, formative, summative and final or triggered assessments, rated across six domains with an outcome and a signature. Summative, DOPS and final assessments count once judged competent.'],
@@ -1705,19 +1709,19 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
   const faqs = [
     { q: 'What is a POCUS logbook?', a: 'A record of every point-of-care ultrasound scan you perform while training: the scan type, the clinical question, your findings, how you were supervised and who reviewed it. Accrediting bodies and ARCP panels use it, with your assessments and reflections, to judge your progress towards sign-off.' },
     { q: 'What should a POCUS logbook record?', a: 'For each scan: a training reference (never a patient identifier), the date, the scan type and pathway module, the setting, the clinical question, the views obtained, image quality, findings, the supervision level, who supervised or reviewed it, formal imaging or outcome, and a reflection. RCEM accepts any logbook that captures its minimum dataset within data protection rules. FAMUS and FUSIC have their own report sheets and forms.' },
-    { q: 'Which accrediting bodies and pathways does it support?', a: `${PATHWAYS.filter((p) => p.id !== 'eusem2').map((p) => `${p.label} (${regionOf(p)})`).join(', ')}, plus a general logbook for any application with targets you set.` },
-    { q: 'Can one scan count towards more than one pathway?', a: 'Yes. Choose every pathway you are working towards and each scan counts towards every module it fits, with supervised counts, pathology quotas and time windows tracked separately for each pathway.' },
+    { q: 'Which pathways and frameworks does it support?', a: `UK pathways: ${UK_PATHWAY_LIST}. International pathways and frameworks, as editable trackers: ${andList(PATHWAYS.filter((p) => intlOf(p) && p.id !== 'eusem2').map((p) => `${p.label} (${regionOf(p)})`))}. Plus a general logbook for any application with targets you set.` },
+    { q: 'Can one scan count towards more than one pathway?', a: 'Wavelength can apply one scan to multiple selected pathway trackers when it meets their configured criteria. Acceptance remains subject to each organisation, supervisor or local credentialing process.' },
     { q: 'Will RCEM, SAM or the Intensive Care Society accept it?', a: 'RCEM accepts any logbook platform that captures the minimum dataset and meets data protection rules, although its preferred platform is the RCEM e-portfolio. FAMUS and FUSIC have their own report sheets, reporting forms and final paperwork, which you still complete. Your supervisor and the accrediting body decide what they accept. Wavelength is independent of all of them.' },
     { q: 'Does it replace my e-portfolio?', a: 'No. It organises your scans, sign-offs and assessments and builds a file for your portfolio. Choose the destination (the RCEM e-portfolio on risr/advance, the JRCPTB ePortfolio, FAMUS, FUSIC or appraisal) and the app shows the steps. It is not yet connected directly to any of these systems.' },
     { q: 'What is a QR-verified summary?', a: 'When you export, Wavelength can compute your progress against each pathway from your synced logbook and store a snapshot with a code and QR code. Your supervisor, ARCP panel or accrediting body scans it and sees the same figures and sign-offs online. It shows counts and dates only, never findings or images, and you can withdraw it at any time.' },
-    { q: 'Can I use it outside the UK?', a: 'Yes. It has pathways for the EUSEM curriculum in Europe, ACEM in Australia and New Zealand, CPoCUS in Canada and ACEP in the United States. Their starting targets have not been re-checked against each body\'s current documents, so set them to match what your supervisor or credentialing committee asks for.' },
+    { q: 'Can I use it outside the UK?', a: 'Yes. It has editable international frameworks for the EUSEM curriculum in Europe, ACEM\'s recommended credentialing framework in Australia and New Zealand, CPoCUS in Canada and ACEP\'s guidelines in the United States. They are starting points, not checked against each organisation\'s current documents, so adapt them to your local requirements. Credentialing is decided by your health service or hospital.' },
   ];
   const href = '/pocus-logbook/';
   pages[href] = layout({
     title: 'POCUS logbook and ultrasound portfolio',
     seoTitle: 'POCUS logbook and ultrasound portfolio, free',
     pathname: href,
-    description: 'Free POCUS logbook and ultrasound portfolio app. Choose RCEM, FAMUS, FUSIC or another body, and your scans, sign-offs and assessments are arranged to match.',
+    description: 'Free POCUS logbook and ultrasound portfolio app for RCEM, FAMUS and FUSIC, with editable international frameworks. Scans, sign-offs and assessments in one place.',
     jsonld: [
       breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'POCUS logbook', href }]),
       { '@context': 'https://schema.org', '@type': 'WebPage', '@id': url(href), name: 'POCUS logbook and ultrasound portfolio', url: url(href), inLanguage: 'en-GB', lastReviewed: LOGBOOK_PAGE_REVIEWED, about: { '@id': url('/app/get/#app') }, isPartOf: { '@type': 'WebSite', name: site.name, url: url('/') } },
@@ -1727,10 +1731,10 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
     body: `${pageHero({
       eyebrow: 'POCUS logbook and portfolio',
       title: 'Your portfolio, tailored to <em>your accrediting body.</em>',
-      lede: 'Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body\'s portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.',
+      lede: 'For supported UK pathways, Wavelength arranges your scans, assessments and sign-offs around published portfolio requirements. International trackers provide editable starting frameworks that you can adapt to your local requirements. Export as PDF, Excel or CSV with a QR-verified summary.',
       crumbs: [{ label: 'Home', href: '/' }, { label: 'POCUS logbook' }],
       extra: `<div class="hero-ctas rise"><a class="btn btn-teal" href="/app/get/">Get the free app ${arrow}</a><a class="btn btn-ghost light" href="/app/">Open in your browser</a></div>
-      <div class="hero-meta rise"><div><b>Free</b>Logbook, sign-off and exports</div><div><b>${PATHWAYS.filter((p) => p.id !== 'eusem2').length} pathways</b>UK, Europe, Australasia and North America</div><div><b>Nine languages</b>Exports in English</div><div><b>Photos stay on your phone</b>Only the written record syncs</div></div>`,
+      <div class="hero-meta rise"><div><b>Free</b>Logbook, sign-off and exports</div><div><b>${PATHWAYS.filter((p) => p.region === 'UK').length} UK pathways</b>Plus editable international frameworks</div><div><b>Nine languages</b>Exports in English</div><div><b>Photos stay on your phone</b>Only the written record syncs</div></div>`,
     })}
 <section class="section"><div class="wrap split">
   <div><p class="eyebrow reveal">What it is</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">A free POCUS logbook that builds <span>your portfolio as you scan.</span></h2></div>
@@ -1744,9 +1748,9 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
   <ol class="ac-steps steps-3">${steps.map(([h, t], i) => `<li class="reveal" data-d="${i % 3}"><span class="ac-step-n">${i + 1}</span><h3>${esc(h)}</h3><p>${esc(t)}</p></li>`).join('')}</ol>
 </div></section>
 <section class="section" id="pathways"><div class="wrap">
-  <div class="section-head"><p class="eyebrow reveal">Pathways it tracks</p><h2 class="reveal" data-d="1">Organised for your accrediting body.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:680px">One scan counts towards every pathway it fits. A lung scan, for example, counts towards FAMUS Thoracic and FUSIC Lung at the same time, with pathology quotas, supervised counts and training windows tracked for you.</p></div>
+  <div class="section-head"><p class="eyebrow reveal">Pathways and frameworks it tracks</p><h2 class="reveal" data-d="1">Organised for your accrediting body.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:680px">Wavelength can apply one scan to multiple selected pathway trackers when it meets their configured criteria. A lung scan, for example, can count towards both the FAMUS Thoracic and FUSIC Lung trackers. Acceptance remains subject to each organisation, supervisor or local credentialing process.</p></div>
   <div class="pw-grid">${PATHWAYS.filter((p) => p.id !== 'eusem2').map(pwCard).join('')}</div>
-  <p class="source reveal" style="max-width:780px;margin-top:28px">The RCEM, FAMUS and FUSIC targets follow each body's published documents, checked on ${fmtDate(UK_TARGETS_CHECKED, { day: 'numeric', month: 'long', year: 'numeric' })}. The EUSEM, ACEM, CPoCUS and ACEP starting targets have not been re-checked against those bodies' current documents, so adjust them to match what you are asked for. Curricula change, so confirm requirements with your supervisor and the accrediting body. Wavelength is independent and is not run or endorsed by RCEM, the Society for Acute Medicine, the Intensive Care Society, EUSEM, ACEM, CPoCUS, ACEP or any other body.${hasAccreditationHub() ? ' <a class="text-link" href="/guides/pocus-accreditation/">Compare the pathways</a>.' : ''}</p>
+  <p class="source reveal" style="max-width:780px;margin-top:28px">The RCEM, FAMUS and FUSIC targets follow each body's published documents, checked on ${fmtDate(UK_TARGETS_CHECKED, { day: 'numeric', month: 'long', year: 'numeric' })}. The EUSEM, ACEM, CPoCUS and ACEP trackers are editable starting frameworks, not checked against those organisations' current documents, so adapt them to your local requirements. Curricula change, so confirm requirements with your supervisor and the accrediting body or local credentialing process. Wavelength is independent and is not run or endorsed by RCEM, the Society for Acute Medicine, the Intensive Care Society, EUSEM, ACEM, CPoCUS, ACEP or any other body.${hasAccreditationHub() ? ' <a class="text-link" href="/guides/pocus-accreditation/">Compare the pathways</a>.' : ''}</p>
 </div></section>
 <section class="section on-dark" style="background:var(--navy)"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal" style="color:var(--teal-l)">Evidence reviewers can check</p><h2 class="reveal" data-d="1" style="color:var(--cream)">Every record carries a code.</h2><p class="reveal" data-d="2" style="color:#B9C4D0;max-width:640px">A paper logbook or spreadsheet asks reviewers to take the numbers on trust. Wavelength records carry verification codes anyone can check at <a class="text-link" href="/verify/" style="color:var(--teal-l)">thewavelength.co.uk/verify</a>, with no account.</p></div>
