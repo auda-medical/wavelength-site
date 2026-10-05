@@ -91,7 +91,10 @@ const FONTS = `@font-face { font-family: Cormorant; src: url('${font('cormorant-
 const frameCtx = await browser.newContext({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
 const fp = await frameCtx.newPage();
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-for (const f of shots) {
+// Listing order: what it is, how quick it is, why it helps training, supervision, verifiable evidence, privacy.
+const ORDER = ['home', 'new', 'progress', 'log', 'entry', 'me'];
+const ordered = ORDER.map((k) => shots.find((f) => path.basename(f, '.png') === k)).filter(Boolean);
+for (const f of ordered) {
   const key = path.basename(f, '.png');
   const [eye, h, sub] = CAPTIONS[key];
   const heroFile = path.join(out, 'raw', key + '-hero.png');
@@ -100,17 +103,22 @@ for (const f of shots) {
   await fp.setContent(`<!doctype html><html><head><style>
     ${FONTS}
     html,body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #163049 0%, #0A1526 62%); color: #F7F5F0; }
-    .cap { text-align: center; padding: 92px 64px 0; }
-    .eye { display: inline-block; font: 600 26px DMSans, sans-serif; letter-spacing: .32em; color: #7FC4CC; padding-bottom: 14px; margin-bottom: 26px; border-bottom: 2px solid rgba(127,196,204,.55); }
-    h1 { font: 500 86px/1.02 Cormorant, Georgia, serif; margin: 0 0 24px; letter-spacing: -.5px; }
-    p { font: 500 38px/1.35 DMSans, sans-serif; color: #B9C4D0; margin: 0; }
-    .phone { position: absolute; left: 50%; top: 470px; width: 780px; height: 1386px; transform: translateX(-50%); border-radius: 64px; background: #050B14; padding: 22px; box-shadow: 0 40px 120px rgba(0,0,0,.55), 0 0 0 2px rgba(127,196,204,.25); }
+    /* Every caption sits on the same grid: eyebrow, rule, headline and subtitle at fixed heights on all six images. */
+    .eye, .rule, h1, p { position: absolute; left: 0; right: 0; text-align: center; margin: 0; }
+    .eye { top: 96px; font: 600 26px/1 DMSans, sans-serif; letter-spacing: .32em; text-indent: .32em; color: #7FC4CC; }
+    .rule { top: 140px; left: 50%; right: auto; width: 96px; height: 2px; transform: translateX(-50%); background: rgba(127,196,204,.7); }
+    h1 { top: 172px; font: 500 86px/1 Cormorant, Georgia, serif; letter-spacing: -.5px; white-space: nowrap; }
+    p { top: 282px; font: 500 38px/1.2 DMSans, sans-serif; color: #D6DEE7; white-space: nowrap; }
+    .phone { position: absolute; left: 50%; top: 404px; width: 780px; height: 1386px; transform: translateX(-50%); border-radius: 64px; background: #050B14; padding: 22px; box-shadow: 0 40px 120px rgba(0,0,0,.55), 0 0 0 2px rgba(127,196,204,.25); }
     .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 44px; display: block; }
-    .hero { position: absolute; left: 50%; bottom: 150px; width: 940px; transform: translateX(-50%); border-radius: 30px; overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,.6), 0 0 0 3px rgba(127,196,204,.75), 0 0 60px rgba(42,127,138,.45); }
+    .hero { position: absolute; left: 50%; bottom: 168px; width: 846px; transform: translateX(-50%); border-radius: 30px; overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,.6), 0 0 0 3px rgba(127,196,204,.75), 0 0 60px rgba(42,127,138,.45); }
     .hero img { width: 100%; display: block; }
-  </style></head><body><div class="cap"><div class="eye">${esc(eye)}</div><h1>${esc(h)}</h1><p>${esc(sub)}</p></div><div class="phone"><img src="${img}"></div>${hero ? `<div class="hero"><img src="${hero}"></div>` : ''}</body></html>`, { waitUntil: 'load' });
+  </style></head><body><div class="eye">${esc(eye)}</div><div class="rule"></div><h1>${esc(h)}</h1><p>${esc(sub)}</p><div class="phone"><img src="${img}"></div>${hero ? `<div class="hero"><img src="${hero}"></div>` : ''}</body></html>`, { waitUntil: 'load' });
   await fp.waitForTimeout(300);
-  await fp.screenshot({ path: path.join(out, `play-${String(shots.indexOf(f) + 1).padStart(2, '0')}-${key}.png`) });
+  // Keep every headline and subtitle on one line inside a 64 px margin; report any that had to shrink.
+  const shrunk = await fp.evaluate(() => { const out = []; for (const el of document.querySelectorAll('h1, p')) { let size = parseFloat(getComputedStyle(el).fontSize); const w = () => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width; }; while (w() > 952 && size > 20) { size -= 1; el.style.fontSize = size + 'px'; } if (el.style.fontSize) out.push(el.tagName + ' ' + size); } return out; });
+  if (shrunk.length) console.log('note: ' + key + ' text shrunk to fit: ' + shrunk.join(', '));
+  await fp.screenshot({ path: path.join(out, `play-${String(ordered.indexOf(f) + 1).padStart(2, '0')}-${key}.png`) });
 }
 // Feature graphic: brand mark, name and tagline.
 await fp.setViewportSize({ width: 1024, height: 500 });

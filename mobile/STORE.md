@@ -34,7 +34,7 @@ The automated harness (`tools/e2e-native.mjs`) does not replace real phones. On 
 
 ## Listing images
 
-`mobile/store/`: six phone screenshots (1080x1920, captioned, from the real app with an invented sample logbook), the Google Play feature graphic (1024x500) and the 512 px icon. Regenerate after visible app changes: build the bundle, run the local Worker, then `node tools/store-shots.mjs <outdir>` and copy the `play-*.png` files here as RGB PNGs.
+`mobile/store/`: six phone screenshots (1080x1920, captioned, from the real app with an invented sample logbook; upload them in their numbered order: what it is, logging speed, progress, sign-off, verifiable evidence, privacy), the Google Play feature graphic (1024x500) and the 512 px icon. Regenerate after visible app changes: build the bundle, run the local Worker, then `node tools/store-shots.mjs <outdir>` and copy the `play-*.png` files here as RGB PNGs.
 
 ## Listing text (English)
 
