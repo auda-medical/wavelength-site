@@ -288,8 +288,10 @@ async function signoffComplete(env, req, ctx) {
   if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box with your finger or mouse.' }, 400);
   const decisions = d.decisions && typeof d.decisions === 'object' ? d.decisions : {};
   const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
-  await env.DB.prepare("UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL WHERE id = ?")
+  const done = await env.DB.prepare("UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL WHERE id = ? AND status = 'pending'")
     .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, so.id).run();
+  // A double tap or a second tab: only the first submission signs.
+  if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This sign-off link is no longer valid.' }, 410);
   await applySignoff(env, so, decisions, sup, 'remote', ratings);
   await deleteSharedImages(env, so.id);
   const mail = notifyLearner(env, so, decisions, sup);

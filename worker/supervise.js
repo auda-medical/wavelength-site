@@ -50,8 +50,9 @@ function formError(f, kind) {
   return null;
 }
 async function finishAssessment(env, row, f, sup, sig, supervisorId) {
-  await env.DB.prepare("UPDATE assessments SET status = 'signed', outcome = ?, assessed_on = ?, data = ?, supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL, supervisor_id = COALESCE(?, supervisor_id) WHERE id = ?")
+  const r = await env.DB.prepare("UPDATE assessments SET status = 'signed', outcome = ?, assessed_on = ?, data = ?, supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL, supervisor_id = COALESCE(?, supervisor_id) WHERE id = ? AND status = 'pending'")
     .bind(f.outcome, f.date, JSON.stringify({ ...JSON.parse(row.data || '{}'), ...f }), sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sig, supervisorId || null, row.id).run();
+  return !!(r.meta && r.meta.changes); // false when another submission signed it first
 }
 const publicRow = (r) => ({
   id: r.id, pathway: r.pathway, module: r.module, kind: r.kind, method: r.method, status: r.status, outcome: r.outcome, assessed_on: r.assessed_on,
@@ -123,7 +124,7 @@ export async function assessmentComplete(env, req) {
   if (err) return json({ ok: false, error: err }, 400);
   if (!sup.name || !sup.role || !d.confirm) return json({ ok: false, error: 'Enter your name and role, and tick the confirmation.' }, 400);
   if (!SIG.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box with your finger or mouse.' }, 400);
-  await finishAssessment(env, a, f, sup, sig, null);
+  if (!(await finishAssessment(env, a, f, sup, sig, null))) return json({ ok: false, error: 'This assessment link is no longer valid.' }, 410);
   return json({ ok: true, code: a.id });
 }
 
@@ -219,8 +220,9 @@ export async function superviseSignoffComplete(env, l, req, applySignoff, cleanS
   if (!SIG.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box.' }, 400);
   const decisions = d.decisions && typeof d.decisions === 'object' ? d.decisions : {};
   const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
-  await env.DB.prepare("UPDATE signoffs SET status = 'signed', method = 'dashboard', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = ?, accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL WHERE id = ?")
+  const done = await env.DB.prepare("UPDATE signoffs SET status = 'signed', method = 'dashboard', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = ?, accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL WHERE id = ? AND status = 'pending'")
     .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, so.id).run();
+  if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This request is no longer open.' }, 404);
   await applySignoff(env, so, decisions, sup, 'dashboard', ratings);
   await deleteSharedImages(env, so.id);
   if (notify) notify(so, decisions, sup);
@@ -235,7 +237,7 @@ export async function superviseAssessmentComplete(env, l, req) {
   if (err) return json({ ok: false, error: err }, 400);
   if (!sup.name || !sup.role || !d.confirm) return json({ ok: false, error: 'Enter your name and role, and tick the confirmation.' }, 400);
   if (!SIG.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box.' }, 400);
-  await finishAssessment(env, a, f, sup, sig, l.id);
+  if (!(await finishAssessment(env, a, f, sup, sig, l.id))) return json({ ok: false, error: 'This request is no longer open.' }, 404);
   await env.DB.prepare("UPDATE assessments SET method = 'dashboard' WHERE id = ?").bind(a.id).run();
   return json({ ok: true, code: a.id });
 }
