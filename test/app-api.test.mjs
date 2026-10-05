@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { makeEnv, client, ctx, ORIGIN } from './helpers/env.mjs';
 import { handleApp } from '../worker/app.js';
 
-const PASSWORD = 'correct horse battery';
+const PASSWORD = 'Correct horse battery 1!';
 const SIG = 'data:image/png;base64,iVBORw0KGgo=';
 async function account(env, email, extra = {}) {
   const c = client(handleApp, env);
@@ -67,7 +67,7 @@ test('changing the password logs out other devices but keeps this one', async ()
   const laptop = client(handleApp, env);
   assert.equal((await laptop.call('/api/app/login', { email: 'pw@x.co', password: PASSWORD })).status, 200);
   await new Promise((r) => setTimeout(r, 5));
-  const r = await phone.call('/api/app/password', { current: PASSWORD, password: 'a brand new password' });
+  const r = await phone.call('/api/app/password', { current: PASSWORD, password: 'A brand new password 2!' });
   assert.equal(r.status, 200);
   assert.equal((await phone.call('/api/app/me')).body.ok, true, 'this device stays logged in');
   assert.equal((await laptop.call('/api/app/me')).body.auth, false, 'the other device is logged out');
@@ -83,10 +83,10 @@ test('a password reset link works once and logs out old sessions', async () => {
   await env.DB.prepare('INSERT INTO password_resets (token_hash, learner_id, expires_at) VALUES (?,?,?)').bind(await sha256(token), id, Date.now() + 3600e3).run();
   await new Promise((r) => setTimeout(r, 5));
   const c = client(handleApp, env);
-  assert.equal((await c.call('/api/app/reset/complete', { token, password: 'reset password 123' })).status, 200);
+  assert.equal((await c.call('/api/app/reset/complete', { token, password: 'Reset password 123!' })).status, 200);
   assert.equal((await c.call('/api/app/me')).body.ok, true);
   assert.equal((await old.call('/api/app/me')).body.auth, false, 'the old session no longer works');
-  assert.equal((await client(handleApp, env).call('/api/app/reset/complete', { token, password: 'another password 1' })).status, 400, 'the link works once');
+  assert.equal((await client(handleApp, env).call('/api/app/reset/complete', { token, password: 'Another password 1!' })).status, 400, 'the link works once');
 });
 
 test('reset emails are limited to one every five minutes per account', async () => {
@@ -233,4 +233,27 @@ test('deleting an account removes its logbook and sign-offs', async () => {
   assert.equal((await a.call('/api/app/account/delete', { password: 'wrong password!' })).status, 400);
   assert.equal((await a.call('/api/app/account/delete', { password: PASSWORD })).status, 200);
   for (const t of ['logbook_entries', 'signoffs', 'learners']) assert.equal((await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${t}`).first()).n, 0, t);
+});
+
+test('new passwords need 10 characters, upper and lower case, a number and a symbol', async () => {
+  const env = makeEnv();
+  const c = client(handleApp, env);
+  const base = { firstName: 'P', lastName: 'W', terms: true };
+  for (const bad of ['Short1!', 'alllowercase1!', 'ALLUPPERCASE1!', 'NoNumbersHere!', 'NoSymbols1234']) {
+    const r = await c.call('/api/app/signup', { ...base, email: 'pw' + bad.length + '@x.co', password: bad });
+    assert.equal(r.status, 400, bad);
+    assert.match(r.body.error, /uppercase/);
+  }
+  assert.equal((await c.call('/api/app/signup', { ...base, email: 'ok@x.co', password: 'Göod-pässword 9' })).status, 200);
+  assert.equal((await c.call('/api/app/password', { current: 'Göod-pässword 9', password: 'weakpassword' })).status, 400);
+});
+
+test('autofill of a field named website no longer drops a real sign-up', async () => {
+  const env = makeEnv();
+  const r = await client(handleApp, env).call('/api/app/signup', { firstName: 'Auto', lastName: 'Fill', email: 'autofill@x.co', password: PASSWORD, terms: true, website: 'https://example.com' });
+  assert.equal(r.status, 200);
+  assert.ok(r.body.account, 'account returned');
+  const trap = await client(handleApp, env).call('/api/app/signup', { firstName: 'Bot', lastName: 'Bot', email: 'bot@x.co', password: PASSWORD, terms: true, wl_trap: 'x' });
+  assert.equal(trap.body.trap, true);
+  assert.equal((await env.DB.prepare('SELECT COUNT(*) AS n FROM learners WHERE email = ?').bind('bot@x.co').first()).n, 0);
 });

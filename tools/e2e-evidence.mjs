@@ -14,7 +14,7 @@ const H = { Origin: BASE, 'Content-Type': 'application/json' };
 const post = (p, data) => page.evaluate(([p, data]) => fetch(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then((r) => r.json()), [p, data]);
 await page.goto(BASE + '/app/');
 const email = `test${Date.now()}@example.com`;
-let r = await post('/api/app/signup', { title: 'Dr', firstName: 'Sam', lastName: 'Patel', email, password: 'longpassword1', terms: true, role: 'ST4' });
+let r = await post('/api/app/signup', { title: 'Dr', firstName: 'Sam', lastName: 'Patel', email, password: 'Long-password-1', terms: true, role: 'ST4' });
 if (!r.ok) throw new Error('signup ' + JSON.stringify(r));
 r = await post('/api/app/profile', { declaration: true, profile: { pathways: ['famus', 'rcem'], grade: 'ST4 emergency medicine', onboarded: true }, organisation: 'Test Hospital' });
 const entries = [];

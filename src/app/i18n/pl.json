@@ -1442,5 +1442,15 @@
 "Unlock your Wavelength logbook": "Odblokuj swój dziennik Wavelength",
 "Your logbook is locked.": "Twój dziennik jest zablokowany.",
 "Your portfolio, tailored to your accrediting body": "Twoje portfolio dopasowane do Twojej instytucji akredytującej",
-"Your ultrasound logbook": "Twój dziennik badań USG"
+"Your ultrasound logbook": "Twój dziennik badań USG",
+"A lowercase letter": "Mała litera",
+"A number": "Cyfra",
+"A symbol, such as ! ? # or %": "Symbol, np. ! ? # lub %",
+"An uppercase letter": "Wielka litera",
+"At least 10 characters": "Co najmniej 10 znaków",
+"Choose a password of at least 10 characters with an uppercase letter, a lowercase letter, a number and a symbol.": "Wybierz hasło z co najmniej 10 znaków, zawierające wielką literę, małą literę, cyfrę i symbol.",
+"Choose a password of at most 200 characters.": "Wybierz hasło o długości najwyżej 200 znaków.",
+"Confirm password": "Potwierdź hasło",
+"Passwords do not match.": "Hasła nie są zgodne.",
+"Passwords match.": "Hasła są zgodne."
 }

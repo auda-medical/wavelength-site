@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { client } from './env.mjs';
 import { handleApp } from '../../worker/app.js';
 
-export const PASSWORD = 'correct horse battery';
+export const PASSWORD = 'Correct horse battery 1!';
 export const SIG = 'data:image/png;base64,iVBORw0KGgo=';
 
 // Replaces fetch while fn runs. Every email sent is captured; tokens() pulls the email-link tokens out of them.

@@ -29,7 +29,7 @@ const L = await ctxFor('en-GB');
 await L.page.goto(BASE + '/app/');
 const t = Date.now();
 const lEmail = `learner${t}@example.com`, sEmail = `sup${t}@example.com`;
-let r = await post(L.page, '/api/app/signup', { title: 'Dr', firstName: 'Sam', lastName: 'Patel', email: lEmail, password: 'longpassword1', terms: true, role: 'ST4' });
+let r = await post(L.page, '/api/app/signup', { title: 'Dr', firstName: 'Sam', lastName: 'Patel', email: lEmail, password: 'Long-password-1', terms: true, role: 'ST4' });
 if (!r.ok) throw new Error('signup ' + JSON.stringify(r));
 r = await post(L.page, '/api/app/profile', { declaration: true, profile: { pathways: ['acem', 'eusem', 'rcem'], grade: 'ST4 emergency medicine', onboarded: true }, organisation: 'Test Hospital' });
 if (!r.ok || r.account.profile.pathways.length !== 3) fail('profile pathways ' + JSON.stringify(r.account && r.account.profile));
@@ -41,7 +41,7 @@ if (!r.ok || r.saved.length !== 12) fail('sync ' + JSON.stringify(r).slice(0, 20
 // Supervisor account and link
 const S = await ctxFor('fr-FR');
 await S.page.goto(BASE + '/app/');
-r = await post(S.page, '/api/app/signup', { title: 'Dr', firstName: 'Ana', lastName: 'Lee', email: sEmail, password: 'longpassword2', terms: true, role: 'Consultant' });
+r = await post(S.page, '/api/app/signup', { title: 'Dr', firstName: 'Ana', lastName: 'Lee', email: sEmail, password: 'Long-password-2', terms: true, role: 'Consultant' });
 if (!r.ok) fail('sup signup');
 await post(S.page, '/api/app/profile', { declaration: true, profile: { pathways: ['general'], onboarded: true, supervisor: true, grade: 'Consultant in emergency medicine' } });
 r = await post(L.page, '/api/app/supervisors/add', { email: sEmail });

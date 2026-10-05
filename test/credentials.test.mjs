@@ -273,7 +273,7 @@ test('account deletion removes registrations, credentials, evidence, approvals a
   const c = await professional(env, 'gone@x.co');
   await claimCred(c, 'famus-supervisor', ['thoracic']);
   await c.call('/api/app/professional/directory', { listed: true });
-  assert.equal((await c.call('/api/app/account/delete', { password: 'correct horse battery' })).status, 200);
+  assert.equal((await c.call('/api/app/account/delete', { password: 'Correct horse battery 1!' })).status, 200);
   for (const t of ['professional_registrations', 'credentials', 'credential_evidence', 'supervisor_approvals', 'directory_profiles', 'email_tokens', 'verification_events']) {
     assert.equal((await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${t}`).first()).n, 0, t);
   }

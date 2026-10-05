@@ -10,6 +10,7 @@
 //           logs out every older session, logs this browser in.
 //   signin  an Academy-only learner returns to the Academy: applies the details they typed, logs this browser in.
 // Newsletter consent is separate and never needed for any of this.
+import { passwordProblem } from './password.js';
 import { SITE, json, clip, sha256, token, body, account, fullName, verificationReady, hashPassword } from './app-util.js';
 import { sendMail, cookieFor, revokeSessions } from './academy.js';
 
@@ -104,7 +105,7 @@ export async function verifyToken(env, req) {
     // Opened somewhere other than where the account was started: the opener chooses the password. The token is not
     // used up until they do.
     const pw = String((d && d.password) || '');
-    if (pw.length < 10 || pw.length > 200) return json({ ok: false, needPassword: true, error: 'Choose a password of at least 10 characters to finish creating your account.' }, 400);
+    if (passwordProblem(pw)) return json({ ok: false, needPassword: true, error: passwordProblem(pw) }, 400);
     ownHash = await hashPassword(pw);
   }
   // Claim it first, so two clicks (or a replay) cannot both succeed.

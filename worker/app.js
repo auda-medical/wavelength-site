@@ -15,6 +15,7 @@
 // sharing in sign-off links (IMAGE_SHARE = "true"): the phone encrypts with AES-GCM and keeps the key in the link's
 // #fragment, so this Worker stores only ciphertext in KV (SHARED_IMAGES), deleted on sign-off, cancel, account
 // deletion or after 14 days. See the DPIA before changing any of this.
+import { passwordProblem } from './password.js';
 import { isNativeOrigin } from './native.js';
 import { zohoSubscribe } from './newsletter.js';
 import { cookieFor, clearCookie, learner, sendMail, revokeSessions } from './academy.js';
@@ -30,12 +31,13 @@ import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, has
 async function signup(env, req, ctx) {
   const d = await body(req);
   if (!d) return json({ ok: false, error: 'Something went wrong. Please try again.' }, 400);
-  if (d.website) return json({ ok: true });
+  if (d.wl_trap) return json({ ok: true, trap: true }); // honeypot: hidden from people and from browser autofill
   const p = { title: TITLES.includes(clip(d.title, 10)) ? clip(d.title, 10) : '', first: clip(d.firstName, 80), last: clip(d.lastName, 80), email: clip(d.email, 160).toLowerCase(), role: clip(d.role, 80), org: clip(d.organisation, 160), news: d.newsletter ? 1 : 0 };
   const pw = String(d.password || '');
   if (!p.first || !p.last) return json({ ok: false, error: 'Enter your first and last name.' }, 400);
   if (!EMAIL.test(p.email)) return json({ ok: false, error: 'Enter a valid email address.' }, 400);
-  if (pw.length < 10 || pw.length > 200) return json({ ok: false, error: 'Choose a password of at least 10 characters.' }, 400);
+  const weak = passwordProblem(pw);
+  if (weak) return json({ ok: false, error: weak }, 400);
   if (!d.terms) return json({ ok: false, error: 'Tick the box to accept the privacy notice and terms of use.' }, 400);
   const existing = await env.DB.prepare('SELECT id, password_hash FROM learners WHERE email = ?').bind(p.email).first();
   if (existing && existing.password_hash) return json({ ok: false, error: 'An account with this email already exists. Log in instead, or reset your password.', exists: true }, 409);
@@ -127,7 +129,7 @@ async function changePassword(env, l, req) {
   const d = await body(req);
   if (!d || !(await checkPassword(String(d.current || ''), l.password_hash))) return json({ ok: false, error: 'Your current password is not right.' }, 400);
   const pw = String(d.password || '');
-  if (pw.length < 10 || pw.length > 200) return json({ ok: false, error: 'Choose a password of at least 10 characters.' }, 400);
+  { const weak = passwordProblem(pw); if (weak) return json({ ok: false, error: weak }, 400); }
   await env.DB.prepare('UPDATE learners SET password_hash = ? WHERE id = ?').bind(await hashPassword(pw), l.id).run();
   // Log out every other device, then give this one a fresh cookie.
   await revokeSessions(env, l.id);
@@ -161,7 +163,7 @@ async function resetComplete(env, req) {
   const d = await body(req);
   if (!d) return json({ ok: false }, 400);
   const pw = String(d.password || '');
-  if (pw.length < 10 || pw.length > 200) return json({ ok: false, error: 'Choose a password of at least 10 characters.' }, 400);
+  { const weak = passwordProblem(pw); if (weak) return json({ ok: false, error: weak }, 400); }
   const row = await env.DB.prepare('SELECT * FROM password_resets WHERE token_hash = ?').bind(await sha256(clip(d.token, 100))).first();
   if (!row || row.used || row.expires_at < Date.now()) return json({ ok: false, error: 'This reset link has expired. Ask for a new one.' }, 400);
   const hash = await hashPassword(pw);

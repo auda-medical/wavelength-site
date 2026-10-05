@@ -1410,5 +1410,15 @@
 "Unlock your Wavelength logbook": "Desbloquea tu registro de Wavelength",
 "Your logbook is locked.": "Tu registro está bloqueado.",
 "Your portfolio, tailored to your accrediting body": "Tu portfolio, adaptado a tu organismo acreditador",
-"Your ultrasound logbook": "Tu registro de ecografía"
+"Your ultrasound logbook": "Tu registro de ecografía",
+"A lowercase letter": "Una letra minúscula",
+"A number": "Un número",
+"A symbol, such as ! ? # or %": "Un símbolo, como ! ? # o %",
+"An uppercase letter": "Una letra mayúscula",
+"At least 10 characters": "Al menos 10 caracteres",
+"Choose a password of at least 10 characters with an uppercase letter, a lowercase letter, a number and a symbol.": "Elija una contraseña de al menos 10 caracteres con una mayúscula, una minúscula, un número y un símbolo.",
+"Choose a password of at most 200 characters.": "Elija una contraseña de 200 caracteres como máximo.",
+"Confirm password": "Confirmar contraseña",
+"Passwords do not match.": "Las contraseñas no coinciden.",
+"Passwords match.": "Las contraseñas coinciden."
 }

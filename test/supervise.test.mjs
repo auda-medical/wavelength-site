@@ -5,7 +5,7 @@ import { makeEnv, client } from './helpers/env.mjs';
 import { handleApp } from '../worker/app.js';
 import LOGBOOK from '../data/logbook.json' with { type: 'json' };
 
-const PASSWORD = 'correct horse battery';
+const PASSWORD = 'Correct horse battery 1!';
 const SIG = 'data:image/png;base64,iVBORw0KGgo=';
 async function account(env, email) {
   const c = client(handleApp, env);

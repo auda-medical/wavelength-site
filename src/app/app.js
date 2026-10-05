@@ -100,6 +100,35 @@
     });
   }
   function loadScript(src) { return new Promise(function (ok, no) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { no(new Error(T('Could not load a part of the app. Check your connection.'))); }; document.head.appendChild(s); }); }
+  // ---------- New passwords: the same rules as the server (worker/password.js), a live checklist and a confirm box ----------
+  var PW_RULES = [
+    ['At least 10 characters', function (p) { return p.length >= 10; }],
+    ['An uppercase letter', function (p) { return /\p{Lu}/u.test(p); }],
+    ['A lowercase letter', function (p) { return /\p{Ll}/u.test(p); }],
+    ['A number', function (p) { return /\p{Nd}/u.test(p); }],
+    ['A symbol, such as ! ? # or %', function (p) { return /[^\p{L}\p{N}]/u.test(p); }]
+  ];
+  function pwFields(id, label, name) {
+    return '<div class="field"><label for="' + id + '">' + esc(label) + '</label><input id="' + id + '"' + (name ? ' name="' + name + '"' : '') + ' type="password" autocomplete="new-password" required aria-describedby="' + id + '-rules">' +
+      '<ul class="pw-rules" id="' + id + '-rules">' + PW_RULES.map(function (r, i) { return '<li data-rule="' + i + '">' + esc(T(r[0])) + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="field"><label for="' + id + '-2">' + esc(T('Confirm password')) + '</label><input id="' + id + '-2" type="password" autocomplete="new-password" required><p class="pw-match" id="' + id + '-m" hidden></p></div>';
+  }
+  function bindPw(root, id) {
+    var a = $('#' + id, root), b = $('#' + id + '-2', root), m = $('#' + id + '-m', root);
+    var paint = function () {
+      var v = a.value;
+      $$('#' + id + '-rules li', root).forEach(function (li) { li.classList.toggle('met', PW_RULES[+li.dataset.rule][1](v)); });
+      if (b.value) { var same = b.value === v; m.hidden = false; m.className = 'pw-match ' + (same ? 'met' : 'bad'); m.textContent = same ? T('Passwords match.') : T('Passwords do not match.'); } else m.hidden = true;
+    };
+    a.addEventListener('input', paint); b.addEventListener('input', paint);
+  }
+  // The problem with the new password, or '' when it meets every rule and both boxes match.
+  function pwProblem(root, id) {
+    var v = $('#' + id, root).value;
+    if (!PW_RULES.every(function (r) { return r[1](v); })) return T('Choose a password of at least 10 characters with an uppercase letter, a lowercase letter, a number and a symbol.');
+    if ($('#' + id + '-2', root).value !== v) return T('Passwords do not match.');
+    return '';
+  }
   function copy(text) { return (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast(T('Link copied.')); }).catch(function () { prompt(T('Copy this link'), text); }); }
 
   // ---------- Local database: one per account, so two people on one device never mix logbooks ----------
@@ -355,21 +384,24 @@
       '<div class="field"><label for="title">' + esc(T('Title')) + '</label><select id="title" name="title"><option value="">' + esc(T('None')) + '</option><option>Dr</option><option>Prof</option><option>Mr</option><option>Mrs</option><option>Ms</option><option>Miss</option><option>Mx</option></select></div>' +
       '<div class="two"><div class="field"><label for="fn">' + esc(T('First name')) + '</label><input id="fn" name="firstName" type="text" autocomplete="given-name" required></div><div class="field"><label for="ln">' + esc(T('Last name')) + '</label><input id="ln" name="lastName" type="text" autocomplete="family-name" required></div></div>' +
       '<div class="field"><label for="em">' + esc(T('Email')) + '</label><input id="em" name="email" type="email" autocomplete="email" required></div>' +
-      '<div class="field"><label for="pw">' + esc(T('Password')) + '</label><p class="hint">' + esc(T('At least 10 characters.')) + '</p><input id="pw" name="password" type="password" autocomplete="new-password" minlength="10" required></div>' +
+      pwFields('pw', T('Password'), 'password') +
       '<div class="field"><label for="role">' + esc(T('Role')) + '</label><input id="role" name="role" type="text" placeholder="' + esc(T('For example ST4 emergency medicine, ACP, consultant')) + '" autocomplete="organization-title"></div>' +
       '<div class="field"><label for="org">' + esc(T('Hospital or organisation')) + '</label><input id="org" name="organisation" type="text" autocomplete="organization"></div>' +
-      '<input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">' +
+      '<input type="text" name="wl_trap" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">' +
       '<div class="field"><label class="check"><input type="checkbox" name="newsletter" value="1"><span>' + esc(T('Send me the Wavelength newsletter (optional).')) + '</span></label></div>' +
       '<div class="field"><label class="check"><input type="checkbox" name="terms" value="1" required><span>' + T('I accept the <a href="/app-terms/" target="_blank" rel="noopener">logbook terms of use</a> and the <a href="/privacy/" target="_blank" rel="noopener">privacy notice</a>.') + '</span></label></div>' +
       '<button class="btn teal block" type="submit">' + esc(T('Create account')) + '</button><div class="btns" style="justify-content:center"><a class="link" href="#/login">' + esc(T('Log in instead')) + '</a></div></form>');
     var f = $('#f'), err = $('.err', f);
+    bindPw(f, 'pw');
     f.addEventListener('submit', function (e) {
       e.preventDefault(); err.hidden = true;
       var d = formData(f); var b = $('button[type=submit]', f);
-      if (!f.checkValidity()) { err.textContent = !d.terms ? T('Tick the box to accept the terms and privacy notice.') : (d.password || '').length < 10 ? T('Choose a password of at least 10 characters.') : T('Complete your name and email.'); err.hidden = false; return; }
+      var pwBad = pwProblem(f, 'pw');
+      if (!f.checkValidity() || pwBad) { err.textContent = !(d.firstName && d.lastName && d.email) ? T('Complete your name and email.') : pwBad || (!d.terms ? T('Tick the box to accept the terms and privacy notice.') : T('Complete your name and email.')); err.hidden = false; return; }
       busy(b, true, T('Creating your account…'));
       api('/api/app/signup', d).then(function (res) {
         if (!res.ok) throw new Error(res.error);
+        if (!res.account && !res.checkEmail) throw new Error(T('Something went wrong. Please try again.'));
         if (d.newsletter && !NAT.on) joinNewsletter(d); // the store apps subscribe through the server (worker/app.js signup)
         // This email already has Academy certificates: the account is finished from a link sent to that address.
         if (res.checkEmail) { authFrame(T('Check your email.'), T('This email already has a Wavelength Academy record. To keep it safe, we have sent a link to {email}. Open it within 24 hours to finish creating your account. Check your junk folder too.', { email: d.email }), '<a class="btn block" href="#/login">' + esc(T('Back to log in')) + '</a>'); return; }
@@ -405,10 +437,12 @@
   function viewReset() {
     var t = new URLSearchParams(location.search).get('reset');
     if (t) {
-      authFrame(T('Choose a new password.'), '', '<form id="f"><div class="err" hidden></div><div class="field"><label for="pw">' + esc(T('New password')) + '</label><p class="hint">' + esc(T('At least 10 characters.')) + '</p><input id="pw" name="password" type="password" autocomplete="new-password" minlength="10" required></div><button class="btn teal block">' + esc(T('Save and log in')) + '</button></form>');
+      authFrame(T('Choose a new password.'), '', '<form id="f" novalidate><div class="err" hidden></div>' + pwFields('pw', T('New password'), 'password') + '<button class="btn teal block">' + esc(T('Save and log in')) + '</button></form>');
       var f = $('#f'), err = $('.err', f);
+      bindPw(f, 'pw');
       f.addEventListener('submit', function (e) {
-        e.preventDefault(); var b = $('button', f); busy(b, true);
+        e.preventDefault(); var bad = pwProblem(f, 'pw'); if (bad) { err.textContent = bad; err.hidden = false; return; }
+        var b = $('button', f); busy(b, true);
         api('/api/app/reset/complete', { token: t, password: $('#pw').value }).then(function (res) {
           if (!res.ok) throw new Error(res.error); history.replaceState(null, '', '/app/#/'); return signedIn(res.account);
         }).catch(function (ex) { busy(b, false); err.textContent = ex.message; err.hidden = false; });
@@ -1699,14 +1733,15 @@
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div><div class="field"><label for="m4">' + esc(T('Organisation')) + '</label><input id="m4" name="organisation" type="text" value="' + esc(acc.organisation || '') + '"></div><div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
       '<h2 class="sec">' + esc(T('Notifications')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="nte"' + (p.notifyEmail === false ? '' : ' checked') + '><span>' + esc(T('Email me when a supervisor signs off or queries my scans by link or from their dashboard')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('The app also shows new sign-offs on your home screen and logbook.')) + '</p></div>' +
       lockCard() + '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/backup">' + esc(T('Back up or restore photos and clips')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
-      '<h2 class="sec">' + esc(T('Account')) + '</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">' + esc(T('Current password')) + '</label><input id="c1" name="current" type="password" autocomplete="current-password"></div><div class="field"><label for="c2">' + esc(T('New password')) + '</label><input id="c2" name="password" type="password" minlength="10" autocomplete="new-password"></div><button class="btn sm ghost">' + esc(T('Change password')) + '</button></form></div>' +
+      '<h2 class="sec">' + esc(T('Account')) + '</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">' + esc(T('Current password')) + '</label><input id="c1" name="current" type="password" autocomplete="current-password"></div>' + pwFields('c2', T('New password'), 'password') + '<button class="btn sm ghost">' + esc(T('Change password')) + '</button></form></div>' +
       '<div class="btns"><button class="btn ghost block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
       '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
     if (editPw) $('#pf').scrollIntoView();
     $$('[data-sharecert]').forEach(function (b) { b.onclick = function () { shareCertificate(b.dataset.sharecert, b.dataset.title); }; });
     $('#pf').addEventListener('submit', function (e) { e.preventDefault(); var ps = $$('input[name=p]:checked', this).map(function (i) { return i.value; }); if (!ps.length) { toast(T('Keep at least one pathway.')); return; } saveProfile({ pathways: ps }).then(function () { toast(T('Pathways saved.')); }).catch(function (ex) { toast(ex.message); }); });
     $('#mf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); saveProfile({ grade: d.grade, registration: d.registration, supervisor: !!d.supervisor }, { firstName: d.firstName, lastName: d.lastName, organisation: d.organisation }).then(function () { toast(T('Profile saved.')); render(true); }).catch(function (ex) { toast(ex.message); }); });
-    $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; api('/api/app/password', formData(f)).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
+    bindPw($('#cpw'), 'c2');
+    $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; var bad = pwProblem(f, 'c2'); if (bad) { toast(bad, 5000); return; } api('/api/app/password', formData(f)).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
     $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? T('Sign-off emails on.') : T('Sign-off emails off.')); }).catch(function (ex) { toast(ex.message); }); };
     bindLockCard();
     $('#lo').onclick = function () { api('/api/app/logout', {}).then(signedOut, signedOut); };
@@ -1763,8 +1798,9 @@
     var handle = function (res) {
       // Opened in a different browser from the one that started the account: the person opening it chooses the password.
       if (res.needPassword) {
-        done(T('Choose your password.'), T('To finish creating your account, choose the password you will use to log in.'), '<form id="f"><div class="err" hidden></div><div class="field"><label for="pw">' + esc(T('Password')) + '</label><p class="hint">' + esc(T('At least 10 characters.')) + '</p><input id="pw" type="password" autocomplete="new-password" minlength="10" required></div><button class="btn teal block">' + esc(T('Save and log in')) + '</button></form>');
-        $('#f').addEventListener('submit', function (e) { e.preventDefault(); var b = $('button', this); busy(b, true); send({ password: $('#pw').value }).then(function (r2) { if (r2.needPassword) { busy(b, false); var er = $('.err'); er.textContent = r2.error; er.hidden = false; return; } handle(r2); }); });
+        done(T('Choose your password.'), T('To finish creating your account, choose the password you will use to log in.'), '<form id="f" novalidate><div class="err" hidden></div>' + pwFields('pw', T('Password')) + '<button class="btn teal block">' + esc(T('Save and log in')) + '</button></form>');
+        bindPw($('#f'), 'pw');
+        $('#f').addEventListener('submit', function (e) { e.preventDefault(); var bad = pwProblem(this, 'pw'); if (bad) { var er0 = $('.err', this); er0.textContent = bad; er0.hidden = false; return; } var b = $('button', this); busy(b, true); send({ password: $('#pw').value }).then(function (r2) { if (r2.needPassword) { busy(b, false); var er = $('.err'); er.textContent = r2.error; er.hidden = false; return; } handle(r2); }); });
         return;
       }
       return finish(res);

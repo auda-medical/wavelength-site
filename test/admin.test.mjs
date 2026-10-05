@@ -33,6 +33,6 @@ test('department enquiries are validated and escaped in the admin list', async (
 
 test('the honeypot field drops bot submissions silently', async () => {
   const env = makeEnv();
-  assert.equal(await applyFaculty(env, form({ website: 'http://spam' }), ctx), '/faculty/join/thanks/');
+  assert.equal(await applyFaculty(env, form({ wl_trap: 'http://spam' }), ctx), '/faculty/join/thanks/');
   assert.equal((await env.DB.prepare('SELECT COUNT(*) AS n FROM faculty_applications').first()).n, 0);
 });

@@ -25,11 +25,13 @@ lb.pathways.forEach((p) => { add(p.desc); add(p.region); p.modules.forEach((m) =
 lb.destinations.forEach((d) => { add(d.label); d.steps.forEach(add); });
 ['Overall', 'Normal', 'Abnormal', 'Indeterminate', 'Good', 'Adequate', 'Limited', 'Inadequate', 'Female', 'Male', 'Agreed', 'Partly agreed', 'Disagreed', 'UK', 'Europe', 'Australia and New Zealand', 'Canada', 'United States', 'Portfolio', 'Image quality', 'Diagnostic accuracy'].forEach(add);
 // Worker error messages shown to users.
-for (const f of ['worker/app.js', 'worker/supervise.js', 'worker/app-util.js', 'worker/evidence.js', 'worker/email-verify.js']) {
+for (const f of ['worker/app.js', 'worker/supervise.js', 'worker/app-util.js', 'worker/evidence.js', 'worker/email-verify.js', 'worker/password.js']) {
   const s = fs.readFileSync(f, 'utf8');
   for (const m of s.matchAll(/error: '((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
   for (const m of s.matchAll(/error: `([^`$]*)`/g)) add(m[1]);
 }
+// New-password checklist (PW_RULES in app.js, rules in worker/password.js).
+['At least 10 characters', 'An uppercase letter', 'A lowercase letter', 'A number', 'A symbol, such as ! ? # or %', 'Choose a password of at most 200 characters.'].forEach(add);
 for (const p of plurals.keys()) keys.delete(p);
 fs.mkdirSync('tools/i18n', { recursive: true });
 const out = { strings: [...keys].sort(), plurals: Object.fromEntries([...plurals].sort()) };
