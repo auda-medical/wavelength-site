@@ -31,8 +31,8 @@
     pre = pre || {};
     return '<div class="field"><label for="as-n">' + esc(T('Your name')) + '</label><input id="as-n" name="name" type="text" value="' + esc(pre.name || '') + '" required autocomplete="off"></div>' +
       '<div class="field"><label for="as-r">' + esc(T('Role')) + '</label><input id="as-r" name="role" type="text" value="' + esc(pre.role || '') + '" placeholder="' + esc(T('For example consultant in emergency medicine')) + '" required></div>' +
-      '<div class="two"><div class="field"><label for="as-g">' + esc(T('Professional registration number')) + '</label><input id="as-g" name="registration" type="text" value="' + esc(pre.registration || '') + '"></div>' +
-      '<div class="field"><label for="as-a">' + esc(T('Accreditation')) + '</label><select id="as-a" name="accreditation"><option value="">' + esc(T('Choose')) + '</option>' + ACCRED.map(function (a) { return '<option value="' + esc(a) + '">' + esc(T(a)) + '</option>'; }).join('') + '</select></div></div>';
+      '<div class="field"><label for="as-g">' + esc(T('Registration number')) + '</label><input id="as-g" name="registration" type="text" value="' + esc(pre.registration || '') + '" placeholder="' + esc(T('GMC, NMC or HCPC')) + '"></div>' +
+      '<div class="field"><label for="as-a">' + esc(T('Accreditation')) + '</label><select id="as-a" name="accreditation"><option value="">' + esc(T('Choose')) + '</option>' + ACCRED.map(function (a) { return '<option value="' + esc(a) + '">' + esc(T(a)) + '</option>'; }).join('') + '</select></div>';
   }
 
   // The structured assessment form. opts: { kind, topics, date, hideAssessor, pre, learnerReflection }
