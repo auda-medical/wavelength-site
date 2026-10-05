@@ -7,8 +7,10 @@ eyebrow: Guide · RCEM
 summary: How emergency medicine trainees and non-training clinicians reach entrustment level 4 in point-of-care ultrasound, stage by stage, with the evidence your supervisor needs to see.
 date: 2026-10-04
 reviewed: 2026-10-04
+updated: 2026-10-05
 author: Dr Firas Abou-Auda
 order: 1
+pathway: rcem
 draft: false
 ---
 
@@ -219,7 +221,24 @@ Talk to your educational supervisor and PoCUS lead early, well before ARCP. Comm
 
 Competence fades without practice. RCEM recommends a personal development plan and continuing professional development after level 4: keep logging, keep reflecting, review scans with peers and compare your findings with formal imaging. Supervising and teaching others counts as part of maintaining competence.
 
-> **Wavelength note** Wavelength courses are mapped to the RCEM curriculum. They are not RCEM accredited, and RCEM no longer requires a course for sign-off. A course is one source of learning evidence among several.
+> **Wavelength note** Wavelength courses, such as the [Core Emergency Ultrasound course](/courses/core-emergency-ultrasound/), are mapped to the RCEM curriculum. They are not RCEM accredited, and RCEM no longer requires a course for sign-off. A course is one source of learning evidence among several.
+
+## Common mistakes that delay sign-off
+
+This is Wavelength's advice on where sign-off most often slips past ARCP, built on the requirements above.
+
+- **Treating the number as sign-off.** Indicative numbers guide you. Your supervisor signs you off on the quality and consistency of your evidence.
+- **Saving DOPS for the end.** A cluster of assessments the month before ARCP shows less than DOPS spread across a year, from different assessors.
+- **Thin reflections.** Five reflections that show learning beat twenty that describe a normal scan.
+- **Leaving diagnostic modalities to chance.** Opportunistic scanning rarely gets AAA, eFAST or shock assessment over the line. Book protected scanning time.
+- **Forgetting the generic competences.** RCEM recommends assessing physics, settings, ergonomics, safety and governance alongside every modality.
+- **Rebuilding the logbook from memory.** Log on the day, with no patient identifiers.
+
+## How the Wavelength logbook organises your RCEM evidence
+
+Choose RCEM in the free [Wavelength POCUS logbook](/pocus-logbook/) and it sets up the six modalities with RCEM's indicative numbers and five reflections each. Each scan you log counts towards its modality, your reflections are counted, and a DOPS your assessor records in the app counts once it is judged competent.
+
+When you export, choose the RCEM e-portfolio (risr/advance) as the destination. The app builds a PDF with a verification code and shows the steps: attach the file to your e-portfolio entry and paste the verification link. RCEM signs off PoCUS by DOPS in the e-portfolio, so ask your supervisor to complete each DOPS there too. Wavelength is not connected directly to the e-portfolio.
 
 ## Sources
 

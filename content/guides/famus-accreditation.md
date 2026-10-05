@@ -7,8 +7,10 @@ eyebrow: Guide · FAMUS
 summary: How to gain Focused Acute Medicine Ultrasound accreditation from the Society for Acute Medicine, module by module, from finding a supervisor to sending your completed assessment.
 date: 2026-10-04
 reviewed: 2026-10-04
+updated: 2026-10-05
 author: Dr Firas Abou-Auda
 order: 3
+pathway: famus
 draft: false
 ---
 
@@ -121,6 +123,24 @@ After a year of accreditation with regular scanning, and ideally some teaching, 
 
 - **Emergency medicine.** RCEM lists FAMUS as complementary learning evidence. FAMUS does not replace RCEM PoCUS sign-off.
 - **Intensive care.** The Intensive Care Society accepts FAMUS thoracic in place of FUSIC Lung as a prerequisite for FUSIC Haemodynamics, and accepts FAMUS-accredited clinicians as trainers for several FUSIC modules after 12 months.
+
+## Common mistakes that delay accreditation
+
+This is Wavelength's advice on where FAMUS most often slows down, built on SAM's requirements above.
+
+- **Paying before you have a supervisor.** SAM recommends you confirm a registered supervisor before you register.
+- **Supervised scans done remotely.** SAM asks for the supervised scans to be face to face, even if later supervision is remote.
+- **Images that do not match the report sheets.** Label every image with the same training code as its report sheet (T1, T2, T3) so your mentor can match them.
+- **Gaps in core pathology.** Check your logbook against the core pathology list every few weeks, not at the end.
+- **Too many simulator scans.** They count only when supervised and showing pathology, five at most.
+- **Forgetting the minimum training time.** It runs from your first supervised scan, so a full logbook still waits for the date.
+- **Training findings in the notes.** Until you are accredited, keep training scan findings out of the clinical record and PACS.
+
+## How the Wavelength logbook organises your FAMUS evidence
+
+Choose FAMUS in the free [Wavelength POCUS logbook](/pocus-logbook/) and it sets up the five modules with SAM's numbers: total and supervised scans, the minimum training time from your first supervised scan, core pathology such as pleural effusions and site marking, and the limits on simulation. Your supervisor can also record the Assessment of Completion of Training in the app as a final assessment, so the module shows as complete.
+
+The app does not replace SAM's paperwork. You still complete a FAMUS report sheet for every scan, countersigned by your mentor, and send the signed ACT to SAM. When you export for FAMUS, keep the PDF with your report sheets, and include it with the verification link if the FAMUS administrator asks for your logbook.
 
 ## Sources
 

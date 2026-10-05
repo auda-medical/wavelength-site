@@ -738,3 +738,73 @@ html:lang(zh-Hans) .split-words,html:lang(zh-Hans) h1{word-break:normal;line-bre
 @media (min-width:1024px){.guide-wrap{grid-template-columns:240px minmax(0,1fr)}.guide-toc{position:sticky;top:96px}}
 /* Images with width and height attributes keep their aspect ratio when CSS sets only the width. */
 :where(img[width][height]){height:auto}
+/* Logbook note on pearls: which pathway modules the scan counts towards */
+.log-strip{margin-top:40px;max-width:72ch;padding:24px 28px;border-radius:var(--radius);background:var(--white);border:1px solid var(--line);border-left:3px solid var(--teal)}
+.log-strip .eyebrow{margin:0 0 8px}
+.log-strip p{margin:0;color:var(--slate)}
+.log-strip b{color:var(--navy);font-weight:600}
+.log-strip .log-strip-links{margin-top:12px;font-size:15px}
+/* POCUS logbook page: pathway cards and a three-column step list */
+.pw-grid{display:grid;gap:20px}
+@media (min-width:760px){.pw-grid{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1080px){.pw-grid{grid-template-columns:repeat(3,1fr)}}
+.pw-card{padding:28px;border-radius:var(--radius);background:var(--white);border:1px solid var(--line);scroll-margin-top:96px}
+.pw-card:target{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-light)}
+.pw-card .eyebrow{margin:0}
+.pw-card h3{font-family:var(--serif);font-size:32px;margin:8px 0 2px}
+.pw-card p{margin:0;color:var(--slate);font-size:15px}
+.pw-card .pw-name{color:var(--navy);font-weight:500;margin-bottom:12px}
+.pw-card .pw-link{margin-top:14px}
+@media (min-width:760px){.ac-steps.steps-3{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1080px){.ac-steps.steps-3{grid-template-columns:repeat(3,1fr)}}
+.guide-toc-extra{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:15px}
+.guide-toc-extra+.guide-toc-extra{margin-top:6px;padding-top:0;border-top:0}
+/* One-page guide summaries (/guides/<slug>/at-a-glance/): a sheet on screen, one A4 page in print */
+.glance-section{padding:72px 0}
+.glance{max-width:980px;margin:0 auto;padding:36px;border-radius:var(--radius);background:var(--white);border:1px solid var(--line);border-top:4px solid var(--teal)}
+.glance-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.glance-head .eyebrow{margin:0}
+.glance-head h2{font-family:var(--serif);font-size:clamp(30px,4vw,42px);line-height:1.1;margin:4px 0 0}
+.glance-brand{display:inline-flex;align-items:center;gap:10px;color:var(--navy);order:2}
+.glance-brand b{font-size:13px;letter-spacing:.24em;font-weight:600}
+.glance-body{max-width:none;margin-top:8px}
+.glance-body h2{font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--teal-ink);margin:24px 0 8px;break-after:avoid}
+.glance-body p,.glance-body li{font-size:16px}
+.glance-body ul,.glance-body ol{margin:0;padding-left:20px}
+.glance-body .table-wrap{margin:4px 0 8px}
+.glance-body .md-table{font-size:14px;margin:0}
+.glance-body .md-table th,.glance-body .md-table td{padding:7px 10px 7px 0}
+@media (min-width:900px){.glance-body{column-count:2;column-gap:44px}.glance-body>*{break-inside:avoid}.glance-body h2:first-child{margin-top:12px}}
+.glance-foot{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+.glance-foot p{margin:0 0 6px;font-size:14px;color:var(--slate)}
+.glance-foot .glance-note{font-size:13px;margin:0}
+.glance-qr{display:block;width:112px}
+.glance-qr .qr{width:112px;height:112px}
+.glance-more{max-width:980px;margin:28px auto 0;font-size:15px}
+.glance-lead{max-width:980px;margin:0 auto 24px;font-size:16px;color:var(--slate)}
+@media (max-width:520px){.glance{padding:22px 16px}.glance-body .md-table thead th{letter-spacing:.06em;font-size:10px}.glance-body .md-table tbody th,.glance-body .md-table td{font-size:13px}.glance-body .md-table th,.glance-body .md-table td{padding-right:8px}.glance-foot{grid-template-columns:1fr}.glance-qr{width:96px}.glance-qr .qr{width:96px;height:96px}}
+@page glance{size:A4;margin:10mm 11mm}
+@media print{
+  html:has(.glance) body{background:#fff;font-size:10pt}
+  html:has(.glance) .site-header,html:has(.glance) .site-footer,html:has(.glance) .mobile-menu,html:has(.glance) .hero,html:has(.glance) .sub-band,html:has(.glance) .skip,html:has(.glance) .lang-offer,html:has(.glance) .glance-more,html:has(.glance) .glance-lead{display:none!important}
+  .glance-section{padding:0}
+  .glance-section .wrap{padding:0;max-width:none}
+  .glance{page:glance;max-width:none;padding:0;border:0;border-radius:0}
+  .glance-head{padding-bottom:6pt}
+  .glance-head h2{font-size:24pt;margin-top:1pt}
+  .glance-brand svg{width:24px;height:24px}
+  .glance-body{column-count:2;column-gap:18pt;margin-top:0}
+  .glance-body>*,.glance-body p,.glance-body li{break-inside:avoid}
+  .glance-body h2{font-size:8.2pt;margin:10pt 0 4pt}
+  .glance-body h2:first-child{margin-top:4pt}
+  .glance-body p,.glance-body li{font-size:9.6pt;line-height:1.4;margin:0 0 3.5pt;color:#1d2a3c}
+  .glance-body ul,.glance-body ol{padding-left:12pt}
+  .glance-body .md-table,.glance-body .md-table tbody th{font-size:8.8pt}
+  .glance-body .md-table th,.glance-body .md-table td{padding:2.5pt 6pt 2.5pt 0}
+  .glance-body .table thead th{font-size:6.8pt}
+  .glance-foot{margin-top:8pt;padding-top:8pt;gap:12pt;break-inside:avoid}
+  .glance-qr,.glance-qr .qr{width:92px;height:92px}
+  .glance-foot p{font-size:8.8pt;margin:0 0 2pt}
+  .glance-foot .glance-note{font-size:7.8pt}
+  .glance a{color:inherit}
+}
