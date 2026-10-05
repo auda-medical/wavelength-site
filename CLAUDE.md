@@ -100,6 +100,29 @@ Claude and ChatGPT both work on this repository. GitHub issue #2 in auda-medical
 - Migration `migrations/0006_app.sql` (applied to live). Terms at /app-terms/; the privacy notice has an app section.
 - Monetisation stance (October 2026): free for now. Possible later paid tiers: department dashboards, optional encrypted cloud image backup (DPIA first).
 
+## Verification: email, professional identity, credentials, supervisors (October 2026)
+- Full design: `docs/verification-architecture.md`. Register research, what to ask each body, portfolio standards, privacy and store review: `docs/verification-integrations.md`.
+- Migration `0011_verification.sql` is NOT yet applied to production. Until it is, `verificationReady()` keeps the old email and sign-off behaviour, and the professional endpoints answer 503.
+- Keep five things separate:
+  1. Email ownership (`learners.email_status`: legacy_unverified, unverified, verified).
+  2. Professional registration (`professional_registrations`).
+  3. External credentials (`credentials`, issued by SAM, ICS, BSE and others, never by Wavelength).
+  4. Scoped Wavelength supervisor approval (`supervisor_approvals`, one pathway module per row).
+  5. Badges, snapshots and the directory, computed on the server.
+  Never add a `verified_supervisor` boolean, and never trust status sent by a browser.
+- Email: `worker/email-verify.js`. Hashed, single-use, expiring, throttled tokens in `/app/#/verify-email/<token>`.
+  - App sign-up on an Academy-only email finishes from a claim link, and returning Academy learners get a sign-in link: nobody takes over an account by typing an email.
+  - Accepting a supervisor invitation needs a verified email, or the invitation's own token.
+  - The logbook is never gated.
+  - `EMAIL_VERIFY = "off"` is the emergency switch.
+- Regulators and bodies live in `data/credentials.json`. Every adapter is `manual` (no permitted automated source yet), so claims go to `/volunteer/admin/supervisors/`.
+  - `worker/verification/adapters.js` defines the adapter contract. `mock` is for tests only (`VERIFY_MOCK`, never in wrangler.jsonc).
+  - Never scrape a register, bypass CAPTCHA or use an undocumented endpoint. A live adapter needs the body's written permission or licence.
+- Name matching: `worker/verification/names.js` (`names-v1`). Formatting differences match; initials, middle-name use and partial surnames go to review. Bump `VERSION` when the rules change.
+- Sign-offs and assessments store `supervisor_snapshot`, written once with the signature and never updated. Public verify pages show `supervisorCheck`, never registration numbers.
+- Tests: `test/email-verify.test.mjs`, `test/professional.test.mjs`, `test/credentials.test.mjs`. Browser check: `tools/e2e-verification.mjs` (local setup in its header; never against production).
+- Professional verification is off until `PROFESSIONAL_VERIFY = "true"`, and the directory until `DIRECTORY_PUBLIC = "true"`. Before switching either on, update the privacy notice, the DPIA and the store privacy answers (checklist in the architecture doc, section 14).
+
 ## Volunteer area (hidden)
 - `/volunteer/` is a hidden, password-protected sign-up for scanning-model volunteers. Not linked anywhere, noindex, not in the sitemap.
 - `worker/index.js` runs first for `/volunteer/*` (`run_worker_first` in `wrangler.jsonc`), checks the login cookie, saves sign-ups to D1 (`wavelength-volunteers`, binding `DB`, schema in `migrations/`), and renders `/volunteer/admin/` (list, mark contacted, delete, CSV export).
