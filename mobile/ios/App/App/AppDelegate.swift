@@ -7,7 +7,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        excludeWebKitFromBackup()
         return true
     }
 
@@ -40,5 +40,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                                           sessionRole: connectingSceneSession.role)
         config.delegateClass = SceneDelegate.self
         return config
+    }
+
+    // Ultrasound images and clips are kept in WKWebView's IndexedDB under Library/WebKit. They must never go to
+    // iCloud or iTunes backups: they stay on this phone, and a new phone gets them back only from the learner's own
+    // backup file. Set on every launch, creating the folder first so the flag sticks before WebKit writes to it.
+    // Errors are ignored: the app must always start.
+    private func excludeWebKitFromBackup() {
+        let fm = FileManager.default
+        guard let library = fm.urls(for: .libraryDirectory, in: .userDomainMask).first else { return }
+        var webKit = library.appendingPathComponent("WebKit", isDirectory: true)
+        try? fm.createDirectory(at: webKit, withIntermediateDirectories: true, attributes: nil)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? webKit.setResourceValues(values)
     }
 }

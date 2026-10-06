@@ -23,6 +23,17 @@ jobs:
       - name: Build the logbook bundle (mobile/www)
         run: node scripts/build-www.mjs
       - run: npx cap sync ios
+      - name: Check the built app
+        # Fails the run before signing if the app would load the website (server.url) or lacks the bundled logbook,
+        # as the Android workflow does for its .apk.
+        run: |
+          PUB=ios/App/App/public
+          CFG=ios/App/App/capacitor.config.json
+          [ -f "$PUB/index.html" ] || { echo "::error::bundled logbook missing from the app ($PUB/index.html)"; exit 1; }
+          grep -q 'Content-Security-Policy' "$PUB/index.html" || { echo "::error::bundled logbook has no Content Security Policy"; exit 1; }
+          [ -f "$CFG" ] || { echo "::error::$CFG missing: run npx cap sync ios"; exit 1; }
+          if grep -q '"url"' "$CFG"; then echo "::error::server.url found: the app would load the website"; exit 1; fi
+          echo "::notice title=Bundle::logbook bundled ($(find "$PUB" -type f | wc -l | tr -d ' ') files), no server.url"
       - name: Archive and upload
         env:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
