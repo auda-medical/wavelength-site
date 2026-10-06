@@ -97,8 +97,38 @@
     var opt = { credentials: 'same-origin', headers: { Accept: 'application/json', 'Accept-Language': LANG } };
     if (data !== undefined) { opt.method = 'POST'; opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(data); }
     return NAT.net(path, opt).then(function (r) {
-      return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { signedOut(); } return j; });
+      return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { signedOut(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
     });
+  }
+  // ---------- Store app updates ----------
+  // The server names a minimum and a recommended store version. Recommended: a banner the learner can dismiss.
+  // Required (only for a security or data-integrity reason): a banner that stays, and sync pauses, but the logbook
+  // stays readable and exportable on this phone so nobody is locked out of their own records.
+  function verCmp(a, b) {
+    var x = String(a || '').split('.'), y = String(b || '').split('.');
+    for (var i = 0; i < Math.max(x.length, y.length); i++) { var d = (parseInt(x[i], 10) || 0) - (parseInt(y[i], 10) || 0); if (d) return d < 0 ? -1 : 1; }
+    return 0;
+  }
+  function updateLevel() {
+    if (S.update === 'required') return 'required';
+    var me = S.me || {};
+    if (me.update === 'required' || me.update === 'recommended') return me.update;
+    if (!NAT.on || !NAT.version) return 'none';
+    if (me.minVersion && verCmp(NAT.version, me.minVersion) < 0) return 'required';
+    if (me.recommendedVersion && verCmp(NAT.version, me.recommendedVersion) < 0) return 'recommended';
+    return 'none';
+  }
+  function storeUrl() { return NAT.platform === 'android' ? 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app' : 'https://thewavelength.co.uk/app/get/'; }
+  function updateBanner() {
+    var lv = updateLevel(); if (lv === 'none') return '';
+    if (lv === 'recommended') { var seen; try { seen = localStorage.getItem('wl-upd-hide'); } catch (e) { seen = null; } if (seen && seen === String((S.me || {}).recommendedVersion || 'r')) return ''; }
+    var msg = (S.me && S.me.updateMessage) || (lv === 'required' ? T('Update Wavelength to keep syncing. Your logbook stays on this phone and you can still read and export it.') : T('A new version of Wavelength is ready. Update when you can.'));
+    return '<div class="upd ' + lv + '" role="status"><p>' + esc(msg) + '</p><div class="row"><a class="btn sm teal" href="' + esc(storeUrl()) + '" target="_blank" rel="noopener">' + esc(T('Update')) + '</a>' + (lv === 'recommended' ? '<button class="link small" type="button" data-updhide>' + esc(T('Not now')) + '</button>' : '') + '</div></div>';
+  }
+  function showUpdate() { if (!document.querySelector('.upd') && S.account) { var m = document.querySelector('main'); if (m) { m.insertAdjacentHTML('afterbegin', updateBanner()); bindUpdate(); } } }
+  function bindUpdate() {
+    var h = $('[data-updhide]'); if (h) h.onclick = function () { try { localStorage.setItem('wl-upd-hide', String((S.me || {}).recommendedVersion || 'r')); } catch (e) { /* storage blocked */ } var b = h.closest('.upd'); if (b) b.remove(); };
+    $$('.upd a.btn').forEach(function (a) { a.addEventListener('click', function (ev) { if (NAT.on && NAT.openExternal && !ev.defaultPrevented) { ev.preventDefault(); NAT.openExternal(a.href); } }); });
   }
   function loadScript(src) { return new Promise(function (ok, no) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { no(new Error(T('Could not load a part of the app. Check your connection.'))); }; document.head.appendChild(s); }); }
   // ---------- New passwords: the same rules as the server (worker/password.js), a live checklist and a confirm box ----------
@@ -133,14 +163,21 @@
   function copy(text, done) { return (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast(done || T('Link copied.')); }).catch(function () { prompt(T('Copy this link'), text); }); }
 
   // ---------- Local database: one per account, so two people on one device never mix logbooks ----------
+  var DB_VERSION = 2;
+  var IMG_LIMIT = 1572864 - 64; // the Worker's per-image share limit (IMG_MAX), less the encryption overhead
   function openDb(id) {
     return new Promise(function (ok, no) {
-      var r = indexedDB.open('wavelength-' + id, 1);
-      r.onupgradeneeded = function () {
-        var db = r.result;
-        db.createObjectStore('entries', { keyPath: 'id' });
-        var im = db.createObjectStore('images', { keyPath: 'id' }); im.createIndex('entryId', 'entryId');
-        db.createObjectStore('kv', { keyPath: 'k' });
+      var r = indexedDB.open('wavelength-' + id, DB_VERSION);
+      // A ladder: each step runs once, in order, from the version on the phone. Steps only add stores or indexes, or
+      // transform records in place. Never delete a store that holds user data in the release that stops using it.
+      r.onupgradeneeded = function (ev) {
+        var db = r.result, from = ev.oldVersion || 0;
+        if (from < 1) {
+          db.createObjectStore('entries', { keyPath: 'id' });
+          var im = db.createObjectStore('images', { keyPath: 'id' }); im.createIndex('entryId', 'entryId');
+          db.createObjectStore('kv', { keyPath: 'k' });
+        }
+        if (from < 2) db.createObjectStore('shares', { keyPath: 'code' }); // encrypted upload queue for sign-off links
       };
       r.onsuccess = function () { ok(r.result); };
       r.onerror = function () { no(r.error); };
@@ -196,7 +233,7 @@
   function saveLocal(e) { var i = S.entries.findIndex(function (x) { return x.id === e.id; }); if (i >= 0) S.entries[i] = e; else S.entries.push(e); return put('entries', e); }
   function setSyncDot() { var d = $('.sync-dot'); if (!d) return; d.classList.toggle('off', !S.online); d.classList.toggle('busy', S.syncing); d.title = !S.online ? T('Offline. Changes save on this device and sync when you reconnect.') : S.syncing ? T('Syncing') : T('Synced'); }
   function sync() {
-    if (!S.account || !navigator.onLine) return Promise.resolve();
+    if (!S.account || !navigator.onLine || updateLevel() === 'required') return Promise.resolve();
     if (S.syncing) { S.again = S.again || S.syncP.then(function () { S.again = null; return sync(); }); return S.again; }
     S.syncing = true; setSyncDot();
     S.syncP = doSync();
@@ -221,7 +258,7 @@
     return push.then(function () { return pullAll(); }).then(function () {
       return api('/api/app/signoffs').then(function (r) { if (r.ok) return setPending(r.signoffs); });
     }).then(loadAssessments).catch(function () { /* offline or server error: try again later */ }).then(function () {
-      S.syncing = false; setSyncDot();
+      S.syncing = false; setSyncDot(); resumeShares();
       // Send rebased edits straight away, at most twice in a row so a misbehaving server cannot loop us.
       if (!conflicts) S.rebases = 0; else if (!S.again && (S.rebases = (S.rebases || 0) + 1) <= 2) sync();
       if (['home', 'log', 'progress', 'entry', 'assess'].indexOf(route().name) >= 0 && !document.querySelector('form[data-dirty]') && !document.querySelector('.sheet-bg')) render(true);
@@ -342,7 +379,22 @@
     window.scrollTo({ top: Math.max(0, y), behavior: smooth ? 'smooth' : 'auto' });
   }
   function go(h) { if (location.hash === '#/' + h) render(); else location.hash = '#/' + h; }
-  window.addEventListener('hashchange', function () { render(); window.scrollTo(0, 0); });
+  // A scan form with unsaved changes asks before any navigation (header back, tabs, links, the Android back button).
+  // hashchange cannot be cancelled, so the previous address is put back without a render while the learner decides.
+  var lastHash = location.hash, leaving = false;
+  window.addEventListener('hashchange', function () {
+    var dirty = document.querySelector('form[data-dirty]');
+    if (dirty && !leaving && location.hash !== lastHash) {
+      var target = location.hash;
+      history.replaceState(null, '', lastHash || '#/');
+      sheet('<h2>' + esc(T('Discard changes?')) + '</h2><p class="muted">' + esc(T('This scan has changes you have not saved.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Keep editing')) + '</button><button class="btn ghost block danger-text" style="color:var(--red)" data-discard>' + esc(T('Discard changes')) + '</button></div>', function (root) {
+        $('[data-discard]', root).onclick = function () { closeSheet(); draftImages = []; delete dirty.dataset.dirty; leaving = true; location.hash = target; };
+      });
+      return;
+    }
+    leaving = false; lastHash = location.hash;
+    render(); window.scrollTo(0, 0);
+  });
   window.addEventListener('online', function () { S.online = true; setSyncDot(); sync(); });
   window.addEventListener('offline', function () { S.online = false; setSyncDot(); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync(); });
@@ -351,7 +403,7 @@
     var r = route().name;
     var tab = function (name, href, icon, label, dot) { return '<a href="#/' + href + '"' + (r === name || (opts.tab === name) ? ' aria-current="page"' : '') + '>' + icon + '<span>' + esc(label) + '</span>' + (dot ? '<i class="nd" aria-label="' + esc(T('New sign-off')) + '"></i>' : '') + '</a>'; };
     var top = opts.hero ? '' : '<header class="top">' + (opts.back != null ? '<a class="back" href="#/' + opts.back + '" aria-label="' + esc(T('Back')) + '">' + I.back + '</a>' : MARK(34, 'rgba(247,245,240,.5)')) + '<h1>' + esc(opts.title) + '</h1>' + (opts.action || '') + '<span class="sync-dot" aria-hidden="true"></span></header>';
-    return top + (opts.hero || '') + '<main class="' + (opts.hero ? 'flush' : '') + '">' + body + '</main>' +
+    return top + (opts.hero || '') + '<main class="' + (opts.hero ? 'flush' : '') + '">' + updateBanner() + body + '</main>' +
       '<nav class="tabs" aria-label="App">' + tab('home', '', I.home, T('Home')) + tab('log', 'log', I.book, T('Logbook'), news().length) + '<a class="plus" href="#/new" aria-label="' + esc(T('Log a scan')) + '">' + I.plus + '<span>' + esc(T('Log')) + '</span></a>' + tab('progress', 'progress', I.chart, T('Progress')) + tab('me', 'me', I.user, T('Me')) + '</nav>';
   }
 
@@ -368,9 +420,16 @@
     var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute };
     (views[r.name] || viewHome)(r);
     setSyncDot();
+    if (!soft) announce();
     if (soft) window.scrollTo(0, keepScroll);
   }
-  function mount(html) { app.innerHTML = html; $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); }); bindLang(app); }
+  // A small live region announces each new screen by its title; the screen itself is not a live region.
+  function announce(text) {
+    var sr = document.getElementById('sr'); if (!sr) return;
+    var h = text || ($('header.top h1') || $('h1', app) || {}).textContent || '';
+    sr.textContent = ''; setTimeout(function () { sr.textContent = h; }, 60);
+  }
+  function mount(html) { app.innerHTML = html; bindUpdate(); $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); }); bindLang(app); }
 
   // ---------- Auth views ----------
   function authFrame(title, lede, body) {
@@ -667,10 +726,13 @@
     [/\b\d{1,2}[\/.]\d{1,2}[\/.](19|20)\d{2}\b/, 'a date (date of birth?)'],
     [/\b[A-Z]{1,4}\d{5,9}\b/i, 'a hospital number'],
     [/\b(Mr|Mrs|Ms|Miss|Master)\.?\s+[A-Z][a-z]+/, 'a patient name'],
-    [/\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/, 'a postcode']
+    [/\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/, 'a postcode'],
+    [/(\+44\s?7\d{3}|\b07\d{3})\s?\d{3}\s?\d{3}\b|(\+44\s?|\b0)(1|2)\d{2,3}\s?\d{3}\s?\d{3,4}\b/, 'a phone number'],
+    [/\b\d{1,2}(st|nd|rd|th)?\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?,?\s+(19|20)\d{2}\b/i, 'a date (date of birth?)'],
+    [/\b(DOB|D\.O\.B\.?|date of birth|born on)\b/i, 'a date of birth']
   ];
   function guard(e) {
-    var texts = [e.indication, e.interpretation, e.impact, e.reflection].concat(Object.keys(e.findings || {}).map(function (k) { return typeof e.findings[k] === 'string' ? e.findings[k] : ''; }));
+    var texts = [e.indication, e.interpretation, e.impact, e.reflection, e.supervisor].concat(Object.keys(e.findings || {}).map(function (k) { return typeof e.findings[k] === 'string' ? e.findings[k] : ''; }));
     var hits = [];
     texts.forEach(function (t) { GUARD.forEach(function (g) { if (t && g[0].test(t) && hits.indexOf(g[1]) < 0) hits.push(g[1]); }); });
     return hits.map(function (h) { return T(h); });
@@ -805,10 +867,13 @@
         out.images = keepImgs.concat(draftImages.map(function (x) { var o = { id: x.id, w: x.w, h: x.h, declared: true }; if (x.kind === 'clip') { o.kind = 'clip'; o.dur = x.dur; } return o; }));
         out._dirty = true; if (!editing) out._new = true;
         out.updatedAt = editing ? editing.updatedAt : 0;
-        var jobs = draftImages.map(function (x) { return put('images', { id: x.id, entryId: out.id, blob: x.blob, thumb: x.thumb, w: x.w, h: x.h, kind: x.kind || 'image', dur: x.dur, created: Date.now() }); })
-          .concat(removed.map(function (id) { return del('images', id); }));
         if (draftImages.length && navigator.storage && navigator.storage.persist) navigator.storage.persist();
-        Promise.all(jobs).then(function () { return saveLocal(out); }).then(function () {
+        fingerprints(out.images, draftImages, editing && editing.media).then(function (media) {
+          if (media.length) out.media = media; else delete out.media;
+          var jobs = draftImages.map(function (x) { return put('images', { id: x.id, entryId: out.id, blob: x.blob, thumb: x.thumb, w: x.w, h: x.h, kind: x.kind || 'image', dur: x.dur, sha256: x.sha256, created: Date.now() }); })
+            .concat(removed.map(function (id) { return del('images', id); }));
+          return Promise.all(jobs);
+        }).then(function () { return saveLocal(out); }).then(function () {
           setKv('lastSetting', out.setting); draftImages = []; NAT.haptic('success');
           delete form.dataset.dirty;
           sheet('<h2>' + esc(T('Scan saved')) + '</h2><p class="muted">' + esc(T((TYPES[out.type] || {}).label || '')) + ', ' + esc(fmt(out.date)) + '.</p>' + nextTargetsHtml(out) +
@@ -821,6 +886,29 @@
         return;
       }
       finish();
+    });
+  }
+  // A SHA-256 of each image and clip, computed on this phone when the scan is saved. Only the fingerprints sync, so a
+  // sign-off covers the media the supervisor saw: changing an image after sign-off voids a newer sign-off. It detects
+  // accidental or casual changes, not a determined learner who controls the phone.
+  function blobSha(b) {
+    if (!(b && window.crypto && crypto.subtle)) return Promise.resolve(null);
+    return b.arrayBuffer().then(function (buf) { return crypto.subtle.digest('SHA-256', buf); })
+      .then(function (h) { return Array.prototype.map.call(new Uint8Array(h), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); })
+      .catch(function () { return null; });
+  }
+  function fingerprints(images, drafts, prev) {
+    return Promise.all((images || []).map(function (im) {
+      var d = (drafts || []).find(function (x) { return x.id === im.id; });
+      if (d) return blobSha(d.blob).then(function (h) { d.sha256 = h; return h; });
+      return getOne('images', im.id).then(function (rec) {
+        if (rec && rec.sha256) return rec.sha256;
+        if (rec) return blobSha(rec.blob).then(function (h) { if (h) { rec.sha256 = h; put('images', rec); } return h; });
+        var old = (prev || []).find(function (m) { return m.id === im.id; }); // on another device: keep its fingerprint
+        return old ? old.sha256 : null;
+      });
+    })).then(function (hs) {
+      return (images || []).map(function (im, i) { return hs[i] ? { id: im.id, sha256: hs[i], kind: im.kind === 'clip' ? 'clip' : 'image' } : null; }).filter(Boolean);
     });
   }
   function nextTargetsHtml(e) {
@@ -883,8 +971,10 @@
           if (act === 'trim') { var h = Math.round(work.height * 0.12); crop(0, h, work.width, work.height - h); }
           if (act === 'rotate') { snap(); var c = document.createElement('canvas'); c.width = work.height; c.height = work.width; var g = c.getContext('2d'); g.translate(c.width, 0); g.rotate(Math.PI / 2); g.drawImage(work, 0, 0); replace(c); }
           if (act === 'save') {
+            // 2048 px at quality 0.9 keeps fine text and speckle; step quality down only past the 1.5 MB share limit.
+            var best = function () { var qs = [0.9, 0.85, 0.8, 0.72]; var tryQ = function (i) { return out(2048, qs[i]).then(function (r) { return r.b && r.b.size > IMG_LIMIT && i < qs.length - 1 ? tryQ(i + 1) : r; }); }; return tryQ(0); };
             var out = function (maxSide, q) { return new Promise(function (ok) { var s = Math.min(1, maxSide / Math.max(work.width, work.height)); var c = document.createElement('canvas'); c.width = Math.round(work.width * s); c.height = Math.round(work.height * s); var g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.drawImage(work, 0, 0, c.width, c.height); c.toBlob(function (b) { ok({ b: b, w: c.width, h: c.height }); }, 'image/jpeg', q); }); };
-            Promise.all([out(1600, 0.86), out(360, 0.72)]).then(function (r) { close({ blob: r[0].b, thumb: r[1].b, w: r[0].w, h: r[0].h, declared: true, kind: 'image' }); });
+            Promise.all([best(), out(360, 0.72)]).then(function (r) { close({ blob: r[0].b, thumb: r[1].b, w: r[0].w, h: r[0].h, declared: true, kind: 'image' }); });
           }
         });
         draw();
@@ -955,7 +1045,7 @@
         });
         function record() {
           var mime = clipMime();
-          var sc = Math.min(1, 960 / Math.max(crop.w, crop.h));
+          var sc = Math.min(1, 1280 / Math.max(crop.w, crop.h));
           var out = document.createElement('canvas'); out.width = Math.round(crop.w * sc / 2) * 2; out.height = Math.round(crop.h * sc / 2) * 2;
           var g = out.getContext('2d');
           var frame = function () { g.drawImage(vid, crop.x, crop.y, crop.w, crop.h, 0, 0, out.width, out.height); g.fillStyle = '#000'; covers.forEach(function (c) { g.fillRect((c.x - crop.x) * sc, (c.y - crop.y) * sc, c.w * sc, c.h * sc); }); };
@@ -963,7 +1053,7 @@
             frame();
             var thumbP = new Promise(function (ok) { var s = Math.min(1, 360 / Math.max(out.width, out.height)); var c = document.createElement('canvas'); c.width = Math.round(out.width * s); c.height = Math.round(out.height * s); c.getContext('2d').drawImage(out, 0, 0, c.width, c.height); c.toBlob(ok, 'image/jpeg', 0.72); });
             var stream = out.captureStream(30), chunks = [];
-            var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2500000 });
+            var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4000000 });
             rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
             var stopAt = startAt + len, raf = 0;
             var tick = function () { frame(); save.textContent = T('Preparing clip… {p}%', { p: Math.min(99, Math.round(100 * (vid.currentTime - startAt) / len)) }); if (vid.currentTime >= stopAt || vid.ended) { vid.pause(); rec.stop(); return; } raf = requestAnimationFrame(tick); };
@@ -987,7 +1077,7 @@
     var so = e.signoff;
     var basis = { witnessed: T('witnessed the scan'), reviewed: T('reviewed the images'), both: T('witnessed and reviewed') };
     var rt = so && so.rating ? '<div class="rated">' + ['image', 'accuracy'].filter(function (k) { return so.rating[k]; }).map(function (k) { var q = C.qualityScale.find(function (x) { return x.id === so.rating[k]; }) || {}; return '<span class="tl-tag tl-' + so.rating[k] + '"><i></i>' + esc(T(k === 'image' ? 'Image quality' : 'Diagnostic accuracy')) + ': ' + esc(T(q.label || '')) + '</span>'; }).join('') + '</div>' : '';
-    var signHtml = so ? '<div class="signbox ' + (so.status === 'confirmed' ? 'ok' : 'warn') + '"><b>' + esc(so.status === 'confirmed' ? T('Signed off') : T('Queried')) + '</b> · ' + esc(so.name) + (so.role ? ', ' + esc(so.role) : '') + (so.reg ? ' (' + esc(so.reg) + ')' : '') + ' · ' + esc(fmt(so.at)) + ' · ' + esc(so.method === 'in-person' ? T('in person') : so.method === 'dashboard' ? T('from their dashboard') : T('by link')) + (so.basis ? ' (' + esc(basis[so.basis]) + ')' : '') + '. ' + esc(T('Code {code}.', { code: so.code })) + rt + '</div>'
+    var signHtml = so ? '<div class="signbox ' + (so.status === 'confirmed' ? 'ok' : 'warn') + '"><b>' + esc(so.status === 'confirmed' ? T('Signed off') : T('Queried')) + '</b> · ' + esc(so.name) + (so.role ? ', ' + esc(so.role) : '') + (so.reg ? ' (' + esc(so.reg) + ')' : '') + ' · ' + esc(fmt(so.at)) + ' · ' + esc(so.method === 'in-person' ? T('in person') : so.method === 'dashboard' ? T('from their dashboard') : T('by link')) + (so.basis ? ' (' + esc(basis[so.basis]) + ')' : '') + '. ' + esc(T('Code {code}.', { code: so.code })) + (entrySigner(so) ? '<br><span class="small">' + esc(entrySigner(so)) + '</span>' : '') + rt + '</div>'
       : e.signoffVoid ? '<div class="warn">' + esc(T('Signed by {name}, then edited. Ask for sign-off again.', { name: e.signoffVoid.name })) + '</div>' : '';
     var wt = !(so && so.status === 'confirmed') && waiting(e), state = signState(e);
     if (wt) signHtml = '<div class="signbox warn"><b>' + esc(T('Awaiting sign-off')) + '</b>' + (wt.name ? ' · ' + esc(wt.name) : '') + '. ' + esc(T('Request sent, valid until {date}.', { date: fmt(new Date(wt.exp).toISOString()) })) + '</div>' + (so ? '<p class="small muted" style="margin:8px 0 0">' + esc(so.status === 'query' ? T('Earlier: queried by {name}.', { name: so.name }) : T('Earlier: signed by {name}.', { name: so.name })) + '</p>' : '');
@@ -1000,7 +1090,7 @@
     var asm = S.assessments.filter(function (a) { return (a.entry_ids || []).indexOf(e.id) >= 0 && a.status === 'signed'; });
     mount(shell({ title: T(t.label), back: 'log', action: '<a class="act" href="#/edit/' + esc(e.id) + '" style="text-decoration:none">' + esc(T('Edit')) + '</a>' },
       '<div class="detail"><p class="eyebrow">' + esc(fmt(e.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })) + '</p>' +
-      ((e.images || []).length ? '<div class="gallery" id="gal">' + e.images.map(function (im) { return '<button type="button" data-view="' + esc(im.id) + '"><img alt="' + esc(T('Scan image')) + '" data-img="' + esc(im.id) + '">' + (im.kind === 'clip' ? '<span class="play">▶</span>' : '') + '</button>'; }).join('') + '</div>' : '') +
+      ((e.images || []).length ? '<div class="gallery" id="gal">' + e.images.map(function (im) { return '<button type="button" data-view="' + esc(im.id) + '"><img alt="' + esc(T('Scan image')) + '" data-img="' + esc(im.id) + '">' + (im.kind === 'clip' ? '<span class="play">▶</span>' : '') + '</button>'; }).join('') + '</div><div class="mstate" id="mstate"></div>' : '') +
       '<div class="card">' + signHtml + '</div>' +
       '<div class="card"><h3 style="margin-bottom:10px">' + esc(T('Findings')) + '</h3><dl>' + t.fields.map(function (fd) { return row(T(fd.label), f[fd.id] != null ? (typeof f[fd.id] === 'number' ? f[fd.id] + (fd.unit ? ' ' + fd.unit : '') : f[fd.id]) : null); }).join('') + row(T('Overall'), e.overall) + row(T('Image quality (your rating)'), e.quality) + '</dl></div>' +
       '<div class="card"><h3 style="margin-bottom:10px">' + esc(T('Context')) + '</h3><dl>' + row(T('Setting'), e.setting) + row(T('Age band'), e.age) + row(T('Sex'), e.sex) + '<dt>' + esc(T('Indication')) + '</dt><dd>' + esc(e.indication || '') + '</dd>' + row(T('Supervision'), supLabel(e.supervision)) + '<dt>' + esc(T('Supervisor')) + '</dt><dd>' + esc(e.supervisor || '') + '</dd></dl></div>' +
@@ -1010,6 +1100,13 @@
       (mods.length ? '<div class="card"><h3 style="margin-bottom:8px">' + esc(T('Counts towards')) + '</h3><div class="meta" style="display:flex;flex-wrap:wrap;gap:6px">' + mods.join('') + '</div></div>' : '') +
       ((TYPES[e.type] || {}).learn ? '<a class="card dark" style="display:block;text-decoration:none" href="' + esc(TYPES[e.type].learn) + '"><p class="eyebrow" style="color:var(--teal-l)">' + esc(T('Learn more')) + '</p><h3>' + esc(T('{type} on Wavelength', { type: T(t.label) })) + '</h3><p class="muted small">' + esc(T('Free Pearls and certified Academy modules.')) + '</p></a>' : '') +
       '<div class="btns"><a class="btn teal" href="#/new?copy=' + esc(e.id) + '">' + esc(T('Another scan, same patient')) + '</a>' + '<a class="btn ghost" href="#/assess?e=' + esc(e.id) + '">' + esc(T('Use for an assessment')) + '</a><button class="btn ghost" id="shb">' + I.share + ' ' + esc(T('Share case')) + '</button><button class="btn ghost danger-text" id="delb" style="color:var(--red)">' + esc(T('Delete')) + '</button></div></div>'));
+    var ms = $('#mstate');
+    if (ms) shareFor(e.id).then(function (q) {
+      var st = shareState(q, e);
+      ms.innerHTML = '<span class="chip ' + (st.cls || '') + '">' + esc(st.label) + '</span>' + (st.retry ? ' <button class="link small" type="button" data-retryq>' + esc(T('Retry')) + '</button>' : '') + (st.link && q.link ? ' <button class="link small" type="button" data-showq>' + esc(T('Show link')) + '</button>' : '');
+      var rb = $('[data-retryq]', ms); if (rb) rb.onclick = function () { busy(rb, true); runShare(q).then(function (k) { linkReady({ link: q.link + '.' + k, images: q.files.length, dash: q.dash }, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(q.scans || 1, 'ultrasound scan'), link: q.link + '.' + k }), T('Ultrasound logbook sign-off')); }).catch(function (ex) { if (ex.share) shareFailed(q, ex, function (k) { linkReady({ link: q.link + '.' + k, images: q.files.length, dash: q.dash }, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(q.scans || 1, 'ultrasound scan'), link: q.link + '.' + k }), T('Ultrasound logbook sign-off')); }); else { busy(rb, false); toast(ex.message, 4000); } }); };
+      var sb = $('[data-showq]', ms); if (sb) sb.onclick = function () { linkReady({ link: shareLink(q), images: q.files.length, dash: q.dash }, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(q.scans || 1, 'ultrasound scan'), link: shareLink(q) }), T('Ultrasound logbook sign-off')); };
+    });
     var nsb = $('#nsb');
     if (nsb) nsb.onclick = function () { var d = strip(e); if (d.noSignoff) delete d.noSignoff; else d.noSignoff = true; d._dirty = true; d.updatedAt = e.updatedAt || 0; saveLocal(d).then(function () { toast(d.noSignoff ? T('Marked as no sign-off needed.') : T('Marked as needing sign-off.')); render(true); sync(); }); };
     $$('[data-img]').forEach(function (im) { getOne('images', im.dataset.img).then(function (rec) { if (rec) im.src = imgUrl(rec, true); else im.parentNode.innerHTML = '<span class="small" style="color:#B9C4D0;padding:6px">' + esc(T('Image on another device or backup')) + '</span>'; }); });
@@ -1091,7 +1188,7 @@
         var n = s.entry_ids.length, conf = Object.values(s.decisions || {}).filter(function (x) { return x === 'confirmed'; }).length;
         var st = s.status === 'signed' ? '<span class="chip green">' + esc(T('Signed')) + '</span>' : s.status === 'pending' ? (s.expires_at < Date.now() ? '<span class="chip">' + esc(T('Expired')) + '</span>' : '<span class="chip amber">' + esc(T('Waiting')) + '</span>') : '<span class="chip">' + esc(T('Cancelled')) + '</span>';
         var how = s.method === 'in-person' ? T('In person') : s.method === 'dashboard' ? T('Dashboard') : s.supervisor_id ? T('Dashboard and link') : T('By link');
-        return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([plural(n, 'scan'), how, fmt(s.signed_at || s.created_at), s.supervisor_name || '', s.status === 'signed' ? T('{n} confirmed', { n: conf }) : ''].filter(Boolean).join(' · ')) + '</p></div>' + st + '</div>' + (s.comment ? '<p class="small" style="margin:8px 0 0">“' + esc(s.comment) + '”</p>' : '') + (s.status === 'pending' && s.returned ? '<p class="small" style="margin:8px 0 0">' + esc(T('Came back to you: the supervisor is no longer available.')) + '</p><div class="btns"><button class="btn teal sm" data-back="' + esc(s.id) + '">' + esc(T('Send on')) + '</button></div>' : '') + (s.status === 'pending' && s.expires_at > Date.now() && !s.returned ? '<div class="btns"><button class="btn ghost sm" data-cancel="' + esc(s.id) + '">' + esc(T('Cancel request')) + '</button></div>' : '') + '</div>';
+        return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([plural(n, 'scan'), how, fmt(s.signed_at || s.created_at), s.supervisor_name || '', s.status === 'signed' ? T('{n} confirmed', { n: conf }) : ''].filter(Boolean).join(' · ')) + '</p></div>' + st + '</div>' + (s.status === 'signed' && s.signer ? '<p class="small muted" style="margin:6px 0 0">' + esc(signerText(s.signer)) + '</p>' : '') + (s.issuedInError ? '<div class="warn" style="margin-top:8px">' + esc(T('Marked as issued in error by Wavelength.')) + '</div>' : '') + (s.comment ? '<p class="small" style="margin:8px 0 0">“' + esc(s.comment) + '”</p>' : '') + (s.status === 'pending' && s.returned ? '<p class="small" style="margin:8px 0 0">' + esc(T('Came back to you: the supervisor is no longer available.')) + '</p><div class="btns"><button class="btn teal sm" data-back="' + esc(s.id) + '">' + esc(T('Send on')) + '</button></div>' : '') + (s.status === 'pending' && s.expires_at > Date.now() && !s.returned ? '<div class="btns"><button class="btn ghost sm" data-cancel="' + esc(s.id) + '">' + esc(T('Cancel request')) + '</button></div>' : '') + '</div>';
       }).join('') : '<p class="muted small">' + esc(T('No sign-offs yet.')) + '</p>';
       $$('[data-cancel]', h).forEach(function (b) { b.onclick = function () { api('/api/app/signoff/cancel', { code: b.dataset.cancel }).then(function () { toast(T('Request cancelled.')); viewSignoff(route()); }); }; });
       $$('[data-back]', h).forEach(function (b) { b.onclick = function () { returnedSheet('signoff', b.dataset.back, T('This sign-off request')); }; });
@@ -1133,32 +1230,125 @@
   }
   // Encrypted image sharing: AES-GCM 256 on this phone, key only in the link's #fragment. The server stores ciphertext.
   function b64u(buf) { var b = new Uint8Array(buf), s = ''; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
-  function shareImages(code, sets, onStep) {
-    var raw = crypto.getRandomValues(new Uint8Array(32)), list = [], total = 0, done = 0;
-    sets.forEach(function (st) { total += st.images.length; });
-    return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt']).then(function (key) {
+  // Encrypted uploads for a sign-off link go through a queue kept on this phone (IndexedDB 'shares'). Each file
+  // retries three times with back-off; the manifest is posted only when every file is up, or when the learner chooses
+  // to send without the ones that failed; an unfinished queue resumes on the next launch or reconnect. The key lives
+  // only in the queue on this phone and in the link fragment, never on the server.
+  function shareImages(code, sets, onStep, meta) {
+    var files = [];
+    sets.forEach(function (st) { st.images.forEach(function (rec, n) { files.push({ entry: st.entry, n: n, img: rec.id, w: rec.w || 0, h: rec.h || 0, kind: isClip(rec) ? 'clip' : 'image', type: isClip(rec) ? rec.blob.type : 'image/jpeg', state: 'queued' }); }); });
+    var q = Object.assign({ code: code, raw: crypto.getRandomValues(new Uint8Array(32)), files: files, created: Date.now() }, meta || {});
+    return put('shares', q).then(function () { return runShare(q, onStep); });
+  }
+  var wait = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+  function uploadOne(q, key, f, rec, tries) {
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return rec.blob.arrayBuffer().then(function (buf) {
+      return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: new TextEncoder().encode(q.code + ':' + f.entry + ':' + f.n) }, key, buf);
+    }).then(function (ct) {
+      var out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
+      return NAT.net('/api/app/signoff/image?code=' + encodeURIComponent(q.code) + '&entry=' + encodeURIComponent(f.entry) + '&n=' + f.n + (f.kind === 'clip' ? '&kind=clip' : ''), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' }, body: out });
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.ok && j.ok) return;
+        var ex = new Error(T(j.error || 'Could not upload an image.'));
+        ex.final = r.status >= 400 && r.status < 500; ex.status = r.status; throw ex;
+      });
+    }).catch(function (ex) {
+      // Network errors and server errors retry with back-off; a refusal (too large, request closed, logged out) does not.
+      if (ex.final || tries >= 3) throw ex;
+      return wait(tries * tries * 1000).then(function () { return uploadOne(q, key, f, rec, tries + 1); });
+    });
+  }
+  function runShare(q, onStep) {
+    if (S.sharing && S.sharing[q.code]) return S.sharing[q.code];
+    S.sharing = S.sharing || {};
+    var total = q.files.length;
+    var p = crypto.subtle.importKey('raw', q.raw, 'AES-GCM', false, ['encrypt']).then(function (key) {
       var chain = Promise.resolve();
-      sets.forEach(function (st) {
-        st.images.forEach(function (rec, n) {
-          chain = chain.then(function () {
-            onStep(++done, total);
-            var iv = crypto.getRandomValues(new Uint8Array(12));
-            return rec.blob.arrayBuffer().then(function (buf) {
-              return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: new TextEncoder().encode(code + ':' + st.entry + ':' + n) }, key, buf);
-            }).then(function (ct) {
-              var out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
-              return NAT.net('/api/app/signoff/image?code=' + encodeURIComponent(code) + '&entry=' + encodeURIComponent(st.entry) + '&n=' + n + (isClip(rec) ? '&kind=clip' : ''), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' }, body: out });
-            }).then(function (r) { return r.json(); }).then(function (j) {
-              if (!j.ok) throw new Error(T(j.error || 'Could not upload an image.'));
-              list.push({ entry: st.entry, n: n, w: rec.w || 0, h: rec.h || 0, kind: isClip(rec) ? 'clip' : 'image', type: isClip(rec) ? rec.blob.type : 'image/jpeg' });
-            });
-          });
+      q.files.forEach(function (f) {
+        if (f.state === 'done' || f.state === 'shared') return;
+        chain = chain.then(function () {
+          if (q.stop) return;
+          if (onStep) onStep(q.files.filter(function (x) { return x.state === 'done'; }).length + 1, total);
+          f.state = 'uploading'; delete f.why;
+          return getOne('images', f.img).then(function (rec) {
+            if (!rec) { var ex = new Error(T('The image is no longer on this phone.')); ex.final = true; throw ex; }
+            return uploadOne(q, key, f, rec, 1);
+          }).then(function () { f.state = 'done'; }, function (ex) {
+            f.state = 'failed'; f.why = ex.message;
+            if (ex.status === 401 || ex.status === 410) q.stop = ex.status; // logged out or the request closed: stop here
+          }).then(function () { return put('shares', q); });
         });
       });
       return chain;
     }).then(function () {
-      return api('/api/app/signoff/images', { code: code, images: list, declared: true });
-    }).then(function (j) { if (!j.ok) throw new Error(j.error || T('Could not share the images.')); return b64u(raw); });
+      var failed = q.files.filter(function (f) { return f.state === 'failed' || f.state === 'uploading'; }).length;
+      if (q.stop === 410) { var gone = new Error(T('This sign-off request is no longer open.')); gone.closed = true; throw gone; }
+      if (failed) { var ex = new Error(T('{n} could not be uploaded.', { n: plural(failed, 'image') })); ex.share = q; ex.failed = failed; throw ex; }
+      return finishShare(q);
+    });
+    S.sharing[q.code] = p;
+    var clear = function () { delete S.sharing[q.code]; delete q.stop; };
+    p.then(clear, clear);
+    return p;
+  }
+  // Posts the manifest for every file that is up, then returns the key for the link fragment.
+  function finishShare(q) {
+    var list = q.files.filter(function (f) { return f.state === 'done' || f.state === 'shared'; }).map(function (f) { return { entry: f.entry, n: f.n, w: f.w, h: f.h, kind: f.kind, type: f.type }; });
+    return api('/api/app/signoff/images', { code: q.code, images: list, declared: true }).then(function (j) {
+      if (!j.ok) throw new Error(j.error || T('Could not share the images.'));
+      q.posted = Date.now(); q.files = q.files.filter(function (f) { return f.state === 'done' || f.state === 'shared'; });
+      q.files.forEach(function (f) { f.state = 'shared'; });
+      return put('shares', q).then(function () { return b64u(q.raw); });
+    });
+  }
+  function shareLink(q) { return q.link ? q.link + '.' + b64u(q.raw) : ''; }
+  // After a launch, a reconnect or a sync: resume unfinished queues, and forget ones whose request has closed.
+  function resumeShares() {
+    if (!S.db || !S.account || !navigator.onLine || !(window.crypto && crypto.subtle)) return;
+    all('shares').then(function (qs) {
+      var pend = S.kv.pending || {}, open = {};
+      Object.keys(pend).forEach(function (id) { open[pend[id].code] = true; });
+      qs.forEach(function (q) {
+        var live = open[q.code] && (!q.expires || q.expires > Date.now());
+        if (!live) { if (q.posted || Date.now() - q.created > 864e5) { if (!q.closed) { q.closed = Date.now(); put('shares', q); } if (Date.now() - (q.closed || q.created) > 30 * 864e5) del('shares', q.code); } return; }
+        if (q.posted || S.sharing && S.sharing[q.code]) return;
+        if (q.files.some(function (f) { return f.state === 'failed'; })) return; // waits for the learner: retry, send without, or cancel
+        runShare(q).then(function () {
+          toast(T('Images for your sign-off request are uploaded.'), 3500);
+          if (!document.querySelector('.sheet-bg') && !document.querySelector('form[data-dirty]')) linkReady({ link: shareLink(q), images: q.files.length, dash: q.dash }, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(q.scans || 1, 'ultrasound scan'), link: shareLink(q) }), T('Ultrasound logbook sign-off'));
+        }).catch(function () { /* stays queued; the scan shows what failed */ });
+      });
+    });
+  }
+  // The state of a scan's images, for the learner: on this phone only, queued, uploading, shared, failed, removed.
+  function shareFor(entryId) {
+    return all('shares').then(function (qs) {
+      var mine = qs.filter(function (q) { return q.files.some(function (f) { return f.entry === entryId; }) || (q.entries || []).indexOf(entryId) >= 0; });
+      return mine.sort(function (a, b) { return b.created - a.created; })[0] || null;
+    }).catch(function () { return null; });
+  }
+  function shareState(q, e) {
+    if (!q) return { label: T('On this phone only') };
+    var pend = (S.kv.pending || {})[e.id];
+    var open = pend && pend.code === q.code;
+    if (q.closed || !open && q.posted) return { label: e.signoff && e.signoff.code === q.code ? T('Removed after sign-off') : T('Removed when the request closed'), cls: '' };
+    var fs = q.files.filter(function (f) { return f.entry === e.id; });
+    if (q.posted) return { label: T('Shared with your supervisor (encrypted, until {date})', { date: fmt(new Date(q.expires || pend.exp).toISOString()) }), cls: 'teal', link: true };
+    if (fs.some(function (f) { return f.state === 'failed'; })) return { label: T('Failed: tap to retry'), cls: 'red', retry: true };
+    if (S.sharing && S.sharing[q.code]) return { label: T('Uploading'), cls: 'amber' };
+    return { label: T('Queued'), cls: 'amber' };
+  }
+  // Some files failed: try again, send without them, or cancel the request.
+  function shareFailed(q, ex, done) {
+    sheet('<h2>' + esc(T('Some images did not upload')) + '</h2><p>' + esc(ex.message) + '</p><p class="muted small">' + esc(T('{done} of {total} are uploaded and encrypted. Your supervisor sees nothing until you send the link.', { done: q.files.filter(function (f) { return f.state === 'done'; }).length, total: q.files.length })) + '</p><div class="err" hidden></div><div class="btns"><button class="btn teal block" data-retry>' + esc(T('Try again')) + '</button>' + (q.files.some(function (f) { return f.state === 'done'; }) ? '<button class="btn block" data-without>' + esc(T('Send without the {n} that failed', { n: ex.failed })) + '</button>' : '') + '<button class="btn ghost block" data-cancelq>' + esc(T('Cancel the request')) + '</button></div>', function (root) {
+      var err = $('.err', root), btns = $$('.btns button', root);
+      var run = function (b, p) { btns.forEach(function (x) { x.disabled = true; }); busy(b, true); p.then(function (k) { closeSheet(); done(k); }).catch(function (e2) { btns.forEach(function (x) { x.disabled = false; }); busy(b, false); if (e2.share) { shareFailed(e2.share, e2, done); return; } err.textContent = e2.message; err.hidden = false; }); };
+      $('[data-retry]', root).onclick = function () { run(this, runShare(q, function (i, n) { $('[data-retry]', root).textContent = T('Uploading {i} of {n}…', { i: i, n: n }); })); };
+      var w = $('[data-without]', root); if (w) w.onclick = function () { run(this, finishShare(q)); };
+      $('[data-cancelq]', root).onclick = function () { api('/api/app/signoff/cancel', { code: q.code }).then(function () { return del('shares', q.code); }).then(function () { closeSheet(); toast(T('Request cancelled.')); sync(); }); };
+    });
   }
   function signByLink(ids) {
     var canShare = !!(S.me && S.me.imageShare && window.crypto && crypto.subtle);
@@ -1181,14 +1371,19 @@
           if (withImages && !$('#decl', root).checked) { err.textContent = T('Tick the declaration, or untick Include images.'); err.hidden = false; return; }
           busy(b, true);
           var code = null, supSel = $('#tosup', root), supId = supSel ? supSel.value : '';
+          var ready = function (out) { closeSheet(); linkReady(out, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(ids.length, 'ultrasound scan'), link: out.link }), T('Ultrasound logbook sign-off')); viewSignoff(route()); };
           var supLink = supId ? sups.find(function (s) { return String(s.id) === supId; }) : null;
           api('/api/app/signoff/request', { entryIds: ids, supervisorName: $('#ln2', root).value, supervisorId: supLink ? supLink.supervisorId || null : null, supervisorLink: supId || null }).then(function (res) {
             if (!res.ok) throw new Error(res.error);
             code = res.code;
             if (!withImages) return { link: res.link, images: 0, dash: res.toDashboard };
-            return shareImages(res.code, sets, function (i, n) { b.textContent = T('Encrypting image {i} of {n}…', { i: i, n: n }); }).then(function (k) { return { link: res.link + '.' + k, images: count, dash: res.toDashboard }; });
-          }).then(function (out) { closeSheet(); linkReady(out, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(ids.length, 'ultrasound scan'), link: out.link }), T('Ultrasound logbook sign-off')); viewSignoff(route()); })
-            .catch(function (ex) { if (code) api('/api/app/signoff/cancel', { code: code }); busy(b, false); b.textContent = T('Create request'); err.textContent = ex.message || T('Could not create the request. Check the connection.'); err.hidden = false; });
+            return shareImages(res.code, sets, function (i, n) { b.textContent = T('Uploading {i} of {n}…', { i: i, n: n }); }, { link: res.link, dash: res.toDashboard, scans: ids.length, entries: ids, expires: Date.now() + 14 * 864e5 }).then(function (k) { return { link: res.link + '.' + k, images: count, dash: res.toDashboard }; });
+          }).then(ready)
+            .catch(function (ex) {
+              if (ex.share) { shareFailed(ex.share, ex, function (k) { ready({ link: ex.share.link + '.' + k, images: ex.share.files.length, dash: ex.share.dash }); }); return; }
+              if (code) api('/api/app/signoff/cancel', { code: code }).then(function () { del('shares', code); });
+              busy(b, false); b.textContent = T('Create request'); err.textContent = ex.message || T('Could not create the request. Check the connection.'); err.hidden = false;
+            });
         });
       });
     });
@@ -1207,9 +1402,10 @@
     var m = (PATHS[a.pathway] || { modules: [] }).modules.find(function (x) { return x.id === a.module; });
     var oc = OUTCOME[a.outcome];
     var cls = a.status !== 'signed' ? '' : a.outcome === 'competent' ? 'green' : a.outcome === 'feedback' ? 'teal' : 'amber';
-    return '<div class="entry asm" data-asm="' + esc(a.id) + '"><span class="thumb">' + I.star + '</span><div class="grow"><h3>' + esc((PATHS[a.pathway] || {}).label || '') + ' · ' + esc(m ? T(m.label) : a.module) + '</h3><p>' + esc(kindLabel(a.kind)) + ' · ' + esc(fmt(a.assessed_on || a.created_at)) + (a.supervisor_name ? ' · ' + esc(a.supervisor_name) : '') + '</p><div class="meta"><span class="chip ' + cls + '">' + esc(a.status === 'signed' ? T(oc ? oc.label : a.outcome) : a.expires_at < Date.now() ? T('Expired') : T('Waiting')) + '</span></div></div></div>';
+    return '<div class="entry asm" data-asm="' + esc(a.id) + '"><span class="thumb">' + I.star + '</span><div class="grow"><h3>' + esc((PATHS[a.pathway] || {}).label || '') + ' · ' + esc(m ? T(m.label) : a.module) + '</h3><p>' + esc(kindLabel(a.kind)) + ' · ' + esc(fmt(a.assessed_on || a.created_at)) + (a.supervisor_name ? ' · ' + esc(a.supervisor_name) : '') + '</p><div class="meta"><span class="chip ' + cls + '">' + esc(a.status === 'superseded' ? T('Amended') : a.status === 'signed' ? T(oc ? oc.label : a.outcome) : a.expires_at < Date.now() ? T('Expired') : T('Waiting')) + '</span></div></div></div>';
   }
   function asmDetail(a) {
+    if (a.status === 'superseded') a = Object.assign({}, a, { status: 'signed' }); // shown in full, marked as amended
     var m = (PATHS[a.pathway] || { modules: [] }).modules.find(function (x) { return x.id === a.module; });
     var d = a.data || {};
     var dom = C.assessmentDomains.filter(function (x) { return (d.domains || {})[x.id]; }).map(function (x) { return '<dt>' + esc(T(x.label)) + '</dt><dd>' + esc(T(d.domains[x.id])) + '</dd>'; }).join('');
@@ -1220,9 +1416,48 @@
         : '<p>' + esc(T('Waiting for your assessor.')) + '</p><div class="btns"><button class="btn ghost block" data-cancelas>' + esc(T('Cancel request')) + '</button></div>') +
       '<div class="btns"><button class="btn block" data-close>' + esc(T('Close')) + '</button></div>', function (root) {
       var c = $('[data-copyas]', root); if (c) c.onclick = function () { copy(NAT.origin + '/app/verify/?code=' + a.id); };
+      asmNotes(a, root);
       var bk = $('[data-backas]', root); if (bk) bk.onclick = function () { returnedSheet('assessment', a.id, T('This assessment request')); };
       var x = $('[data-cancelas]', root); if (x) x.onclick = function () { api('/api/app/assessment/cancel', { code: a.id }).then(function () { closeSheet(); toast(T('Request cancelled.')); loadAssessments().then(function () { render(true); }); }); };
     });
+  }
+  // Who signed (approved supervisor, account not approved, or self-declared), and any amendment history. A supervisor
+  // can amend their own dashboard assessment within 30 days: a new signed version with a reason, never an overwrite.
+  var SIGNER_TEXT = { approved: 'Wavelength-approved supervisor', account_not_approved: 'Wavelength account, not approved as a supervisor at the time of signing', self_declared: 'Self-declared (not verified by Wavelength)' };
+  function signerText(sg) { return sg && SIGNER_TEXT[sg.kind] ? T(SIGNER_TEXT[sg.kind]) : ''; }
+  function entrySigner(so) {
+    var v = so && so.verification; if (!v) return '';
+    return T(SIGNER_TEXT[v.identity !== 'wavelength_account' ? 'self_declared' : (v.approvedFor || []).length ? 'approved' : 'account_not_approved']);
+  }
+  var AMEND_DAYS = 30;
+  function canAmend(a) {
+    return a.status === 'signed' && a.method === 'dashboard' && !a.superseded_by && S.account && a.supervisor_id === S.account.id && a.learner_id !== S.account.id &&
+      a.signed_at && Date.now() - Date.parse(String(a.signed_at).replace(' ', 'T') + (/Z|[+-]\d\d:?\d\d$/.test(a.signed_at) ? '' : 'Z')) < AMEND_DAYS * 864e5;
+  }
+  function asmNotes(a, root) {
+    var ok = $('.ok', root); if (!ok || a.status !== 'signed') return;
+    var bits = [];
+    if (a.signer) bits.push('<p class="small" style="margin:8px 0 0"><b>' + esc(T('Signer')) + ':</b> ' + esc(signerText(a.signer)) + '</p>');
+    if (a.amends) bits.push('<p class="small" style="margin:8px 0 0">' + esc(T('This corrects {code}.', { code: a.amends })) + (a.amend_reason ? ' ' + esc(T('Reason: {why}', { why: a.amend_reason })) : '') + '</p>');
+    if (a.superseded_by) bits.push('<div class="warn" style="margin-top:8px">' + esc(T('Amended: see {code}.', { code: a.superseded_by })) + '</div>');
+    if (a.error_note) bits.push('<div class="warn" style="margin-top:8px">' + esc(T('Marked as issued in error by Wavelength.')) + '</div>');
+    ok.insertAdjacentHTML('afterend', bits.join(''));
+    if (a._learner && canAmend(a)) {
+      var box = document.createElement('div'); box.className = 'btns';
+      box.innerHTML = '<button class="btn ghost block" type="button" data-amend>' + esc(T('Amend this assessment')) + '</button>';
+      var close = $$('.btns', root).pop(); close.parentNode.insertBefore(box, close);
+      $('[data-amend]', box).onclick = function () { amendAssessment(a, a._learner); };
+    }
+  }
+  function amendAssessment(a, learnerId) {
+    var m = (PATHS[a.pathway] || { modules: [] }).modules.find(function (x) { return x.id === a.module; });
+    var pick = '<div class="field"><label for="amr">' + esc(T('Why are you amending it?')) + '</label><textarea id="amr" rows="3" maxlength="1000" required></textarea><p class="hint">' + esc(T('The original stays in the record, marked as amended, and its verification page points to the new one.')) + '</p></div>';
+    dashAssessSheet(T('Amend {kind}', { kind: kindLabel(a.kind) }), T('Record the corrected assessment in full. {module}.', { module: ((PATHS[a.pathway] || {}).label || '') + ' ' + (m ? T(m.label) : '') }), { kind: a.kind, pick: pick },
+      function (d, root) {
+        var why = $('#amr', root).value.trim();
+        if (why.length < 5) return Promise.resolve({ ok: false, error: T('Say why you are amending this assessment.') });
+        d.code = a.id; d.reason = why; return api('/api/app/supervise/assessment/amend', d);
+      }, learnerId);
   }
   function moduleOptions(sel) {
     return myPaths().filter(function (p) { return PATHS[p].modules.length; }).map(function (pid) {
@@ -1399,7 +1634,7 @@
         ((res.assessments || []).length ? '<h2 class="sec">' + esc(T('Assessments')) + '</h2>' + res.assessments.map(asmRow).join('') : '') +
         '<h2 class="sec">' + esc(T('Recent scans')) + '</h2>' + (recent || '<p class="muted small">' + esc(T('No scans yet.')) + '</p>') +
         '<p class="small muted" style="margin-top:14px">' + esc(T('You see written records only. Images stay on the learner\'s phone, or reach you encrypted through the links they send.')) + '</p>'));
-      $$('[data-asm]').forEach(function (el) { el.onclick = function () { var a = res.assessments.find(function (x) { return x.id === el.dataset.asm; }); if (a) asmDetail(Object.assign({}, a, { status: 'signed' })); }; });
+      $$('[data-asm]').forEach(function (el) { el.onclick = function () { var a = res.assessments.find(function (x) { return x.id === el.dataset.asm; }); if (a) asmDetail(Object.assign({}, a, { _learner: id })); }; });
       $$('[data-sv-so]').forEach(function (b) { b.onclick = function () { dashSignoff(b.dataset.svSo, id); }; });
       $$('[data-sv-as]').forEach(function (b) { b.onclick = function () { dashAssess(res.assessmentRequests[Number(b.dataset.svAs)], id); }; });
       $('#newas').onclick = function () { dashAssessNew(res, id); };
@@ -1737,15 +1972,38 @@
   }
 
   // ---------- Sheets ----------
+  // Sheets are modal dialogs: focus stays inside until they close, Escape closes them, and focus returns to the
+  // control that opened them.
+  var sheetOpener = null;
+  var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
   function sheet(html, bind) {
-    closeSheet();
-    var bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.innerHTML = '<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>' + html + '</div>';
+    var opener = document.querySelector('.sheet-bg') ? sheetOpener : document.activeElement;
+    closeSheet(true);
+    sheetOpener = opener;
+    var bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" tabindex="-1"><div class="grab"></div>' + html + '</div>';
+    var dlg = bg.firstChild, h2 = dlg.querySelector('h2');
+    if (h2) { h2.id = h2.id || 'sh-' + Date.now().toString(36); dlg.setAttribute('aria-labelledby', h2.id); }
     bg.addEventListener('click', function (e) { if (e.target === bg || e.target.closest('[data-close]')) { if (e.target.closest('[data-fresh]')) draftImages = []; closeSheet(); } });
+    bg.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeSheet(); return; }
+      if (e.key !== 'Tab') return;
+      var f = $$(FOCUSABLE, dlg).filter(function (x) { return x.offsetParent !== null; });
+      if (!f.length) { e.preventDefault(); dlg.focus(); return; }
+      var a = f[0], z = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === a || document.activeElement === dlg)) { e.preventDefault(); z.focus(); }
+      else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+    });
     document.body.appendChild(bg);
-    var first = bg.querySelector('input, button, a'); if (first && first.tagName === 'INPUT' && first.type !== 'checkbox' && first.type !== 'radio') setTimeout(function () { first.focus(); }, 50);
+    var first = bg.querySelector('input, button, a');
+    setTimeout(function () { if (first && first.tagName === 'INPUT' && first.type !== 'checkbox' && first.type !== 'radio') first.focus(); else if (bg.isConnected && !dlg.contains(document.activeElement)) dlg.focus(); }, 50);
     if (bind) bind(bg);
   }
-  function closeSheet() { $$('.sheet-bg').forEach(function (s) { s.remove(); }); }
+  function closeSheet(keepOpener) {
+    var had = $$('.sheet-bg'); had.forEach(function (s) { s.remove(); });
+    if (keepOpener || !had.length) return;
+    var o = sheetOpener; sheetOpener = null;
+    if (o && o.isConnected && o.focus) try { o.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }
+  }
 
   // ---------- Export ----------
   // Files are built in English, whatever the app language, so any assessor or portfolio can read them and the PDF

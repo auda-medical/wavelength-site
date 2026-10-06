@@ -10,8 +10,9 @@ import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './d
 import { zohoConnectUrl, zohoCallback, zohoSubscribe, scheduledNewsletter, newsletterAdminHtml, newsletterAdminPost } from './newsletter.js';
 import { supervisorsAdminHtml, supervisorsAdminPost, evidenceFile } from './supervisors-admin.js';
 import { dailyLifecycle } from './supervisor-lifecycle.js';
-// The daily supervisor job's cron expression (05:15 UTC: 06:15 UK time in summer, 05:15 in winter).
-export const DAILY_CRON = '15 5 * * *';
+// The daily supervisor job's cron expression (05:15 UTC: 06:15 UK time in summer, 05:15 in winter). Not exported:
+// a named export of the Worker's main module is read as an entrypoint, and a string there stops the Worker starting.
+const DAILY_CRON = '15 5 * * *';
 import { recheckDue } from './professional.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
