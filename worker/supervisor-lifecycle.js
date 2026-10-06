@@ -76,8 +76,10 @@ export async function standingOf(env, learnerId, st = null) {
 // ---------- Eligibility: every supervisor action asks this, on the server, at request time ----------
 // scopes: ['pathway:module'] all needed (assessments); types: scan types all needed (sign-offs). Neither: any scope.
 // An old 'active' row in supervisor_links is necessary but never sufficient.
-export async function supervisorEligibility(env, accountId, { scopes = [], types = [] } = {}) {
-  if (!approvalRequired(env) || !(await lifecycleReady(env))) return { ok: true, enforced: false, reasons: [], approvedFor: [] };
+// force: check even when SUPERVISOR_APPROVAL_REQUIRED is off (supervisor search must only ever show people who are
+// approved now). With force, callers must also require enforced to be true: before migration 0012 nothing is checked.
+export async function supervisorEligibility(env, accountId, { scopes = [], types = [], force = false } = {}) {
+  if ((!approvalRequired(env) && !force) || !(await lifecycleReady(env))) return { ok: true, enforced: false, reasons: [], approvedFor: [] };
   const st = await currentStatus(env, accountId);
   const current = st.approvals.filter((a) => a.current);
   const reasons = [];
