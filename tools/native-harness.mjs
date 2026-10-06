@@ -2,6 +2,7 @@
 // https://localhost, with the real Capacitor runtime over a stand-in native bridge, and sends API calls for
 // https://thewavelength.co.uk to a local Worker (default http://localhost:8787).
 import { chromium } from 'playwright';
+import { localOnly } from './local-only.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -59,6 +60,7 @@ export const BRIDGE = `(() => {
 
 export const net = { offline: false };
 export async function harness({ api = 'http://localhost:8787', errors = [] } = {}) {
+  localOnly(api, 'The native harness');
   const browser = await chromium.launch();
   async function newApp(width = 390, height = 844) {
     const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, isMobile: width < 600, hasTouch: true, locale: 'en-GB', serviceWorkers: 'block' });

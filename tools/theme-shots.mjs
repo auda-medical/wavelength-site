@@ -4,9 +4,11 @@
 // Usage: node tools/theme-shots.mjs <outdir> [base]
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import { localOnly } from './local-only.mjs';
 
 const out = process.argv[2] || 'theme-shots';
 const BASE = process.argv[3] || 'http://localhost:8787';
+localOnly(BASE, 'tools/theme-shots.mjs');
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
 const problems = [];
