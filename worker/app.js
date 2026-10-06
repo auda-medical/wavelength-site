@@ -9,6 +9,12 @@
 //   GET  me, sync?since=, signoffs, evidence, signoff/view?t=, verify?code= (SO- sign-offs and EV- evidence summaries)
 //   POST signoff/image?code=&entry=&n= (encrypted bytes), signoff/images (manifest)   GET signoff/image?t=&entry=&n=
 //   POST email/verify (public, token), email/resend, supervisors/accept-invite   (worker/email-verify.js)
+//   POST logout-all (every device, including this one unless keepThisDevice)
+//   GET  organisations?q=, organisations/<id> (public)   POST organisations/request   (worker/organisations.js)
+//   GET  supervisors/search   POST supervisors/request, supervisor/searchable   (worker/search.js, SUPERVISOR_SEARCH)
+// Every response carries X-Request-Id; each request is logged as one allowlisted JSON line (worker/log.js). Store app
+// builds older than APP_MIN_VERSION get 426, except GET me and account deletion (worker/version.js). Login, sign-up,
+// reset requests and verification resends are limited to 10 a minute per IP (worker/ratelimit.js).
 //   GET  professional   POST professional/registration|credential|evidence|withdraw|directory   GET directory (public,
 //        off until DIRECTORY_PUBLIC = "true")   (worker/professional.js, docs/verification-architecture.md)
 // Logbook entries hold text only. Images stay on the learner's device. The one exception is encrypted image
@@ -29,6 +35,13 @@ import { approvalRequired, applyOn, standingOf, signerBlocked, NEUTRAL_REFUSAL }
 import { deliverLater } from './notify.js';
 import { audit, auditStmt } from './audit.js';
 import { nowIso } from './time.js';
+import { queueStmt, render } from './notify.js';
+import { rateLimitAll, clientIp, ipKey, TOO_MANY } from './ratelimit.js';
+import { requestId, route as routeName, appVersion, log } from './log.js';
+import { versionInfo, mustUpgrade, UPGRADE } from './version.js';
+import { handleOrganisations, checkOrgId, orgsReady } from './organisations.js';
+import { normOrg } from './org-norm.js';
+import { handleSearch, searchOn } from './search.js';
 
 import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady } from './app-util.js';
 
@@ -44,15 +57,24 @@ async function signup(env, req, ctx) {
   const weak = passwordProblem(pw);
   if (weak) return json({ ok: false, error: weak }, 400);
   if (!d.terms) return json({ ok: false, error: 'Tick the box to accept the privacy notice and terms of use.' }, 400);
-  const existing = await env.DB.prepare('SELECT id, password_hash FROM learners WHERE email = ?').bind(p.email).first();
-  if (existing && existing.password_hash) return json({ ok: false, error: 'An account with this email already exists. Log in instead, or reset your password.', exists: true }, 409);
+  const org = await checkOrgId(env, d.organisationId);
+  if (!org.ok) return json({ ok: false, error: org.error }, 400);
+  // Hashed before looking the email up, so every answer takes about as long whether or not the account exists.
+  const hash = await hashPassword(pw);
+  const existing = await env.DB.prepare('SELECT * FROM learners WHERE email = ?').bind(p.email).first();
+  if (existing && existing.password_hash) {
+    // Account enumeration (plan section 23): the same answer as for an Academy-only email. The owner is told by
+    // email that someone tried, with a link to log in or reset; nothing about the account changes.
+    await tellExistingOwner(env, existing, ctx);
+    const nonce = await newNonce();
+    return json({ ok: true, checkEmail: true }, 202, { 'Set-Cookie': nonce.cookie });
+  }
   // The store apps cannot post the website's newsletter form, so they ask the server to subscribe. Zoho still sends
   // its own confirmation email (double opt-in) before adding anyone, so nobody joins by having their address typed.
   if (p.news && req.headers.get('X-Wavelength-Client') === 'app') {
     const sub = zohoSubscribe(env, { email: p.email, first: p.first, role: p.role, source: 'App sign-up' }).catch(() => false);
     if (ctx && ctx.waitUntil) ctx.waitUntil(sub); else await sub;
   }
-  const hash = await hashPassword(pw);
   const profile = JSON.stringify(cleanProfile({ pathways: [] }));
   const verifying = await emailVerifyOn(env);
   if (existing && verifying) {
@@ -81,10 +103,25 @@ async function signup(env, req, ctx) {
     await env.DB.prepare("INSERT INTO learners (email, title, first_name, last_name, role, organisation, newsletter, password_hash, profile, last_seen) VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))")
       .bind(p.email, p.title, p.first, p.last, p.role, p.org, p.news, hash, profile).run();
   }
-  const row = await env.DB.prepare('SELECT * FROM learners WHERE email = ?').bind(p.email).first();
+  let row = await env.DB.prepare('SELECT * FROM learners WHERE email = ?').bind(p.email).first();
+  if (org.id && !existing) { await env.DB.prepare('UPDATE learners SET organisation_id = ? WHERE id = ?').bind(org.id, row.id).run(); row = { ...row, organisation_id: org.id }; }
   // Sent before answering, so the person can be told it is on its way.
   if (verifying && !existing) await sendVerification(env, row, 'verify').catch(() => false);
   return json({ ok: true, account: account(row), verifyEmailSent: verifying && !existing }, 200, { 'Set-Cookie': await cookieFor(env, row.id) });
+}
+
+// "Someone tried to create an account with your email": at most one an hour per account through the outbox.
+async function tellExistingOwner(env, row, ctx) {
+  const data = { firstName: row.first_name };
+  if (await lifecycleReady(env)) {
+    const key = `signup_exists:${row.id}:${nowIso().slice(0, 13)}`;
+    await queueStmt(env, { key, learnerId: row.id, kind: 'signup_exists', to: row.email, toName: fullName(row), data }).run();
+    deliverLater(env, ctx, [key]);
+    return;
+  }
+  const msg = render('signup_exists', data);
+  const m = sendMail(env, { to: row.email, toName: fullName(row), ...msg }).catch(() => false);
+  if (ctx && ctx.waitUntil) ctx.waitUntil(m); else await m;
 }
 
 async function login(env, req) {
@@ -93,8 +130,8 @@ async function login(env, req) {
   const email = clip(d.email, 160).toLowerCase();
   const fail = () => json({ ok: false, error: 'That email and password do not match.' }, 401);
   const row = await env.DB.prepare('SELECT * FROM learners WHERE email = ?').bind(email).first();
-  if (!row) { await pbkdf2('x', new Uint8Array(16), 100000); return fail(); }
-  if (!row.password_hash) return json({ ok: false, error: 'This email is registered for Academy modules but has no password yet. Create your account with the same email to add one.', noPassword: true }, 401);
+  // One answer for an unknown email, an Academy-only email (no password yet) and a wrong password (plan section 23).
+  if (!row || !row.password_hash) { await pbkdf2('x', new Uint8Array(16), 100000); return fail(); }
   if (row.locked_until && row.locked_until > Date.now()) return json({ ok: false, error: 'Too many attempts. Wait 15 minutes, or reset your password.' }, 429);
   if (!(await checkPassword(String(d.password || ''), row.password_hash))) {
     const n = (row.failed_logins || 0) + 1;
@@ -105,7 +142,7 @@ async function login(env, req) {
   return json({ ok: true, account: account(row) }, 200, { 'Set-Cookie': await cookieFor(env, row.id) });
 }
 
-async function me(env, l) {
+async function me(env, l, req) {
   const [certs, attempts] = await Promise.all([
     env.DB.prepare('SELECT code, module, module_title, issued_on, cpd_hours FROM certificates WHERE learner_id = ? ORDER BY created_at DESC').bind(l.id).all(),
     env.DB.prepare('SELECT module, MAX(score) AS best, COUNT(*) AS tries FROM attempts WHERE learner_id = ? GROUP BY module').bind(l.id).all(),
@@ -113,10 +150,10 @@ async function me(env, l) {
   const modules = Object.values(DATA.modules).filter((m) => !m.draft).map((m) => ({ slug: m.slug, title: m.title, cpdHours: m.cpdHours }));
   const life = await lifecycleReady(env);
   const sv = life ? await standingOf(env, l.id) : null;
-  return json({ ok: true, account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules, imageShare: imgOn(env), clipShare: imgOn(env) && env.CLIP_SHARE === 'true', verification: { email: await emailVerifyOn(env), professional: professionalOn(env) && (await verificationReady(env)), directory: env.DIRECTORY_PUBLIC === 'true' },
+  return json({ ok: true, ...versionInfo(env, req), account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules, imageShare: imgOn(env), clipShare: imgOn(env) && env.CLIP_SHARE === 'true', verification: { email: await emailVerifyOn(env), professional: professionalOn(env) && (await verificationReady(env)), directory: env.DIRECTORY_PUBLIC === 'true' },
     // Supervisor journey: apply (applications open), required (dashboard needs approval), standing for this account,
     // and claimed: an invitation this person accepted that waits on their application (the app sends them there).
-    supervisor: { available: life, apply: life && applyOn(env), required: life && approvalRequired(env), standing: sv ? sv.standing : 'none', claimed: life ? ((await env.DB.prepare("SELECT COUNT(*) AS n FROM supervisor_links WHERE supervisor_id = ? AND status = 'pending' AND claimed_at IS NOT NULL").bind(l.id).first()) || {}).n || 0 : 0 } });
+    supervisor: { available: life, apply: life && applyOn(env), required: life && approvalRequired(env), search: life && searchOn(env) && (await orgsReady(env)), standing: sv ? sv.standing : 'none', claimed: life ? ((await env.DB.prepare("SELECT COUNT(*) AS n FROM supervisor_links WHERE supervisor_id = ? AND status = 'pending' AND claimed_at IS NOT NULL").bind(l.id).first()) || {}).n || 0 : 0 } });
 }
 
 async function saveProfile(env, l, req) {
@@ -130,9 +167,28 @@ async function saveProfile(env, l, req) {
   if (d.title !== undefined) { sets.push('title = ?'); vals.push(TITLES.includes(clip(d.title, 10)) ? clip(d.title, 10) : ''); }
   if (d.role !== undefined) { sets.push('role = ?'); vals.push(clip(d.role, 80)); }
   if (d.organisation !== undefined) { sets.push('organisation = ?'); vals.push(clip(d.organisation, 160)); }
+  // organisationId beside the typed text: set when the person picked a suggestion; cleared when they type something
+  // different without picking one. Ignored before migration 0013.
+  if (await orgsReady(env)) {
+    if (d.organisationId !== undefined) {
+      const org = await checkOrgId(env, d.organisationId);
+      if (!org.ok) return json({ ok: false, error: org.error }, 400);
+      sets.push('organisation_id = ?'); vals.push(org.id);
+    } else if (d.organisation !== undefined && normOrg(d.organisation) !== normOrg(l.organisation)) sets.push('organisation_id = NULL');
+  }
   await env.DB.prepare(`UPDATE learners SET ${sets.join(', ')} WHERE id = ?`).bind(...vals, l.id).run();
   const row = await env.DB.prepare('SELECT * FROM learners WHERE id = ?').bind(l.id).first();
   return json({ ok: true, account: account(row) });
+}
+
+// "Log out of all devices" (plan section 23): every login cookie and app token issued before now stops working, through
+// learners.sessions_after (migration 0010). This device is logged out too, unless keepThisDevice is true.
+async function logoutAll(env, l, req) {
+  const d = (await body(req)) || {};
+  try { await env.DB.prepare('UPDATE learners SET sessions_after = ? WHERE id = ?').bind(Date.now(), l.id).run(); }
+  catch { return json({ ok: false, error: 'This is not available yet.' }, 503); }
+  await audit(env, { actorType: 'learner', actorId: l.id, action: 'account.logout_all', subjectType: 'learner', subjectId: l.id, meta: { keepThisDevice: !!d.keepThisDevice } });
+  return json({ ok: true, loggedOut: !d.keepThisDevice }, 200, { 'Set-Cookie': d.keepThisDevice ? await cookieFor(env, l.id) : clearCookie });
 }
 
 async function changePassword(env, l, req) {
@@ -570,14 +626,37 @@ async function verify(env, url) {
 }
 
 // ---------- Router ----------
+// Every /api/app/* request: a request id (X-Request-Id, and in 500 messages), the app version gate, one log line.
 export async function handleApp(req, env, ctx) {
+  const t0 = Date.now();
+  const rid = requestId();
   const url = new URL(req.url);
   const p = url.pathname.replace(/^\/api\/app\//, '');
+  let res, err = null;
+  try {
+    res = mustUpgrade(env, req, p) ? json(UPGRADE, 426) : await routeApp(req, env, ctx, url, p);
+  } catch (e) {
+    err = (e && e.name) || 'Error';
+    res = json({ ok: false, error: `Something went wrong. Please try again. Reference ${rid}.`, ref: rid }, 500);
+  }
+  const out = new Response(res.body, res);
+  out.headers.set('X-Request-Id', rid);
+  log(env, { rid, route: routeName(url.pathname), method: req.method, status: out.status, ms: Date.now() - t0, app: appVersion(req.headers.get('X-Wavelength-App')), err });
+  return out;
+}
+
+const AUTH_LIMITED = ['signup', 'login', 'reset/request', 'email/resend'];
+async function routeApp(req, env, ctx, url, p) {
   if (!env.DB) return json({ ok: false, error: 'The app is not available right now.' }, 503);
   if (req.method === 'POST') {
     const origin = req.headers.get('Origin');
     // Same-origin pages, or the store apps (bundled logbook, Bearer token, see worker/native.js).
     if (!origin || (origin !== url.origin && !isNativeOrigin(origin))) return json({ ok: false, error: 'Forbidden' }, 403);
+    if (AUTH_LIMITED.includes(p)) {
+      const ip = await ipKey(clientIp(req));
+      const rl = await rateLimitAll(env, 'auth', [ip && `${p}:${ip}`], { binding: 'RATE_LIMIT_AUTH' });
+      if (!rl.ok) return json({ ok: false, error: TOO_MANY }, 429, { 'Retry-After': '60' });
+    }
     if (p === 'signup') return signup(env, req, ctx);
     if (p === 'email/verify') return verifyToken(env, req);
     if (p === 'login') return login(env, req);
@@ -590,6 +669,11 @@ export async function handleApp(req, env, ctx) {
     if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
     if (p === 'profile') return saveProfile(env, l, req);
     if (p === 'password') return changePassword(env, l, req);
+    if (p === 'logout-all') return logoutAll(env, l, req);
+    const org = await handleOrganisations(env, req, url, p, l, ctx, body);
+    if (org) return org;
+    const found = await handleSearch(env, l, req, url, p, ctx, body);
+    if (found) return found;
     if (p === 'sync') return syncPost(env, l, req);
     if (p === 'signoff/request') return signoffRequest(env, l, req);
     if (p === 'signoff/inperson') return signoffInPerson(env, l, req);
@@ -626,8 +710,9 @@ export async function handleApp(req, env, ctx) {
   if (p === 'verify') return verify(env, url);
   if (p === 'assessment/view') return SV.assessmentView(env, url);
   if (p === 'directory') return directorySearch(env, url);
+  if (p === 'organisations' || p.startsWith('organisations/')) return handleOrganisations(env, req, url, p, null, ctx, body);
   const l = await learner(env, req);
-  if (p === 'me') return l && l.password_hash ? me(env, l) : json({ ok: false, auth: false, academy: !!l });
+  if (p === 'me') return l && l.password_hash ? me(env, l, req) : json({ ok: false, auth: false, academy: !!l, ...versionInfo(env, req) });
   if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
   if (p === 'sync') return syncGet(env, l, url);
   if (p === 'signoffs') return signoffList(env, l);
@@ -636,6 +721,8 @@ export async function handleApp(req, env, ctx) {
   if (p === 'supervisors') return SV.supervisorLinks(env, l);
   if (p === 'supervise/learner') return SV.superviseLearner(env, l, url);
   if (p === 'supervise/signoff') return SV.superviseSignoffView(env, l, url);
+  const found = await handleSearch(env, l, req, url, p, ctx, body);
+  if (found) return found;
   const sv = await handleSupervisorApply(env, l, req, url, p, ctx);
   if (sv) return sv;
   const pro = await handleProfessional(env, l, req, url, p);

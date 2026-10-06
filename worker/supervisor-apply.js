@@ -18,6 +18,8 @@ import { standingOf, applyOn, areaLabels, AREAS, withdrawSupervisor, WITHDRAW_RE
 import { queueStmt, deliverLater } from './notify.js';
 import { auditStmt, audit } from './audit.js';
 import { nowIso, ukDate, addDays } from './time.js';
+import { orgField, orgsReady } from './organisations.js';
+import { normOrg } from './org-norm.js';
 
 export const DECLARATION_VERSION = 'supervisor-declaration-1';
 export const DECLARATION = 'I confirm that the information I have given is accurate and current, and that I am appropriately qualified and experienced to supervise the ultrasound areas I have selected. I will tell Wavelength if anything changes.';
@@ -78,6 +80,9 @@ async function overview(env, l) {
     registrations: st.registrations.map(publicRegistration),
     credentials: st.credentials.map((c) => publicCredential(c, (ev.results || []).filter((e) => e.subject_type === 'credential' && e.subject_id === c.id))),
     searchable: !!(await env.DB.prepare('SELECT supervisor_searchable FROM learners WHERE id = ?').bind(l.id).first('supervisor_searchable')),
+    // Supervisor search (worker/search.js): whether it is switched on, and since when this person has been findable.
+    searchAvailable: env.SUPERVISOR_SEARCH === 'true' && (await orgsReady(env)),
+    searchableAt: (await env.DB.prepare('SELECT searchable_at FROM learners WHERE id = ?').bind(l.id).first('searchable_at')) || null,
     config: { ...config(), areas: AREAS.map((a) => ({ id: a.id, label: a.label })), pathways: PATHWAY_CHOICES, bands: BANDS, declaration: DECLARATION, declarationVersion: DECLARATION_VERSION, reviewTime: REVIEW_TIME, withdrawReasons: WITHDRAW_REASONS },
   });
 }
@@ -123,7 +128,13 @@ async function saveDraft(env, l, d) {
   }
   if (d.role !== undefined) set.role = clip(d.role, 120) || null;
   if (d.organisation !== undefined) set.organisation = clip(d.organisation, 160) || null;
-  if (d.organisationId !== undefined) set.organisation_id = clip(d.organisationId, 40) || null;
+  // organisationId beside the typed text (plan section 19): must be on the list and active; typing a different name
+  // without picking a suggestion clears the old id. Before migration 0013 the id is not checked or kept.
+  if (d.organisationId !== undefined) {
+    const org = await orgField(env, d.organisationId);
+    if (!org.ok) return json({ ok: false, error: org.error }, 400);
+    if (org.given || org.id === null) set.organisation_id = org.id;
+  } else if (d.organisation !== undefined && normOrg(d.organisation) !== normOrg(a.organisation)) set.organisation_id = null;
   // Step 2, professional registration: the existing registration functions, through this journey only.
   if (d.registration && typeof d.registration === 'object') {
     const res = await submitRegistration(env, l, d.registration);

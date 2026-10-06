@@ -97,7 +97,7 @@ function cleanProfile(p, old = {}) {
 }
 function account(l) {
   const p = profileOf(l);
-  return { id: l.id, email: l.email, title: l.title, firstName: l.first_name, lastName: l.last_name, name: fullName(l), role: l.role, organisation: l.organisation, newsletter: !!l.newsletter, declarationAt: l.declaration_at, profile: p, emailStatus: l.email_status || 'legacy_unverified', emailVerified: l.email_status === 'verified' };
+  return { id: l.id, email: l.email, title: l.title, firstName: l.first_name, lastName: l.last_name, name: fullName(l), role: l.role, organisation: l.organisation, organisationId: l.organisation_id || null, newsletter: !!l.newsletter, declarationAt: l.declaration_at, profile: p, emailStatus: l.email_status || 'legacy_unverified', emailVerified: l.email_status === 'verified' };
 }
 
 // True once migration 0011 (verification) is applied. Until then the Worker keeps the old behaviour for email,

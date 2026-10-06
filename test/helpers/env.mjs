@@ -46,7 +46,8 @@ export function makeEnv(extra = {}, { skipMigrations = [] } = {}) {
   const wr = readFileSync(new URL('../../wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, '');
   const vars = JSON.parse(wr).vars;
   return {
-    ...vars, ZEPTOMAIL_TOKEN: '', DB: new D1(skipMigrations), SHARED_IMAGES: new KV(),
+    // LOG_SINK keeps the request log (worker/log.js) out of the test output; tests that check it pass their own.
+    ...vars, ZEPTOMAIL_TOKEN: '', DB: new D1(skipMigrations), SHARED_IMAGES: new KV(), LOG_SINK: () => {},
     ASSETS: { fetch: async () => new Response('<div id="admin-root"></div>', { headers: { 'Content-Type': 'text/html' } }) },
     ...extra,
   };

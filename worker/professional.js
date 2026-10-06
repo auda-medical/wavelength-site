@@ -14,6 +14,7 @@ import { json, clip, body, fullName, verificationReady, lifecycleReady } from '.
 import { ukDate, inDate, addDays } from './time.js';
 import { adapterFor, isMockSource } from './verification/adapters.js';
 import { matchNames } from './verification/names.js';
+import { orgField, saveOrgId } from './organisations.js';
 
 export const REG = Object.fromEntries(CFG.regulators.map((r) => [r.id, r]));
 export const TYPE = Object.fromEntries(CFG.credentialTypes.map((t) => [t.id, t]));
@@ -194,6 +195,9 @@ async function saveRegistration(env, row, u) {
 export async function submitRegistration(env, l, d) {
   const reg = REG[d.regulator];
   if (!reg) return json({ ok: false, error: 'Choose your regulator.' }, 400);
+  // organisationId beside the typed organisation (plan section 19): checked against the list, typed text kept.
+  const org = await orgField(env, d.organisationId);
+  if (!org.ok) return json({ ok: false, error: org.error }, 400);
   const number = normaliseNumber(reg, d.number);
   if (!number) return json({ ok: false, error: `Check your ${reg.numberLabel}: ${reg.numberHint}.` }, 400);
   if ((await recentCount(env, l.id, 'registration_submitted')) >= LIMITS.registration) return json({ ok: false, error: 'You have made several changes today. Try again tomorrow.' }, 429);
@@ -202,8 +206,10 @@ export async function submitRegistration(env, l, d) {
   let row = await env.DB.prepare('SELECT * FROM professional_registrations WHERE learner_id = ? AND regulator = ? AND active = 1').bind(l.id, reg.id).first();
   if (row && row.registration_number === number && ['verified', 'manual_review', 'manual_verification_required'].includes(row.status)) {
     await env.DB.prepare("UPDATE professional_registrations SET profession = ?, organisation = ?, role = ?, updated_at = datetime('now') WHERE id = ?").bind(fields.profession, fields.organisation, fields.role, row.id).run();
+    await saveOrgId(env, 'professional_registrations', row.id, org, fields.organisation, row.organisation);
     return json({ ok: true, registration: publicRegistration(await env.DB.prepare('SELECT * FROM professional_registrations WHERE id = ?').bind(row.id).first()) });
   }
+  const prevOrg = row ? row.organisation : undefined;
   if (row) {
     // A new number replaces the old one and starts again.
     await env.DB.prepare("UPDATE professional_registrations SET registration_number = ?, profession = ?, organisation = ?, role = ?, claimed_name = ?, status = 'pending', register_name = NULL, register_status = NULL, register_fields = NULL, verified_at = NULL, verification_method = NULL, verification_source = NULL, match_method = NULL, match_version = NULL, match_result = NULL, failure_state = NULL, failure_count = 0, updated_at = datetime('now') WHERE id = ?")
@@ -215,6 +221,7 @@ export async function submitRegistration(env, l, d) {
     } catch { return json({ ok: false, error: 'Something went wrong. Please try again.' }, 409); } // a second tab inserted it first
   }
   row = await env.DB.prepare('SELECT * FROM professional_registrations WHERE learner_id = ? AND regulator = ? AND active = 1').bind(l.id, reg.id).first();
+  await saveOrgId(env, 'professional_registrations', row.id, org, fields.organisation, prevOrg);
   await logEvent(env, { learnerId: l.id, subjectType: 'registration', subjectId: row.id, action: 'registration_submitted', actor: 'learner', notes: `${reg.short} number entered` });
   // Someone else already holds this number as verified. Do not say who: an administrator looks at both.
   const other = await env.DB.prepare("SELECT id FROM professional_registrations WHERE regulator = ? AND registration_number = ? AND status = 'verified' AND active = 1 AND learner_id != ?").bind(reg.id, number, l.id).first();
@@ -406,10 +413,14 @@ async function saveDirectory(env, l, d) {
   const contact = clip(d && d.contactEmail, 160).toLowerCase();
   if (contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) return json({ ok: false, error: 'Enter a valid contact email, or leave it empty.' }, 400);
   const listed = want && el.eligible ? 1 : 0;
+  const org = await orgField(env, d.organisationId);
+  if (!org.ok) return json({ ok: false, error: org.error }, 400);
+  const before = await env.DB.prepare('SELECT organisation FROM directory_profiles WHERE learner_id = ?').bind(l.id).first();
   const v = { display_name: clip(d.displayName, 120) || null, profession: clip(d.profession, 80) || null, specialty: clip(d.specialty, 80) || null, organisation: clip(d.organisation, 160) || null, region: clip(d.region, 80) || null, country: clip(d.country, 2).toUpperCase() || null, contact_email: contact || null, show_contact: d.showContact && contact ? 1 : 0 };
   await env.DB.prepare(`INSERT INTO directory_profiles (learner_id, listed, display_name, profession, specialty, organisation, region, country, contact_email, show_contact, listed_at) VALUES (?,?,?,?,?,?,?,?,?,?, CASE WHEN ? = 1 THEN datetime('now') END)
     ON CONFLICT (learner_id) DO UPDATE SET listed = excluded.listed, display_name = excluded.display_name, profession = excluded.profession, specialty = excluded.specialty, organisation = excluded.organisation, region = excluded.region, country = excluded.country, contact_email = excluded.contact_email, show_contact = excluded.show_contact, updated_at = datetime('now'), listed_at = CASE WHEN excluded.listed = 1 THEN COALESCE(directory_profiles.listed_at, datetime('now')) END`)
     .bind(l.id, listed, v.display_name, v.profession, v.specialty, v.organisation, v.region, v.country, v.contact_email, v.show_contact, listed).run();
+  await saveOrgId(env, 'directory_profiles', l.id, org, v.organisation, before ? before.organisation : null);
   await logEvent(env, { learnerId: l.id, subjectType: 'directory', subjectId: l.id, action: listed ? 'listed' : 'unlisted', actor: 'learner' });
   return json({ ok: true, listed: !!listed, ...el });
 }

@@ -15,15 +15,21 @@ async function account(env, email, extra = {}) {
 }
 const entry = (id, extra = {}) => ({ id, type: 'efast', date: '2026-09-01', supervision: 'direct', ...extra });
 
-test('signup validates input and refuses a duplicate email', async () => {
+test('signup validates input, and a duplicate email gets the "check your email" answer without logging in', async () => {
   const env = makeEnv();
   const c = client(handleApp, env);
   assert.equal((await c.call('/api/app/signup', { firstName: 'A', lastName: 'B', email: 'bad', password: PASSWORD, terms: true })).status, 400);
   assert.equal((await c.call('/api/app/signup', { firstName: 'A', lastName: 'B', email: 'a@b.co', password: 'short', terms: true })).status, 400);
   assert.equal((await c.call('/api/app/signup', { firstName: 'A', lastName: 'B', email: 'a@b.co', password: PASSWORD })).status, 400);
   await account(env, 'a@b.co');
-  const dup = await client(handleApp, env).call('/api/app/signup', { firstName: 'X', lastName: 'Y', email: 'A@B.co', password: PASSWORD, terms: true });
-  assert.equal(dup.status, 409);
+  const before = await env.DB.prepare('SELECT password_hash, first_name FROM learners WHERE email = ?').bind('a@b.co').first();
+  // Plan section 23: the same answer as an Academy-only email (no 409 that would confirm the account exists).
+  const other = client(handleApp, env);
+  const dup = await other.call('/api/app/signup', { firstName: 'X', lastName: 'Y', email: 'A@B.co', password: 'Another password 1!', terms: true });
+  assert.equal(dup.status, 202);
+  assert.deepEqual(dup.body, { ok: true, checkEmail: true });
+  assert.ok(!/wl_learn=/.test(other.cookie), 'no login');
+  assert.deepEqual(await env.DB.prepare('SELECT password_hash, first_name FROM learners WHERE email = ?').bind('a@b.co').first(), before, 'nothing about the account changes');
 });
 
 test('passwords are stored hashed, never in plain text', async () => {
