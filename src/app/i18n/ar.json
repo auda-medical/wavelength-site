@@ -1487,5 +1487,12 @@
 "Passwords match.": "كلمتا المرور متطابقتان.",
 "GMC, NMC or HCPC": "GMC أو NMC أو HCPC",
 "Learners send sign-off requests straight to your own dashboard.": "يرسل المتدربون طلبات الاعتماد مباشرة إلى لوحة التحكم الخاصة بك.",
-"Apply to teach on Wavelength ultrasound courses.": "قدّم طلبًا للتدريس في دورات Wavelength للموجات فوق الصوتية."
+"Apply to teach on Wavelength ultrasound courses.": "قدّم طلبًا للتدريس في دورات Wavelength للموجات فوق الصوتية.",
+"Settings": "الإعدادات",
+"Appearance": "المظهر",
+"Match my phone": "مثل هاتفي",
+"Light": "فاتح",
+"Dark": "داكن",
+"Match my phone follows the light or dark setting on your phone.": "«مثل هاتفي» يتبع إعداد الوضع الفاتح أو الداكن في هاتفك.",
+"App language": "لغة التطبيق"
 }

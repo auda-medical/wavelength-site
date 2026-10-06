@@ -376,9 +376,9 @@ export async function notifyLearner(env, so, decisions, sup) {
     await sendMail(env, {
       to: l.email, toName: fullName(l), subject: q && !ok ? 'Your supervisor queried a scan' : 'Your scans have been signed off',
       heading: q && !ok ? 'Scan queried' : 'Sign-off received',
-      paragraphs: lines.concat('To stop these emails, untick the setting under Me in the app.'),
+      paragraphs: lines.concat('To stop these emails, untick the setting under Me, Settings, in the app.'),
       button: { href: link, label: 'Open your logbook' },
-      text: lines.join('\n\n') + `\n\n${link}\n\nTo stop these emails, untick the setting under Me in the app.`,
+      text: lines.join('\n\n') + `\n\n${link}\n\nTo stop these emails, untick the setting under Me, Settings, in the app.`,
     });
   } catch { /* email is a courtesy: never fail the sign-off */ }
 }

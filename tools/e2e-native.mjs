@@ -121,7 +121,14 @@ if (!(await calls(page, 'App', 'exitApp')).length) fail('back on Home did not le
 await page.evaluate(() => { location.hash = '#/log'; });
 await page.waitForSelector('nav.tabs');
 await page.evaluate(() => { location.hash = '#/me'; });
-await page.waitForSelector('#lo');
+await page.waitForSelector('.top .gear');
+await page.click('.top .gear');
+await page.waitForSelector('#lck', { timeout: 15000 }).catch(() => fail('Settings has no app lock switch'));
+if ((await hash(page)) !== '#/settings') fail('the gear on Me opened ' + (await hash(page))); else ok('the gear on Me opens Settings, with the app lock switch');
+await back(page);
+if ((await hash(page)) !== '#/me') fail('back from Settings went to ' + (await hash(page))); else ok('back from Settings returns to Me');
+await page.evaluate(() => { location.hash = '#/settings'; });
+await page.waitForSelector('#lck');
 
 // App lock: turn on, cold start, return after a while, failed unlock.
 await page.check('#lck');
@@ -192,7 +199,7 @@ for (const [w, h] of [[390, 844], [800, 1280]]) {
 // Log out clears the token.
 await back(page); // the Android back button closes the export sheet
 if (await page.$('.sheet-bg')) fail('back did not close the open sheet'); else ok('back closes an open sheet');
-await page.evaluate(() => { location.hash = '#/me'; });
+await page.evaluate(() => { location.hash = '#/settings'; });
 await page.waitForSelector('#lo', { timeout: 15000 });
 await page.click('#lo');
 await page.waitForTimeout(800);

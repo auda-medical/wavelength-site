@@ -1423,5 +1423,12 @@
 "Passwords match.": "Las contraseñas coinciden.",
 "GMC, NMC or HCPC": "GMC, NMC o HCPC",
 "Learners send sign-off requests straight to your own dashboard.": "Los alumnos envían las solicitudes de validación directamente a su propio panel.",
-"Apply to teach on Wavelength ultrasound courses.": "Solicite enseñar en los cursos de ecografía de Wavelength."
+"Apply to teach on Wavelength ultrasound courses.": "Solicite enseñar en los cursos de ecografía de Wavelength.",
+"Settings": "Ajustes",
+"Appearance": "Apariencia",
+"Match my phone": "Igual que mi teléfono",
+"Light": "Claro",
+"Dark": "Oscuro",
+"Match my phone follows the light or dark setting on your phone.": "«Igual que mi teléfono» sigue el ajuste claro u oscuro de su teléfono.",
+"App language": "Idioma de la aplicación"
 }
