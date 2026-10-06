@@ -110,7 +110,7 @@ Claude is the sole builder of the Wavelength website and apps (owner's instructi
 
 ## Verification: email, professional identity, credentials, supervisors (October 2026)
 - Full design: `docs/verification-architecture.md`. Register research, what to ask each body, portfolio standards, privacy and store review: `docs/verification-integrations.md`.
-- Migration `0011_verification.sql` is NOT yet applied to production. Until it is, `verificationReady()` keeps the old email and sign-off behaviour, and the professional endpoints answer 503.
+- Migration `0011_verification.sql` is applied to production. `verificationReady()` still tolerates its absence.
 - Keep five things separate:
   1. Email ownership (`learners.email_status`: legacy_unverified, unverified, verified).
   2. Professional registration (`professional_registrations`).
@@ -130,6 +130,20 @@ Claude is the sole builder of the Wavelength website and apps (owner's instructi
 - Sign-offs and assessments store `supervisor_snapshot`, written once with the signature and never updated. Public verify pages show `supervisorCheck`, never registration numbers.
 - Tests: `test/email-verify.test.mjs`, `test/professional.test.mjs`, `test/credentials.test.mjs`. Browser check: `tools/e2e-verification.mjs` (local setup in its header; never against production).
 - Professional verification is off until `PROFESSIONAL_VERIFY = "true"`, and the directory until `DIRECTORY_PUBLIC = "true"`. Before switching either on, update the privacy notice, the DPIA and the store privacy answers (checklist in the architecture doc, section 14).
+
+## Supervisor lifecycle (built October 2026, not switched on)
+- Fero's decisions (6 October 2026): approval lasts at most 12 months with admin review at every renewal (one-step "Confirm renewal" when nothing changed), no auto-renewal; a 30-day "Renewal under review" grace only when the renewal was sent before expiry by a fully current supervisor with nothing outstanding (`graceFor` in `worker/supervisor-lifecycle.js`); more-information requests never extend privileges. Registration exemption (admin, reason recorded) is never a verification exemption.
+- Migration `0012_supervisor_lifecycle.sql` is NOT applied to production. Until it is, `lifecycleReady()` keeps the 0011 behaviour. Applying it, and every switch below, needs Fero's separate approval.
+- Switches (Worker vars, all "false"): `SUPERVISOR_APPLY` (the application wizard; applicants use the registration functions through it, `PROFESSIONAL_VERIFY` stays off), `SUPERVISOR_APPROVAL_REQUIRED` (only approved supervisors can be linked and sign as approved; others show "Not yet verified by Wavelength").
+- Approval is derived on every read, never stored as a flag: email verified, registration verified or exempt, required credentials current, `review_on` not passed (or within grace). Standing: none, applying, active, renewal_review, paused, expired, withdrawn, revoked.
+- Four endings stay distinct: voluntary withdrawal, natural expiry, administrative revocation, rejection on verification or safety grounds. Revocation blocks one-off signing (`supervisor_blocks`) unless the admin records that one-off signing is permitted. Pending requests return to the learner, who reassigns, sends to a one-off assessor or cancels.
+- Daily job `dailyLifecycle` (cron `15 5 * * *`, `DAILY_CRON` in worker/index.js, NOT yet in `wrangler.jsonc` triggers): reminders at 60, 30 and 7 days, expiry, grace end, pauses, outbox retries, evidence purge (30 days after decision), stale drafts (90 days), rechecks, retention. Separate from the Tuesday newsletter cron. Each step is logged in `job_runs`. Never export anything but `default` from worker/index.js (`test/entry.test.mjs`).
+- Email outbox `notification_log`: one row per key prevents routine duplicates, but a send whose result is lost is marked `unknown` and is not retried automatically, so "exactly once" is never claimed. The admin System tab resends or marks sent.
+- Audit: `audit_events` (field names, counts and codes only, never personal data). Admin console: `/volunteer/admin/supervisors/` tabs New, More info, Renewals, Attention, Claims, Ended, People, System.
+- Records: sign-offs and assessments keep `supervisor_snapshot` and a signer label (approved, account not approved, self-declared). Assessments can be amended by their dashboard assessor within 30 days as a new version (`amends`, `superseded_by`); the old one stays, marked superseded. Deleted accounts leave `code_tombstones` so verify says "withdrawn by its owner".
+- Media fingerprints: the app stores a SHA-256 per image and clip in `entry.media`; sign-off hash version 2 covers them, so changing an image voids a newer sign-off. Typed signatures are recorded as `signatureKind: 'typed'` (assessment `data`, sign-off `ratings` key `$signatureKind`, entry `signoff.signatureKind`).
+- App: encrypted uploads for sign-off links go through the IndexedDB `shares` queue (DB version 2, ladder in `openDb`): three retries, resume on launch, "Send without the failed ones". Images save at 2048 px quality 0.9 within the 1.5 MB share limit; clips at 1280 px, 4 Mbit/s. A dirty scan form asks before any navigation. Store builds send `X-Wavelength-App`; the update banner reads `/api/app/me` and a 426 `upgrade` answer, and a required update pauses sync only.
+- Tests: `test/supervisor-lifecycle.test.mjs`, `test/signature-kind.test.mjs`, `test/entry.test.mjs`.
 
 ## Volunteer area (hidden)
 - `/volunteer/` is a hidden, password-protected sign-up for scanning-model volunteers. Not linked anywhere, noindex, not in the sitemap.
