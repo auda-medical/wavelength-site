@@ -187,7 +187,7 @@ Later revocation, expiry or a lapse changes current privileges and future snapsh
 
 ## 9. Re-verification
 
-`recheckDue` runs from the Worker cron. For now it shares the newsletter crons; a daily cron should be added with approval once a live adapter exists.
+`recheckDue` runs inside the daily supervisor job (`dailyLifecycle`, cron `15 5 * * *`, routed in `worker/cron.js`). The Tuesday newsletter crons run only the newsletter.
 
 - **Live adapters:** recheck at `next_check_at`, which is set from `recheckDays`.
 - **Outages:** back-off of 1 h to 24 h, keeping the status.

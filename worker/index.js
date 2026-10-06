@@ -12,10 +12,7 @@ import { supervisorsAdminHtml, supervisorsAdminPost, evidenceFile } from './supe
 import { dailyLifecycle } from './supervisor-lifecycle.js';
 import { organisationsAdminHtml, organisationsAdminPost } from './organisations.js';
 import { adminAccess, allowed } from './access.js';
-// The daily supervisor job's cron expression (05:15 UTC: 06:15 UK time in summer, 05:15 in winter). Not exported:
-// a named export of the Worker's main module is read as an entrypoint, and a string there stops the Worker starting.
-const DAILY_CRON = '15 5 * * *';
-import { recheckDue } from './professional.js';
+import { runScheduled } from './cron.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
 // admin_hash, session_secret). Passwords are stored as PBKDF2 hashes, never in plain text.
@@ -195,14 +192,8 @@ async function academyAdmin(env, req) {
 
 export default {
   async scheduled(event, env, ctx) {
-    if (!env.DB) return;
-    // The daily supervisor job (expiry, grace, reminders, lapses, evidence purge, rechecks, email retries) has its own
-    // cron, so the Tuesday newsletter schedule never controls supervisor safety processes, and neither runs the other's
-    // work. DAILY_CRON must be added to wrangler.jsonc triggers (needs the owner's approval) for it to run.
-    if (event && event.cron === DAILY_CRON) { ctx.waitUntil(dailyLifecycle(env).catch((e) => console.warn('dailyLifecycle', e && e.message))); return; }
-    ctx.waitUntil(scheduledNewsletter(env));
-    // Re-verification of registrations and credentials with a live source, and purging of decided evidence files.
-    ctx.waitUntil(recheckDue(env).catch((e) => console.warn('recheckDue', e && e.message)));
+    // One cron, one job (worker/cron.js): 15 5 * * * runs the daily supervisor job, the two Tuesday crons the newsletter.
+    runScheduled(event, env, ctx, { dailyLifecycle, scheduledNewsletter });
   },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
