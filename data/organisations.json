@@ -1,0 +1,856 @@
+{
+  "_about": [
+    "Starter list of UK organisations for the organisation autocomplete (plan section 19), built by hand without network access.",
+    "The full NHS ODS import (trusts, hospital sites, health boards) is still to do: the cloud session network policy blocks some hosts, so it may need running elsewhere.",
+    "Ids are stable Wavelength ids (wl-<n>) and never change between environments. Seed ids use 1 to 99999; organisations added by administrators get 100001 upwards, so a later seed never collides with them.",
+    "\"ods\" is the NHS Organisation Data Service code where it is known, kept as a hint for matching the ODS import, never as an id. Leave it out rather than guess.",
+    "After editing, run node tools/organisations-seed.mjs to regenerate the seed in migrations/0013_organisations.sql (only before it is applied). Once 0013 is applied, write new rows to a new migration: node tools/organisations-seed.mjs --out migrations/<next>.sql (INSERT OR IGNORE, so existing rows are untouched)."
+  ],
+  "organisations": [
+    {
+      "id": "wl-1",
+      "name": "Dartford and Gravesham NHS Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "ods": "RN7",
+      "aliases": [
+        "DGT",
+        "Dartford and Gravesham"
+      ]
+    },
+    {
+      "id": "wl-2",
+      "name": "Darent Valley Hospital",
+      "kind": "hospital",
+      "parent": "wl-1",
+      "country": "GB",
+      "aliases": [
+        "DVH",
+        "Darent Valley"
+      ]
+    },
+    {
+      "id": "wl-3",
+      "name": "Guy's and St Thomas' NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "ods": "RJ1",
+      "aliases": [
+        "GSTT"
+      ]
+    },
+    {
+      "id": "wl-4",
+      "name": "St Thomas' Hospital",
+      "kind": "hospital",
+      "parent": "wl-3",
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-5",
+      "name": "Guy's Hospital",
+      "kind": "hospital",
+      "parent": "wl-3",
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-6",
+      "name": "King's College Hospital NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "ods": "RJZ",
+      "aliases": [
+        "KCH"
+      ]
+    },
+    {
+      "id": "wl-7",
+      "name": "King's College Hospital",
+      "kind": "hospital",
+      "parent": "wl-6",
+      "country": "GB",
+      "aliases": [
+        "KCH"
+      ]
+    },
+    {
+      "id": "wl-8",
+      "name": "Princess Royal University Hospital",
+      "kind": "hospital",
+      "parent": "wl-6",
+      "country": "GB",
+      "aliases": [
+        "PRUH"
+      ]
+    },
+    {
+      "id": "wl-9",
+      "name": "Barts Health NHS Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "ods": "R1H",
+      "aliases": [
+        "Barts Health"
+      ]
+    },
+    {
+      "id": "wl-10",
+      "name": "The Royal London Hospital",
+      "kind": "hospital",
+      "parent": "wl-9",
+      "country": "GB",
+      "aliases": [
+        "Royal London Hospital",
+        "RLH"
+      ]
+    },
+    {
+      "id": "wl-11",
+      "name": "St Bartholomew's Hospital",
+      "kind": "hospital",
+      "parent": "wl-9",
+      "country": "GB",
+      "aliases": [
+        "Barts"
+      ]
+    },
+    {
+      "id": "wl-12",
+      "name": "Imperial College Healthcare NHS Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "ods": "RYJ",
+      "aliases": [
+        "ICHT"
+      ]
+    },
+    {
+      "id": "wl-13",
+      "name": "St Mary's Hospital, Paddington",
+      "kind": "hospital",
+      "parent": "wl-12",
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-14",
+      "name": "University College London Hospitals NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "ods": "RRV",
+      "aliases": [
+        "UCLH"
+      ]
+    },
+    {
+      "id": "wl-15",
+      "name": "University College Hospital",
+      "kind": "hospital",
+      "parent": "wl-14",
+      "country": "GB",
+      "aliases": [
+        "UCH"
+      ]
+    },
+    {
+      "id": "wl-16",
+      "name": "Maidstone and Tunbridge Wells NHS Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "MTW"
+      ]
+    },
+    {
+      "id": "wl-17",
+      "name": "Maidstone Hospital",
+      "kind": "hospital",
+      "parent": "wl-16",
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-18",
+      "name": "Tunbridge Wells Hospital",
+      "kind": "hospital",
+      "parent": "wl-16",
+      "country": "GB",
+      "aliases": [
+        "Pembury Hospital"
+      ]
+    },
+    {
+      "id": "wl-19",
+      "name": "East Kent Hospitals University NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "EKHUFT",
+        "East Kent Hospitals"
+      ]
+    },
+    {
+      "id": "wl-20",
+      "name": "William Harvey Hospital",
+      "kind": "hospital",
+      "parent": "wl-19",
+      "country": "GB",
+      "aliases": [
+        "WHH"
+      ]
+    },
+    {
+      "id": "wl-21",
+      "name": "Queen Elizabeth The Queen Mother Hospital",
+      "kind": "hospital",
+      "parent": "wl-19",
+      "country": "GB",
+      "aliases": [
+        "QEQM"
+      ]
+    },
+    {
+      "id": "wl-22",
+      "name": "Kent and Canterbury Hospital",
+      "kind": "hospital",
+      "parent": "wl-19",
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-23",
+      "name": "Medway NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "Medway Hospital"
+      ]
+    },
+    {
+      "id": "wl-24",
+      "name": "Medway Maritime Hospital",
+      "kind": "hospital",
+      "parent": "wl-23",
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-25",
+      "name": "Oxford University Hospitals NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "OUH"
+      ]
+    },
+    {
+      "id": "wl-26",
+      "name": "John Radcliffe Hospital",
+      "kind": "hospital",
+      "parent": "wl-25",
+      "country": "GB",
+      "aliases": [
+        "JR",
+        "John Radcliffe"
+      ]
+    },
+    {
+      "id": "wl-27",
+      "name": "Cambridge University Hospitals NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "CUH"
+      ]
+    },
+    {
+      "id": "wl-28",
+      "name": "Addenbrooke's Hospital",
+      "kind": "hospital",
+      "parent": "wl-27",
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-29",
+      "name": "The Newcastle upon Tyne Hospitals NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "Newcastle Hospitals"
+      ]
+    },
+    {
+      "id": "wl-30",
+      "name": "Royal Victoria Infirmary",
+      "kind": "hospital",
+      "parent": "wl-29",
+      "country": "GB",
+      "aliases": [
+        "RVI"
+      ]
+    },
+    {
+      "id": "wl-31",
+      "name": "Leeds Teaching Hospitals NHS Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "LTHT"
+      ]
+    },
+    {
+      "id": "wl-32",
+      "name": "Leeds General Infirmary",
+      "kind": "hospital",
+      "parent": "wl-31",
+      "country": "GB",
+      "aliases": [
+        "LGI"
+      ]
+    },
+    {
+      "id": "wl-33",
+      "name": "St James's University Hospital",
+      "kind": "hospital",
+      "parent": "wl-31",
+      "country": "GB",
+      "aliases": [
+        "Jimmy's"
+      ]
+    },
+    {
+      "id": "wl-34",
+      "name": "University Hospitals Birmingham NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "UHB"
+      ]
+    },
+    {
+      "id": "wl-35",
+      "name": "Queen Elizabeth Hospital Birmingham",
+      "kind": "hospital",
+      "parent": "wl-34",
+      "country": "GB",
+      "aliases": [
+        "QEHB"
+      ]
+    },
+    {
+      "id": "wl-36",
+      "name": "Manchester University NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "MFT"
+      ]
+    },
+    {
+      "id": "wl-37",
+      "name": "Manchester Royal Infirmary",
+      "kind": "hospital",
+      "parent": "wl-36",
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-38",
+      "name": "Sheffield Teaching Hospitals NHS Foundation Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "STH"
+      ]
+    },
+    {
+      "id": "wl-39",
+      "name": "Northern General Hospital",
+      "kind": "hospital",
+      "parent": "wl-38",
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-40",
+      "name": "Nottingham University Hospitals NHS Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "NUH"
+      ]
+    },
+    {
+      "id": "wl-41",
+      "name": "Queen's Medical Centre",
+      "kind": "hospital",
+      "parent": "wl-40",
+      "country": "GB",
+      "aliases": [
+        "QMC"
+      ]
+    },
+    {
+      "id": "wl-42",
+      "name": "NHS Ayrshire and Arran",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-43",
+      "name": "NHS Borders",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-44",
+      "name": "NHS Dumfries and Galloway",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-45",
+      "name": "NHS Fife",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-46",
+      "name": "NHS Forth Valley",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-47",
+      "name": "NHS Grampian",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-48",
+      "name": "NHS Greater Glasgow and Clyde",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "NHS GGC",
+        "GGC"
+      ]
+    },
+    {
+      "id": "wl-49",
+      "name": "NHS Highland",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-50",
+      "name": "NHS Lanarkshire",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-51",
+      "name": "NHS Lothian",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-52",
+      "name": "NHS Orkney",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-53",
+      "name": "NHS Shetland",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-54",
+      "name": "NHS Tayside",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-55",
+      "name": "NHS Western Isles",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "NHS Eilean Siar"
+      ]
+    },
+    {
+      "id": "wl-56",
+      "name": "Aneurin Bevan University Health Board",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-57",
+      "name": "Betsi Cadwaladr University Health Board",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-58",
+      "name": "Cardiff and Vale University Health Board",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-59",
+      "name": "Cwm Taf Morgannwg University Health Board",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-60",
+      "name": "Hywel Dda University Health Board",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-61",
+      "name": "Powys Teaching Health Board",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-62",
+      "name": "Swansea Bay University Health Board",
+      "kind": "health_board",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-63",
+      "name": "Belfast Health and Social Care Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-64",
+      "name": "Northern Health and Social Care Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-65",
+      "name": "South Eastern Health and Social Care Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-66",
+      "name": "Southern Health and Social Care Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-67",
+      "name": "Western Health and Social Care Trust",
+      "kind": "trust",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-68",
+      "name": "Barts and The London School of Medicine and Dentistry, Queen Mary University of London",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "Barts and The London",
+        "QMUL"
+      ]
+    },
+    {
+      "id": "wl-69",
+      "name": "Brighton and Sussex Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "BSMS"
+      ]
+    },
+    {
+      "id": "wl-70",
+      "name": "Cardiff University School of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-71",
+      "name": "Hull York Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "HYMS"
+      ]
+    },
+    {
+      "id": "wl-72",
+      "name": "Imperial College London Faculty of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "Imperial College London"
+      ]
+    },
+    {
+      "id": "wl-73",
+      "name": "Kent and Medway Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "KMMS"
+      ]
+    },
+    {
+      "id": "wl-74",
+      "name": "King's College London GKT School of Medical Education",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "GKT",
+        "King's College London"
+      ]
+    },
+    {
+      "id": "wl-75",
+      "name": "UCL Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "UCL",
+        "University College London"
+      ]
+    },
+    {
+      "id": "wl-76",
+      "name": "St George's, University of London",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "St George's"
+      ]
+    },
+    {
+      "id": "wl-77",
+      "name": "University of Birmingham Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-78",
+      "name": "University of Bristol Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-79",
+      "name": "University of Cambridge School of Clinical Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-80",
+      "name": "University of Edinburgh Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-81",
+      "name": "University of Glasgow School of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-82",
+      "name": "University of Aberdeen School of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-83",
+      "name": "University of Dundee School of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-84",
+      "name": "University of Leeds School of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-85",
+      "name": "University of Liverpool School of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-86",
+      "name": "University of Manchester Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-87",
+      "name": "Newcastle University Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-88",
+      "name": "University of Nottingham School of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-89",
+      "name": "University of Oxford Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-90",
+      "name": "University of Sheffield Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-91",
+      "name": "University of Southampton Faculty of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    },
+    {
+      "id": "wl-92",
+      "name": "Queen's University Belfast School of Medicine",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": [
+        "QUB"
+      ]
+    },
+    {
+      "id": "wl-93",
+      "name": "Swansea University Medical School",
+      "kind": "university",
+      "parent": null,
+      "country": "GB",
+      "aliases": []
+    }
+  ]
+}
