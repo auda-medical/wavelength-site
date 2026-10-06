@@ -30,7 +30,7 @@ import { deliverLater } from './notify.js';
 import { audit, auditStmt } from './audit.js';
 import { nowIso } from './time.js';
 
-import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady } from './app-util.js';
+import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady, sigKind, withSigKind, splitSigKind } from './app-util.js';
 
 // ---------- Accounts ----------
 async function signup(env, req, ctx) {
@@ -325,7 +325,7 @@ function snapshotOf(entries) {
   return entries.map((e) => { const s = { id: e.id }; for (const k of SIGNED_FIELDS) s[k] = e[k] == null ? null : e[k]; s.imageCount = (e.images || []).length; const m = mediaOf(e); if (m.length) s.media = m.map((x) => x.sha256); return s; });
 }
 function cleanSupervisor(d) {
-  return { name: clip(d.name, 120), role: clip(d.role, 120), reg: clip(d.registration, 40), email: clip(d.email, 160).toLowerCase(), accreditation: clip(d.accreditation, 120), basis: ['witnessed', 'reviewed', 'both'].includes(d.basis) ? d.basis : null, comment: clip(d.comment, 2000) };
+  return { name: clip(d.name, 120), role: clip(d.role, 120), reg: clip(d.registration, 40), email: clip(d.email, 160).toLowerCase(), accreditation: clip(d.accreditation, 120), basis: ['witnessed', 'reviewed', 'both'].includes(d.basis) ? d.basis : null, comment: clip(d.comment, 2000), signatureKind: sigKind(d) };
 }
 const RATING = ['g', 'a', 'r'];
 function cleanRating(r) { if (!r || typeof r !== 'object') return null; const o = {}; for (const k of ['image', 'accuracy']) if (RATING.includes(r[k])) o[k] = r[k]; return Object.keys(o).length ? o : null; }
@@ -342,7 +342,7 @@ async function applySignoff(env, so, decisions, sup, method, ratings = {}, snap 
     const hash = await contentHash(data);
     if (hash !== (await contentHash(e))) continue; // edited since the request: skip
     if (hv === 2 && Array.isArray(e.media) && JSON.stringify([...e.media].sort()) !== JSON.stringify(mediaOf(data).map((m) => m.sha256).sort())) continue; // images changed since the request
-    data.signoff = { code: so.id, status, name: sup.name, role: sup.role, reg: sup.reg, accreditation: sup.accreditation, basis: sup.basis, method, at, hash: hv === 2 ? await hashFor(data, 2) : hash, ...(hv === 2 ? { hv } : {}) };
+    data.signoff = { code: so.id, status, name: sup.name, role: sup.role, reg: sup.reg, accreditation: sup.accreditation, basis: sup.basis, method, at, hash: hv === 2 ? await hashFor(data, 2) : hash, ...(hv === 2 ? { hv } : {}), signatureKind: sup.signatureKind || 'drawn' };
     const rt = cleanRating((ratings || {})[e.id]); if (rt) data.signoff.rating = rt;
     // What Wavelength had verified about the signer at this moment. Server-owned like the rest of signoff.
     const vs = entrySnapshot(snap); if (vs) data.signoff.verification = vs;
@@ -401,7 +401,7 @@ async function signoffComplete(env, req, ctx) {
   // Whoever holds a link signs as themselves: the snapshot records the details as declared, not verified.
   const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote', learnerName: owner ? fullName(owner) : null });
   const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
-    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
+    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
   // A double tap or a second tab: only the first submission signs.
   if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This sign-off link is no longer valid.' }, 410);
   await applySignoff(env, so, decisions, sup, 'remote', ratings, snap);
@@ -452,7 +452,7 @@ async function signoffInPerson(env, l, req) {
   // Signed on the learner's own phone: the signer's details are declared, not verified.
   const snap = await snapshotFor(env, { entries, declared: sup, method: 'in-person', learnerName: fullName(l) });
   await env.DB.prepare(`INSERT INTO signoffs (id, learner_id, method, entry_ids, snapshot, status, supervisor_name, supervisor_role, supervisor_reg, supervisor_email, accreditation, basis, comment, decisions, ratings, signature, signed_at${snap ? ', supervisor_snapshot' : ''}) VALUES (?,?,?,?,?,'signed',?,?,?,?,?,?,?,?,?,?,datetime('now')${snap ? ',?' : ''})`)
-    .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, ...(snap ? [JSON.stringify(snap)] : [])).run();
+    .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : [])).run();
   await applySignoff(env, so, decisions, sup, 'in-person', ratings, snap);
   return json({ ok: true, code: id });
 }
@@ -463,7 +463,7 @@ async function signoffList(env, l) {
   return json({ ok: true, signoffs: results.map((r) => {
     const { supervisor_snapshot: snap, returned_at: ra, returned_reason: rr, error_at: ea, ...rest } = r;
     const p = life ? publicSnapshot(snap) : null;
-    return { ...rest, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ratings: JSON.parse(r.ratings || '{}'), returned: ra ? { at: ra, reason: rr } : null, issuedInError: !!ea, signer: p ? { kind: p.signer, label: p.label } : null };
+    return { ...rest, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ...splitSigKind(r.ratings), returned: ra ? { at: ra, reason: rr } : null, issuedInError: !!ea, signer: p ? { kind: p.signer, label: p.label } : null };
   }) });
 }
 // Returned requests (decision 3): send to another approved supervisor, or to a one-off assessor with a fresh link.
@@ -560,13 +560,14 @@ async function verify(env, url) {
   if (c.startsWith('AS-')) return SV.verifyAssessment(env, c);
   const ready = await verificationReady(env);
   const life = await lifecycleReady(env);
-  const so = c && await env.DB.prepare(`SELECT s.id, s.method, s.supervisor_name, s.supervisor_role, s.accreditation, s.basis, s.signed_at, s.signature IS NOT NULL AS signed_by_hand, s.decisions, s.snapshot${ready ? ', s.supervisor_snapshot' : ''}${life ? ', s.error_at' : ''}, l.title, l.first_name, l.last_name FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.id = ? AND s.status = 'signed'`).bind(c).first();
+  const so = c && await env.DB.prepare(`SELECT s.id, s.method, s.supervisor_name, s.supervisor_role, s.accreditation, s.basis, s.signed_at, s.signature IS NOT NULL AS signed_by_hand, s.decisions, s.ratings, s.snapshot${ready ? ', s.supervisor_snapshot' : ''}${life ? ', s.error_at' : ''}, l.title, l.first_name, l.last_name FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.id = ? AND s.status = 'signed'`).bind(c).first();
   if (!so) return (c && (await SV.tombstone(env, c))) || json({ ok: false, error: 'No signed record matches that code.' }, 404);
   const dec = JSON.parse(so.decisions || '{}');
   const snap = JSON.parse(so.snapshot || '[]');
   const check = publicSnapshot(so.supervisor_snapshot);
+  const sk = splitSigKind(so.ratings).signatureKind; // 'typed' or 'drawn': a typed name is not a hand signature
   // supervisorCheck: what Wavelength had verified about the signer when they signed (null for older sign-offs).
-  return json({ ok: true, code: so.id, learner: (check && check.learnerName) || fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand, method: so.method, signedAt: so.signed_at, confirmed: Object.values(dec).filter((x) => x === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })), supervisorCheck: check, ...(so.error_at ? { issuedInError: { on: String(so.error_at).slice(0, 10), notice: 'Wavelength has marked this record as issued in error. It does not count as evidence.' } } : {}) });
+  return json({ ok: true, code: so.id, learner: (check && check.learnerName) || fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand && sk !== 'typed', signatureKind: sk, method: so.method, signedAt: so.signed_at, confirmed: Object.values(dec).filter((x) => x === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })), supervisorCheck: check, ...(so.error_at ? { issuedInError: { on: String(so.error_at).slice(0, 10), notice: 'Wavelength has marked this record as issued in error. It does not count as evidence.' } } : {}) });
 }
 
 // ---------- Router ----------

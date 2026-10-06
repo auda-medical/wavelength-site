@@ -71,7 +71,7 @@
   }
   function assessmentVerifyHtml(r) {
     var dl = function (k, v) { return v ? '<dt>' + esc(T(k)) + '</dt><dd>' + esc(v) + '</dd>' : ''; };
-    return notices(r) + '<div class="' + (r.issuedInError || r.superseded ? 'card' : 'ok') + '"><b>' + esc(T('Genuine assessment.')) + '</b> ' + esc(T('This record exists in the Wavelength logbook.')) + '</div><div class="card"><div class="detail"><dl>' + dl('Code', r.code) + dl('Learner', r.learner) + dl('Pathway', r.pathway) + dl('Module', T(r.module)) + dl('Type', T(r.type)) + dl('Outcome', T(r.outcome)) + dl('Assessed', fmt(r.assessedOn)) + dl('Assessor', r.assessor + (r.role ? ', ' + r.role : '')) + dl('Accreditation stated', r.accreditation ? T(r.accreditation) : '') + dl('Method', r.method === 'in-person' ? T('In person, signed on the learner\'s device') : r.method === 'dashboard' ? T('From the assessor\'s own Wavelength account') : T('By secure link')) + '</dl></div></div>' + supCheckHtml(r.supervisorCheck) + '<p class="small muted">' + esc(T('Wavelength records who assessed and when. The assessor\'s accreditation is as they stated it. The logbook holds no patient identifiers.')) + '</p>';
+    return notices(r) + '<div class="' + (r.issuedInError || r.superseded ? 'card' : 'ok') + '"><b>' + esc(T('Genuine assessment.')) + '</b> ' + esc(T('This record exists in the Wavelength logbook.')) + '</div><div class="card"><div class="detail"><dl>' + dl('Code', r.code) + dl('Learner', r.learner) + dl('Pathway', r.pathway) + dl('Module', T(r.module)) + dl('Type', T(r.type)) + dl('Outcome', T(r.outcome)) + dl('Assessed', fmt(r.assessedOn)) + dl('Assessor', r.assessor + (r.role ? ', ' + r.role : '')) + dl('Accreditation stated', r.accreditation ? T(r.accreditation) : '') + dl('Method', r.method === 'in-person' ? T('In person, signed on the learner\'s device') : r.method === 'dashboard' ? T('From the assessor\'s own Wavelength account') : T('By secure link')) + dl('Signature', r.signatureKind === 'typed' ? T('Typed signature') : '') + '</dl></div></div>' + supCheckHtml(r.supervisorCheck) + '<p class="small muted">' + esc(T('Wavelength records who assessed and when. The assessor\'s accreditation is as they stated it. The logbook holds no patient identifiers.')) + '</p>';
   }
 
   function verifyPage() {
@@ -84,7 +84,7 @@
       if (res.kind === 'evidence') { head.textContent = T('Verified summary'); lede.textContent = ''; root.innerHTML = evidenceHtml(res) + pearlCta() + form; return; }
       if (res.kind === 'assessment') { head.textContent = T('Verified assessment'); lede.textContent = ''; root.innerHTML = assessmentVerifyHtml(res) + pearlCta() + form; return; }
       var basis = { witnessed: T('Witnessed the scan'), reviewed: T('Reviewed the images'), both: T('Witnessed the scan and reviewed the images') };
-      root.innerHTML = notices(res) + '<div class="' + (res.issuedInError ? 'card' : 'ok') + '"><b>' + esc(T('Genuine sign-off.')) + '</b> ' + esc(T('This record exists in the Wavelength logbook.')) + '</div><div class="card"><div class="detail"><dl><dt>' + esc(T('Code')) + '</dt><dd>' + esc(res.code) + '</dd><dt>' + esc(T('Learner')) + '</dt><dd>' + esc(res.learner) + '</dd><dt>' + esc(T('Signed by')) + '</dt><dd>' + esc(res.supervisor) + (res.role ? ', ' + esc(res.role) : '') + '</dd>' + (res.accreditation ? '<dt>' + esc(T('Accreditation stated')) + '</dt><dd>' + esc(T(res.accreditation)) + '</dd>' : '') + '<dt>' + esc(T('Method')) + '</dt><dd>' + esc(res.method === 'in-person' ? T('In person, signed on the learner\'s device') : res.method === 'dashboard' ? T('From the supervisor\'s own Wavelength account') : T('By secure link')) + (res.handSigned ? ', ' + esc(T('signed by hand')) : '') + '</dd>' + (res.basis ? '<dt>' + esc(T('Basis')) + '</dt><dd>' + esc(basis[res.basis]) + '</dd>' : '') + '<dt>' + esc(T('Signed')) + '</dt><dd>' + esc(fmt(res.signedAt)) + '</dd><dt>' + esc(T('Scans confirmed')) + '</dt><dd>' + esc(T('{n} of {m}', { n: res.confirmed, m: res.entries.length })) + '</dd></dl></div></div>' +
+      root.innerHTML = notices(res) + '<div class="' + (res.issuedInError ? 'card' : 'ok') + '"><b>' + esc(T('Genuine sign-off.')) + '</b> ' + esc(T('This record exists in the Wavelength logbook.')) + '</div><div class="card"><div class="detail"><dl><dt>' + esc(T('Code')) + '</dt><dd>' + esc(res.code) + '</dd><dt>' + esc(T('Learner')) + '</dt><dd>' + esc(res.learner) + '</dd><dt>' + esc(T('Signed by')) + '</dt><dd>' + esc(res.supervisor) + (res.role ? ', ' + esc(res.role) : '') + '</dd>' + (res.accreditation ? '<dt>' + esc(T('Accreditation stated')) + '</dt><dd>' + esc(T(res.accreditation)) + '</dd>' : '') + '<dt>' + esc(T('Method')) + '</dt><dd>' + esc(res.method === 'in-person' ? T('In person, signed on the learner\'s device') : res.method === 'dashboard' ? T('From the supervisor\'s own Wavelength account') : T('By secure link')) + (res.handSigned ? ', ' + esc(T('signed by hand')) : '') + '</dd>' + (res.signatureKind === 'typed' ? '<dt>' + esc(T('Signature')) + '</dt><dd>' + esc(T('Typed signature')) + '</dd>' : '') + (res.basis ? '<dt>' + esc(T('Basis')) + '</dt><dd>' + esc(basis[res.basis]) + '</dd>' : '') + '<dt>' + esc(T('Signed')) + '</dt><dd>' + esc(fmt(res.signedAt)) + '</dd><dt>' + esc(T('Scans confirmed')) + '</dt><dd>' + esc(T('{n} of {m}', { n: res.confirmed, m: res.entries.length })) + '</dd></dl></div></div>' +
         '<div class="card"><h3 style="margin-bottom:8px">' + esc(T('Scans in this sign-off')) + '</h3>' + res.entries.map(function (e) { return '<div class="row" style="padding:6px 0;border-top:1px solid var(--line);font-size:14px"><span class="grow">' + esc(T((TYPES[e.type] || {}).label || e.type)) + ', ' + esc(fmt(e.date)) + '</span><span class="chip ' + (e.decision === 'confirmed' ? 'green' : 'amber') + '">' + esc(e.decision === 'confirmed' ? T('Confirmed') : e.decision === 'query' ? T('Queried') : T('Not reviewed')) + '</span></div>'; }).join('') + '</div>' +
         supCheckHtml(res.supervisorCheck) + '<p class="small muted">' + esc(T('Wavelength records who signed and when. The supervisor\'s accreditation is as they stated it. The logbook holds no patient identifiers.')) + '</p>' + pearlCta() + form;
     });
@@ -150,14 +150,14 @@
         '<div class="field"><span class="lab">' + esc(T('Your signature')) + '</span><p class="small muted" style="margin:0 0 6px">' + esc(T('Sign with your finger, or your mouse on a computer.')) + '</p><canvas class="sigpad" data-sig></canvas><button type="button" class="link small" data-sigclr>' + esc(T('Clear')) + '</button></div>' +
         '<label class="check"><input type="checkbox" name="confirm" value="1" required><span>' + esc(T('I witnessed or reviewed these scans as stated, and my decisions above are accurate.')) + '</span></label>' +
         '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Submit sign-off')) + '</button></div></form>';
-      var f = document.getElementById('sf'), pad = F.bindSig(root);
+      var f = document.getElementById('sf'), pad = F.bindSig(root, T);
       if (shared.length) { var br = document.getElementById('br'); if (br) br.checked = true; showImages(res, byEntry, token, keyStr); }
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var d = {}; new FormData(f).forEach(function (v, k) { d[k] = v; });
         var e2 = f.querySelector('.err'); e2.hidden = true;
         if (!d.name || !d.role || !d.confirm) { e2.textContent = T('Enter your name and role and tick the confirmation.'); e2.hidden = false; return; }
-        if (pad.empty()) { e2.textContent = T('Sign in the box.'); e2.hidden = false; return; }
-        d.signature = pad.data(); d.token = token; d.decisions = {}; root.querySelectorAll('[data-dec]').forEach(function (s) { d.decisions[s.dataset.dec] = s.value; });
+        if (pad.empty()) { e2.textContent = pad.emptyError(); e2.hidden = false; return; }
+        d.signature = pad.data(); d.signatureKind = pad.kind(); d.token = token; d.decisions = {}; root.querySelectorAll('[data-dec]').forEach(function (s) { d.decisions[s.dataset.dec] = s.value; });
         d.ratings = F.readRatings(root);
         var b = f.querySelector('button.teal'); b.disabled = true; b.textContent = T('Submitting…');
         post('/api/app/signoff/complete', d).then(function (r) {
@@ -182,13 +182,13 @@
         '<form id="af">' + F.assessmentHtml(C, T, { kind: res.kind, topics: res.topics, learnerReflection: (res.data || {}).learnerReflection, pre: { name: res.supervisorName } }) +
         '<div class="field"><label for="em">' + esc(T('Your email (optional)')) + '</label><input id="em" name="email" type="email"></div>' +
         '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Submit assessment')) + '</button></div></form>';
-      var f = document.getElementById('af'), pad = F.bindSig(root);
+      var f = document.getElementById('af'), pad = F.bindSig(root, T);
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var d = F.readAssessment(C, f), e2 = f.querySelector('.err'); e2.hidden = true;
         if (!d.name || !d.role || !d.confirm) { e2.textContent = T('Enter your name and role and tick the confirmation.'); e2.hidden = false; return; }
         if (!d.outcome) { e2.textContent = T('Choose the outcome of the assessment.'); e2.hidden = false; return; }
-        if (pad.empty()) { e2.textContent = T('Sign in the box.'); e2.hidden = false; return; }
-        d.signature = pad.data(); d.token = token;
+        if (pad.empty()) { e2.textContent = pad.emptyError(); e2.hidden = false; return; }
+        d.signature = pad.data(); d.signatureKind = pad.kind(); d.token = token;
         var b = f.querySelector('button.teal'); b.disabled = true; b.textContent = T('Submitting…');
         post('/api/app/assessment/complete', d).then(function (r) {
           if (!r.ok) throw new Error(T(r.error || 'Could not submit.'));

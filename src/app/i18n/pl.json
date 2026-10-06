@@ -1474,5 +1474,12 @@
 "Share message": "Udostępnij wiadomość",
 "This supervisor is already linked.": "Ten superwizor jest już połączony.",
 "Wavelength supervision request": "Prośba o superwizję Wavelength",
-"Message copied.": "Wiadomość skopiowana."
+"Message copied.": "Wiadomość skopiowana.",
+"Draw instead": "Narysuj podpis",
+"Recorded as a typed signature.": "Zapisany jako podpis wpisany.",
+"This differs from the name you entered above. Check it is your own full name.": "Różni się od imienia i nazwiska wpisanych powyżej. Sprawdź, czy to Twoje pełne imię i nazwisko.",
+"Type my name instead": "Wpisz imię i nazwisko zamiast tego",
+"Type your full name as your signature": "Wpisz pełne imię i nazwisko jako podpis",
+"Type your full name as your signature, at least two letters.": "Wpisz pełne imię i nazwisko jako podpis, co najmniej dwie litery.",
+"Typed signature": "Podpis wpisany"
 }

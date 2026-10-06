@@ -238,6 +238,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 
 /* Signature */
 .sigpad { width: 100%; height: 170px; background: #fff; border: 1px dashed #b9b3a6; border-radius: 14px; touch-action: none; display: block; }
+.sigtoggle { margin-left: 16px; }
+.sigtyped:not([hidden]) + .sigtoggle { margin-left: 0; }
+.sigtyped > label { display: block; font-weight: 600; font-size: 14px; margin: 0 0 6px; }
+.sigtyped input { font-family: "Segoe Script", "Bradley Hand", "Snell Roundhand", "Apple Chancery", "Brush Script MT", "URW Chancery L", cursive; font-size: 24px; }
+.sigtyped .hint { margin: 6px 0 4px; }
+.sigtyped-warn { color: var(--warn-ink); margin: 0 0 8px; }
 
 /* Auth screens */
 .auth { min-height: 100vh; min-height: 100dvh; background: var(--deep); color: var(--cream); display: flex; flex-direction: column; }
