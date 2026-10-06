@@ -289,6 +289,9 @@ const PEARL_LOG_SLUG = {
   'appendicitis-ultrasound': ['bowel'], 'small-bowel-obstruction-ultrasound': ['bowel'], 'intussusception-ultrasound': ['bowel'],
   'ectopic-pregnancy-ultrasound': ['preg'], 'dvt-ultrasound': ['dvt'], 'bakers-cyst-ultrasound': ['dvt'],
   'fascia-iliaca-block-infra-inguinal': ['fib'], 'fascia-iliaca-block-supra-inguinal': ['fib'], 'portal-vein-pulsatility': null, 'pseudoaneurysm-ultrasound': null,
+  'ultrasound-guided-iv-centre-the-vein': ['pva'], 'ultrasound-guided-iv-probe-pressure': ['pva'], 'difficult-iv-access-vein-distension': ['pva'],
+  'ultrasound-guided-iv-posterior-wall-puncture': ['pva'], 'ultrasound-guided-iv-threading-failure': ['pva'], 'ultrasound-iv-flush-test': ['pva'],
+  'central-line-ultrasound-guidewire-check': ['cvc'], 'ultrasound-guided-radial-arterial-line': ['procedure'],
 };
 function logStrip(p) {
   const types = p.slug in PEARL_LOG_SLUG ? PEARL_LOG_SLUG[p.slug] : PEARL_LOG_CATEGORY[p.category] || null;

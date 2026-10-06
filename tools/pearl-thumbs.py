@@ -29,6 +29,13 @@ CROP = {
     'pneumothorax-pearl.webp': (0.03, 0.36, 0.55),
     'peng-block-pearl.webp': (0.66, 1.0, 0.12),
     'radial-block-pearl.webp': (0.66, 1.0, 0.12),
+    'iv-centre-pearl.webp': (0.67, 1.0, 0.105),
+    'iv-posterior-wall-pearl.webp': (0.03, 0.35, 0.53),
+    'iv-threading-pearl.webp': (0.63, 1.0, 0.115),
+    'iv-light-hand-pearl.webp': (0.03, 0.36, 0.52),
+    'central-line-wire-pearl.webp': (0.535, 1.0, 0.14),
+    'radial-arterial-line-pearl.webp': (0.03, 0.36, 0.52),
+    'iv-flush-test-pearl.webp': (0.56, 1.0, 0.13),
 }
 os.makedirs(OUT, exist_ok=True)
 for f in sorted(glob.glob(os.path.join(SRC, '*-pearl.webp'))):

@@ -1,0 +1,35 @@
+{
+  "slug": "vascular-access",
+  "code": "VAC",
+  "title": "Ultrasound-guided vascular access: peripheral, central and arterial",
+  "short": "Ultrasound-guided vascular access",
+  "category": "Vascular access",
+  "summary": "Learn to place peripheral lines, check a central line guidewire and place a radial arterial line with ultrasound. Centre the vein, use a light hand, stop at the near wall, rescue a catheter that will not thread and see the wire before you dilate.",
+  "cpdHours": 1.5,
+  "minutes": 85,
+  "passMark": 80,
+  "draft": false,
+  "pearl": "/learn/ultrasound-guided-iv-centre-the-vein/",
+  "image": "/learn/images/iv-centre-pearl.webp",
+  "author": "Dr Firas Abou-Auda, Consultant in Emergency Medicine and Course Director, Wavelength",
+  "published": "2026-10-06",
+  "reviewDue": "2028-10-06",
+  "conflicts": "Dr Firas Abou-Auda is Course Director of Wavelength, which runs paid ultrasound courses.",
+  "audience": "Emergency and acute care doctors, advanced clinical practitioners, nurses and others who place, or are training to place, vascular access with ultrasound under their trust's governance.",
+  "outcomes": [
+    "Choose when ultrasound helps most for peripheral cannulation and prepare the limb and the image",
+    "Tell a vein from an artery with compression, and use colour and spectral Doppler with their limits",
+    "Avoid a posterior wall puncture and rescue a catheter that will not thread, using short and long axis",
+    "Confirm that a guidewire lies inside the internal jugular vein, in two views, before you dilate",
+    "Place a radial arterial line by choosing a straight segment and rescuing in long axis"
+  ],
+  "lessons": ["01-context", "02-peripheral", "03-needle", "04-central", "05-arterial", "06-cases"],
+  "references": [
+    "Cochrane Database of Systematic Reviews. Ultrasound guidance for peripheral intravenous cannulation in adults. 2022; CD013434.",
+    "Franco-Sadud R, Schnobrich D, Mathews BK, et al. Recommendations on the use of ultrasound guidance for central and peripheral vascular access in adults: a position statement of the Society of Hospital Medicine. Journal of Hospital Medicine. 2019.",
+    "Lamperti M, Bodenham AR, Pittiruti M, et al. International evidence-based recommendations on ultrasound-guided vascular access. Intensive Care Medicine. 2012;38:1105-17.",
+    "Gu W-J, Tie H-T, Liu J-C, Zeng X-T. Efficacy of ultrasound-guided radial artery catheterization: a systematic review and meta-analysis of randomized controlled trials. Critical Care. 2014.",
+    "Bahl A, et al. Survival of ultrasound-guided peripheral intravenous catheters by length of catheter in the vein. Annals of Emergency Medicine. 2020 (as summarised by REBEL EM).",
+    "Association of Anaesthetists. Safe vascular access. 2016."
+  ]
+}
