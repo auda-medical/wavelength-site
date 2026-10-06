@@ -258,3 +258,16 @@ The directory is closed until `DIRECTORY_PUBLIC = "true"` **and** `PROFESSIONAL_
    - The public directory.
 4. Update Apple App Privacy and Google Play Data safety answers (`mobile/STORE.md`).
 5. Set `PROFESSIONAL_VERIFY = "true"` in `wrangler.jsonc` vars with approval. Later, and separately, `DIRECTORY_PUBLIC = "true"`.
+
+## 15. Supervisor lifecycle, search and organisations (October 2026)
+
+Built on top of sections 1 to 14, following the "Mobile release and supervisor verification plan" (`/mnt/project-files/plans/`) and Fero's decisions of 6 October 2026. Nothing here is switched on yet.
+
+- **Applications:** `worker/supervisor-apply.js`, app `#/supervisor` and `#/supervisor/apply` (behind `SUPERVISOR_APPLY`). Applicants use the registration functions through the wizard; `PROFESSIONAL_VERIFY` stays off.
+- **Lifecycle:** `worker/supervisor-lifecycle.js` derives standing and link state on every read, runs `dailyLifecycle` (reminders at 60, 30 and 7 days, expiry, grace, pauses, retries, purge, rechecks, retention), and keeps the four endings separate. Migration `0012_supervisor_lifecycle.sql` (not applied).
+- **Enforcement:** `SUPERVISOR_APPROVAL_REQUIRED` decides whether only approved supervisors can be linked and sign as approved. Before it is on, links show "Not yet verified by Wavelength".
+- **Outbox and audit:** `worker/notify.js` (`notification_log`, no exactly-once claim; `unknown` results wait for an admin) and `worker/audit.js` (`audit_events`, field names and codes only).
+- **Organisations:** `worker/organisations.js`, `data/organisations.json`, migration `0013_organisations.sql` (not applied); ids are `wl-<n>`, ODS codes a separate hint.
+- **Search:** `worker/search.js` behind `SUPERVISOR_SEARCH`: current approvals with an opt-in only, re-checked per result, 8 results, opaque refs, no email, rate limits and a daily cap.
+- **Hardening:** `worker/ratelimit.js`, `worker/log.js` (request ids), `worker/version.js` (`APP_MIN_VERSION`, `APP_RECOMMENDED_VERSION`, 426 `upgrade`), `worker/access.js` (Cloudflare Access with roles once `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are set).
+- **Before switching on (each step needs Fero's approval):** apply 0012 and 0013 after a Time Travel bookmark; add the daily cron to `wrangler.jsonc`; set up Cloudflare Access and the rate-limit bindings; sign the DPIA amendment; publish the privacy notice section (and a search paragraph before search); check store answers and `PrivacyInfo.xcprivacy`; test on real devices.

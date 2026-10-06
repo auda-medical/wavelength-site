@@ -112,6 +112,8 @@ Wavelength is a training logbook for clinicians who use point-of-care ultrasound
 ## Pending: professional verification (not live yet)
 
 Email verification (built October 2026) needs no change to these answers. Professional and credential verification is off until `PROFESSIONAL_VERIFY = "true"` (see `docs/verification-architecture.md`). Supervisor verification is planned for the first store release, so the privacy answers above and the iOS privacy manifest already declare its data (registration number, evidence documents and written explanation). Before switching it on:
-- Update the privacy notice and the DPIA (checklist in `docs/verification-architecture.md`, section 14).
+- Privacy notice: the supervisor verification section is drafted on the build branch (6 October 2026). DPIA: "Wavelength DPIA Amendment 2: supervisor verification, search and organisations" is drafted in Claude Docs for Firas to sign.
+- Supervisor search (`SUPERVISOR_SEARCH`) shows an opted-in supervisor's name, role, organisation and approved areas to logged-in learners. That is shown to other users of the app, not shared with a third party, so the answers above stand; add a search paragraph to the privacy notice before switching it on.
+- Store builds send `X-Wavelength-App` (set from the workflow's version input); `APP_MIN_VERSION` and `APP_RECOMMENDED_VERSION` drive the in-app update banner.
 - Review notes: mark the review learner's email as verified, and say that Professional verification is optional and reviewed by the Wavelength team.
 - Scan findings stay declared as user content (they describe anonymous patients, not the user's own health).
