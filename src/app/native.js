@@ -8,6 +8,7 @@
   var cap = window.Capacitor;
   var on = !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
   var SITE = on ? ((window.WL_NATIVE && window.WL_NATIVE.site) || 'https://thewavelength.co.uk') : location.origin;
+  var VERSION = on ? String((window.WL_NATIVE && window.WL_NATIVE.version) || '') : '';
   var cache = {};
   function plugin(name) {
     if (!on) return null;
@@ -51,6 +52,8 @@
     return ready.then(function () {
       var h = new Headers(opt.headers || {});
       h.set('X-Wavelength-Client', 'app');
+      // The store version, so the server can ask a too-old app to update (worker: APP_MIN_VERSION).
+      if (VERSION) h.set('X-Wavelength-App', VERSION);
       if (TOKEN) h.set('Authorization', 'Bearer ' + TOKEN);
       var o = {}; for (var k in opt) o[k] = opt[k];
       o.headers = h; o.credentials = 'omit'; o.mode = 'cors';
@@ -135,6 +138,7 @@
     origin: SITE,
     host: SITE.replace(/^[a-z]+:\/\//i, ''),
     net: net,
+    version: VERSION,
     ready: ready,
     signedIn: function () { return !!TOKEN; },
     clearToken: function () { setToken(''); },

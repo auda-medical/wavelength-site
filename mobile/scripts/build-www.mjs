@@ -48,7 +48,9 @@ cpSync(path.join(DIST, 'assets/logo-192.png'), path.join(WWW, 'assets/logo-192.p
 cpSync(path.join(MOBILE, 'node_modules/@capacitor/core/dist/capacitor.js'), path.join(WWW, 'capacitor.js'));
 
 const build = (readFileSync(path.join(APP, 'config.js'), 'utf8').match(/WL_BUILD = "([^"]+)"/) || [])[1] || 'dev';
-writeFileSync(path.join(WWW, 'app/native-config.js'), `window.WL_NATIVE = ${JSON.stringify({ site: SITE, build })};\n`);
+// The store version (the workflows pass their version input), sent to the server as X-Wavelength-App.
+const version = /^\d+(\.\d+){0,3}$/.test(process.env.WL_APP_VERSION || '') ? process.env.WL_APP_VERSION : '';
+writeFileSync(path.join(WWW, 'app/native-config.js'), `window.WL_NATIVE = ${JSON.stringify({ site: SITE, build, version })};\n`);
 
 // The page. Same as the website's /app/ page, with the web-only tags removed, the runtime and the app settings added,
 // and a Content Security Policy that only lets the app talk to the Wavelength server.
