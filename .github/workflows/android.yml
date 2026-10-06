@@ -29,6 +29,8 @@ jobs:
         run: npm test
       - run: npm ci
       - name: Build the logbook bundle (mobile/www)
+        env:
+          WL_APP_VERSION: ${{ inputs.version }}
         run: node scripts/build-www.mjs
       - run: npx cap sync android
       - name: Build signed bundle

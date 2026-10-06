@@ -22,9 +22,11 @@ class Stmt {
 }
 class D1 {
   // skip: migration file names to leave out, to test the Worker against a database that has not had them yet.
+  // Migrations run in order, so skipping one also leaves out every later one (they may alter its tables).
   constructor(skip = []) {
     this.db = new DatabaseSync(':memory:');
-    for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith('.sql') && !skip.includes(x)).sort()) this.db.exec(readFileSync(new URL(f, MIGRATIONS), 'utf8'));
+    const first = skip.length ? [...skip].sort()[0] : null;
+    for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith('.sql') && (!first || x < first)).sort()) this.db.exec(readFileSync(new URL(f, MIGRATIONS), 'utf8'));
   }
   prepare(sql) { return new Stmt(this.db, sql); }
   async batch(stmts) {
@@ -44,7 +46,8 @@ export function makeEnv(extra = {}, { skipMigrations = [] } = {}) {
   const wr = readFileSync(new URL('../../wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, '');
   const vars = JSON.parse(wr).vars;
   return {
-    ...vars, ZEPTOMAIL_TOKEN: '', DB: new D1(skipMigrations), SHARED_IMAGES: new KV(),
+    // LOG_SINK keeps the request log (worker/log.js) out of the test output; tests that check it pass their own.
+    ...vars, ZEPTOMAIL_TOKEN: '', DB: new D1(skipMigrations), SHARED_IMAGES: new KV(), LOG_SINK: () => {},
     ASSETS: { fetch: async () => new Response('<div id="admin-root"></div>', { headers: { 'Content-Type': 'text/html' } }) },
     ...extra,
   };

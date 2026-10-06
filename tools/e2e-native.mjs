@@ -10,9 +10,11 @@
 // sheet, log out, Content Security Policy and console errors, and layout at phone and tablet widths with insets.
 import fs from 'node:fs';
 import { harness, net, SITE } from './native-harness.mjs';
+import { localOnly } from './local-only.mjs';
 
 const out = process.argv[2] || 'native-shots';
 const API = process.argv[3] || 'http://localhost:8787';
+localOnly(API, 'tools/e2e-native.mjs');
 fs.mkdirSync(out, { recursive: true });
 
 const errors = [];

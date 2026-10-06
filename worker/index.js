@@ -9,7 +9,10 @@ import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
 import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
 import { zohoConnectUrl, zohoCallback, zohoSubscribe, scheduledNewsletter, newsletterAdminHtml, newsletterAdminPost } from './newsletter.js';
 import { supervisorsAdminHtml, supervisorsAdminPost, evidenceFile } from './supervisors-admin.js';
-import { recheckDue } from './professional.js';
+import { dailyLifecycle } from './supervisor-lifecycle.js';
+import { organisationsAdminHtml, organisationsAdminPost } from './organisations.js';
+import { adminAccess, allowed } from './access.js';
+import { runScheduled } from './cron.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
 // admin_hash, session_secret). Passwords are stored as PBKDF2 hashes, never in plain text.
@@ -189,10 +192,8 @@ async function academyAdmin(env, req) {
 
 export default {
   async scheduled(event, env, ctx) {
-    if (env.DB) ctx.waitUntil(scheduledNewsletter(env));
-    // Re-verification of registrations and credentials with a live source, and purging of decided evidence files.
-    // Runs on the existing newsletter crons for now; add a daily cron (with approval) once a live adapter exists.
-    if (env.DB) ctx.waitUntil(recheckDue(env).catch((e) => console.warn('recheckDue', e && e.message)));
+    // One cron, one job (worker/cron.js): 15 5 * * * runs the daily supervisor job, the two Tuesday crons the newsletter.
+    runScheduled(event, env, ctx, { dailyLifecycle, scheduledNewsletter });
   },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -251,6 +252,12 @@ export default {
 
     if (p.startsWith('/volunteer/admin')) {
       if (role !== 'a') return redirect('/volunteer/');
+      // Cloudflare Access (worker/access.js): only when ACCESS_TEAM_DOMAIN and ACCESS_AUD are set. Then the admin's
+      // Access email is their identity in audit events, and roles from settings.admin_roles apply.
+      const acc = await adminAccess(env, req, s);
+      if (!acc.ok) return withHeaders(new Response('Sign in through Cloudflare Access to use the admin area.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
+      if (acc.on && !allowed(acc.roles, p)) return withHeaders(new Response('Your admin roles do not include this page. Ask the owner to add the role you need.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
+      const accessEmail = acc.on ? acc.email : '';
       if (p === '/volunteer/admin/export.csv') return exportCsv(env);
       if (p === '/volunteer/admin/academy/learners.csv') return csvResponse((await env.DB.prepare('SELECT * FROM learners ORDER BY created_at DESC').all()).results || [], ['created_at', 'title', 'first_name', 'last_name', 'email', 'role', 'organisation', 'newsletter', 'last_seen'], 'wavelength-academy-learners');
       if (p === '/volunteer/admin/academy/certificates.csv') return csvResponse((await env.DB.prepare('SELECT * FROM certificates ORDER BY created_at DESC').all()).results || [], ['issued_on', 'code', 'name', 'module', 'module_title', 'score', 'cpd_hours', 'emailed_at', 'email_error'], 'wavelength-academy-certificates');
@@ -275,16 +282,28 @@ export default {
         return withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(html, { html: true }); } }).transform(shell));
       }
       if (p === '/volunteer/admin/supervisors/evidence/') {
-        const file = await evidenceFile(env, url.searchParams.get('id'));
+        const file = await evidenceFile(env, url.searchParams.get('id'), accessEmail ? `access:${accessEmail}` : s.admin_username);
         return file ? withHeaders(file) : redirect('/volunteer/admin/supervisors/');
       }
       if (p === '/volunteer/admin/supervisors/') {
         if (req.method === 'POST') {
-          const r = await supervisorsAdminPost(env, await req.formData(), s.admin_username, ctx);
-          return redirect(`/volunteer/admin/supervisors/?${r.id ? `id=${r.id}&` : ''}m=${encodeURIComponent(r.m)}`);
+          const f = await req.formData();
+          // With Access on, the verified email replaces the typed reviewer name as the actor.
+          if (accessEmail) f.set('reviewer', accessEmail);
+          const r = await supervisorsAdminPost(env, f, accessEmail ? 'access' : s.admin_username, ctx);
+          return redirect(`/volunteer/admin/supervisors/?${r.app ? `app=${r.app}&` : r.id ? `id=${r.id}&` : ''}${r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`);
         }
         const shell = await env.ASSETS.fetch(new Request(new URL('/volunteer/admin/', req.url).toString()));
-        const html = await supervisorsAdminHtml(env, url);
+        const html = await supervisorsAdminHtml(env, url, s.admin_username);
+        return withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(html, { html: true }); } }).transform(shell));
+      }
+      if (p === '/volunteer/admin/organisations/') {
+        if (req.method === 'POST') {
+          const r = await organisationsAdminPost(env, await req.formData(), s.admin_username, { access: accessEmail });
+          return redirect(`/volunteer/admin/organisations/?${r.q ? `q=${encodeURIComponent(r.q)}&` : ''}m=${encodeURIComponent(r.m)}`);
+        }
+        const shell = await env.ASSETS.fetch(new Request(new URL('/volunteer/admin/', req.url).toString()));
+        const html = await organisationsAdminHtml(env, url, { access: accessEmail });
         return withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(html, { html: true }); } }).transform(shell));
       }
       if (p === '/volunteer/admin/departments/') {

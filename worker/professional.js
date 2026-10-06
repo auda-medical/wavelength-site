@@ -10,16 +10,18 @@
 // Every status here is decided on the server. Anything a browser sends about verification is ignored.
 import CFG from '../data/credentials.json';
 import LOGBOOK from '../data/logbook.json';
-import { json, clip, body, fullName, verificationReady } from './app-util.js';
+import { json, clip, body, fullName, verificationReady, lifecycleReady } from './app-util.js';
+import { ukDate, inDate, addDays } from './time.js';
 import { adapterFor, isMockSource } from './verification/adapters.js';
 import { matchNames } from './verification/names.js';
+import { orgField, saveOrgId } from './organisations.js';
 
 export const REG = Object.fromEntries(CFG.regulators.map((r) => [r.id, r]));
 export const TYPE = Object.fromEntries(CFG.credentialTypes.map((t) => [t.id, t]));
 export const BODY = Object.fromEntries(CFG.bodies.map((b) => [b.id, b]));
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => ukDate();
 const nowIso = () => new Date().toISOString();
 const SUPERVISING_ROLES = ['supervisor', 'mentor', 'trainer'];
 export const PURGE_EVIDENCE_DAYS = 30;
@@ -56,20 +58,50 @@ export function sameOrganisation(a, b) {
 
 // ---------- Current status, derived on every read ----------
 const isCurrentReg = (r) => r.active && r.status === 'verified';
-const isCurrentCred = (c) => c.active && c.status === 'verified' && (!c.expires_on || c.expires_on >= today()) && (!c.review_on || c.review_on >= today());
+const isCurrentCred = (c) => c.active && c.status === 'verified' && inDate(c.expires_on, ukDate()) && inDate(c.review_on, ukDate());
 export async function currentStatus(env, learnerId) {
-  const [l, regs, creds, apps] = await Promise.all([
-    env.DB.prepare('SELECT id, email, title, first_name, last_name, organisation, role, email_status, email_verified_at FROM learners WHERE id = ?').bind(learnerId).first(),
+  const life = await lifecycleReady(env);
+  const [l, regs, creds, apps, renewal, block] = await Promise.all([
+    env.DB.prepare(`SELECT id, email, title, first_name, last_name, organisation, role, email_status, email_verified_at${life ? ', test_account' : ''} FROM learners WHERE id = ?`).bind(learnerId).first(),
     env.DB.prepare('SELECT * FROM professional_registrations WHERE learner_id = ? AND active = 1 ORDER BY id').bind(learnerId).all(),
     env.DB.prepare('SELECT * FROM credentials WHERE learner_id = ? AND active = 1 ORDER BY id').bind(learnerId).all(),
     env.DB.prepare("SELECT * FROM supervisor_approvals WHERE learner_id = ? AND status = 'approved' ORDER BY pathway, module").bind(learnerId).all(),
+    life ? env.DB.prepare("SELECT * FROM supervisor_applications WHERE learner_id = ? AND kind = 'renewal' AND status IN ('submitted', 'more_info') ORDER BY id DESC LIMIT 1").bind(learnerId).first() : null,
+    life ? env.DB.prepare('SELECT * FROM supervisor_blocks WHERE learner_id = ? AND lifted_at IS NULL ORDER BY id DESC LIMIT 1').bind(learnerId).first() : null,
   ]);
   const registrations = regs.results || [], credentials = creds.results || [];
   const hasReg = registrations.some(isCurrentReg);
+  const day = ukDate();
   // An approval counts only while it is in date and the person still holds a verified registration. A lapse found on
   // recheck therefore removes supervisor privileges at once without deleting the approval or its history.
-  const approvals = (apps.results || []).map((a) => ({ ...a, current: hasReg && (!a.review_on || a.review_on >= today()) }));
-  return { learner: l, registrations, credentials, approvals, hasReg };
+  // After migration 0012 (supervisor lifecycle) an approval is current only while every one of these holds, checked on
+  // every read, so suspension is never stored and a fixed lapse restores privileges on its own:
+  //   the email is verified; the registration is verified, or the approval records an administrator's exemption;
+  //   every credential the administrator marked as required is still current; and the review date has not passed,
+  //   or a complete renewal is within its 30-day grace period (graceFor below).
+  const emailOk = !!l && l.email_status === 'verified';
+  const credOk = (ids) => parseList(ids).every((id) => credentials.some((c) => c.id === Number(id) && isCurrentCred(c)));
+  const approvals = (apps.results || []).map((a) => {
+    if (!life) return { ...a, current: hasReg && inDate(a.review_on, day) };
+    const regOk = hasReg || !!a.registration_exempt;
+    const basisOk = credOk(a.required_basis);
+    const inTerm = inDate(a.review_on, day);
+    const grace = !inTerm && regOk && basisOk && emailOk && !block && graceFor(a, renewal, day);
+    const lapse = !emailOk ? 'email' : !regOk ? 'registration' : !basisOk ? 'credential' : null;
+    return { ...a, current: emailOk && regOk && basisOk && (inTerm || grace), grace: !!grace, lapse, graceUntil: grace ? addDays(a.review_on, GRACE_DAYS) : null };
+  });
+  return { learner: l, registrations, credentials, approvals, hasReg, renewal: renewal || null, block: block || null, lifecycle: life };
+}
+// Fero's conditions (6 October 2026) for up to 30 days of grace after the review date: the renewal was submitted on
+// or before that date, the supervisor was fully approved and current when they submitted it, it is complete (not
+// waiting on information Wavelength asked for), no administrator has recorded a material change, and (checked by the
+// caller) the registration, required credentials and email are still current and there is no block. Status shows as
+// "Renewal under review"; the approval is not described as renewed until an administrator confirms it.
+export const GRACE_DAYS = 30;
+function graceFor(a, renewal, day) {
+  if (!renewal || renewal.status !== 'submitted' || !renewal.current_at_submit || renewal.grace_blocked) return false;
+  if (!a.review_on || ukDate(renewal.submitted_at) > a.review_on) return false;
+  return day <= addDays(a.review_on, GRACE_DAYS);
 }
 export const scopeLabel = (pathway, module) => {
   const pw = PATHS[pathway]; if (!pw) return `${pathway} ${module}`;
@@ -160,9 +192,12 @@ async function saveRegistration(env, row, u) {
   return env.DB.prepare('SELECT * FROM professional_registrations WHERE id = ?').bind(row.id).first();
 }
 
-async function submitRegistration(env, l, d) {
+export async function submitRegistration(env, l, d) {
   const reg = REG[d.regulator];
   if (!reg) return json({ ok: false, error: 'Choose your regulator.' }, 400);
+  // organisationId beside the typed organisation (plan section 19): checked against the list, typed text kept.
+  const org = await orgField(env, d.organisationId);
+  if (!org.ok) return json({ ok: false, error: org.error }, 400);
   const number = normaliseNumber(reg, d.number);
   if (!number) return json({ ok: false, error: `Check your ${reg.numberLabel}: ${reg.numberHint}.` }, 400);
   if ((await recentCount(env, l.id, 'registration_submitted')) >= LIMITS.registration) return json({ ok: false, error: 'You have made several changes today. Try again tomorrow.' }, 429);
@@ -171,8 +206,10 @@ async function submitRegistration(env, l, d) {
   let row = await env.DB.prepare('SELECT * FROM professional_registrations WHERE learner_id = ? AND regulator = ? AND active = 1').bind(l.id, reg.id).first();
   if (row && row.registration_number === number && ['verified', 'manual_review', 'manual_verification_required'].includes(row.status)) {
     await env.DB.prepare("UPDATE professional_registrations SET profession = ?, organisation = ?, role = ?, updated_at = datetime('now') WHERE id = ?").bind(fields.profession, fields.organisation, fields.role, row.id).run();
+    await saveOrgId(env, 'professional_registrations', row.id, org, fields.organisation, row.organisation);
     return json({ ok: true, registration: publicRegistration(await env.DB.prepare('SELECT * FROM professional_registrations WHERE id = ?').bind(row.id).first()) });
   }
+  const prevOrg = row ? row.organisation : undefined;
   if (row) {
     // A new number replaces the old one and starts again.
     await env.DB.prepare("UPDATE professional_registrations SET registration_number = ?, profession = ?, organisation = ?, role = ?, claimed_name = ?, status = 'pending', register_name = NULL, register_status = NULL, register_fields = NULL, verified_at = NULL, verification_method = NULL, verification_source = NULL, match_method = NULL, match_version = NULL, match_result = NULL, failure_state = NULL, failure_count = 0, updated_at = datetime('now') WHERE id = ?")
@@ -184,6 +221,7 @@ async function submitRegistration(env, l, d) {
     } catch { return json({ ok: false, error: 'Something went wrong. Please try again.' }, 409); } // a second tab inserted it first
   }
   row = await env.DB.prepare('SELECT * FROM professional_registrations WHERE learner_id = ? AND regulator = ? AND active = 1').bind(l.id, reg.id).first();
+  await saveOrgId(env, 'professional_registrations', row.id, org, fields.organisation, prevOrg);
   await logEvent(env, { learnerId: l.id, subjectType: 'registration', subjectId: row.id, action: 'registration_submitted', actor: 'learner', notes: `${reg.short} number entered` });
   // Someone else already holds this number as verified. Do not say who: an administrator looks at both.
   const other = await env.DB.prepare("SELECT id FROM professional_registrations WHERE regulator = ? AND registration_number = ? AND status = 'verified' AND active = 1 AND learner_id != ?").bind(reg.id, number, l.id).first();
@@ -259,7 +297,7 @@ export async function checkCredential(env, cred, kind = 'claim', actor = 'system
   return env.DB.prepare('SELECT * FROM credentials WHERE id = ?').bind(cred.id).first();
 }
 
-async function submitCredential(env, l, d) {
+export async function submitCredential(env, l, d) {
   const type = TYPE[d.type];
   if (!type) return json({ ok: false, error: 'Choose the credential.' }, 400);
   const modules = [...new Set((Array.isArray(d.modules) ? d.modules : []).map(String))].filter((m) => type.modules.some((x) => x.id === m));
@@ -302,13 +340,22 @@ const MAGIC = [['application/pdf', [0x25, 0x50, 0x44, 0x46]], ['image/png', [0x8
 const sniff = (u8) => (MAGIC.find(([, m]) => m.every((b, i) => u8[i] === b)) || [null])[0];
 const hex = async (buf) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))].map((b) => b.toString(16).padStart(2, '0')).join('');
 // JSON { subject, id, kind, description, url } or raw bytes with ?subject=&id=&kind=&description=&name=
-async function addEvidence(env, l, req, url) {
+// subject 'application' (a supervisor application, migration 0012) is reached only through worker/supervisor-apply.js.
+// uploadId: a value the app makes per file, so a retried or double-tapped upload returns the first copy.
+export async function addEvidence(env, l, req, url, { allowApplication = false } = {}) {
   const raw = !(req.headers.get('Content-Type') || '').includes('application/json');
   const d = raw ? Object.fromEntries(url.searchParams) : (await body(req)) || {};
-  const subject = d.subject === 'registration' ? 'registration' : 'credential';
-  const table = subject === 'registration' ? 'professional_registrations' : 'credentials';
-  const row = await env.DB.prepare(`SELECT * FROM ${table} WHERE id = ? AND learner_id = ? AND active = 1`).bind(Number(d.id), l.id).first();
-  if (!row) return json({ ok: false, error: 'That claim was not found.' }, 404);
+  const subject = d.subject === 'registration' ? 'registration' : d.subject === 'application' && allowApplication ? 'application' : 'credential';
+  const row = subject === 'application'
+    ? await env.DB.prepare("SELECT * FROM supervisor_applications WHERE id = ? AND learner_id = ? AND status IN ('draft', 'more_info')").bind(Number(d.id), l.id).first()
+    : await env.DB.prepare(`SELECT * FROM ${subject === 'registration' ? 'professional_registrations' : 'credentials'} WHERE id = ? AND learner_id = ? AND active = 1`).bind(Number(d.id), l.id).first();
+  if (!row) return json({ ok: false, error: subject === 'application' ? 'Evidence can be added while your application is a draft or when we have asked for more information.' : 'That claim was not found.' }, 404);
+  const uploadId = /^[A-Za-z0-9_-]{8,40}$/.test(String(d.uploadId || '')) ? String(d.uploadId) : null;
+  const life = await lifecycleReady(env);
+  if (uploadId && life) {
+    const dup = await env.DB.prepare('SELECT id FROM credential_evidence WHERE learner_id = ? AND upload_id = ?').bind(l.id, uploadId).first();
+    if (dup) return json({ ok: true, id: dup.id, duplicate: true });
+  }
   if ((await recentCount(env, l.id, 'evidence_added')) >= LIMITS.evidence) return json({ ok: false, error: 'You have added a lot of evidence today. Try again tomorrow.' }, 429);
   const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM credential_evidence WHERE subject_type = ? AND subject_id = ?').bind(subject, row.id).first();
   if (n.n >= 5) return json({ ok: false, error: 'You can add up to five pieces of evidence to one claim.' }, 400);
@@ -325,12 +372,16 @@ async function addEvidence(env, l, req, url) {
     const type = sniff(new Uint8Array(buf.slice(0, 8)));
     if (!type) return json({ ok: false, error: 'Upload a PDF, JPEG or PNG file.' }, 415);
     file = { type, size: buf.byteLength, sha: await hex(buf), name: clip(d.name, 120).replace(/[^\w .()-]/g, '_') || 'evidence', data: new Uint8Array(buf) };
+    // The same file twice on one claim is stored once.
+    const same = await env.DB.prepare('SELECT id FROM credential_evidence WHERE subject_type = ? AND subject_id = ? AND file_sha256 = ?').bind(subject, row.id, file.sha).first();
+    if (same) return json({ ok: true, id: same.id, duplicate: true });
   } else if (!description && !link) return json({ ok: false, error: 'Describe the evidence or add a link.' }, 400);
-  const r = await env.DB.prepare('INSERT INTO credential_evidence (learner_id, subject_type, subject_id, kind, description, url, file_name, file_type, file_size, file_sha256, file_data) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(l.id, subject, row.id, kind, description || null, link || null, file ? file.name : null, file ? file.type : null, file ? file.size : null, file ? file.sha : null, file ? file.data : null).run();
+  const r = await env.DB.prepare(`INSERT INTO credential_evidence (learner_id, subject_type, subject_id, kind, description, url, file_name, file_type, file_size, file_sha256, file_data${life ? ', upload_id' : ''}) VALUES (?,?,?,?,?,?,?,?,?,?,?${life ? ',?' : ''})`)
+    .bind(l.id, subject, row.id, kind, description || null, link || null, file ? file.name : null, file ? file.type : null, file ? file.size : null, file ? file.sha : null, file ? file.data : null, ...(life ? [uploadId] : [])).run();
   const evidenceId = r.meta && r.meta.last_row_id;
   if (subject === 'credential' && ['claimed', 'evidence_required', 'not_found', 'more_evidence', 'source_unavailable'].includes(row.status)) await env.DB.prepare("UPDATE credentials SET status = 'manual_review', updated_at = datetime('now') WHERE id = ?").bind(row.id).run();
   if (subject === 'registration' && ['mismatch', 'not_found', 'source_unavailable', 'pending'].includes(row.status)) await env.DB.prepare("UPDATE professional_registrations SET status = 'manual_review', updated_at = datetime('now') WHERE id = ?").bind(row.id).run();
+  if (subject === 'application') await env.DB.prepare("UPDATE supervisor_applications SET updated_at = datetime('now') WHERE id = ?").bind(row.id).run();
   await logEvent(env, { learnerId: l.id, subjectType: subject, subjectId: row.id, action: 'evidence_added', actor: 'learner', evidenceId, notes: kind });
   return json({ ok: true, id: evidenceId });
 }
@@ -362,10 +413,14 @@ async function saveDirectory(env, l, d) {
   const contact = clip(d && d.contactEmail, 160).toLowerCase();
   if (contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) return json({ ok: false, error: 'Enter a valid contact email, or leave it empty.' }, 400);
   const listed = want && el.eligible ? 1 : 0;
+  const org = await orgField(env, d.organisationId);
+  if (!org.ok) return json({ ok: false, error: org.error }, 400);
+  const before = await env.DB.prepare('SELECT organisation FROM directory_profiles WHERE learner_id = ?').bind(l.id).first();
   const v = { display_name: clip(d.displayName, 120) || null, profession: clip(d.profession, 80) || null, specialty: clip(d.specialty, 80) || null, organisation: clip(d.organisation, 160) || null, region: clip(d.region, 80) || null, country: clip(d.country, 2).toUpperCase() || null, contact_email: contact || null, show_contact: d.showContact && contact ? 1 : 0 };
   await env.DB.prepare(`INSERT INTO directory_profiles (learner_id, listed, display_name, profession, specialty, organisation, region, country, contact_email, show_contact, listed_at) VALUES (?,?,?,?,?,?,?,?,?,?, CASE WHEN ? = 1 THEN datetime('now') END)
     ON CONFLICT (learner_id) DO UPDATE SET listed = excluded.listed, display_name = excluded.display_name, profession = excluded.profession, specialty = excluded.specialty, organisation = excluded.organisation, region = excluded.region, country = excluded.country, contact_email = excluded.contact_email, show_contact = excluded.show_contact, updated_at = datetime('now'), listed_at = CASE WHEN excluded.listed = 1 THEN COALESCE(directory_profiles.listed_at, datetime('now')) END`)
     .bind(l.id, listed, v.display_name, v.profession, v.specialty, v.organisation, v.region, v.country, v.contact_email, v.show_contact, listed).run();
+  await saveOrgId(env, 'directory_profiles', l.id, org, v.organisation, before ? before.organisation : null);
   await logEvent(env, { learnerId: l.id, subjectType: 'directory', subjectId: l.id, action: listed ? 'listed' : 'unlisted', actor: 'learner' });
   return json({ ok: true, listed: !!listed, ...el });
 }
@@ -407,8 +462,12 @@ export function scopesForTypes(types) {
   for (const pw of LOGBOOK.pathways) for (const m of pw.modules || []) if ((m.types || []).some((t) => types.includes(t))) s.add(`${pw.id}:${m.id}`);
   return [...s];
 }
-export async function supervisorSnapshot(env, { accountId, declared, method, scopes = [] }) {
-  const snap = { v: 1, capturedAt: nowIso(), method, identity: accountId ? 'wavelength_account' : 'self_declared', declared: { name: declared.name || '', role: declared.role || '', registration: declared.reg || '', accreditation: declared.accreditation || '' }, relevantScopes: scopes };
+// Schema v2 (migration 0012) adds: learnerName (the learner's name when signed, so verify pages need not read the live
+// account), signer ('approved' | 'account_not_approved' | 'self_declared': the label every page shows), and standing.
+export async function supervisorSnapshot(env, { accountId, declared, method, scopes = [], learnerName = null }) {
+  const life = await lifecycleReady(env);
+  const snap = { v: life ? 2 : 1, capturedAt: nowIso(), method, identity: accountId ? 'wavelength_account' : 'self_declared', declared: { name: declared.name || '', role: declared.role || '', registration: declared.reg || '', accreditation: declared.accreditation || '' }, relevantScopes: scopes };
+  if (life) { snap.signer = 'self_declared'; if (learnerName) snap.learnerName = learnerName; }
   if (!accountId) return snap;
   const st = await currentStatus(env, accountId);
   if (!st.learner) return snap;
@@ -423,21 +482,35 @@ export async function supervisorSnapshot(env, { accountId, declared, method, sco
   const covers = (sc) => snap.approvals.some((a) => sc === `${a.pathway}:${a.module}` || sc.startsWith(`${a.pathway}:`) && a.module === '*');
   snap.approvedFor = scopes.filter(covers);
   snap.wavelengthVerifiedSupervisor = snap.approvedFor.length > 0;
+  if (life) {
+    snap.signer = snap.wavelengthVerifiedSupervisor ? 'approved' : 'account_not_approved';
+    snap.standing = st.approvals.some((a) => a.current) ? (st.approvals.filter((a) => a.current).every((a) => a.grace) ? 'renewal_review' : 'active') : st.approvals.length ? 'paused' : 'not_approved';
+  }
   return snap;
 }
 // The snapshot for a sign-off or assessment, or null before migration 0011. entries: the signed snapshot entries.
-export async function snapshotFor(env, { entries = [], pathway, module, declared, method, accountId = null }) {
+export async function snapshotFor(env, { entries = [], pathway, module, declared, method, accountId = null, learnerName = null }) {
   if (!(await verificationReady(env))) return null;
   const scopes = pathway ? [`${pathway}:${module}`] : scopesForTypes([...new Set(entries.map((e) => e.type))]);
-  return supervisorSnapshot(env, { accountId, declared, method, scopes });
+  return supervisorSnapshot(env, { accountId, declared, method, scopes, learnerName });
 }
+// The three labels used on verify pages, the app and exports.
+export const SIGNER_LABELS = {
+  approved: 'Wavelength-approved supervisor',
+  account_not_approved: 'Wavelength account, not approved as a supervisor at the time of signing',
+  self_declared: 'Self-declared (not verified by Wavelength)',
+};
+const signerOf = (s) => s.signer || (s.identity !== 'wavelength_account' ? 'self_declared' : s.wavelengthVerifiedSupervisor ? 'approved' : 'account_not_approved');
 // What the public verify pages show from a snapshot: no registration numbers, no email.
 export function publicSnapshot(text) {
   let s; try { s = JSON.parse(text || 'null'); } catch { s = null; }
   if (!s) return null;
-  if (s.identity !== 'wavelength_account') return { capturedAt: s.capturedAt, identity: 'self_declared', summary: 'Name, role and any registration were entered by the signer and were not verified by Wavelength.' };
+  if (s.identity !== 'wavelength_account') return { capturedAt: s.capturedAt, identity: 'self_declared', signer: 'self_declared', label: SIGNER_LABELS.self_declared, learnerName: s.learnerName || null, summary: 'Name, role and any registration were entered by the signer and were not verified by Wavelength.' };
+  const signer = signerOf(s);
   return {
-    capturedAt: s.capturedAt, identity: 'wavelength_account', professionalName: s.professionalName,
+    capturedAt: s.capturedAt, identity: 'wavelength_account', signer, label: SIGNER_LABELS[signer], learnerName: s.learnerName || null,
+    accountClosed: !!s.accountClosed, closedNote: s.accountClosed ? "The signer's Wavelength account has since been closed; details are as recorded at signing." : null,
+    professionalName: s.professionalName,
     emailVerified: (s.email || {}).status === 'verified',
     registrations: (s.registrations || []).filter((r) => r.verified).map((r) => ({ regulator: r.regulatorName, profession: r.profession, verifiedAt: r.verifiedAt })),
     credentials: (s.credentials || []).map((c) => ({ label: c.label, issuer: c.issuer, modules: moduleLabels(TYPE[c.type] || { modules: [] }, c.modules || []), verifiedAt: c.verifiedAt, expiresOn: c.expiresOn })),
@@ -471,14 +544,21 @@ export async function recheckDue(env, limit = 20) {
 }
 
 // ---------- Account deletion ----------
-export function deleteProfessional(env, l) {
-  return ['email_tokens', 'professional_registrations', 'credentials', 'credential_evidence', 'supervisor_approvals', 'verification_events', 'directory_profiles']
-    .map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE learner_id = ?`).bind(l.id));
+// After migration 0012 (life): approval and application decision events are kept pseudonymised (no learner id, no
+// notes) for six years, because they back historical "approved supervisor" labels (decision 12); the daily job
+// deletes them after that. Applications, the lapse watch and queued emails go with the account.
+export function deleteProfessional(env, l, life = false) {
+  const pre = life ? [
+    env.DB.prepare("UPDATE verification_events SET learner_id = NULL, notes = NULL, evidence_id = NULL WHERE learner_id = ? AND subject_type IN ('approval', 'application')").bind(l.id),
+    ...['supervisor_applications', 'supervisor_watch', 'notification_log'].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE learner_id = ?`).bind(l.id)),
+  ] : [];
+  return [...pre, ...['email_tokens', 'professional_registrations', 'credentials', 'credential_evidence', 'supervisor_approvals', 'verification_events', 'directory_profiles']
+    .map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE learner_id = ?`).bind(l.id))];
 }
 
 // ---------- Learner API ----------
 export const professionalOn = (env) => env.PROFESSIONAL_VERIFY === 'true';
-function config() {
+export function config() {
   return {
     regulators: CFG.regulators.map((r) => ({ id: r.id, short: r.short, name: r.name, country: r.country, professions: r.professions, numberLabel: r.numberLabel, numberHint: r.numberHint, registerUrl: r.registerUrl, automatic: r.adapter !== 'manual' })),
     credentialTypes: CFG.credentialTypes.map((t) => ({ id: t.id, label: t.label, issuer: (BODY[t.body] || {}).name, programme: t.programme, role: t.role, modules: t.modules.map((m) => ({ id: m.id, label: m.label })), expires: !!t.expires, automatic: t.adapter !== 'manual' })),

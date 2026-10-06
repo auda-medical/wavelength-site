@@ -9,14 +9,15 @@
 export const NATIVE_ORIGINS = ['https://localhost', 'capacitor://localhost'];
 export const isNativeOrigin = (o) => !!o && NATIVE_ORIGINS.includes(o);
 const LOGIN_COOKIE = 'wl_learn';
-const ALLOW_HEADERS = 'Accept, Accept-Language, Content-Type, Authorization, X-Wavelength-Client';
+// X-Wavelength-App: the store app's version, for the minimum-version check (worker/version.js).
+const ALLOW_HEADERS = 'Accept, Accept-Language, Content-Type, Authorization, X-Wavelength-Client, X-Wavelength-App';
 
 function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': ALLOW_HEADERS,
-    'Access-Control-Expose-Headers': 'X-Wavelength-Token',
+    'Access-Control-Expose-Headers': 'X-Wavelength-Token, X-Request-Id',
     'Access-Control-Max-Age': '600',
     Vary: 'Origin',
   };

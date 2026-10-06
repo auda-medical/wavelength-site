@@ -51,18 +51,27 @@
   // What Wavelength had verified about the signer at the moment they signed (stored with the record, never updated).
   function supCheckHtml(sc) {
     if (!sc) return '';
-    if (sc.identity !== 'wavelength_account') return '<div class="card"><h3>' + esc(T('Signer verification')) + '</h3><p class="small">' + esc(T('Signed by link or on the learner\'s device. The name, role and any registration were entered by the signer and were not verified by Wavelength.')) + '</p></div>';
+    var who = sc.label ? '<p class="small"><b>' + esc(T('Signer')) + ':</b> ' + esc(T(sc.label)) + '</p>' : '';
+    if (sc.identity !== 'wavelength_account') return '<div class="card"><h3>' + esc(T('Signer verification')) + '</h3>' + who + '<p class="small">' + esc(T('Signed by link or on the learner\'s device. The name, role and any registration were entered by the signer and were not verified by Wavelength.')) + '</p></div>';
     var li = function (x) { return '<li>' + esc(x) + '</li>'; };
     var items = (sc.registrations || []).map(function (r) { return T('Professional registration verified: {body}', { body: r.regulator }) + (r.verifiedAt ? ' (' + fmt(r.verifiedAt) + ')' : ''); })
       .concat((sc.credentials || []).map(function (c) { return T('{credential}, issued by {issuer}', { credential: c.label + ((c.modules || []).length ? ': ' + c.modules.join(', ') : ''), issuer: c.issuer }) + (c.verifiedAt ? ' (' + T('checked {date}', { date: fmt(c.verifiedAt) }) + ')' : ''); }))
       .concat((sc.approvedFor || []).map(function (a) { return T('Wavelength verified supervisor for {scope}', { scope: a }); }));
-    return '<div class="card"><h3>' + esc(T('Verified when signed')) + '</h3><p class="small muted">' + esc(T('Signed from their own Wavelength account. As verified on {date}:', { date: fmt(sc.capturedAt) })) + '</p>' +
+    return '<div class="card"><h3>' + esc(T('Verified when signed')) + '</h3>' + who + '<p class="small muted">' + esc(T('Signed from their own Wavelength account. As verified on {date}:', { date: fmt(sc.capturedAt) })) + '</p>' + (sc.closedNote ? '<p class="small muted">' + esc(T(sc.closedNote)) + '</p>' : '') +
       (items.length ? '<ul class="small">' + items.map(li).join('') + '</ul>' : '<p class="small">' + esc(T('No professional registration or credential had been verified for this account at that time.')) + '</p>') +
       '<p class="small muted">' + esc(T('External credentials are issued by the named bodies, not by Wavelength. This shows what Wavelength had checked when the record was signed; it does not change if the supervisor\'s status changes later.')) + '</p></div>';
   }
+  // A record later amended by its assessor, a correction of an earlier one, or one Wavelength marked as issued in error.
+  function notices(r) {
+    var out = '';
+    if (r.issuedInError) out += '<div class="warn"><b>' + esc(T('Issued in error.')) + '</b> ' + esc(T('Wavelength has marked this record as issued in error. It does not count as evidence.')) + '</div>';
+    if (r.superseded) out += '<div class="warn"><b>' + esc(T('Amended.')) + '</b> ' + esc(T('The assessor amended this assessment. See {code}.', { code: r.superseded.by })) + ' <a href="?code=' + encodeURIComponent(r.superseded.by) + '">' + esc(T('Open the current version')) + '</a></div>';
+    if (r.amends) out += '<p class="small muted">' + esc(T('This corrects {code}.', { code: r.amends.code })) + '</p>';
+    return out;
+  }
   function assessmentVerifyHtml(r) {
     var dl = function (k, v) { return v ? '<dt>' + esc(T(k)) + '</dt><dd>' + esc(v) + '</dd>' : ''; };
-    return '<div class="ok"><b>' + esc(T('Genuine assessment.')) + '</b> ' + esc(T('This record exists in the Wavelength logbook.')) + '</div><div class="card"><div class="detail"><dl>' + dl('Code', r.code) + dl('Learner', r.learner) + dl('Pathway', r.pathway) + dl('Module', T(r.module)) + dl('Type', T(r.type)) + dl('Outcome', T(r.outcome)) + dl('Assessed', fmt(r.assessedOn)) + dl('Assessor', r.assessor + (r.role ? ', ' + r.role : '')) + dl('Accreditation stated', r.accreditation ? T(r.accreditation) : '') + dl('Method', r.method === 'in-person' ? T('In person, signed on the learner\'s device') : r.method === 'dashboard' ? T('From the assessor\'s own Wavelength account') : T('By secure link')) + '</dl></div></div>' + supCheckHtml(r.supervisorCheck) + '<p class="small muted">' + esc(T('Wavelength records who assessed and when. The assessor\'s accreditation is as they stated it. The logbook holds no patient identifiers.')) + '</p>';
+    return notices(r) + '<div class="' + (r.issuedInError || r.superseded ? 'card' : 'ok') + '"><b>' + esc(T('Genuine assessment.')) + '</b> ' + esc(T('This record exists in the Wavelength logbook.')) + '</div><div class="card"><div class="detail"><dl>' + dl('Code', r.code) + dl('Learner', r.learner) + dl('Pathway', r.pathway) + dl('Module', T(r.module)) + dl('Type', T(r.type)) + dl('Outcome', T(r.outcome)) + dl('Assessed', fmt(r.assessedOn)) + dl('Assessor', r.assessor + (r.role ? ', ' + r.role : '')) + dl('Accreditation stated', r.accreditation ? T(r.accreditation) : '') + dl('Method', r.method === 'in-person' ? T('In person, signed on the learner\'s device') : r.method === 'dashboard' ? T('From the assessor\'s own Wavelength account') : T('By secure link')) + dl('Signature', r.signatureKind === 'typed' ? T('Typed signature') : '') + '</dl></div></div>' + supCheckHtml(r.supervisorCheck) + '<p class="small muted">' + esc(T('Wavelength records who assessed and when. The assessor\'s accreditation is as they stated it. The logbook holds no patient identifiers.')) + '</p>';
   }
 
   function verifyPage() {
@@ -75,7 +84,7 @@
       if (res.kind === 'evidence') { head.textContent = T('Verified summary'); lede.textContent = ''; root.innerHTML = evidenceHtml(res) + pearlCta() + form; return; }
       if (res.kind === 'assessment') { head.textContent = T('Verified assessment'); lede.textContent = ''; root.innerHTML = assessmentVerifyHtml(res) + pearlCta() + form; return; }
       var basis = { witnessed: T('Witnessed the scan'), reviewed: T('Reviewed the images'), both: T('Witnessed the scan and reviewed the images') };
-      root.innerHTML = '<div class="ok"><b>' + esc(T('Genuine sign-off.')) + '</b> ' + esc(T('This record exists in the Wavelength logbook.')) + '</div><div class="card"><div class="detail"><dl><dt>' + esc(T('Code')) + '</dt><dd>' + esc(res.code) + '</dd><dt>' + esc(T('Learner')) + '</dt><dd>' + esc(res.learner) + '</dd><dt>' + esc(T('Signed by')) + '</dt><dd>' + esc(res.supervisor) + (res.role ? ', ' + esc(res.role) : '') + '</dd>' + (res.accreditation ? '<dt>' + esc(T('Accreditation stated')) + '</dt><dd>' + esc(T(res.accreditation)) + '</dd>' : '') + '<dt>' + esc(T('Method')) + '</dt><dd>' + esc(res.method === 'in-person' ? T('In person, signed on the learner\'s device') : res.method === 'dashboard' ? T('From the supervisor\'s own Wavelength account') : T('By secure link')) + (res.handSigned ? ', ' + esc(T('signed by hand')) : '') + '</dd>' + (res.basis ? '<dt>' + esc(T('Basis')) + '</dt><dd>' + esc(basis[res.basis]) + '</dd>' : '') + '<dt>' + esc(T('Signed')) + '</dt><dd>' + esc(fmt(res.signedAt)) + '</dd><dt>' + esc(T('Scans confirmed')) + '</dt><dd>' + esc(T('{n} of {m}', { n: res.confirmed, m: res.entries.length })) + '</dd></dl></div></div>' +
+      root.innerHTML = notices(res) + '<div class="' + (res.issuedInError ? 'card' : 'ok') + '"><b>' + esc(T('Genuine sign-off.')) + '</b> ' + esc(T('This record exists in the Wavelength logbook.')) + '</div><div class="card"><div class="detail"><dl><dt>' + esc(T('Code')) + '</dt><dd>' + esc(res.code) + '</dd><dt>' + esc(T('Learner')) + '</dt><dd>' + esc(res.learner) + '</dd><dt>' + esc(T('Signed by')) + '</dt><dd>' + esc(res.supervisor) + (res.role ? ', ' + esc(res.role) : '') + '</dd>' + (res.accreditation ? '<dt>' + esc(T('Accreditation stated')) + '</dt><dd>' + esc(T(res.accreditation)) + '</dd>' : '') + '<dt>' + esc(T('Method')) + '</dt><dd>' + esc(res.method === 'in-person' ? T('In person, signed on the learner\'s device') : res.method === 'dashboard' ? T('From the supervisor\'s own Wavelength account') : T('By secure link')) + (res.handSigned ? ', ' + esc(T('signed by hand')) : '') + '</dd>' + (res.signatureKind === 'typed' ? '<dt>' + esc(T('Signature')) + '</dt><dd>' + esc(T('Typed signature')) + '</dd>' : '') + (res.basis ? '<dt>' + esc(T('Basis')) + '</dt><dd>' + esc(basis[res.basis]) + '</dd>' : '') + '<dt>' + esc(T('Signed')) + '</dt><dd>' + esc(fmt(res.signedAt)) + '</dd><dt>' + esc(T('Scans confirmed')) + '</dt><dd>' + esc(T('{n} of {m}', { n: res.confirmed, m: res.entries.length })) + '</dd></dl></div></div>' +
         '<div class="card"><h3 style="margin-bottom:8px">' + esc(T('Scans in this sign-off')) + '</h3>' + res.entries.map(function (e) { return '<div class="row" style="padding:6px 0;border-top:1px solid var(--line);font-size:14px"><span class="grow">' + esc(T((TYPES[e.type] || {}).label || e.type)) + ', ' + esc(fmt(e.date)) + '</span><span class="chip ' + (e.decision === 'confirmed' ? 'green' : 'amber') + '">' + esc(e.decision === 'confirmed' ? T('Confirmed') : e.decision === 'query' ? T('Queried') : T('Not reviewed')) + '</span></div>'; }).join('') + '</div>' +
         supCheckHtml(res.supervisorCheck) + '<p class="small muted">' + esc(T('Wavelength records who signed and when. The supervisor\'s accreditation is as they stated it. The logbook holds no patient identifiers.')) + '</p>' + pearlCta() + form;
     });
@@ -141,14 +150,14 @@
         '<div class="field"><span class="lab">' + esc(T('Your signature')) + '</span><p class="small muted" style="margin:0 0 6px">' + esc(T('Sign with your finger, or your mouse on a computer.')) + '</p><canvas class="sigpad" data-sig></canvas><button type="button" class="link small" data-sigclr>' + esc(T('Clear')) + '</button></div>' +
         '<label class="check"><input type="checkbox" name="confirm" value="1" required><span>' + esc(T('I witnessed or reviewed these scans as stated, and my decisions above are accurate.')) + '</span></label>' +
         '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Submit sign-off')) + '</button></div></form>';
-      var f = document.getElementById('sf'), pad = F.bindSig(root);
+      var f = document.getElementById('sf'), pad = F.bindSig(root, T);
       if (shared.length) { var br = document.getElementById('br'); if (br) br.checked = true; showImages(res, byEntry, token, keyStr); }
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var d = {}; new FormData(f).forEach(function (v, k) { d[k] = v; });
         var e2 = f.querySelector('.err'); e2.hidden = true;
         if (!d.name || !d.role || !d.confirm) { e2.textContent = T('Enter your name and role and tick the confirmation.'); e2.hidden = false; return; }
-        if (pad.empty()) { e2.textContent = T('Sign in the box.'); e2.hidden = false; return; }
-        d.signature = pad.data(); d.token = token; d.decisions = {}; root.querySelectorAll('[data-dec]').forEach(function (s) { d.decisions[s.dataset.dec] = s.value; });
+        if (pad.empty()) { e2.textContent = pad.emptyError(); e2.hidden = false; return; }
+        d.signature = pad.data(); d.signatureKind = pad.kind(); d.token = token; d.decisions = {}; root.querySelectorAll('[data-dec]').forEach(function (s) { d.decisions[s.dataset.dec] = s.value; });
         d.ratings = F.readRatings(root);
         var b = f.querySelector('button.teal'); b.disabled = true; b.textContent = T('Submitting…');
         post('/api/app/signoff/complete', d).then(function (r) {
@@ -173,13 +182,13 @@
         '<form id="af">' + F.assessmentHtml(C, T, { kind: res.kind, topics: res.topics, learnerReflection: (res.data || {}).learnerReflection, pre: { name: res.supervisorName } }) +
         '<div class="field"><label for="em">' + esc(T('Your email (optional)')) + '</label><input id="em" name="email" type="email"></div>' +
         '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Submit assessment')) + '</button></div></form>';
-      var f = document.getElementById('af'), pad = F.bindSig(root);
+      var f = document.getElementById('af'), pad = F.bindSig(root, T);
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var d = F.readAssessment(C, f), e2 = f.querySelector('.err'); e2.hidden = true;
         if (!d.name || !d.role || !d.confirm) { e2.textContent = T('Enter your name and role and tick the confirmation.'); e2.hidden = false; return; }
         if (!d.outcome) { e2.textContent = T('Choose the outcome of the assessment.'); e2.hidden = false; return; }
-        if (pad.empty()) { e2.textContent = T('Sign in the box.'); e2.hidden = false; return; }
-        d.signature = pad.data(); d.token = token;
+        if (pad.empty()) { e2.textContent = pad.emptyError(); e2.hidden = false; return; }
+        d.signature = pad.data(); d.signatureKind = pad.kind(); d.token = token;
         var b = f.querySelector('button.teal'); b.disabled = true; b.textContent = T('Submitting…');
         post('/api/app/assessment/complete', d).then(function (r) {
           if (!r.ok) throw new Error(T(r.error || 'Could not submit.'));

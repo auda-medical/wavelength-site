@@ -125,7 +125,7 @@ test('supervisor approval is scoped: approved for FAMUS Thoracic is not approved
   await claimCred(c, 'famus-supervisor', ['thoracic']);
   const lid = await idOf(env, 'scope@x.co');
   assert.match((await admin(env, { action: 'appr_add', learner: lid, notes: 'FAMUS directory' })).m, /Tick at least one/);
-  assert.equal((await admin(env, { action: 'appr_add', learner: lid, scope: ['famus:famus-thoracic', 'famus:famus-dvt'], notes: 'FAMUS directory', review_on: '2099-01-01' })).m, '2 scopes approved.');
+  assert.equal((await admin(env, { action: 'appr_add', learner: lid, scope: ['famus:famus-thoracic', 'famus:famus-dvt'], notes: 'FAMUS directory' })).m, '2 scopes approved.');
   const o = (await c.call('/api/app/professional')).body;
   const wl = o.badges.find((b) => b.kind === 'wavelength-supervisor');
   assert.deepEqual(wl.scopes.map((s) => s.label).sort(), ['FAMUS DVT', 'FAMUS Thoracic']);
@@ -182,9 +182,9 @@ test('a dashboard sign-off captures the supervisor status of that moment, and la
   assert.ok(!JSON.stringify(before).includes('1234567'), 'the public check shows no registration number');
   const entry = (await pair.learner.call('/api/app/sync?since=0')).body.entries.find((e) => e.id === 'snapentry01');
   assert.deepEqual(entry.signoff.verification.approvedFor, ['famus:famus-thoracic']);
-  // Two years later the supervisor loses everything.
-  const appr = await env.DB.prepare('SELECT id FROM supervisor_approvals WHERE learner_id = ?').bind(pair.sid).first();
-  await admin(env, { action: 'appr_revoke', learner: pair.sid, sid: appr.id, notes: 'Stopped supervising' });
+  // Two years later the supervisor loses everything: the approval runs out and the credential is revoked. (Revoking
+  // the approval itself would end the link: see test/supervisor-lifecycle.test.mjs.)
+  await env.DB.prepare("UPDATE supervisor_approvals SET review_on = '2020-01-01' WHERE learner_id = ?").bind(pair.sid).run();
   const cred = await env.DB.prepare('SELECT id FROM credentials WHERE learner_id = ?').bind(pair.sid).first();
   await admin(env, { action: 'cred_revoke', learner: pair.sid, sid: cred.id, notes: 'Removed from directory' });
   const after = (await client(handleApp, env).call('/api/app/verify?code=' + code)).body.supervisorCheck;

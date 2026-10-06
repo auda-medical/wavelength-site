@@ -4,9 +4,11 @@
 // Usage: node tools/theme-shots.mjs <outdir> [base]
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import { localOnly } from './local-only.mjs';
 
 const out = process.argv[2] || 'theme-shots';
 const BASE = process.argv[3] || 'http://localhost:8787';
+localOnly(BASE, 'tools/theme-shots.mjs');
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
 const problems = [];
@@ -88,12 +90,15 @@ for (const theme of ['light', 'dark']) {
   const screens = [['home', ''], ['logbook', '#/log'], ['scan', '#/entry/' + entries[1].id], ['progress', '#/progress'], ['me', '#/me'], ['settings', '#/settings'],
     ['new', '#/new'], ['export', '#/export'], ['evidence', '#/evidence'], ['backup', '#/backup'], ['targets', '#/targets'], ['declaration', '#/declaration'], ['assess', '#/assess'], ['supervisors', '#/supervisors'], ['supervise', '#/supervise']];
   for (const [name, hash] of screens) {
+    // The scan form asks before leaving with unsaved changes; this tool only looks, so it drops them first.
+    await page.evaluate(() => document.querySelectorAll('form[data-dirty]').forEach((f) => delete f.dataset.dirty)).catch(() => {});
     await page.goto(BASE + '/app/' + hash); await page.waitForSelector('nav.tabs', { timeout: 15000 });
     if (name === 'new') { await page.click('label[for=t0]'); await page.locator('input[name=supervision]').first().check({ force: true }); await page.evaluate(() => { document.getElementById('overall1').checked = true; }); }
     if (name === 'logbook') { await page.waitForSelector('.entry'); }
     await shoot(page, theme, name);
   }
   // The delete-account sheet, as an example of a sheet over the page.
+  await page.evaluate(() => document.querySelectorAll('form[data-dirty]').forEach((f) => delete f.dataset.dirty)).catch(() => {});
   await page.goto(BASE + '/app/#/settings'); await page.waitForSelector('#dl'); await page.click('#dl'); await page.waitForSelector('.sheet'); await shoot(page, theme, 'sheet');
   await ctx.close();
 }

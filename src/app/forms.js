@@ -75,11 +75,53 @@
     cv.addEventListener('pointerup', function () { last = null; });
     return { clear: size, empty: function () { return !drawn; }, data: function () { return cv.toDataURL('image/png'); } };
   }
-  function bindSig(scope) {
+  // A typed signature for signers who cannot draw on a touch screen. The typed name is drawn onto a white canvas in a
+  // handwriting-style font and sent as a PNG like a drawn signature, with signatureKind 'typed' so the record says so.
+  var SIG_FONT = '"Segoe Script", "Bradley Hand", "Snell Roundhand", "Apple Chancery", "Brush Script MT", "URW Chancery L", cursive';
+  function typedSigData(name) {
+    var cv = document.createElement('canvas'); cv.width = 600; cv.height = 170;
+    var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+    var size = 64; g.font = size + 'px ' + SIG_FONT;
+    while (size > 18 && g.measureText(name).width > cv.width - 40) { size -= 2; g.font = size + 'px ' + SIG_FONT; }
+    g.fillStyle = '#0F1E33'; g.textBaseline = 'middle'; g.textAlign = 'center'; g.fillText(name, cv.width / 2, cv.height / 2);
+    return cv.toDataURL('image/png');
+  }
+  // Broad name match: ignores case, punctuation and titles, and accepts either name containing the other's words.
+  var TITLE_WORDS = { dr: 1, doctor: 1, prof: 1, professor: 1, mr: 1, mrs: 1, ms: 1, miss: 1, mx: 1, sir: 1 };
+  function nameWords(s) { return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(function (w) { return w && !TITLE_WORDS[w]; }); }
+  function namesMatch(a, b) {
+    var x = nameWords(a), y = nameWords(b); if (!x.length || !y.length) return true;
+    var has = function (list, w) { return list.some(function (v) { return v === w || (w.length === 1 && v.charAt(0) === w); }); };
+    return x.every(function (w) { return has(y, w); }) || y.every(function (w) { return has(x, w); });
+  }
+  // Binds the signature field in scope: the drawing pad plus "Type my name instead". T translates (optional).
+  // Returns { clear, empty, data, kind, emptyError }: kind() is 'typed' or 'drawn', and data() is a PNG data URL either way.
+  function bindSig(scope, T) {
+    T = T || function (x) { return x; };
     var cv = scope.querySelector('[data-sig]'); if (!cv) return null;
     var pad = sigPad(cv); var c = scope.querySelector('[data-sigclr]'); if (c) c.onclick = pad.clear;
-    return pad;
+    var typed = false, form = cv.closest('form'), nameIn = form && form.querySelector('input[name="name"]');
+    var uid = 'sigt' + Math.random().toString(36).slice(2, 8);
+    var box = document.createElement('div'); box.className = 'sigtyped'; box.hidden = true;
+    box.innerHTML = '<label for="' + uid + '">' + esc(T('Type your full name as your signature')) + '</label><input id="' + uid + '" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="120"><p class="hint">' + esc(T('Recorded as a typed signature.')) + '</p><p class="sigtyped-warn small" hidden>' + esc(T('This differs from the name you entered above. Check it is your own full name.')) + '</p>';
+    var tog = document.createElement('button'); tog.type = 'button'; tog.className = 'link small sigtoggle'; tog.textContent = T('Type my name instead');
+    var anchor = c || cv; anchor.parentNode.insertBefore(box, anchor.nextSibling); box.parentNode.insertBefore(tog, box.nextSibling);
+    var input = box.querySelector('input'), warn = box.querySelector('.sigtyped-warn');
+    var check = function () { var v = input.value.trim(); warn.hidden = !(typed && v.length >= 2 && nameIn && nameIn.value.trim() && !namesMatch(v, nameIn.value)); };
+    input.addEventListener('input', check); if (nameIn) nameIn.addEventListener('input', check);
+    tog.onclick = function () {
+      typed = !typed; cv.hidden = typed; if (c) c.hidden = typed; box.hidden = !typed;
+      tog.textContent = typed ? T('Draw instead') : T('Type my name instead');
+      if (typed) { check(); input.focus(); } else pad.clear();
+    };
+    return {
+      clear: function () { pad.clear(); input.value = ''; check(); },
+      empty: function () { return typed ? input.value.trim().length < 2 : pad.empty(); },
+      data: function () { return typed ? typedSigData(input.value.trim()) : pad.data(); },
+      kind: function () { return typed ? 'typed' : 'drawn'; },
+      emptyError: function () { return typed ? T('Type your full name as your signature, at least two letters.') : T('Sign in the box.'); },
+    };
   }
 
-  root.WLForms = { esc: esc, ACCRED: ACCRED, ratingHtml: ratingHtml, readRatings: readRatings, assessorHtml: assessorHtml, assessmentHtml: assessmentHtml, readAssessment: readAssessment, sigPad: sigPad, bindSig: bindSig };
+  root.WLForms = { esc: esc, ACCRED: ACCRED, ratingHtml: ratingHtml, readRatings: readRatings, assessorHtml: assessorHtml, assessmentHtml: assessmentHtml, readAssessment: readAssessment, sigPad: sigPad, bindSig: bindSig, namesMatch: namesMatch };
 })(window);

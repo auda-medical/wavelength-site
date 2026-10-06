@@ -1,15 +1,18 @@
 // Store listing images from the real app: runs mobile/www (see tools/native-harness.mjs) against a local Worker with
-// a sample logbook, takes phone screenshots, and frames them with a caption at 1080x1920 for Google Play and the
-// App Store. Also renders the Google Play feature graphic (1024x500).
+// a sample logbook, takes phone screenshots, and frames them with a caption at two sizes: 1080x1920 for Google Play
+// (<outdir>/play-*.png, copy to mobile/store/) and iPhone 6.9 inch, 1320x2868, for the App Store
+// (<outdir>/ios/ios-*.png, copy to mobile/store/ios/). Also renders the Google Play feature graphic (1024x500).
 // Setup as for tools/e2e-native.mjs. Run: node tools/store-shots.mjs <outdir> [http://localhost:8787]
 // The sample logbook is invented for illustration: no real patients, learners or supervisors.
 import fs from 'node:fs';
 import path from 'node:path';
 import { harness } from './native-harness.mjs';
+import { localOnly } from './local-only.mjs';
 
 const out = path.resolve(process.argv[2] || 'store-shots');
 const API = process.argv[3] || 'http://localhost:8787';
-fs.mkdirSync(path.join(out, 'raw'), { recursive: true });
+localOnly(API, 'tools/store-shots.mjs');
+fs.mkdirSync(out, { recursive: true });
 const errors = [];
 const { browser, newApp } = await harness({ api: API, errors });
 const SIG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
@@ -18,7 +21,7 @@ const SIG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJA
 const { ctx, page } = await newApp(412, 732);
 await page.goto('https://localhost/');
 await page.waitForSelector('#app .auth, #app form', { timeout: 15000 });
-const call = (p, data) => page.evaluate(([p, data]) => window.WLNative.net(p, data === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(data) }).then((r) => r.json()), [p, data]);
+const call = (p, data, pg = page) => pg.evaluate(([p, data]) => window.WLNative.net(p, data === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(data) }).then((r) => r.json()), [p, data]);
 const stamp = Date.now().toString(36);
 // The sample account lives only in the local test database. If an earlier run left it, delete it and start clean.
 const email = 'alex.morgan@example.com', password = 'Sample-logbook-1';
@@ -44,33 +47,57 @@ r = await call('/api/app/signoff/inperson', { entryIds: entries.slice(0, 18).map
 if (!r.ok) console.log('note: sign-off sample', JSON.stringify(r).slice(0, 200));
 
 // ---- Screens ----
-await page.goto('https://localhost/');
-await page.waitForSelector('nav.tabs', { timeout: 15000 });
-await page.waitForTimeout(1500);
-const shots = [];
-// hero: the part of the screen each listing image enlarges as a callout, so every swipe shows something new.
-async function shot(name, hash, prep, hero) {
-  await page.evaluate((h) => { document.querySelectorAll('.sheet-bg,.toast').forEach((s) => s.remove()); location.hash = h; }, hash);
-  await page.waitForTimeout(900);
-  if (prep) await prep(); else await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForTimeout(300);
-  await page.evaluate(() => document.querySelectorAll('.toast').forEach((s) => s.remove()));
-  const f = path.join(out, 'raw', name + '.png');
-  await page.screenshot({ path: f });
-  shots.push(f);
-  if (hero) {
-    const el = page.locator(hero).first();
-    if (await el.count()) { await el.scrollIntoViewIfNeeded(); await el.screenshot({ path: path.join(out, 'raw', name + '-hero.png') }); }
-    else console.log('note: no hero element for ' + name);
+// One set of raw screens per listing size, from a phone of that shape. The page must be logged in to the sample account.
+async function capture(page, dir, settle) {
+  fs.mkdirSync(dir, { recursive: true });
+  await page.goto('https://localhost/');
+  await page.waitForSelector('nav.tabs', { timeout: 15000 });
+  await page.waitForTimeout(settle);
+  const shots = [];
+  // hero: the part of the screen each listing image enlarges as a callout, so every swipe shows something new.
+  async function shot(name, hash, prep, hero) {
+    await page.evaluate((h) => { document.querySelectorAll('.sheet-bg,.toast').forEach((s) => s.remove()); location.hash = h; }, hash);
+    await page.waitForTimeout(900);
+    if (prep) await prep(); else await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(300);
+    await page.evaluate(() => document.querySelectorAll('.toast').forEach((s) => s.remove()));
+    const f = path.join(dir, name + '.png');
+    await page.screenshot({ path: f });
+    shots.push(f);
+    if (hero) {
+      const el = page.locator(hero).first();
+      if (await el.count()) { await el.scrollIntoViewIfNeeded(); await el.screenshot({ path: path.join(dir, name + '-hero.png') }); }
+      else console.log('note: no hero element for ' + name);
+    }
   }
+  await shot('home', '#/', null, '.stats');
+  await shot('progress', '#/progress', async () => { await page.evaluate(() => { let best = null, top = -1; document.querySelectorAll('main .mod-head').forEach((h) => { const v = parseInt((h.querySelector('.ring') || h).textContent, 10) || 0; if (v > top && v < 100) { top = v; best = h; } }); if (best) best.parentElement.setAttribute('data-hero', '1'); window.scrollTo(0, 0); }); }, '[data-hero]');
+  await shot('log', '#/log', async () => { const b = page.locator('button, a, label').filter({ hasText: /^Signed off · \d+$/ }).first(); if (await b.count()) { await b.click(); await page.waitForTimeout(500); } }, 'main .entry');
+  await shot('new', '#/new', async () => { await page.click('label[for=t0]'); await page.waitForTimeout(400); await page.evaluate(() => window.scrollTo(0, 0)); });
+  await shot('entry', '#/entry/' + entries[0].id, null, '.signbox');
+  await shot('me', '#/me', async () => { await page.evaluate(() => { const c = document.querySelector('#lck'); if (c) c.checked = true; window.scrollTo(0, 0); }); }, '.card:has(#lck)');
+  return shots;
 }
-await shot('home', '#/', null, '.stats');
-await shot('progress', '#/progress', async () => { await page.evaluate(() => { let best = null, top = -1; document.querySelectorAll('main .mod-head').forEach((h) => { const v = parseInt((h.querySelector('.ring') || h).textContent, 10) || 0; if (v > top && v < 100) { top = v; best = h; } }); if (best) best.parentElement.setAttribute('data-hero', '1'); window.scrollTo(0, 0); }); }, '[data-hero]');
-await shot('log', '#/log', async () => { const b = page.locator('button, a, label').filter({ hasText: /^Signed off · \d+$/ }).first(); if (await b.count()) { await b.click(); await page.waitForTimeout(500); } }, 'main .entry');
-await shot('new', '#/new', async () => { await page.click('label[for=t0]'); await page.waitForTimeout(400); await page.evaluate(() => window.scrollTo(0, 0)); });
-await shot('entry', '#/entry/' + entries[0].id, null, '.signbox');
-await shot('me', '#/me', async () => { await page.evaluate(() => { const c = document.querySelector('#lck'); if (c) c.checked = true; window.scrollTo(0, 0); }); }, '.card:has(#lck)');
+
+// Listing sizes. Google Play: 1080x1920 from an Android phone (412x732). App Store: iPhone 6.9 inch, 1320x2868, from
+// a phone of that shape (440x956 is its size in CSS pixels). phoneW fixes the Play frame width as before; for the
+// iPhone it is worked out from the screenshot's shape.
+const SIZES = [
+  { key: 'play', width: 1080, height: 1920, view: [412, 732], phoneW: 780, dir: out, raw: path.join(out, 'raw') },
+  { key: 'ios', width: 1320, height: 2868, view: [440, 956], dir: path.join(out, 'ios'), raw: path.join(out, 'ios', 'raw') },
+];
+SIZES[0].shots = await capture(page, SIZES[0].raw, 1500);
 await ctx.close();
+{
+  // A fresh phone: log in to the same sample account, and let the first sync bring the logbook down.
+  const iphone = await newApp(...SIZES[1].view);
+  await iphone.page.goto('https://localhost/');
+  await iphone.page.waitForSelector('#app .auth, #app form', { timeout: 15000 });
+  r = await call('/api/app/login', { email, password }, iphone.page);
+  if (!r.ok) throw new Error('login ' + JSON.stringify(r));
+  SIZES[1].shots = await capture(iphone.page, SIZES[1].raw, 3000);
+  await iphone.ctx.close();
+}
 
 // ---- Framed listing images ----
 // [eyebrow, heading, subline]. Name only the verified UK pathways (RCEM, FAMUS, FUSIC); the international ones are
@@ -93,32 +120,43 @@ const fp = await frameCtx.newPage();
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 // Listing order: what it is, how quick it is, why it helps training, supervision, verifiable evidence, privacy.
 const ORDER = ['home', 'new', 'progress', 'log', 'entry', 'me'];
-const ordered = ORDER.map((k) => shots.find((f) => path.basename(f, '.png') === k)).filter(Boolean);
-for (const f of ordered) {
-  const key = path.basename(f, '.png');
-  const [eye, h, sub] = CAPTIONS[key];
-  const heroFile = path.join(out, 'raw', key + '-hero.png');
-  const hero = fs.existsSync(heroFile) ? 'data:image/png;base64,' + fs.readFileSync(heroFile).toString('base64') : '';
-  const img = 'data:image/png;base64,' + fs.readFileSync(f).toString('base64');
-  await fp.setContent(`<!doctype html><html><head><style>
-    ${FONTS}
-    html,body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #163049 0%, #0A1526 62%); color: #F7F5F0; }
-    /* Every caption sits on the same grid: eyebrow, rule, headline and subtitle at fixed heights on all six images. */
-    .eye, .rule, h1, p { position: absolute; left: 0; right: 0; text-align: center; margin: 0; }
-    .eye { top: 96px; font: 600 26px/1 DMSans, sans-serif; letter-spacing: .32em; text-indent: .32em; color: #7FC4CC; }
-    .rule { top: 140px; left: 50%; right: auto; width: 96px; height: 2px; transform: translateX(-50%); background: rgba(127,196,204,.7); }
-    h1 { top: 172px; font: 500 86px/1 Cormorant, Georgia, serif; letter-spacing: -.5px; white-space: nowrap; }
-    p { top: 282px; font: 500 38px/1.2 DMSans, sans-serif; color: #D6DEE7; white-space: nowrap; }
-    .phone { position: absolute; left: 50%; top: 404px; width: 780px; height: 1386px; transform: translateX(-50%); border-radius: 64px; background: #050B14; padding: 22px; box-shadow: 0 40px 120px rgba(0,0,0,.55), 0 0 0 2px rgba(127,196,204,.25); }
-    .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 44px; display: block; }
-    .hero { position: absolute; left: 50%; bottom: 168px; width: 846px; transform: translateX(-50%); border-radius: 30px; overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,.6), 0 0 0 3px rgba(127,196,204,.75), 0 0 60px rgba(42,127,138,.45); }
-    .hero img { width: 100%; display: block; }
-  </style></head><body><div class="eye">${esc(eye)}</div><div class="rule"></div><h1>${esc(h)}</h1><p>${esc(sub)}</p><div class="phone"><img src="${img}"></div>${hero ? `<div class="hero"><img src="${hero}"></div>` : ''}</body></html>`, { waitUntil: 'load' });
-  await fp.waitForTimeout(300);
-  // Keep every headline and subtitle on one line inside a 64 px margin; report any that had to shrink.
-  const shrunk = await fp.evaluate(() => { const out = []; for (const el of document.querySelectorAll('h1, p')) { let size = parseFloat(getComputedStyle(el).fontSize); const w = () => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width; }; while (w() > 952 && size > 20) { size -= 1; el.style.fontSize = size + 'px'; } if (el.style.fontSize) out.push(el.tagName + ' ' + size); } return out; });
-  if (shrunk.length) console.log('note: ' + key + ' text shrunk to fit: ' + shrunk.join(', '));
-  await fp.screenshot({ path: path.join(out, `play-${String(ordered.indexOf(f) + 1).padStart(2, '0')}-${key}.png`) });
+for (const size of SIZES) {
+  // The 1080x1920 layout, scaled to the listing width. The phone frame fills the height under the caption.
+  const W = size.width, H = size.height, k = W / 1080;
+  const px = (n) => Math.round(n * k);
+  // phoneW and phoneH are the screen area inside the frame's padding.
+  const pad = px(22), phoneH = H - px(534);
+  const phoneW = size.phoneW || Math.min(W - px(180), Math.round(phoneH * size.view[0] / size.view[1]));
+  const maxText = W - px(128);
+  fs.mkdirSync(size.dir, { recursive: true });
+  await fp.setViewportSize({ width: W, height: H });
+  const ordered = ORDER.map((name) => size.shots.find((f) => path.basename(f, '.png') === name)).filter(Boolean);
+  for (const f of ordered) {
+    const key = path.basename(f, '.png');
+    const [eye, h, sub] = CAPTIONS[key];
+    const heroFile = path.join(size.raw, key + '-hero.png');
+    const hero = fs.existsSync(heroFile) ? 'data:image/png;base64,' + fs.readFileSync(heroFile).toString('base64') : '';
+    const img = 'data:image/png;base64,' + fs.readFileSync(f).toString('base64');
+    await fp.setContent(`<!doctype html><html><head><style>
+      ${FONTS}
+      html,body { margin: 0; width: ${W}px; height: ${H}px; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #163049 0%, #0A1526 62%); color: #F7F5F0; }
+      /* Every caption sits on the same grid: eyebrow, rule, headline and subtitle at fixed heights on all six images. */
+      .eye, .rule, h1, p { position: absolute; left: 0; right: 0; text-align: center; margin: 0; }
+      .eye { top: ${px(96)}px; font: 600 ${px(26)}px/1 DMSans, sans-serif; letter-spacing: .32em; text-indent: .32em; color: #7FC4CC; }
+      .rule { top: ${px(140)}px; left: 50%; right: auto; width: ${px(96)}px; height: ${px(2)}px; transform: translateX(-50%); background: rgba(127,196,204,.7); }
+      h1 { top: ${px(172)}px; font: 500 ${px(86)}px/1 Cormorant, Georgia, serif; letter-spacing: -.5px; white-space: nowrap; }
+      p { top: ${px(282)}px; font: 500 ${px(38)}px/1.2 DMSans, sans-serif; color: #D6DEE7; white-space: nowrap; }
+      .phone { position: absolute; left: 50%; top: ${px(404)}px; width: ${phoneW}px; height: ${phoneH}px; transform: translateX(-50%); border-radius: ${px(64)}px; background: #050B14; padding: ${pad}px; box-shadow: 0 ${px(40)}px ${px(120)}px rgba(0,0,0,.55), 0 0 0 ${px(2)}px rgba(127,196,204,.25); }
+      .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: ${px(44)}px; display: block; }
+      .hero { position: absolute; left: 50%; bottom: ${px(168)}px; width: ${px(846)}px; transform: translateX(-50%); border-radius: ${px(30)}px; overflow: hidden; box-shadow: 0 ${px(30)}px ${px(90)}px rgba(0,0,0,.6), 0 0 0 ${px(3)}px rgba(127,196,204,.75), 0 0 ${px(60)}px rgba(42,127,138,.45); }
+      .hero img { width: 100%; display: block; }
+    </style></head><body><div class="eye">${esc(eye)}</div><div class="rule"></div><h1>${esc(h)}</h1><p>${esc(sub)}</p><div class="phone"><img src="${img}"></div>${hero ? `<div class="hero"><img src="${hero}"></div>` : ''}</body></html>`, { waitUntil: 'load' });
+    await fp.waitForTimeout(300);
+    // Keep every headline and subtitle on one line inside a 64 px margin (scaled); report any that had to shrink.
+    const shrunk = await fp.evaluate(([max, min]) => { const out = []; for (const el of document.querySelectorAll('h1, p')) { let size = parseFloat(getComputedStyle(el).fontSize); const w = () => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width; }; while (w() > max && size > min) { size -= 1; el.style.fontSize = size + 'px'; } if (el.style.fontSize) out.push(el.tagName + ' ' + size); } return out; }, [maxText, px(20)]);
+    if (shrunk.length) console.log('note: ' + size.key + ' ' + key + ' text shrunk to fit: ' + shrunk.join(', '));
+    await fp.screenshot({ path: path.join(size.dir, `${size.key}-${String(ordered.indexOf(f) + 1).padStart(2, '0')}-${key}.png`) });
+  }
 }
 // Feature graphic: brand mark, name and tagline.
 await fp.setViewportSize({ width: 1024, height: 500 });

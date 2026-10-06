@@ -24,9 +24,53 @@ for k, v in extra.items():
         s = re.sub(r'</dict>\s*</plist>\s*$', f'\t<key>{k}</key>\n\t{v}\n</dict>\n</plist>\n', s)
 plist.write_text(s)
 
+# iPhone only (store blocker B1). The layout is designed for phones; iPad support would mean layout work and iPad
+# screenshots, so `npx cap add ios` must not bring it back. Future iPad support: TARGETED_DEVICE_FAMILY "1,2" plus layout.
+s = plist.read_text()
+s = re.sub(r'\s*<key>UISupportedInterfaceOrientations~ipad</key>\s*<array>.*?</array>', '', s, flags=re.S)
+plist.write_text(s)
+pbx = root / 'ios/App/App.xcodeproj/project.pbxproj'
+x = pbx.read_text()
+x = re.sub(r'TARGETED_DEVICE_FAMILY = [^;]*;', 'TARGETED_DEVICE_FAMILY = 1;', x)
+pbx.write_text(x)
+
+# iOS backup exclusion (store blocker B2): ultrasound images and clips live in WKWebView's IndexedDB under
+# Library/WebKit, which iOS would otherwise copy into iCloud and iTunes backups.
+delegate = root / 'ios/App/App/AppDelegate.swift'
+d = delegate.read_text()
+if 'excludeWebKitFromBackup' not in d:
+    d = re.sub(r'(func application\(_ application: UIApplication, didFinishLaunchingWithOptions[^{]*\{\n)(\s*// Override point for customization after application launch\.\n)?',
+               r'\1        excludeWebKitFromBackup()\n', d, count=1)
+    head, tail = d.rsplit('}', 1)
+    d = head.rstrip() + '''
+
+    // Ultrasound images and clips are kept in WKWebView's IndexedDB under Library/WebKit. They must never go to
+    // iCloud or iTunes backups: they stay on this phone, and a new phone gets them back only from the learner's own
+    // backup file. Set on every launch, creating the folder first so the flag sticks before WebKit writes to it.
+    // Errors are ignored: the app must always start.
+    private func excludeWebKitFromBackup() {
+        let fm = FileManager.default
+        guard let library = fm.urls(for: .libraryDirectory, in: .userDomainMask).first else { return }
+        var webKit = library.appendingPathComponent("WebKit", isDirectory: true)
+        try? fm.createDirectory(at: webKit, withIntermediateDirectories: true, attributes: nil)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? webKit.setResourceValues(values)
+    }
+}''' + tail
+    delegate.write_text(d)
+
 man = root / 'android/app/src/main/AndroidManifest.xml'
 m = man.read_text()
-m = m.replace('android:allowBackup="true"', 'android:allowBackup="false"\n        android:fullBackupContent="false"')
+# No Google Drive backup (Android 11 and below) and, through dataExtractionRules, no cloud backup or device-to-device
+# transfer on Android 12+ (store blocker B3).
+m = m.replace('android:allowBackup="true"', 'android:allowBackup="false"')
+if 'android:allowBackup=' not in m:
+    m = m.replace('<application', '<application\n        android:allowBackup="false"', 1)
+if 'android:fullBackupContent=' not in m:
+    m = m.replace('android:allowBackup="false"', 'android:allowBackup="false"\n        android:fullBackupContent="false"', 1)
+if 'android:dataExtractionRules=' not in m:
+    m = m.replace('android:fullBackupContent="false"', 'android:fullBackupContent="false"\n        android:dataExtractionRules="@xml/data_extraction_rules"', 1)
 if 'screenOrientation' not in m:
     m = m.replace('android:launchMode="singleTask"', 'android:launchMode="singleTask"\n            android:screenOrientation="portrait"')
 if '<queries>' not in m:
@@ -43,6 +87,22 @@ if '<queries>' not in m:
 
     <!-- Permissions -->''')
 man.write_text(m)
+domains = ['root', 'file', 'database', 'sharedpref', 'external', 'device_root', 'device_file', 'device_database', 'device_sharedpref']
+rules = ''.join(f'        <exclude domain="{d}" path="." />\n' for d in domains)
+xml = root / 'android/app/src/main/res/xml'
+xml.mkdir(parents=True, exist_ok=True)
+(xml / 'data_extraction_rules.xml').write_text(f'''<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ backup and device-to-device transfer: nothing from the app is copied.
+     Text logbook data restores through the Wavelength account sync; images and clips must never transfer between
+     devices automatically. A new phone gets images back only from the learner's own backup file.
+     Android 11 and below: android:allowBackup="false" in AndroidManifest.xml. Applied by mobile/scripts/patch-native.py. -->
+<data-extraction-rules>
+    <cloud-backup>
+{rules}    </cloud-backup>
+    <device-transfer>
+{rules}    </device-transfer>
+</data-extraction-rules>
+''')
 
 # Deep navy behind the status and navigation bars.
 (root / 'android/app/src/main/res/values/wl_colors.xml').write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <!-- Wavelength deep navy: behind the status and navigation bars. -->\n    <color name="wl_deep">#0A1526</color>\n</resources>\n')
