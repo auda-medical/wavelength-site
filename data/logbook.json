@@ -1162,6 +1162,109 @@
       ]
     }
   ],
+  "_help_supervisionAreas": "Applicant-friendly areas for the supervisor application. types: scan types (from types above) the area covers. The admin console pre-ticks every pathway module whose types all fall within the requested areas; modules lists extra pathway:module scopes (paediatrics). Approval is always by pathway module.",
+  "supervisionAreas": [
+    {
+      "id": "lung",
+      "label": "Lung and pleura",
+      "types": [
+        "lung"
+      ]
+    },
+    {
+      "id": "heart",
+      "label": "Focused echo, shock and life support",
+      "types": [
+        "cardiac",
+        "els",
+        "shock"
+      ]
+    },
+    {
+      "id": "efast",
+      "label": "eFAST and trauma",
+      "types": [
+        "efast"
+      ]
+    },
+    {
+      "id": "aorta",
+      "label": "Abdominal aorta",
+      "types": [
+        "aaa"
+      ]
+    },
+    {
+      "id": "dvt",
+      "label": "DVT",
+      "types": [
+        "dvt"
+      ]
+    },
+    {
+      "id": "access",
+      "label": "Vascular access",
+      "types": [
+        "cvc",
+        "picc",
+        "pva"
+      ]
+    },
+    {
+      "id": "abdomen",
+      "label": "Abdomen, renal tract and bowel",
+      "types": [
+        "abdo",
+        "bowel"
+      ]
+    },
+    {
+      "id": "biliary",
+      "label": "Gallbladder and biliary",
+      "types": [
+        "biliary"
+      ]
+    },
+    {
+      "id": "ocular",
+      "label": "Ocular",
+      "types": [
+        "ocular"
+      ]
+    },
+    {
+      "id": "msk",
+      "label": "Soft tissue and musculoskeletal",
+      "types": [
+        "msk"
+      ]
+    },
+    {
+      "id": "pregnancy",
+      "label": "Early pregnancy",
+      "types": [
+        "preg"
+      ]
+    },
+    {
+      "id": "procedures",
+      "label": "Procedures and nerve blocks",
+      "types": [
+        "fib",
+        "block",
+        "lp",
+        "procedure"
+      ]
+    },
+    {
+      "id": "paediatrics",
+      "label": "Paediatric ultrasound",
+      "types": [],
+      "modules": [
+        "eusem:eusem-paeds"
+      ]
+    }
+  ],
   "pathways": [
     {
       "id": "rcem",

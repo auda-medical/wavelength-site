@@ -47,6 +47,19 @@ function canonical(v) {
   return JSON.stringify(v == null ? null : v);
 }
 const contentHash = (d) => sha256(canonical(Object.fromEntries(SIGNED_FIELDS.map((k) => [k, d[k] == null ? null : d[k]]))));
+// Media fingerprints: the app stores a SHA-256 of each image and clip when it is saved, as media: [{ id, sha256, kind }]
+// (fingerprints only; the files never leave the phone). Sign-offs made after migration 0012 hash them too (hash
+// version 2), so replacing an image after sign-off voids it. Older sign-offs keep their version 1 hash and are not
+// voided by this change. Limitation: the fingerprint is computed on the learner's own phone, so it catches accidental
+// or casual changes, not a determined learner who controls the device.
+const HEX64 = /^[a-f0-9]{64}$/;
+function mediaOf(d) {
+  return (Array.isArray(d && d.media) ? d.media : []).slice(0, 24)
+    .map((m) => ({ id: clip(m && m.id, 40), sha256: HEX64.test(String(m && m.sha256 || '')) ? m.sha256 : null, kind: m && m.kind === 'clip' ? 'clip' : 'image' }))
+    .filter((m) => m.id && m.sha256);
+}
+const contentHashV2 = (d) => sha256(canonical({ ...Object.fromEntries(SIGNED_FIELDS.map((k) => [k, d[k] == null ? null : d[k]])), media: mediaOf(d).map((m) => m.sha256).sort() }));
+const hashFor = (d, version) => (version === 2 ? contentHashV2(d) : contentHash(d));
 
 // ---------- Request helpers ----------
 async function body(req) {
@@ -101,6 +114,18 @@ async function verificationReady(env) {
   READY.set(env.DB, { ok, at: Date.now() });
   return ok;
 }
+// True once migration 0012 (supervisor lifecycle) is applied, on top of 0011. Same caching as verificationReady.
+const LIFE = new WeakMap();
+async function lifecycleReady(env) {
+  if (!(await verificationReady(env))) return false;
+  const c = LIFE.get(env.DB);
+  if (c && (c.ok || Date.now() - c.at < 60e3)) return c.ok;
+  let ok = true;
+  try { await env.DB.prepare('SELECT id FROM supervisor_applications LIMIT 0').all(); await env.DB.prepare('SELECT key FROM notification_log LIMIT 0').all(); await env.DB.prepare('SELECT test_account FROM learners LIMIT 0').all(); await env.DB.prepare('SELECT returned_at FROM signoffs LIMIT 0').all(); }
+  catch { ok = false; }
+  LIFE.set(env.DB, { ok, at: Date.now() });
+  return ok;
+}
 
 
-export { LANGS, enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, ALPHABET, b64, unb64, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, canonical, contentHash, body, fullName, profileOf, cleanProfile, account, verificationReady };
+export { LANGS, enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, ALPHABET, b64, unb64, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, canonical, contentHash, contentHashV2, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady };

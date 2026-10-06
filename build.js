@@ -2144,7 +2144,7 @@ if (fs.existsSync(path.join(LEARN_DIR, 'images'))) copyDir(path.join(LEARN_DIR, 
 // Wavelength app: config from data/logbook.json, upcoming courses, newsletter form, and cache-busting version.
 {
   const appCourses = courses.filter((c) => c.status !== 'hidden').flatMap((c) => upcoming(c).map((d) => ({ slug: c.slug, title: c.title, date: d.date, venue: d.venue, city: d.city }))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
-  const { _help, _help_destinations, ...lb } = logbook;
+  const { _help, _help_destinations, _help_supervisionAreas, ...lb } = logbook;
   const nl = site.newsletter && site.newsletter.action ? { action: site.newsletter.action, hidden: site.newsletter.hidden, emailField: site.newsletter.emailField, firstNameField: site.newsletter.firstNameField, roleField: site.newsletter.roleField } : null;
   fs.writeFileSync(path.join(DIST, 'app/config.js'), `window.WL_BUILD = ${JSON.stringify(BUILD)};\nwindow.WL_LOGBOOK = ${JSON.stringify({ ...lb, courses: appCourses, newsletter: nl })};\n`);
   const appDir = path.join(DIST, 'app');

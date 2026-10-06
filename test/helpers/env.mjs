@@ -22,9 +22,11 @@ class Stmt {
 }
 class D1 {
   // skip: migration file names to leave out, to test the Worker against a database that has not had them yet.
+  // Migrations run in order, so skipping one also leaves out every later one (they may alter its tables).
   constructor(skip = []) {
     this.db = new DatabaseSync(':memory:');
-    for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith('.sql') && !skip.includes(x)).sort()) this.db.exec(readFileSync(new URL(f, MIGRATIONS), 'utf8'));
+    const first = skip.length ? [...skip].sort()[0] : null;
+    for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith('.sql') && (!first || x < first)).sort()) this.db.exec(readFileSync(new URL(f, MIGRATIONS), 'utf8'));
   }
   prepare(sql) { return new Stmt(this.db, sql); }
   async batch(stmts) {

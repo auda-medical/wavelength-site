@@ -9,6 +9,9 @@ import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
 import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
 import { zohoConnectUrl, zohoCallback, zohoSubscribe, scheduledNewsletter, newsletterAdminHtml, newsletterAdminPost } from './newsletter.js';
 import { supervisorsAdminHtml, supervisorsAdminPost, evidenceFile } from './supervisors-admin.js';
+import { dailyLifecycle } from './supervisor-lifecycle.js';
+// The daily supervisor job's cron expression (05:15 UTC: 06:15 UK time in summer, 05:15 in winter).
+export const DAILY_CRON = '15 5 * * *';
 import { recheckDue } from './professional.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
@@ -189,10 +192,14 @@ async function academyAdmin(env, req) {
 
 export default {
   async scheduled(event, env, ctx) {
-    if (env.DB) ctx.waitUntil(scheduledNewsletter(env));
+    if (!env.DB) return;
+    // The daily supervisor job (expiry, grace, reminders, lapses, evidence purge, rechecks, email retries) has its own
+    // cron, so the Tuesday newsletter schedule never controls supervisor safety processes, and neither runs the other's
+    // work. DAILY_CRON must be added to wrangler.jsonc triggers (needs the owner's approval) for it to run.
+    if (event && event.cron === DAILY_CRON) { ctx.waitUntil(dailyLifecycle(env).catch((e) => console.warn('dailyLifecycle', e && e.message))); return; }
+    ctx.waitUntil(scheduledNewsletter(env));
     // Re-verification of registrations and credentials with a live source, and purging of decided evidence files.
-    // Runs on the existing newsletter crons for now; add a daily cron (with approval) once a live adapter exists.
-    if (env.DB) ctx.waitUntil(recheckDue(env).catch((e) => console.warn('recheckDue', e && e.message)));
+    ctx.waitUntil(recheckDue(env).catch((e) => console.warn('recheckDue', e && e.message)));
   },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -275,16 +282,16 @@ export default {
         return withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(html, { html: true }); } }).transform(shell));
       }
       if (p === '/volunteer/admin/supervisors/evidence/') {
-        const file = await evidenceFile(env, url.searchParams.get('id'));
+        const file = await evidenceFile(env, url.searchParams.get('id'), s.admin_username);
         return file ? withHeaders(file) : redirect('/volunteer/admin/supervisors/');
       }
       if (p === '/volunteer/admin/supervisors/') {
         if (req.method === 'POST') {
           const r = await supervisorsAdminPost(env, await req.formData(), s.admin_username, ctx);
-          return redirect(`/volunteer/admin/supervisors/?${r.id ? `id=${r.id}&` : ''}m=${encodeURIComponent(r.m)}`);
+          return redirect(`/volunteer/admin/supervisors/?${r.id ? `id=${r.id}&` : ''}${r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`);
         }
         const shell = await env.ASSETS.fetch(new Request(new URL('/volunteer/admin/', req.url).toString()));
-        const html = await supervisorsAdminHtml(env, url);
+        const html = await supervisorsAdminHtml(env, url, s.admin_username);
         return withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(html, { html: true }); } }).transform(shell));
       }
       if (p === '/volunteer/admin/departments/') {
