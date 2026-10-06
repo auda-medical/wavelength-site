@@ -117,3 +117,17 @@ test('deleting the account from the app clears the token', async () => {
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(c.token, '');
 });
+
+test('the store app may send its version header, and can read the request id', async () => {
+  const env = makeEnv({ APP_MIN_VERSION: '1.2.0' });
+  for (const o of [ANDROID, IOS]) {
+    const r = await worker.fetch(new Request(ORIGIN + '/api/app/sync', { method: 'OPTIONS', headers: { Origin: o, 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization, x-wavelength-app' } }), env, ctx);
+    assert.equal(r.status, 204);
+    assert.ok(r.headers.get('Access-Control-Allow-Headers').split(/,\s*/).includes('X-Wavelength-App'));
+  }
+  const old = await worker.fetch(new Request(ORIGIN + '/api/app/sync', { headers: { Origin: ANDROID, 'X-Wavelength-App': '1.1.0' } }), env, ctx);
+  assert.equal(old.status, 426);
+  assert.match(old.headers.get('Access-Control-Expose-Headers'), /X-Request-Id/);
+  assert.ok(old.headers.get('X-Request-Id'));
+  assert.equal((await app(env).call('/api/app/me')).status, 200, 'no version header: never blocked');
+});
