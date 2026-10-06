@@ -2959,6 +2959,234 @@
      "path": "/elearning/trunk-blocks/learn/cases/"
     }
    }
+  },
+  "vascular-access": {
+   "slug": "vascular-access",
+   "code": "VAC",
+   "title": "Ultrasound-guided vascular access: peripheral, central and arterial",
+   "cpdHours": 1.5,
+   "passMark": 80,
+   "draft": false,
+   "questions": [
+    {
+     "id": "q1",
+     "correct": "d",
+     "why": "The module teaches the checks and the technique. Competence comes from supervised practice under your trust's governance.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q2",
+     "correct": "a",
+     "why": "The benefit was in difficult and moderately difficult patients. In easy patients first-pass success was lower with ultrasound.",
+     "review": "01-context",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q3",
+     "correct": "c",
+     "why": "Simple measures fill the veins. A vein that looked unusable is often a good target afterwards.",
+     "review": "02-peripheral",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q4",
+     "correct": "c",
+     "why": "A vein collapses under a heavy probe. Gel carries the sound, so you can scan with a lighter touch.",
+     "review": "02-peripheral",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q5",
+     "correct": "c",
+     "why": "Compression is the key bedside test. Colour depends on the direction of flow relative to the probe and on the settings, so it does not identify the vessel.",
+     "review": "02-peripheral",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q6",
+     "correct": "d",
+     "why": "Branches, valves and bends stop a catheter from threading. Map the run before you puncture.",
+     "review": "02-peripheral",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q7",
+     "correct": "d",
+     "why": "The dynamic check proves you can track the target. If you cannot, do not puncture yet.",
+     "review": "02-peripheral",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q8",
+     "correct": "c",
+     "why": "A needle through both walls can still return blood. Rely on the image of the tip.",
+     "review": "03-needle",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q9",
+     "correct": "d",
+     "why": "The wall bends under the tip. Advance a little more to enter, then stop.",
+     "review": "03-needle",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q10",
+     "correct": "c",
+     "why": "Long axis shows the tip position, tenting, valves and bends. Pushing blindly can dissect beside the vein.",
+     "review": "03-needle",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q11",
+     "correct": "a",
+     "why": "A true intraluminal flush shows a swirl inside the lumen. Fluid in the tissue means infiltration.",
+     "review": "03-needle",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q12",
+     "correct": "a",
+     "why": "Flashback and easy passage can mislead. See the wire inside the vein, in short and long axis, before you dilate.",
+     "review": "04-central",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "a",
+     "why": "Dilating an artery or the tissues is the harmful step. Resolve the doubt first.",
+     "review": "04-central",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "a",
+     "why": "Confirm tip position and look for complications after insertion, according to your trust's policy.",
+     "review": "04-central",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q15",
+     "correct": "c",
+     "why": "A straight, superficial stretch gives the catheter room. The strongest pulse is not always the best segment.",
+     "review": "05-arterial",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q16",
+     "correct": "b",
+     "why": "Long axis shows the angle, tip position and wall tenting. Pushing blindly can dissect the artery.",
+     "review": "05-arterial",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    }
+   ],
+   "lessons": {
+    "01-context": {
+     "title": "Why ultrasound, and what it will and will not do",
+     "path": "/elearning/vascular-access/learn/context/"
+    },
+    "02-peripheral": {
+     "title": "Peripheral lines: set up, choose the vein and centre the dot",
+     "path": "/elearning/vascular-access/learn/peripheral/"
+    },
+    "03-needle": {
+     "title": "The needle: near wall, back wall, threading and the flush test",
+     "path": "/elearning/vascular-access/learn/needle/"
+    },
+    "04-central": {
+     "title": "Central lines: see the wire before you dilate",
+     "path": "/elearning/vascular-access/learn/central/"
+    },
+    "05-arterial": {
+     "title": "Arterial lines: the radial artery in a shocked patient",
+     "path": "/elearning/vascular-access/learn/arterial/"
+    },
+    "06-cases": {
+     "title": "Cases",
+     "path": "/elearning/vascular-access/learn/cases/"
+    }
+   }
   }
  }
 }
