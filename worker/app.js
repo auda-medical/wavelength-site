@@ -25,7 +25,7 @@ import * as SV from './supervise.js';
 import { emailVerifyOn, sendVerification, issueToken, sendTokenEmail, resend as resendEmail, verifyToken, newNonce } from './email-verify.js';
 import { handleProfessional, directorySearch, deleteProfessional, snapshotFor, publicSnapshot, entrySnapshot, professionalOn } from './professional.js';
 
-import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, body, fullName, profileOf, cleanProfile, account, verificationReady } from './app-util.js';
+import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, body, fullName, profileOf, cleanProfile, account, verificationReady, sigKind, withSigKind, splitSigKind } from './app-util.js';
 
 // ---------- Accounts ----------
 async function signup(env, req, ctx) {
@@ -289,7 +289,7 @@ function snapshotOf(entries) {
   return entries.map((e) => { const s = { id: e.id }; for (const k of SIGNED_FIELDS) s[k] = e[k] == null ? null : e[k]; s.imageCount = (e.images || []).length; return s; });
 }
 function cleanSupervisor(d) {
-  return { name: clip(d.name, 120), role: clip(d.role, 120), reg: clip(d.registration, 40), email: clip(d.email, 160).toLowerCase(), accreditation: clip(d.accreditation, 120), basis: ['witnessed', 'reviewed', 'both'].includes(d.basis) ? d.basis : null, comment: clip(d.comment, 2000) };
+  return { name: clip(d.name, 120), role: clip(d.role, 120), reg: clip(d.registration, 40), email: clip(d.email, 160).toLowerCase(), accreditation: clip(d.accreditation, 120), basis: ['witnessed', 'reviewed', 'both'].includes(d.basis) ? d.basis : null, comment: clip(d.comment, 2000), signatureKind: sigKind(d) };
 }
 const RATING = ['g', 'a', 'r'];
 function cleanRating(r) { if (!r || typeof r !== 'object') return null; const o = {}; for (const k of ['image', 'accuracy']) if (RATING.includes(r[k])) o[k] = r[k]; return Object.keys(o).length ? o : null; }
@@ -304,7 +304,7 @@ async function applySignoff(env, so, decisions, sup, method, ratings = {}, snap 
     const data = JSON.parse(row.data);
     const hash = await contentHash(data);
     if (hash !== (await contentHash(e))) continue; // edited since the request: skip
-    data.signoff = { code: so.id, status, name: sup.name, role: sup.role, reg: sup.reg, accreditation: sup.accreditation, basis: sup.basis, method, at, hash };
+    data.signoff = { code: so.id, status, name: sup.name, role: sup.role, reg: sup.reg, accreditation: sup.accreditation, basis: sup.basis, method, at, hash, signatureKind: sup.signatureKind || 'drawn' };
     const rt = cleanRating((ratings || {})[e.id]); if (rt) data.signoff.rating = rt;
     // What Wavelength had verified about the signer at this moment. Server-owned like the rest of signoff.
     const vs = entrySnapshot(snap); if (vs) data.signoff.verification = vs;
@@ -349,7 +349,7 @@ async function signoffComplete(env, req, ctx) {
   // Whoever holds a link signs as themselves: the snapshot records the details as declared, not verified.
   const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote' });
   const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
-    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
+    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
   // A double tap or a second tab: only the first submission signs.
   if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This sign-off link is no longer valid.' }, 410);
   await applySignoff(env, so, decisions, sup, 'remote', ratings, snap);
@@ -398,14 +398,14 @@ async function signoffInPerson(env, l, req) {
   // Signed on the learner's own phone: the signer's details are declared, not verified.
   const snap = await snapshotFor(env, { entries, declared: sup, method: 'in-person' });
   await env.DB.prepare(`INSERT INTO signoffs (id, learner_id, method, entry_ids, snapshot, status, supervisor_name, supervisor_role, supervisor_reg, supervisor_email, accreditation, basis, comment, decisions, ratings, signature, signed_at${snap ? ', supervisor_snapshot' : ''}) VALUES (?,?,?,?,?,'signed',?,?,?,?,?,?,?,?,?,?,datetime('now')${snap ? ',?' : ''})`)
-    .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, ...(snap ? [JSON.stringify(snap)] : [])).run();
+    .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : [])).run();
   await applySignoff(env, so, decisions, sup, 'in-person', ratings, snap);
   return json({ ok: true, code: id });
 }
 
 async function signoffList(env, l) {
   const { results = [] } = await env.DB.prepare('SELECT id, method, status, created_at, expires_at, supervisor_name, supervisor_role, supervisor_reg, accreditation, basis, comment, decisions, ratings, signature, signed_at, entry_ids, supervisor_id FROM signoffs WHERE learner_id = ? ORDER BY created_at DESC LIMIT 300').bind(l.id).all();
-  return json({ ok: true, signoffs: results.map((r) => ({ ...r, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ratings: JSON.parse(r.ratings || '{}') })) });
+  return json({ ok: true, signoffs: results.map((r) => ({ ...r, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ...splitSigKind(r.ratings) })) });
 }
 
 async function signoffCancel(env, l, req) {
@@ -474,12 +474,13 @@ async function verify(env, url) {
   if (c.startsWith('EV-')) return verifyEvidence(env, c, json);
   if (c.startsWith('AS-')) return SV.verifyAssessment(env, c);
   const ready = await verificationReady(env);
-  const so = c && await env.DB.prepare(`SELECT s.id, s.method, s.supervisor_name, s.supervisor_role, s.accreditation, s.basis, s.signed_at, s.signature IS NOT NULL AS signed_by_hand, s.decisions, s.snapshot${ready ? ', s.supervisor_snapshot' : ''}, l.title, l.first_name, l.last_name FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.id = ? AND s.status = 'signed'`).bind(c).first();
+  const so = c && await env.DB.prepare(`SELECT s.id, s.method, s.supervisor_name, s.supervisor_role, s.accreditation, s.basis, s.signed_at, s.signature IS NOT NULL AS signed_by_hand, s.decisions, s.ratings, s.snapshot${ready ? ', s.supervisor_snapshot' : ''}, l.title, l.first_name, l.last_name FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.id = ? AND s.status = 'signed'`).bind(c).first();
   if (!so) return json({ ok: false, error: 'No signed record matches that code.' }, 404);
   const dec = JSON.parse(so.decisions || '{}');
   const snap = JSON.parse(so.snapshot || '[]');
+  const sk = splitSigKind(so.ratings).signatureKind; // 'typed' or 'drawn': a typed name is not a hand signature
   // supervisorCheck: what Wavelength had verified about the signer when they signed (null for older sign-offs).
-  return json({ ok: true, code: so.id, learner: fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand, method: so.method, signedAt: so.signed_at, confirmed: Object.values(dec).filter((x) => x === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })), supervisorCheck: publicSnapshot(so.supervisor_snapshot) });
+  return json({ ok: true, code: so.id, learner: fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand && sk !== 'typed', signatureKind: sk, method: so.method, signedAt: so.signed_at, confirmed: Object.values(dec).filter((x) => x === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })), supervisorCheck: publicSnapshot(so.supervisor_snapshot) });
 }
 
 // ---------- Router ----------

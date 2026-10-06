@@ -1506,5 +1506,12 @@
 "Share message": "مشاركة الرسالة",
 "This supervisor is already linked.": "هذا المشرف مرتبط بالفعل.",
 "Wavelength supervision request": "طلب إشراف Wavelength",
-"Message copied.": "تم نسخ الرسالة."
+"Message copied.": "تم نسخ الرسالة.",
+"Draw instead": "الرسم بدلًا من ذلك",
+"Recorded as a typed signature.": "يُسجَّل كتوقيع مكتوب.",
+"This differs from the name you entered above. Check it is your own full name.": "يختلف هذا عن الاسم الذي أدخلته أعلاه. تحقق من أنه اسمك الكامل.",
+"Type my name instead": "كتابة اسمي بدلًا من ذلك",
+"Type your full name as your signature": "اكتب اسمك الكامل كتوقيع",
+"Type your full name as your signature, at least two letters.": "اكتب اسمك الكامل كتوقيع، حرفان على الأقل.",
+"Typed signature": "توقيع مكتوب"
 }

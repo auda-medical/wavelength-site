@@ -4,7 +4,7 @@
 // Supervisor links: a learner invites a supervisor by email. Once the supervisor accepts in their own app, they see
 // the learner's progress and the written logbook (never images), and sign-off or assessment requests addressed to them.
 import LOGBOOK from '../data/logbook.json';
-import { SITE, json, clip, EMAIL, sha256, token, code, body, fullName, profileOf, contentHash, SIGNED_FIELDS, verificationReady } from './app-util.js';
+import { SITE, json, clip, EMAIL, sha256, token, code, body, fullName, profileOf, contentHash, SIGNED_FIELDS, verificationReady, sigKind, withSigKind } from './app-util.js';
 import { buildSummary, signedAssessments } from './evidence.js';
 import { sendMail } from './academy.js';
 import { mustVerify, sendVerification } from './email-verify.js';
@@ -43,6 +43,7 @@ function cleanForm(d) {
     topic: clip(d.topic, 160), setting: clip(d.setting, 120),
     strengths: clip(d.strengths, 3000), development: clip(d.development, 3000), actions: clip(d.actions, 3000),
     learnerReflection: clip(d.learnerReflection, 3000),
+    signatureKind: sigKind(d), // 'typed' or 'drawn'; stored in the assessment's data JSON
   };
 }
 function formError(f, kind) {
@@ -62,7 +63,7 @@ async function finishAssessment(env, row, f, sup, sig, supervisorId, method) {
 const publicRow = (r) => ({
   id: r.id, pathway: r.pathway, module: r.module, kind: r.kind, method: r.method, status: r.status, outcome: r.outcome, assessed_on: r.assessed_on,
   entry_ids: JSON.parse(r.entry_ids || '[]'), data: JSON.parse(r.data || '{}'), expires_at: r.expires_at, supervisor_name: r.supervisor_name,
-  supervisor_role: r.supervisor_role, supervisor_reg: r.supervisor_reg, accreditation: r.accreditation, signature: r.signature, signed_at: r.signed_at, created_at: r.created_at,
+  supervisor_role: r.supervisor_role, supervisor_reg: r.supervisor_reg, accreditation: r.accreditation, signature: r.signature, signatureKind: r.signature ? sigKind(JSON.parse(r.data || '{}')) : null, signed_at: r.signed_at, created_at: r.created_at,
 });
 
 // ---------- Learner side ----------
@@ -265,7 +266,7 @@ export async function superviseSignoffComplete(env, l, req, applySignoff, cleanS
   // Signed from the supervisor's own logged-in account: capture their verified status as it is now.
   const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'dashboard', accountId: l.id });
   const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', method = 'dashboard', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = ?, accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
-    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(ratings), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
+    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
   if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This request is no longer open.' }, 404);
   await applySignoff(env, so, decisions, sup, 'dashboard', ratings, snap);
   await deleteSharedImages(env, so.id);
@@ -309,7 +310,8 @@ export async function verifyAssessment(env, c) {
   if (!a) return json({ ok: false, error: 'No completed assessment matches that code.' }, 404);
   const pw = PATHS[a.pathway], m = moduleOf(a.pathway, a.module), kind = (LOGBOOK.assessmentKinds || []).find((k) => k.id === a.kind);
   const outcome = (LOGBOOK.assessmentOutcomes || []).find((o) => o.id === a.outcome);
-  return json({ ok: true, kind: 'assessment', code: a.id, learner: fullName(a), pathway: pw ? pw.name : a.pathway, module: m ? m.label : a.module, type: kind ? kind.label : a.kind, outcome: outcome ? outcome.label : a.outcome, outcomeId: a.outcome, assessedOn: a.assessed_on, assessor: a.supervisor_name, role: a.supervisor_role, accreditation: a.accreditation, method: a.method, handSigned: !!a.signature, scans: JSON.parse(a.entry_ids || '[]').length, supervisorCheck: publicSnapshot(a.supervisor_snapshot) });
+  const sk = sigKind(JSON.parse(a.data || '{}')); // 'typed' or 'drawn': a typed name is not a hand signature
+  return json({ ok: true, kind: 'assessment', code: a.id, learner: fullName(a), pathway: pw ? pw.name : a.pathway, module: m ? m.label : a.module, type: kind ? kind.label : a.kind, outcome: outcome ? outcome.label : a.outcome, outcomeId: a.outcome, assessedOn: a.assessed_on, assessor: a.supervisor_name, role: a.supervisor_role, accreditation: a.accreditation, method: a.method, handSigned: !!a.signature && sk !== 'typed', signatureKind: sk, scans: JSON.parse(a.entry_ids || '[]').length, supervisorCheck: publicSnapshot(a.supervisor_snapshot) });
 }
 
 export async function deleteSupervision(env, l) {

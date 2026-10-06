@@ -987,7 +987,7 @@
     var so = e.signoff;
     var basis = { witnessed: T('witnessed the scan'), reviewed: T('reviewed the images'), both: T('witnessed and reviewed') };
     var rt = so && so.rating ? '<div class="rated">' + ['image', 'accuracy'].filter(function (k) { return so.rating[k]; }).map(function (k) { var q = C.qualityScale.find(function (x) { return x.id === so.rating[k]; }) || {}; return '<span class="tl-tag tl-' + so.rating[k] + '"><i></i>' + esc(T(k === 'image' ? 'Image quality' : 'Diagnostic accuracy')) + ': ' + esc(T(q.label || '')) + '</span>'; }).join('') + '</div>' : '';
-    var signHtml = so ? '<div class="signbox ' + (so.status === 'confirmed' ? 'ok' : 'warn') + '"><b>' + esc(so.status === 'confirmed' ? T('Signed off') : T('Queried')) + '</b> · ' + esc(so.name) + (so.role ? ', ' + esc(so.role) : '') + (so.reg ? ' (' + esc(so.reg) + ')' : '') + ' · ' + esc(fmt(so.at)) + ' · ' + esc(so.method === 'in-person' ? T('in person') : so.method === 'dashboard' ? T('from their dashboard') : T('by link')) + (so.basis ? ' (' + esc(basis[so.basis]) + ')' : '') + '. ' + esc(T('Code {code}.', { code: so.code })) + rt + '</div>'
+    var signHtml = so ? '<div class="signbox ' + (so.status === 'confirmed' ? 'ok' : 'warn') + '"><b>' + esc(so.status === 'confirmed' ? T('Signed off') : T('Queried')) + '</b> · ' + esc(so.name) + (so.role ? ', ' + esc(so.role) : '') + (so.reg ? ' (' + esc(so.reg) + ')' : '') + ' · ' + esc(fmt(so.at)) + ' · ' + esc(so.method === 'in-person' ? T('in person') : so.method === 'dashboard' ? T('from their dashboard') : T('by link')) + (so.basis ? ' (' + esc(basis[so.basis]) + ')' : '') + (so.signatureKind === 'typed' ? ' · ' + esc(T('Typed signature')) : '') + '. ' + esc(T('Code {code}.', { code: so.code })) + rt + '</div>'
       : e.signoffVoid ? '<div class="warn">' + esc(T('Signed by {name}, then edited. Ask for sign-off again.', { name: e.signoffVoid.name })) + '</div>' : '';
     var wt = !(so && so.status === 'confirmed') && waiting(e), state = signState(e);
     if (wt) signHtml = '<div class="signbox warn"><b>' + esc(T('Awaiting sign-off')) + '</b>' + (wt.name ? ' · ' + esc(wt.name) : '') + '. ' + esc(T('Request sent, valid until {date}.', { date: fmt(new Date(wt.exp).toISOString()) })) + '</div>' + (so ? '<p class="small muted" style="margin:8px 0 0">' + esc(so.status === 'query' ? T('Earlier: queried by {name}.', { name: so.name }) : T('Earlier: signed by {name}.', { name: so.name })) + '</p>' : '');
@@ -1112,14 +1112,14 @@
   function collectSignoff(root, f, pad) {
     var d = formData(f), err = $('.err', f);
     if (!d.name || !d.role || !d.confirm) { err.textContent = T('Enter your name and role and tick the confirmation.'); err.hidden = false; return null; }
-    if (pad.empty()) { err.textContent = T('Sign in the box.'); err.hidden = false; return null; }
-    d.signature = pad.data(); d.decisions = {}; $$('[data-dec]', root).forEach(function (s) { d.decisions[s.dataset.dec] = s.value; });
+    if (pad.empty()) { err.textContent = pad.emptyError(); err.hidden = false; return null; }
+    d.signature = pad.data(); d.signatureKind = pad.kind(); d.decisions = {}; $$('[data-dec]', root).forEach(function (s) { d.decisions[s.dataset.dec] = s.value; });
     d.ratings = F.readRatings(root);
     return d;
   }
   function signInPerson(ids) {
     sheet('<h2>' + esc(T('Hand your phone to your supervisor')) + '</h2><p class="muted small">' + esc(T('{name} is asking you to confirm {scans}. Check each one, rate it if you wish, then sign below.', { name: S.account.name, scans: plural(ids.length, 'scan') })) + '</p>' + ids.map(function (id) { return entryCard(S.entries.find(function (x) { return x.id === id; }), true); }).join('') + signoffFormHtml(), function (root) {
-      var f = $('#pf', root), pad = F.bindSig(root);
+      var f = $('#pf', root), pad = F.bindSig(root, T);
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var d = collectSignoff(root, f, pad); if (!d) return; d.entryIds = ids;
         var b = $('button.teal', f); busy(b, true, T('Signing…'));
@@ -1214,7 +1214,7 @@
     var dom = C.assessmentDomains.filter(function (x) { return (d.domains || {})[x.id]; }).map(function (x) { return '<dt>' + esc(T(x.label)) + '</dt><dd>' + esc(T(d.domains[x.id])) + '</dd>'; }).join('');
     var txt = function (k, label) { return d[k] ? '<h3 style="margin:12px 0 4px">' + esc(T(label)) + '</h3><p style="white-space:pre-wrap;margin:0">' + esc(d[k]) + '</p>' : ''; };
     sheet('<h2>' + esc(kindLabel(a.kind)) + '</h2><p class="muted small">' + esc((PATHS[a.pathway] || {}).name || '') + ' · ' + esc(m ? T(m.label) : '') + '</p>' +
-      (a.status === 'signed' ? '<div class="ok"><b>' + esc(T((OUTCOME[a.outcome] || {}).label || '')) + '</b><br>' + esc(T('Assessed by {name}{role} on {date}. Code {code}.', { name: a.supervisor_name, role: a.supervisor_role ? ', ' + a.supervisor_role : '', date: fmt(a.assessed_on), code: a.id })) + '</div><div class="detail"><dl>' + (d.topic ? '<dt>' + esc(T('Focus')) + '</dt><dd>' + esc(T(d.topic)) + '</dd>' : '') + dom + '</dl></div>' + txt('strengths', 'What went well') + txt('development', 'What to develop') + txt('actions', 'Agreed actions') + (a.signature ? '<img alt="' + esc(T('Signature')) + '" src="' + a.signature + '" style="max-width:220px;background:#fff;border-radius:8px;margin-top:12px">' : '') + '<div class="btns"><button class="btn ghost block" data-copyas>' + esc(T('Copy verification link')) + '</button></div>'
+      (a.status === 'signed' ? '<div class="ok"><b>' + esc(T((OUTCOME[a.outcome] || {}).label || '')) + '</b><br>' + esc(T('Assessed by {name}{role} on {date}. Code {code}.', { name: a.supervisor_name, role: a.supervisor_role ? ', ' + a.supervisor_role : '', date: fmt(a.assessed_on), code: a.id })) + '</div><div class="detail"><dl>' + (d.topic ? '<dt>' + esc(T('Focus')) + '</dt><dd>' + esc(T(d.topic)) + '</dd>' : '') + dom + '</dl></div>' + txt('strengths', 'What went well') + txt('development', 'What to develop') + txt('actions', 'Agreed actions') + (a.signature ? '<img alt="' + esc(T('Signature')) + '" src="' + a.signature + '" style="max-width:220px;background:#fff;border-radius:8px;margin-top:12px">'  + (a.signatureKind === 'typed' ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('Typed signature')) + '</p>' : '') : '') + '<div class="btns"><button class="btn ghost block" data-copyas>' + esc(T('Copy verification link')) + '</button></div>'
         : '<p>' + esc(T('Waiting for your assessor.')) + '</p><div class="btns"><button class="btn ghost block" data-cancelas>' + esc(T('Cancel request')) + '</button></div>') +
       '<div class="btns"><button class="btn block" data-close>' + esc(T('Close')) + '</button></div>', function (root) {
       var c = $('[data-copyas]', root); if (c) c.onclick = function () { copy(NAT.origin + '/app/verify/?code=' + a.id); };
@@ -1266,13 +1266,13 @@
     var m = PATHS[req.pathway].modules.find(function (x) { return x.id === req.module; });
     sheet('<h2>' + esc(T('Hand your phone to your assessor')) + '</h2><p class="muted small">' + esc(T('{name}: {kind} for {module}.', { name: S.account.name, kind: kindLabel(req.kind), module: PATHS[req.pathway].label + ' ' + T(m.label) })) + '</p>' + req.entryIds.map(function (id) { return entryCard(S.entries.find(function (x) { return x.id === id; }), false); }).join('') +
       '<form id="asf">' + F.assessmentHtml(C, T, { kind: req.kind, topics: m.topics, learnerReflection: req.learnerReflection }) + '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Record assessment')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {
-      var f = $('#asf', root), pad = F.bindSig(root);
+      var f = $('#asf', root), pad = F.bindSig(root, T);
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var d = F.readAssessment(C, f), err = $('.err', f); err.hidden = true;
         if (!d.name || !d.role || !d.confirm) { err.textContent = T('Enter your name and role and tick the confirmation.'); err.hidden = false; return; }
         if (!d.outcome) { err.textContent = T('Choose the outcome of the assessment.'); err.hidden = false; return; }
-        if (pad.empty()) { err.textContent = T('Sign in the box.'); err.hidden = false; return; }
-        d.signature = pad.data(); Object.assign(d, req);
+        if (pad.empty()) { err.textContent = pad.emptyError(); err.hidden = false; return; }
+        d.signature = pad.data(); d.signatureKind = pad.kind(); Object.assign(d, req);
         var b = $('button.teal', f); busy(b, true, T('Saving…'));
         api('/api/app/assessment/inperson', d).then(function (res) {
           if (!res.ok) throw new Error(res.error);
@@ -1379,7 +1379,7 @@
     api('/api/app/supervise/signoff?code=' + encodeURIComponent(code)).then(function (res) {
       if (!res.ok) { toast(res.error); return; }
       sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish. Images open only from the link the learner sent you.')) + '</p>' + res.entries.map(function (e) { return entryCard(e, true); }).join('') + signoffFormHtml(myPre()), function (root) {
-        var f = $('#pf', root), pad = F.bindSig(root);
+        var f = $('#pf', root), pad = F.bindSig(root, T);
         f.addEventListener('submit', function (ev) {
           ev.preventDefault(); var d = collectSignoff(root, f, pad); if (!d) return; d.code = code;
           var b = $('button.teal', f); busy(b, true, T('Signing…'));
@@ -1391,14 +1391,14 @@
   }
   function dashAssessSheet(title, intro, opts, send, learnerId) {
     sheet('<h2>' + esc(title) + '</h2><p class="muted small">' + esc(intro) + '</p>' + (opts.pick || '') + '<form id="asf">' + F.assessmentHtml(C, T, Object.assign({ pre: myPre() }, opts)) + '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Record assessment')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {
-      var f = $('#asf', root), pad = F.bindSig(root);
+      var f = $('#asf', root), pad = F.bindSig(root, T);
       if (opts.bind) opts.bind(root);
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var d = F.readAssessment(C, f), err = $('.err', f); err.hidden = true;
         if (!d.name || !d.role || !d.confirm) { err.textContent = T('Enter your name and role and tick the confirmation.'); err.hidden = false; return; }
         if (!d.outcome) { err.textContent = T('Choose the outcome of the assessment.'); err.hidden = false; return; }
-        if (pad.empty()) { err.textContent = T('Sign in the box.'); err.hidden = false; return; }
-        d.signature = pad.data();
+        if (pad.empty()) { err.textContent = pad.emptyError(); err.hidden = false; return; }
+        d.signature = pad.data(); d.signatureKind = pad.kind();
         var b = $('button.teal', f); busy(b, true, T('Saving…'));
         send(d, root).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(T('Assessment recorded. Code {code}.', { code: r2.code }), 4000); loadLinks(); viewSupervisedLearner(learnerId); })
           .catch(function (ex) { busy(b, false); err.textContent = ex.message; err.hidden = false; });
@@ -1656,7 +1656,7 @@
         doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text('Verify any code at ' + NAT.host + '/verify, or scan its QR code', 16, 24);
         var qrs = sos.map(function (s) { return qrPng(verifyUrl(s.id), 200); });
         doc.autoTable({ startY: 28, head: [['Code', 'Date', 'Supervisor', 'Registration', 'Accreditation', 'Method', 'Scans', 'Signature', 'Verify']], body: sos.map(function (s) { return [s.id, (s.signed_at || '').slice(0, 10), s.supervisor_name + (s.supervisor_role ? '\n' + s.supervisor_role : ''), s.supervisor_reg || '', s.accreditation || '', (s.method === 'in-person' ? 'In person' : s.method === 'dashboard' ? 'Dashboard' : 'By link') + (s.basis ? '\n' + ({ witnessed: 'Witnessed', reviewed: 'Reviewed images', both: 'Witnessed and reviewed' })[s.basis] : ''), String(s.entry_ids.length), '', '']; }), styles: { fontSize: 8, cellPadding: 1.8, valign: 'middle', minCellHeight: 18 }, headStyles: { fillColor: navy }, columnStyles: { 7: { cellWidth: 30 }, 8: { cellWidth: 18 } },
-          didDrawCell: function (h) { if (h.section === 'body' && h.column.index === 8) { try { doc.addImage(qrs[h.row.index], 'PNG', h.cell.x + 1.5, h.cell.y + 1.5, 15, 15); } catch (e) { /* skip */ } } if (h.section === 'body' && h.column.index === 7) { var s = sos[h.row.index]; if (s && s.signature) { try { doc.addImage(s.signature, 'PNG', h.cell.x + 1, h.cell.y + 1, 28, Math.min(h.cell.height - 2, 12)); } catch (e) { /* skip */ } } } } });
+          didDrawCell: function (h) { if (h.section === 'body' && h.column.index === 8) { try { doc.addImage(qrs[h.row.index], 'PNG', h.cell.x + 1.5, h.cell.y + 1.5, 15, 15); } catch (e) { /* skip */ } } if (h.section === 'body' && h.column.index === 7) { var s = sos[h.row.index]; if (s && s.signature) { try { doc.addImage(s.signature, 'PNG', h.cell.x + 1, h.cell.y + 1, 28, Math.min(h.cell.height - 2, 12)); } catch (e) { /* skip */ } if (s.signatureKind === 'typed') { doc.setFontSize(6.5); doc.setTextColor(91, 104, 120); doc.text('Typed signature', h.cell.x + 1, h.cell.y + h.cell.height - 1.5); } } } } });
       }
       var withImg = d.images ? list.filter(function (e) { return (e.images || []).length; }) : [];
       var addImages = withImg.reduce(function (p, e) {

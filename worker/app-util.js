@@ -102,5 +102,12 @@ async function verificationReady(env) {
   return ok;
 }
 
+// How the signer signed: 'typed' (their name typed, rendered as an image) or 'drawn' (finger or mouse). Anything else,
+// including no value from an older app build, counts as drawn. The signature image itself is stored either way.
+const sigKind = (d) => (d && d.signatureKind === 'typed' ? 'typed' : 'drawn');
+// Sign-offs keep the kind inside their ratings JSON under this key (entry ids never start with $), so no column is needed.
+const SIG_KEY = '$signatureKind';
+function withSigKind(ratings, kind) { const r = { ...(ratings && typeof ratings === 'object' && !Array.isArray(ratings) ? ratings : {}) }; delete r[SIG_KEY]; r[SIG_KEY] = kind; return r; }
+function splitSigKind(json) { let r = {}; try { r = JSON.parse(json || '{}') || {}; } catch { r = {}; } const kind = r[SIG_KEY] === 'typed' ? 'typed' : 'drawn'; delete r[SIG_KEY]; return { ratings: r, signatureKind: kind }; }
 
-export { LANGS, enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, ALPHABET, b64, unb64, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, canonical, contentHash, body, fullName, profileOf, cleanProfile, account, verificationReady };
+export { sigKind, SIG_KEY, withSigKind, splitSigKind, LANGS, enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, ALPHABET, b64, unb64, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, canonical, contentHash, body, fullName, profileOf, cleanProfile, account, verificationReady };

@@ -1426,5 +1426,12 @@
 "Share message": "分享消息",
 "This supervisor is already linked.": "该导师已关联。",
 "Wavelength supervision request": "Wavelength 导师请求",
-"Message copied.": "消息已复制。"
+"Message copied.": "消息已复制。",
+"Draw instead": "改为手写",
+"Recorded as a typed signature.": "将记录为键入签名。",
+"This differs from the name you entered above. Check it is your own full name.": "与上方填写的姓名不同。请确认这是您的全名。",
+"Type my name instead": "改为键入姓名",
+"Type your full name as your signature": "请键入您的全名作为签名",
+"Type your full name as your signature, at least two letters.": "请键入您的全名作为签名，至少两个字符。",
+"Typed signature": "键入签名"
 }

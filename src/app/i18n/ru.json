@@ -1474,5 +1474,12 @@
 "Share message": "Поделиться сообщением",
 "This supervisor is already linked.": "Этот руководитель уже связан.",
 "Wavelength supervision request": "Запрос на руководство Wavelength",
-"Message copied.": "Сообщение скопировано."
+"Message copied.": "Сообщение скопировано.",
+"Draw instead": "Нарисовать подпись",
+"Recorded as a typed signature.": "Сохраняется как напечатанная подпись.",
+"This differs from the name you entered above. Check it is your own full name.": "Отличается от имени, указанного выше. Проверьте, что это ваше полное имя.",
+"Type my name instead": "Напечатать имя вместо подписи",
+"Type your full name as your signature": "Напечатайте полное имя в качестве подписи",
+"Type your full name as your signature, at least two letters.": "Напечатайте полное имя в качестве подписи, не менее двух букв.",
+"Typed signature": "Напечатанная подпись"
 }
