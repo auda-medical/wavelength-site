@@ -1414,5 +1414,17 @@
 "Light": "浅色",
 "Dark": "深色",
 "Match my phone follows the light or dark setting on your phone.": "“跟随手机”会使用手机的浅色或深色设置。",
-"App language": "应用语言"
+"App language": "应用语言",
+"Copy message": "复制消息",
+"Hello, I use the free Wavelength ultrasound logbook and have added you as my supervisor. Open {link} and log in, or create a free account, with {email}. My invitation is waiting there. Thank you, {name}": "您好，我在使用免费的 Wavelength 超声日志，并已将您添加为我的导师。请打开 {link}，使用 {email} 登录或创建免费账户。我的邀请在那里等您。谢谢，{name}",
+"Hospital and NHS email often puts a first message from a new sender in junk. Ask your supervisor to check their junk folder and mark the email as Not junk, so later sign-off requests reach their inbox.": "医院和 NHS 邮箱常会把新发件人的第一封邮件放进垃圾邮件。请让您的导师检查垃圾邮件文件夹，并将该邮件标记为“非垃圾邮件”，以便之后的签核请求进入收件箱。",
+"Invitation saved for {email}, but the email did not go out. Send the message below instead.": "已为 {email} 保存邀请，但邮件未能发出。请改为发送下面的消息。",
+"Invitation sent": "邀请已发送",
+"Invitation sent to {email}.": "邀请已发送至 {email}。",
+"Or send them this message yourself by WhatsApp, Teams or text:": "或者您自己通过 WhatsApp、Teams 或短信发送这条消息：",
+"Resend or share": "重新发送或分享",
+"Share message": "分享消息",
+"This supervisor is already linked.": "该导师已关联。",
+"Wavelength supervision request": "Wavelength 导师请求",
+"Message copied.": "消息已复制。"
 }

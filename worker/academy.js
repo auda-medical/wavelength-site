@@ -154,7 +154,9 @@ export async function sendCertificate(env, cert, person) {
 }
 
 // Plain branded email (password resets and other app messages). Returns true when sent.
-export async function sendMail(env, { to, toName, subject, heading, paragraphs = [], button, text }) {
+// fromName and replyTo let a message come from a person, as in a supervisor invitation ("Name via Wavelength", replies
+// going to the learner). The sending address stays Wavelength's own, so SPF, DKIM and DMARC still align.
+export async function sendMail(env, { to, toName, subject, heading, paragraphs = [], button, text, fromName, replyTo }) {
   if (!env.ZEPTOMAIL_TOKEN) return false;
   const p = 'margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#33404F;';
   const btn = button ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 8px 0;"><tr><td align="center" bgcolor="#0F1E33" style="background:#0F1E33;border-radius:999px;"><a href="${esc(button.href)}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#F7F5F0;text-decoration:none;">${esc(button.label)}</a></td></tr></table>` : '';
@@ -167,7 +169,7 @@ export async function sendMail(env, { to, toName, subject, heading, paragraphs =
     const res = await fetch(env.ZEPTOMAIL_API || 'https://cpaas.zoho.eu/v1.1/email', {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Zoho-enczapikey ${tok}` },
-      body: JSON.stringify({ from: { address: env.APP_MAIL_FROM || env.MAIL_FROM || 'academy@thewavelength.co.uk', name: 'Wavelength' }, to: [{ email_address: { address: to, name: toName || to } }], reply_to: [{ address: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', name: 'Wavelength' }], subject, htmlbody: html, textbody: text || paragraphs.join('\n\n'), track_clicks: false, track_opens: false }),
+      body: JSON.stringify({ from: { address: env.APP_MAIL_FROM || env.MAIL_FROM || 'academy@thewavelength.co.uk', name: fromName || 'Wavelength' }, to: [{ email_address: { address: to, name: toName || to } }], reply_to: [replyTo || { address: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', name: 'Wavelength' }], subject, htmlbody: html, textbody: text || paragraphs.join('\n\n'), track_clicks: false, track_opens: false }),
     });
     return res.ok;
   } catch { return false; }

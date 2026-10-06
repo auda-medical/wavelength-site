@@ -130,7 +130,7 @@
     if ($('#' + id + '-2', root).value !== v) return T('Passwords do not match.');
     return '';
   }
-  function copy(text) { return (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast(T('Link copied.')); }).catch(function () { prompt(T('Copy this link'), text); }); }
+  function copy(text, done) { return (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast(done || T('Link copied.')); }).catch(function () { prompt(T('Copy this link'), text); }); }
 
   // ---------- Local database: one per account, so two people on one device never mix logbooks ----------
   function openDb(id) {
@@ -1304,16 +1304,35 @@
     mount(shell({ title: T('Your supervisors'), back: 'me' },
       '<div class="card dark"><h3>' + esc(T('Link your supervisors')) + '</h3><p class="muted small">' + esc(T('A linked supervisor sees your progress and your written scan records in their own Wavelength app, never your images. Send sign-off and assessment requests straight to their dashboard. Remove a supervisor at any time.')) + '</p></div>' +
       '<form id="addf" class="card"><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off"></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
-      ((L2.supervisors || []).length ? L2.supervisors.map(function (s) { return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.name || s.email) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div><span class="chip ' + (s.status === 'active' ? 'green' : 'amber') + '">' + esc(s.status === 'active' ? T('Linked') : T('Invited')) + '</span></div><div class="btns"><button class="btn ghost sm" data-rm="' + s.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('') : '<p class="muted small">' + esc(T('No supervisors linked yet.')) + '</p>')));
+      ((L2.supervisors || []).length ? L2.supervisors.map(function (s) { return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.name || s.email) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div><span class="chip ' + (s.status === 'active' ? 'green' : 'amber') + '">' + esc(s.status === 'active' ? T('Linked') : T('Invited')) + '</span></div><div class="btns">' + (s.status === 'active' ? '' : '<button class="btn ghost sm" data-resend="' + esc(s.email) + '">' + esc(T('Resend or share')) + '</button>') + '<button class="btn ghost sm" data-rm="' + s.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('') : '<p class="muted small">' + esc(T('No supervisors linked yet.')) + '</p>')));
     $('#addf').addEventListener('submit', function (ev) {
       ev.preventDefault(); var b = $('button', this), err = $('.err', this); busy(b, true);
       api('/api/app/supervisors/add', { email: $('#se2').value }).then(function (res) {
         if (!res.ok) throw new Error(res.error);
-        toast(res.emailed ? T('Invitation sent.') : T('Invitation saved. Ask your supervisor to log in to Wavelength with that email.'), 4000);
-        return loadLinks().then(function () { viewSupervisors(); });
+        var to = $('#se2').value.trim().toLowerCase();
+        return loadLinks().then(function () { viewSupervisors(); inviteSent(to, res); });
       }).catch(function (ex) { busy(b, false); err.textContent = ex.message; err.hidden = false; });
     });
+    $$('[data-resend]').forEach(function (b) { b.onclick = function () { var to = b.dataset.resend; busy(b, true); api('/api/app/supervisors/add', { email: to }).then(function (res) { busy(b, false); if (!res.ok) { toast(res.error, 5000); return; } inviteSent(to, res); }).catch(function (ex) { busy(b, false); toast(ex.message); }); }; });
     $$('[data-rm]').forEach(function (b) { b.onclick = function () { if (!confirm(T('Remove this supervisor? They stop seeing your logbook at once.'))) return; api('/api/app/supervisors/remove', { id: Number(b.dataset.rm) }).then(function () { loadLinks().then(viewSupervisors); }); }; });
+  }
+
+  // After an invitation: hospital email (NHSmail and others) often files a first message from a new sender as junk, so
+  // say so, and give the learner a message to send themselves by WhatsApp, Teams or text. That link carries no token:
+  // the supervisor signs in with the invited email and finds the invitation waiting on their dashboard.
+  function inviteSent(to, res) {
+    var me = S.account || {};
+    var link = NAT.origin + '/app/#/supervise';
+    var msg = T('Hello, I use the free Wavelength ultrasound logbook and have added you as my supervisor. Open {link} and log in, or create a free account, with {email}. My invitation is waiting there. Thank you, {name}', { link: link, email: to, name: me.name || '' });
+    var head = res.emailed ? T('Invitation sent to {email}.', { email: to }) : T('Invitation saved for {email}, but the email did not go out. Send the message below instead.', { email: to });
+    sheet('<h2>' + esc(T('Invitation sent')) + '</h2><div class="' + (res.emailed ? 'ok' : 'warn') + '">' + esc(head) + '</div>' +
+      '<p class="small">' + esc(T('Hospital and NHS email often puts a first message from a new sender in junk. Ask your supervisor to check their junk folder and mark the email as Not junk, so later sign-off requests reach their inbox.')) + '</p>' +
+      '<p class="small muted">' + esc(T('Or send them this message yourself by WhatsApp, Teams or text:')) + '</p><div class="card small" style="white-space:pre-wrap">' + esc(msg) + '</div>' +
+      '<div class="btns">' + (navigator.share ? '<button class="btn teal block" data-share>' + esc(T('Share message')) + '</button>' : '') + '<button class="btn block" data-copy>' + esc(T('Copy message')) + '</button><button class="btn ghost block" data-close>' + esc(T('Done')) + '</button></div>',
+    function (r2) {
+      var sh = $('[data-share]', r2); if (sh) sh.onclick = function () { navigator.share({ title: T('Wavelength supervision request'), text: msg }).catch(function () {}); };
+      $('[data-copy]', r2).onclick = function () { copy(msg, T('Message copied.')); };
+    });
   }
 
   // ---------- Supervisor dashboard ----------

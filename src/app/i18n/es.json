@@ -1430,5 +1430,17 @@
 "Light": "Claro",
 "Dark": "Oscuro",
 "Match my phone follows the light or dark setting on your phone.": "«Igual que mi teléfono» sigue el ajuste claro u oscuro de su teléfono.",
-"App language": "Idioma de la aplicación"
+"App language": "Idioma de la aplicación",
+"Copy message": "Copiar mensaje",
+"Hello, I use the free Wavelength ultrasound logbook and have added you as my supervisor. Open {link} and log in, or create a free account, with {email}. My invitation is waiting there. Thank you, {name}": "Hola, uso el registro de ecografía gratuito Wavelength y le he añadido como supervisor. Abra {link} e inicie sesión, o cree una cuenta gratuita, con {email}. Mi invitación le espera allí. Gracias, {name}",
+"Hospital and NHS email often puts a first message from a new sender in junk. Ask your supervisor to check their junk folder and mark the email as Not junk, so later sign-off requests reach their inbox.": "El correo de hospitales y del NHS suele enviar a correo no deseado el primer mensaje de un remitente nuevo. Pida a su supervisor que revise esa carpeta y marque el correo como «No es correo no deseado», para que las próximas solicitudes de validación lleguen a su bandeja de entrada.",
+"Invitation saved for {email}, but the email did not go out. Send the message below instead.": "Invitación guardada para {email}, pero el correo no se envió. Envíe en su lugar el mensaje de abajo.",
+"Invitation sent": "Invitación enviada",
+"Invitation sent to {email}.": "Invitación enviada a {email}.",
+"Or send them this message yourself by WhatsApp, Teams or text:": "O envíele usted este mensaje por WhatsApp, Teams o SMS:",
+"Resend or share": "Reenviar o compartir",
+"Share message": "Compartir mensaje",
+"This supervisor is already linked.": "Este supervisor ya está vinculado.",
+"Wavelength supervision request": "Solicitud de supervisión de Wavelength",
+"Message copied.": "Mensaje copiado."
 }

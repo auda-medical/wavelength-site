@@ -1462,5 +1462,17 @@
 "Light": "Светлая",
 "Dark": "Тёмная",
 "Match my phone follows the light or dark setting on your phone.": "«Как в телефоне» повторяет светлую или тёмную тему вашего телефона.",
-"App language": "Язык приложения"
+"App language": "Язык приложения",
+"Copy message": "Копировать сообщение",
+"Hello, I use the free Wavelength ultrasound logbook and have added you as my supervisor. Open {link} and log in, or create a free account, with {email}. My invitation is waiting there. Thank you, {name}": "Здравствуйте! Я веду бесплатный журнал УЗИ Wavelength и добавил(а) вас как руководителя. Откройте {link} и войдите или создайте бесплатную учётную запись с адресом {email}. Моё приглашение ждёт вас там. Спасибо, {name}",
+"Hospital and NHS email often puts a first message from a new sender in junk. Ask your supervisor to check their junk folder and mark the email as Not junk, so later sign-off requests reach their inbox.": "Больничная почта и почта NHS часто отправляют первое письмо от нового отправителя в нежелательные. Попросите руководителя проверить папку «Нежелательная почта» и отметить письмо как «Не нежелательное», чтобы следующие запросы на подтверждение попадали во входящие.",
+"Invitation saved for {email}, but the email did not go out. Send the message below instead.": "Приглашение для {email} сохранено, но письмо не отправлено. Отправьте вместо этого сообщение ниже.",
+"Invitation sent": "Приглашение отправлено",
+"Invitation sent to {email}.": "Приглашение отправлено на {email}.",
+"Or send them this message yourself by WhatsApp, Teams or text:": "Или отправьте это сообщение сами через WhatsApp, Teams или SMS:",
+"Resend or share": "Отправить снова или поделиться",
+"Share message": "Поделиться сообщением",
+"This supervisor is already linked.": "Этот руководитель уже связан.",
+"Wavelength supervision request": "Запрос на руководство Wavelength",
+"Message copied.": "Сообщение скопировано."
 }
