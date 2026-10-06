@@ -278,3 +278,48 @@ test('a completed password reset also confirms the email', async () => {
   assert.equal((await client(handleApp, env).call('/api/app/reset/complete', { token, password: 'A new password 123!' })).status, 200);
   assert.equal((await env.DB.prepare('SELECT email_status FROM learners WHERE id = ?').bind(id).first()).email_status, 'verified');
 });
+
+test('a supervisor invitation reads as from the learner, replies go to them, and the link carries no email', async () => {
+  const env = makeEnv(MAIL);
+  await withMailbox(async (box) => {
+    const learner = await signup(env, 'reg@x.co', { firstName: 'Reza', lastName: 'Grant' });
+    const r = await learner.call('/api/app/supervisors/add', { email: 'Consultant@NHS.net' });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.emailed, true, 'the app is told the email really went');
+    const mail = box.sent.find((m) => m.to[0].email_address.address === 'consultant@nhs.net');
+    assert.ok(mail, 'invitation sent');
+    assert.match(mail.from.name, /^Reza Grant via Wavelength$/);
+    assert.equal(mail.from.address.endsWith('@thewavelength.co.uk'), true, 'sent from our own domain, so SPF, DKIM and DMARC align');
+    assert.equal(mail.reply_to[0].address, 'reg@x.co');
+    assert.match(mail.subject, /Reza Grant/);
+    assert.doesNotMatch(mail.htmlbody + mail.textbody, /login=|consultant%40nhs\.net/i, 'no email address inside the link');
+    assert.match(mail.textbody, /\/app\/#\/supervise\?invite=/);
+    // Pressing resend straight away does not send a second email.
+    const again = await learner.call('/api/app/supervisors/add', { email: 'consultant@nhs.net' });
+    assert.equal(again.status, 200);
+    assert.equal(again.body.recent, true);
+    assert.equal(box.sent.filter((m) => m.to[0].email_address.address === 'consultant@nhs.net').length, 1);
+  });
+});
+
+test('the app hears when an invitation email fails, and an active supervisor is not invited again', async () => {
+  const env = makeEnv(MAIL);
+  const real = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{"error":"down"}', { status: 500 });
+  try {
+    const learner = await signup(env, 'fail@x.co');
+    const r = await learner.call('/api/app/supervisors/add', { email: 'boss2@x.co' });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.emailed, false);
+  } finally { globalThis.fetch = real; }
+  await withMailbox(async () => {
+    const learner = await signup(env, 'linked@x.co');
+    const sup = await signup(env, 'linkedsup@x.co');
+    await learner.call('/api/app/supervisors/add', { email: 'linkedsup@x.co' });
+    const id = (await env.DB.prepare("SELECT id FROM supervisor_links WHERE supervisor_email = 'linkedsup@x.co'").first()).id;
+    await env.DB.prepare("UPDATE supervisor_links SET status = 'active' WHERE id = ?").bind(id).run();
+    const again = await learner.call('/api/app/supervisors/add', { email: 'linkedsup@x.co' });
+    assert.equal(again.status, 400);
+    assert.equal((await env.DB.prepare('SELECT status FROM supervisor_links WHERE id = ?').bind(id).first()).status, 'active', 'still linked');
+  });
+});

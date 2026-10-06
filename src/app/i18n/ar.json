@@ -1494,5 +1494,17 @@
 "Light": "فاتح",
 "Dark": "داكن",
 "Match my phone follows the light or dark setting on your phone.": "«مثل هاتفي» يتبع إعداد الوضع الفاتح أو الداكن في هاتفك.",
-"App language": "لغة التطبيق"
+"App language": "لغة التطبيق",
+"Copy message": "نسخ الرسالة",
+"Hello, I use the free Wavelength ultrasound logbook and have added you as my supervisor. Open {link} and log in, or create a free account, with {email}. My invitation is waiting there. Thank you, {name}": "مرحبًا، أستخدم سجل الموجات فوق الصوتية المجاني Wavelength وقد أضفتك مشرفًا. افتح {link} وسجّل الدخول، أو أنشئ حسابًا مجانيًا، باستخدام {email}. دعوتي بانتظارك هناك. شكرًا، {name}",
+"Hospital and NHS email often puts a first message from a new sender in junk. Ask your supervisor to check their junk folder and mark the email as Not junk, so later sign-off requests reach their inbox.": "غالبًا ما يضع بريد المستشفيات وNHS أول رسالة من مرسل جديد في البريد غير الهام. اطلب من مشرفك التحقق من مجلد البريد غير الهام ووضع علامة «ليس بريدًا غير هام» على الرسالة، حتى تصل طلبات الاعتماد اللاحقة إلى صندوق الوارد.",
+"Invitation saved for {email}, but the email did not go out. Send the message below instead.": "حُفظت الدعوة لـ {email}، لكن البريد لم يُرسل. أرسل الرسالة أدناه بدلًا من ذلك.",
+"Invitation sent": "تم إرسال الدعوة",
+"Invitation sent to {email}.": "تم إرسال الدعوة إلى {email}.",
+"Or send them this message yourself by WhatsApp, Teams or text:": "أو أرسل هذه الرسالة بنفسك عبر واتساب أو Teams أو رسالة نصية:",
+"Resend or share": "إعادة الإرسال أو المشاركة",
+"Share message": "مشاركة الرسالة",
+"This supervisor is already linked.": "هذا المشرف مرتبط بالفعل.",
+"Wavelength supervision request": "طلب إشراف Wavelength",
+"Message copied.": "تم نسخ الرسالة."
 }

@@ -141,6 +141,10 @@ export async function supervisorAdd(env, l, req, ctx) {
   if (email === String(l.email).toLowerCase()) return json({ ok: false, error: 'Enter your supervisor\'s email, not your own.' }, 400);
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM supervisor_links WHERE learner_id = ? AND status != 'ended'").bind(l.id).first();
   if (n.n >= 10) return json({ ok: false, error: 'You can link up to 10 supervisors. Remove one first.' }, 400);
+  // A resend within two minutes of the last one sends nothing new, so nobody receives a burst of invitations.
+  const prev = await env.DB.prepare("SELECT status, created_at FROM supervisor_links WHERE learner_id = ? AND supervisor_email = ?").bind(l.id, email).first();
+  if (prev && prev.status === 'pending' && Date.now() - Date.parse(String(prev.created_at).replace(' ', 'T') + 'Z') < 120000) return json({ ok: true, emailed: true, recent: true, hasAccount: false });
+  if (prev && prev.status === 'active') return json({ ok: false, error: 'This supervisor is already linked.' }, 400);
   const sup = await env.DB.prepare('SELECT id FROM learners WHERE email = ? AND password_hash IS NOT NULL').bind(email).first();
   await env.DB.prepare("INSERT INTO supervisor_links (learner_id, supervisor_email, supervisor_id, status) VALUES (?,?,?,'pending') ON CONFLICT (learner_id, supervisor_email) DO UPDATE SET status = 'pending', supervisor_id = excluded.supervisor_id, ended_at = NULL, created_at = datetime('now')")
     .bind(l.id, email, sup ? sup.id : null).run();
@@ -152,19 +156,22 @@ export async function supervisorAdd(env, l, req, ctx) {
     await env.DB.prepare('UPDATE supervisor_links SET invite_hash = ?, invite_expires = ? WHERE learner_id = ? AND supervisor_email = ?').bind(await sha256(t), Date.now() + 30 * 864e5, l.id, email).run();
     invite = `?invite=${t}`;
   }
-  let emailed = false;
-  if (env.ZEPTOMAIL_TOKEN) {
-    const link = `${SITE}/app/?login=${encodeURIComponent(email)}#/supervise${invite}`;
-    ctx.waitUntil(sendMail(env, {
-      to: email, subject: `${fullName(l)} asks you to supervise their ultrasound logbook`,
-      heading: 'Supervise an ultrasound logbook',
-      paragraphs: [`${fullName(l)} uses the free Wavelength ultrasound logbook and has named you as a supervisor.`, 'Once you accept, you see their progress against their pathway targets and their written scan records, never their images. They can send sign-off and assessment requests straight to your dashboard.', sup ? 'Log in to Wavelength with this email address to accept.' : 'Create a free Wavelength account with this email address to accept.', 'Afterwards you can add your professional registration and supervisor credentials, so learners and reviewers see what has been verified.'],
-      button: { href: link, label: sup ? 'Log in and accept' : 'Create your account' },
-      text: `${fullName(l)} has named you as an ultrasound supervisor on Wavelength.\n\nAccept here: ${link}\n\nIf you do not know them, ignore this email.`,
-    }).catch(() => {}));
-    emailed = true;
-  }
-  return json({ ok: true, emailed, hasAccount: !!sup });
+  // Written to read as a message from a colleague, which hospital mail filters (NHSmail runs on Microsoft 365) trust
+  // more than a bare service notice: the learner's name on the sender, replies going to the learner, and a link that
+  // carries no email address.
+  const who = fullName(l).replace(/[<>"\r\n]/g, '').slice(0, 80) || 'A Wavelength learner';
+  const link = `${SITE}/app/#/supervise${invite}`;
+  const emailed = await sendMail(env, {
+    to: email,
+    fromName: `${who} via Wavelength`,
+    replyTo: { address: String(l.email), name: who },
+    subject: `Ultrasound supervision request from ${who}`,
+    heading: 'Supervise an ultrasound logbook',
+    paragraphs: [`${who} uses the free Wavelength ultrasound logbook and has named you as a supervisor.`, 'Once you accept, you see their progress against their pathway targets and their written scan records, never their images. They can send sign-off and assessment requests straight to your dashboard.', sup ? 'Log in to Wavelength with this email address to accept.' : 'Create a free Wavelength account with this email address to accept.', `To reply to ${who}, reply to this email.`],
+    button: { href: link, label: sup ? 'Log in and accept' : 'Create your account' },
+    text: `${who} has named you as an ultrasound supervisor on Wavelength, the free ultrasound logbook.\n\nAccept here: ${link}\n\nUse this email address (${email}) to log in or create your account. To reply to ${who}, reply to this email. If you do not know them, ignore this email.`,
+  }).catch(() => false);
+  return json({ ok: true, emailed: !!emailed, hasAccount: !!sup });
 }
 export async function supervisorRemove(env, l, req) {
   const d = await body(req);
