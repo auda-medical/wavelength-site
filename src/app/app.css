@@ -416,3 +416,13 @@ html[data-theme="dark"] input::placeholder, html[data-theme="dark"] textarea::pl
 .upd.required { background: var(--red-bg); color: var(--red); border-color: var(--red-line); }
 .upd p { margin: 0 0 8px; }
 .upd .row { display: flex; gap: 12px; align-items: center; }
+/* Organisation combobox and supervisor search results */
+.org-field { position: relative; }
+.org-list { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(10,21,38,.18); max-height: 280px; overflow: auto; }
+.org-list li { padding: 10px 12px; border-radius: 8px; cursor: pointer; min-height: 44px; }
+.org-list li b { display: block; font-weight: 600; color: var(--ink); }
+.org-list li span { display: block; font-size: 13px; color: var(--muted); }
+.org-list li[aria-selected="true"], .org-list li:hover { background: var(--chip-teal-bg); }
+.sv-result { display: flex; gap: 12px; align-items: flex-start; }
+.sv-result .grow { min-width: 0; }
+.sv-badge { display: inline-block; font-size: 12px; font-weight: 600; color: var(--chip-teal); background: var(--chip-teal-bg); border-radius: 999px; padding: 2px 8px; margin: 4px 0; }

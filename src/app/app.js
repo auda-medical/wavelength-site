@@ -446,6 +446,52 @@
   }
   function formData(form) { var o = {}; new FormData(form).forEach(function (v, k) { o[k] = v; }); return o; }
   function busy(btn, on, label) { btn.disabled = on; if (on) { btn.dataset.l = btn.textContent; btn.textContent = label || T('Please wait…'); } else btn.textContent = btn.dataset.l || btn.textContent; }
+  // ---------- Organisation field: an ARIA combobox over the Wavelength organisation directory ----------
+  // Picking a suggestion stores its id beside the text, so everyone at one hospital matches; typing something else
+  // clears the id and the text is kept as typed. Before migration 0013 the field is plain text.
+  function orgField(id, label, value, orgId, required) {
+    return '<div class="field org-field"><label for="' + id + '">' + esc(label) + '</label><input id="' + id + '" name="organisation" type="text" autocomplete="off"' + (required ? ' required' : '') + ' value="' + esc(value || '') + '" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + id + '-list"><input type="hidden" name="organisationId" value="' + esc(orgId || '') + '"><ul class="org-list" id="' + id + '-list" role="listbox" hidden></ul><p class="hint" id="' + id + '-hint" hidden></p></div>';
+  }
+  function bindOrg(root, id) {
+    var inp = $('#' + id, root); if (!inp) return;
+    var box = inp.closest('.field'), hid = $('input[name=organisationId]', box), list = $('#' + id + '-list', box), hint = $('#' + id + '-hint', box);
+    var items = [], active = -1, timer = 0, seq = 0, picked = inp.value;
+    var close = function () { list.hidden = true; inp.setAttribute('aria-expanded', 'false'); inp.removeAttribute('aria-activedescendant'); active = -1; };
+    var mark = function (i) {
+      active = i; $$('li', list).forEach(function (li, k) { li.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
+      if (i >= 0) inp.setAttribute('aria-activedescendant', id + '-o' + i); else inp.removeAttribute('aria-activedescendant');
+    };
+    var pick = function (i) { var o = items[i]; if (!o) return; inp.value = o.name; hid.value = o.id; picked = o.name; close(); hint.hidden = true; inp.dispatchEvent(new Event('change', { bubbles: true })); };
+    var draw = function (rs) {
+      items = rs; list.innerHTML = rs.map(function (o, i) { return '<li role="option" id="' + id + '-o' + i + '" aria-selected="false" data-i="' + i + '"><b>' + esc(o.name) + '</b>' + (o.matched || o.kindLabel || (o.parent && o.parent.name) ? '<span>' + esc([o.matched ? T('also known as {name}', { name: o.matched }) : '', o.kindLabel ? T(o.kindLabel) : '', o.parent ? o.parent.name : ''].filter(Boolean).join(' · ')) + '</span>' : '') + '</li>'; }).join('');
+      list.hidden = !rs.length; inp.setAttribute('aria-expanded', rs.length ? 'true' : 'false'); mark(-1);
+      announce(rs.length ? plural(rs.length, 'suggestion') : T('No suggestions. Your text is kept as you typed it.'));
+    };
+    inp.addEventListener('input', function () {
+      if (inp.value !== picked) hid.value = '';
+      clearTimeout(timer); var q = inp.value.trim();
+      if (q.length < 2 || !navigator.onLine) { close(); return; }
+      timer = setTimeout(function () {
+        var my = ++seq;
+        api('/api/app/organisations?q=' + encodeURIComponent(q)).then(function (res) {
+          if (my !== seq) return;
+          if (!res.ok || res.available === false) { close(); return; }
+          draw(res.results || []);
+          if (!(res.results || []).length && q.length >= 4) { hint.textContent = T('Not in the list? Keep what you typed; the Wavelength team adds organisations people use.'); hint.hidden = false; } else hint.hidden = true;
+        }).catch(close);
+      }, 220);
+    });
+    inp.addEventListener('keydown', function (e) {
+      if (list.hidden) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); mark(Math.min(items.length - 1, active + 1)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); mark(Math.max(0, active - 1)); }
+      else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(active); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+    });
+    list.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    list.addEventListener('click', function (e) { var li = e.target.closest('li[data-i]'); if (li) pick(Number(li.dataset.i)); });
+    inp.addEventListener('blur', function () { setTimeout(close, 120); });
+  }
   function viewSignup() {
     authFrame(T('Create your account.'), T('Free. Your Academy certificates and your logbook in one place.'),
       '<form id="f" novalidate><div class="err" hidden></div>' +
@@ -454,12 +500,13 @@
       '<div class="field"><label for="em">' + esc(T('Email')) + '</label><input id="em" name="email" type="email" autocomplete="email" required></div>' +
       pwFields('pw', T('Password'), 'password') +
       '<div class="field"><label for="role">' + esc(T('Role')) + '</label><input id="role" name="role" type="text" placeholder="' + esc(T('For example ST4 emergency medicine, ACP, consultant')) + '" autocomplete="organization-title"></div>' +
-      '<div class="field"><label for="org">' + esc(T('Hospital or organisation')) + '</label><input id="org" name="organisation" type="text" autocomplete="organization"></div>' +
+      orgField('org', T('Hospital or organisation'), '', '') +
       '<input type="text" name="wl_trap" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">' +
       '<div class="field"><label class="check"><input type="checkbox" name="newsletter" value="1"><span>' + esc(T('Send me the Wavelength newsletter (optional).')) + '</span></label></div>' +
       '<div class="field"><label class="check"><input type="checkbox" name="terms" value="1" required><span>' + T('I accept the <a href="/app-terms/" target="_blank" rel="noopener">logbook terms of use</a> and the <a href="/privacy/" target="_blank" rel="noopener">privacy notice</a>.') + '</span></label></div>' +
       '<button class="btn teal block" type="submit">' + esc(T('Create account')) + '</button><div class="btns" style="justify-content:center"><a class="link" href="#/login">' + esc(T('Log in instead')) + '</a></div></form>');
     var f = $('#f'), err = $('.err', f);
+    bindOrg(f, 'org');
     bindPw(f, 'pw');
     f.addEventListener('submit', function (e) {
       e.preventDefault(); err.hidden = true;
@@ -472,7 +519,7 @@
         if (!res.account && !res.checkEmail) throw new Error(T('Something went wrong. Please try again.'));
         if (d.newsletter && !NAT.on) joinNewsletter(d); // the store apps subscribe through the server (worker/app.js signup)
         // This email already has Academy certificates: the account is finished from a link sent to that address.
-        if (res.checkEmail) { authFrame(T('Check your email.'), T('This email already has a Wavelength Academy record. To keep it safe, we have sent a link to {email}. Open it within 24 hours to finish creating your account. Check your junk folder too.', { email: d.email }), '<a class="btn block" href="#/login">' + esc(T('Back to log in')) + '</a>'); return; }
+        if (res.checkEmail) { authFrame(T('Check your email.'), T('We have sent a message to {email}. Open it to finish setting up your account, or to log in if you already have one. Check your junk folder too.', { email: d.email }), '<a class="btn block" href="#/login">' + esc(T('Back to log in')) + '</a>'); return; }
         return saveLangAfter(res.account);
       }).catch(function (ex) { busy(b, false); err.textContent = ex.message || T('Something went wrong. Please try again.'); err.hidden = false; });
     });
@@ -492,7 +539,7 @@
     authFrame(T('Welcome back.'), '', '<form id="f" novalidate><div class="err" hidden></div>' +
       '<div class="field"><label for="em">' + esc(T('Email')) + '</label><input id="em" name="email" type="email" autocomplete="email" value="' + esc(pre) + '" required></div>' +
       '<div class="field"><label for="pw">' + esc(T('Password')) + '</label><input id="pw" name="password" type="password" autocomplete="current-password" required></div>' +
-      '<button class="btn teal block" type="submit">' + esc(T('Log in')) + '</button><div class="btns" style="justify-content:space-between"><a class="link" href="#/reset">' + esc(T('Forgotten your password?')) + '</a><a class="link" href="#/signup">' + esc(T('Create an account')) + '</a></div></form>');
+      '<button class="btn teal block" type="submit">' + esc(T('Log in')) + '</button><div class="btns" style="justify-content:space-between"><a class="link" href="#/reset">' + esc(T('Forgotten your password?')) + '</a><a class="link" href="#/signup">' + esc(T('Create an account')) + '</a></div><p class="small muted" style="margin-top:14px">' + esc(T('First time in the app after a Wavelength Academy module? Create your account with the same email.')) + '</p></form>');
     var f = $('#f'), err = $('.err', f);
     f.addEventListener('submit', function (e) {
       e.preventDefault(); err.hidden = true; var b = $('button', f); busy(b, true, T('Logging in…'));
@@ -1541,10 +1588,12 @@
     var L2 = S.links || { supervisors: [] };
     mount(shell({ title: T('Your supervisors'), back: 'me' },
       '<div class="card dark"><h3>' + esc(T('Link your supervisors')) + '</h3><p class="muted small">' + esc(T('A linked supervisor sees your progress and your written scan records in their own Wavelength app, never your images. Send sign-off and assessment requests straight to their dashboard. Remove a supervisor at any time.')) + '</p></div>' +
+      (S.me && S.me.supervisor && S.me.supervisor.search ? '<form id="svsf" class="card" role="search"><div class="field"><label for="svq">' + esc(T('Find a Wavelength-approved supervisor')) + '</label><input id="svq" type="search" autocomplete="off" minlength="3" placeholder="' + esc(T('Name, at least 3 letters')) + '" aria-describedby="svq-h"><p class="hint" id="svq-h">' + esc(T('Shows only supervisors approved by Wavelength who chose to be found.')) + '</p></div><div id="svres" aria-live="polite"></div></form><p class="small muted" style="margin:-4px 0 12px">' + esc(T('Can\'t find them? Invite a supervisor by email.')) + '</p>' : '') +
       '<form id="addf" class="card"><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off"></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
       ((L2.supervisors || []).length ? L2.supervisors.map(function (s) { return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.name || s.email) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div>' + linkChip(s) + '</div>' + ((s.areas || []).length ? '<p class="small" style="margin:6px 0 0">' + esc(T('Approved by Wavelength to supervise: {list}', { list: s.areas.map(T).join(', ') })) + '</p>' : '') + (s.renewal ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('Renewal under review')) + '</p>' : '') + (s.state === 'unavailable' ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('Please arrange another suitable supervisor.')) + '</p>' : '') + '<div class="btns">' + (s.status === 'active' || !s.email ? '' : '<button class="btn ghost sm" data-resend="' + esc(s.email) + '">' + esc(T('Resend or share')) + '</button>') + '<button class="btn ghost sm" data-rm="' + s.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('') : '<p class="muted small">' + esc(T('No supervisors linked yet.')) + '</p>') +
       '<div id="backreqs"></div>'));
     returnedRequests();
+    bindSupSearch();
     $('#addf').addEventListener('submit', function (ev) {
       ev.preventDefault(); var b = $('button', this), err = $('.err', this); busy(b, true);
       api('/api/app/supervisors/add', { email: $('#se2').value }).then(function (res) {
@@ -1557,6 +1606,32 @@
     $$('[data-rm]').forEach(function (b) { b.onclick = function () { if (!confirm(T('Remove this supervisor? They stop seeing your logbook at once.'))) return; api('/api/app/supervisors/remove', { id: Number(b.dataset.rm) }).then(function () { loadLinks().then(viewSupervisors); }); }; });
   }
 
+  // Supervisor search: results come only from current approvals whose holder opted in (worker/search.js). The ref is
+  // opaque; a request creates an invitation the supervisor accepts on their dashboard.
+  function bindSupSearch() {
+    var f = $('#svsf'); if (!f) return;
+    var q = $('#svq', f), out = $('#svres', f), timer = 0, seq = 0;
+    var run = function () {
+      var text = q.value.trim(); if (text.length < 3) { out.innerHTML = ''; return; }
+      var my = ++seq;
+      api('/api/app/supervisors/search?q=' + encodeURIComponent(text)).then(function (res) {
+        if (my !== seq) return;
+        if (!res.ok) { out.innerHTML = '<p class="small muted">' + esc(res.needVerify ? T('Confirm your email address to search for supervisors.') : res.error || T('Search is not available right now.')) + '</p>'; return; }
+        var rs = res.results || [];
+        out.innerHTML = rs.length ? rs.map(function (r, i) { return '<div class="sv-result" style="padding:10px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + esc(r.name) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([r.role, r.specialty, r.organisation].filter(Boolean).join(' · ')) + '</p><span class="sv-badge">' + esc(T(r.badge || 'Wavelength Verified Supervisor')) + '</span>' + ((r.areas || []).length ? '<p class="small" style="margin:0">' + esc(T('Approved by Wavelength to supervise: {list}', { list: r.areas.map(T).join(', ') })) + '</p>' : '') + '</div><button class="btn teal sm" type="button" data-svreq="' + i + '">' + esc(T('Ask to link')) + '</button></div>'; }).join('') : '<p class="small muted">' + esc(T('No approved supervisor found. Check the spelling, or invite them by email.')) + '</p>';
+        $$('[data-svreq]', out).forEach(function (b) { b.onclick = function () {
+          var r = rs[Number(b.dataset.svreq)]; busy(b, true);
+          api('/api/app/supervisors/request', { ref: r.ref }).then(function (j) {
+            if (!j.ok) { busy(b, false); toast(j.duplicate ? T('You have already asked this supervisor.') : j.error, 5000); return; }
+            toast(T('Request sent to {name}. They accept it in their Wavelength app.', { name: r.name }), 4000);
+            loadLinks().then(viewSupervisors);
+          }).catch(function () { busy(b, false); toast(T('Could not send. Check your connection.')); });
+        }; });
+      }).catch(function () { out.innerHTML = '<p class="small muted">' + esc(T('Could not search. Check your connection.')) + '</p>'; });
+    };
+    q.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(run, 300); });
+    f.addEventListener('submit', function (e) { e.preventDefault(); clearTimeout(timer); run(); });
+  }
   // The learner's view of a link: the server's state and label (worker/supervisor-lifecycle.js linkState).
   function linkChip(s) {
     var st = s.state || (s.status === 'active' ? 'not_verified' : 'invited');
@@ -1719,9 +1794,8 @@
       if (P.previous && P.previous.status === 'rejected' && !a) notes += '<div class="card"><p class="small">' + esc(T('Your last application was not approved.')) + (P.previous.message ? ' ' + esc(P.previous.message) : '') + '</p></div>';
       var app = '';
       if (a) {
-        var kind = a.kind === 'renewal' ? T('Renewal') : T('Application');
-        if (a.status === 'submitted') app = '<div class="card"><h3>' + esc(T('Your supervisor application is being reviewed.')) + '</h3><p class="small muted">' + esc(T('Sent {date}.', { date: fmt(a.submittedAt) })) + '</p><p class="small">' + esc(T(P.config.reviewTime)) + '</p><div class="btns"><button class="btn ghost sm" data-svcancel>' + esc(T('Withdraw {kind}', { kind: kind.toLowerCase() })) + '</button></div></div>';
-        else app = '<div class="card"><h3>' + esc(a.status === 'more_info' ? T('More information needed') : T('{kind} in progress', { kind: kind })) + '</h3>' + (a.moreInfo ? '<p class="small">' + esc(a.moreInfo) + '</p>' : '<p class="small muted">' + esc(T('Your answers are saved as you go.')) + '</p>') + '<div class="btns"><a class="btn teal sm" href="#/supervisor/apply">' + esc(a.status === 'more_info' ? T('Update and send again') : T('Continue')) + '</a><button class="btn ghost sm" data-svcancel>' + esc(T('Discard')) + '</button></div></div>';
+        if (a.status === 'submitted') app = '<div class="card"><h3>' + esc(T('Your supervisor application is being reviewed.')) + '</h3><p class="small muted">' + esc(T('Sent {date}.', { date: fmt(a.submittedAt) })) + '</p><p class="small">' + esc(T(P.config.reviewTime)) + '</p><div class="btns"><button class="btn ghost sm" data-svcancel>' + esc((a.kind === 'renewal' ? T('Withdraw renewal') : T('Withdraw application'))) + '</button></div></div>';
+        else app = '<div class="card"><h3>' + esc(a.status === 'more_info' ? T('More information needed') : (a.kind === 'renewal' ? T('Renewal in progress') : T('Supervisor application in progress'))) + '</h3>' + (a.moreInfo ? '<p class="small">' + esc(a.moreInfo) + '</p>' : '<p class="small muted">' + esc(T('Your answers are saved as you go.')) + '</p>') + '<div class="btns"><a class="btn teal sm" href="#/supervisor/apply">' + esc(a.status === 'more_info' ? T('Update and send again') : T('Continue')) + '</a><button class="btn ghost sm" data-svcancel>' + esc(T('Discard')) + '</button></div></div>';
       }
       var acts = '';
       if (!P.available) acts += '<div class="card"><p class="small muted">' + esc(T('Supervisor applications are not open yet.')) + '</p></div>';
@@ -1731,11 +1805,22 @@
         else if (!a && P.canApplyAgain) acts += '<div class="btns"><button class="btn teal block" data-svstart="apply-again">' + esc(T('Apply again as a supervisor')) + '</button></div>';
         if (P.canRenew) acts += '<div class="btns"><button class="btn teal block" data-svstart="renew">' + esc(T('Renew')) + '</button></div><p class="small muted">' + esc(T('Renewing takes a few minutes: check your details, confirm what has not changed and make a fresh declaration.')) + '</p>';
       }
+      var find = cur && P.searchAvailable ? '<h2 class="sec">' + esc(T('Being found')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="svfind"' + (P.searchableAt ? ' checked' : '') + '><span>' + esc(T('Let learners find me in Wavelength supervisor search')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Logged-in learners would see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Turn this off at any time.')) + '</p><div id="svprev"></div></div>' : '';
       var stop = cur || st === 'paused' || (a && a.status !== 'draft') ? '<h2 class="sec">' + esc(T('Stop supervising')) + '</h2><div class="card"><a href="#/supervisor/stop">' + esc(T('Stop being a Wavelength supervisor')) + '</a></div>' : '';
       mount(svShell(T('Wavelength supervisor'), 'me', status + notes + app + acts +
         (P.approvals.length ? '<h2 class="sec">' + esc(T('Approved scopes')) + '</h2><div class="card">' + P.approvals.map(function (x) { return '<span class="chip ' + (x.current ? 'teal' : 'amber') + '" style="margin:0 6px 6px 0">' + esc(x.label) + '</span>'; }).join('') + '<p class="small muted" style="margin:6px 0 0">' + esc(T('This approval is given by Wavelength. It is not an accreditation by RCEM, FAMUS, FUSIC or any other body.')) + '</p></div>' : '') +
-        stop + '<p class="small muted" style="margin-top:14px">' + esc(T('Questions: hello@thewavelength.co.uk.')) + '</p>'));
+        find + stop + '<p class="small muted" style="margin-top:14px">' + esc(T('Questions: hello@thewavelength.co.uk.')) + '</p>'));
       bindEmailResend();
+      var fb = $('#svfind'); if (fb) fb.onchange = function () {
+        var on = fb.checked; fb.disabled = true;
+        api('/api/app/supervisor/searchable', { on: on }).then(function (res) {
+          fb.disabled = false;
+          if (!res.ok) { fb.checked = !on; toast(res.error, 5000); return; }
+          var pv = res.preview, box = $('#svprev');
+          box.innerHTML = on && pv ? '<div class="card" style="margin:10px 0 0;background:var(--bg)"><p class="small muted" style="margin:0 0 4px">' + esc(T('What learners see')) + '</p><b>' + esc(pv.name) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([pv.role, pv.specialty, pv.organisation].filter(Boolean).join(' · ')) + '</p><span class="sv-badge">' + esc(T(pv.badge || 'Wavelength Verified Supervisor')) + '</span>' + ((pv.areas || []).length ? '<p class="small" style="margin:0">' + esc(pv.areas.map(T).join(', ')) + '</p>' : '') + '</div>' : '';
+          toast(on ? T('Learners can now find you.') : T('You no longer appear in search.'));
+        }).catch(function () { fb.disabled = false; fb.checked = !on; toast(T('Could not save. Check your connection.')); });
+      };
       $$('[data-svcancel]').forEach(function (b) { b.onclick = function () { if (!confirm(T('Withdraw this application? Your answers and documents are deleted. You can start again later.'))) return; busy(b, true); api('/api/app/supervisor/application/cancel', {}).then(function () { toast(T('Application withdrawn.')); viewSupervisorStatus(); }); }; });
       $$('[data-svstart]').forEach(function (b) { b.onclick = function () { busy(b, true); api('/api/app/supervisor/' + b.dataset.svstart, {}).then(function (res) { busy(b, false); if (!res.ok) { toast(res.error, 5000); return; } go('supervisor/apply'); }); }; });
     }).catch(function () { toast(T('Could not load. Check your connection.')); });
@@ -1763,7 +1848,7 @@
           '<div class="two"><div class="field"><label for="sa1">' + esc(T('First name')) + '</label><input id="sa1" name="firstName" type="text" required value="' + esc(acc.firstName || '') + '" autocomplete="given-name"></div><div class="field"><label for="sa2">' + esc(T('Last name')) + '</label><input id="sa2" name="lastName" type="text" required value="' + esc(acc.lastName || '') + '" autocomplete="family-name"></div></div>' +
           '<p class="hint">' + esc(T('Changing your name here changes it on your account too.')) + '</p>' +
           '<div class="field"><label for="sa3">' + esc(T('Role or grade')) + '</label><input id="sa3" name="role" type="text" required value="' + esc(a.role || profile().grade || acc.role || '') + '" placeholder="' + esc(T('For example consultant in emergency medicine')) + '"></div>' +
-          '<div class="field"><label for="sa4">' + esc(T('Organisation')) + '</label><input id="sa4" name="organisation" type="text" required value="' + esc(a.organisation || acc.organisation || '') + '" autocomplete="organization"></div>';
+          orgField('sa4', T('Organisation'), a.organisation || acc.organisation, a.organisationId || (a.organisation ? '' : acc.organisationId), true);
       }
       if (step === 'registration') {
         var regs = P.registrations || [];
@@ -1840,6 +1925,7 @@
     return '<div class="field"><span class="lab">' + esc(label) + '</span><div class="seg"><input type="radio" name="' + name + '" id="' + name + 'y" value="yes"' + (v === true ? ' checked' : '') + '><label for="' + name + 'y">' + esc(T('Yes')) + '</label><input type="radio" name="' + name + '" id="' + name + 'n" value="no"' + (v === false ? ' checked' : '') + '><label for="' + name + 'n">' + esc(T('No')) + '</label></div></div>';
   }
   function svBindStep(step, a, P) {
+    if (step === 'about') bindOrg(app, 'sa4');
     if (step === 'registration') {
       var show = function () { var v = ($('input[name=regpick]:checked') || {}).value; $('#regnew').hidden = v !== 'new'; $('#regnone').hidden = v !== 'none'; };
       $$('input[name=regpick]').forEach(function (x) { x.onchange = show; }); show();
@@ -1886,7 +1972,8 @@
       if (!v('sa1') || !v('sa2')) return T('Enter your first and last name.');
       if (!v('sa3')) return T('Enter your role or grade.');
       if (!v('sa4')) return T('Enter your organisation.');
-      return { title: v('sa0'), firstName: v('sa1'), lastName: v('sa2'), role: v('sa3'), organisation: v('sa4') };
+      var oid = $('input[name=organisationId]', f);
+      return { title: v('sa0'), firstName: v('sa1'), lastName: v('sa2'), role: v('sa3'), organisation: v('sa4'), organisationId: oid && oid.value || null };
     }
     if (step === 'registration') {
       var pick = ($('input[name=regpick]:checked', f) || {}).value;
@@ -2335,13 +2422,14 @@
       emailCard() + '<h2 class="sec">' + esc(T('Supervision')) + '</h2><div class="card"><div style="display:grid;gap:12px">' + (S.me && S.me.verification && S.me.verification.professional ? '<a href="#/professional">' + esc(T('Professional verification')) + '</a>' : '') + (S.me && S.me.supervisor && S.me.supervisor.available && (S.me.supervisor.apply || S.me.supervisor.standing !== 'none') ? '<a href="#/supervisor">' + esc(S.me.supervisor.standing === 'none' ? T('Become a Wavelength supervisor') : T('Your Wavelength supervisor status')) + '</a>' : '') + '<a href="#/supervisors">' + esc(T('Your supervisors')) + (nSup ? ' (' + nSup + ')' : '') + '</a><a href="#/assess">' + esc(T('Your assessments')) + '</a>' + ((L2.learners || []).length || (L2.invites || []).length || p.supervisor ? '<a href="#/supervise">' + esc(T('Learners you supervise')) + ((L2.invites || []).length ? ' · ' + esc(plural(L2.invites.length, 'new invitation')) : '') + '</a>' : '') + '</div></div>' +
       '<h2 class="sec">' + esc(T('Pathways')) + '</h2><form id="pf" class="card">' + pathwayPicker(p.pathways || []) + '<div class="btns"><button class="btn sm">' + esc(T('Save pathways')) + '</button></div></form>' +
       '<h2 class="sec">' + esc(T('Certificates')) + ' <a href="/elearning/account/">' + esc(T('All')) + '</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="' + esc(T('Share certificate')) + '">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">' + esc(T('Pass a free Academy module to earn a verifiable CPD certificate.')) + '</p><a class="btn sm" href="/elearning/">' + esc(T('Browse modules')) + '</a></div>') +
-      '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div><div class="field"><label for="m4">' + esc(T('Organisation')) + '</label><input id="m4" name="organisation" type="text" value="' + esc(acc.organisation || '') + '"></div><div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
+      '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div>' + orgField('m4', T('Organisation'), acc.organisation, acc.organisationId) + '<div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
       '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/backup">' + esc(T('Back up or restore photos and clips')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
       '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
     if (editPw) $('#pf').scrollIntoView();
     $$('[data-sharecert]').forEach(function (b) { b.onclick = function () { shareCertificate(b.dataset.sharecert, b.dataset.title); }; });
     $('#pf').addEventListener('submit', function (e) { e.preventDefault(); var ps = $$('input[name=p]:checked', this).map(function (i) { return i.value; }); if (!ps.length) { toast(T('Keep at least one pathway.')); return; } saveProfile({ pathways: ps }).then(function () { toast(T('Pathways saved.')); }).catch(function (ex) { toast(ex.message); }); });
-    $('#mf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); saveProfile({ grade: d.grade, registration: d.registration, supervisor: !!d.supervisor }, { firstName: d.firstName, lastName: d.lastName, organisation: d.organisation }).then(function () { toast(T('Profile saved.')); render(true); }).catch(function (ex) { toast(ex.message); }); });
+    bindOrg($('#mf'), 'm4');
+    $('#mf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); saveProfile({ grade: d.grade, registration: d.registration, supervisor: !!d.supervisor }, { firstName: d.firstName, lastName: d.lastName, organisation: d.organisation, organisationId: d.organisationId || null }).then(function () { toast(T('Profile saved.')); render(true); }).catch(function (ex) { toast(ex.message); }); });
   }
   // ---------- Settings: appearance, language, notifications, app lock, account ----------
   function viewSettings() {
@@ -2355,7 +2443,7 @@
       '<h2 class="sec">' + esc(T('Notifications')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="nte"' + (p.notifyEmail === false ? '' : ' checked') + '><span>' + esc(T('Email me when a supervisor signs off or queries my scans by link or from their dashboard')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('The app also shows new sign-offs on your home screen and logbook.')) + '</p></div>' +
       lockCard() +
       '<h2 class="sec">' + esc(T('Account')) + '</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">' + esc(T('Current password')) + '</label><input id="c1" name="current" type="password" autocomplete="current-password"></div>' + pwFields('c2', T('New password'), 'password') + '<button class="btn sm ghost">' + esc(T('Change password')) + '</button></form></div>' +
-      '<div class="btns"><button class="btn ghost block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
+      '<div class="btns"><button class="btn ghost block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="loa">' + esc(T('Log out of all other devices')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
       '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
     $$('input[name=theme]').forEach(function (i) { i.onchange = function () { if (window.WLTheme) WLTheme.set(i.value); NAT.haptic(); }; });
     bindPw($('#cpw'), 'c2');
@@ -2363,6 +2451,11 @@
     $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? T('Sign-off emails on.') : T('Sign-off emails off.')); }).catch(function (ex) { toast(ex.message); }); };
     bindLockCard();
     $('#lo').onclick = function () { api('/api/app/logout', {}).then(signedOut, signedOut); };
+    $('#loa').onclick = function () {
+      sheet('<h2>' + esc(T('Log out of all other devices?')) + '</h2><p class="muted small">' + esc(T('Every other phone, tablet and browser signed in to your account is logged out. Logbook entries they have not synced stay on them until someone logs in there again. This device stays logged in.')) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Log out other devices')) + '</button><button class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div>', function (root) {
+        $('[data-ok]', root).onclick = function () { var b = this; busy(b, true); api('/api/app/logout-all', { keepThisDevice: true }).then(function (res) { closeSheet(); toast(res.ok ? T('Other devices are logged out.') : res.error, 4000); }).catch(function () { busy(b, false); toast(T('Could not log out other devices. Check your connection.')); }); };
+      });
+    };
     $('#dl').onclick = function () {
       sheet('<h2>' + esc(T('Delete your account?')) + '</h2><p class="muted small">' + esc(T('This deletes your logbook, sign-offs, assessments, supervisor links and account from Wavelength. Back up or export first if you want a copy. Images and clips on this phone are removed too.')) + '</p><form id="df"><div class="field"><label for="dp">' + esc(T('Your password')) + '</label><input id="dp" type="password" autocomplete="current-password" required></div>' + (certs.length ? '<label class="check"><input type="checkbox" id="kc" checked><span>' + esc(T('Keep my Academy certificates verifiable')) + '</span></label>' : '') + '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn danger block">' + esc(T('Delete everything')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {
         $('#df', root).addEventListener('submit', function (ev) {

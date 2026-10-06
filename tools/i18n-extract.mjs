@@ -24,8 +24,20 @@ lb.pathways.forEach((p) => { add(p.desc); add(p.region); p.modules.forEach((m) =
 ['assessmentKinds', 'assessmentDomains', 'assessmentOutcomes', 'qualityScale'].forEach((k) => (lb[k] || []).forEach((x) => { add(x.label); add(x.help); }));
 lb.destinations.forEach((d) => { add(d.label); d.steps.forEach(add); });
 ['Overall', 'Normal', 'Abnormal', 'Indeterminate', 'Good', 'Adequate', 'Limited', 'Inadequate', 'Female', 'Male', 'Agreed', 'Partly agreed', 'Disagreed', 'UK', 'Europe', 'Australia and New Zealand', 'Canada', 'United States', 'Portfolio', 'Image quality', 'Diagnostic accuracy'].forEach(add);
+// Label maps in app.js passed to T() through a variable (supervisor standing, lapse reasons, wizard steps, signers).
+{
+  const s = fs.readFileSync('src/app/app.js', 'utf8');
+  for (const m of s.matchAll(/var (?:SV_STANDING|SV_LAPSE|SV_REASONS|SV_STEP_LABEL|SIGNER_TEXT) = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
+}
+// Labels the Worker sends for display: link states, organisation kinds, the search badge, the review time.
+for (const f of ['worker/supervisor-lifecycle.js', 'worker/organisations.js', 'worker/search.js', 'worker/supervisor-apply.js']) {
+  const s = fs.readFileSync(f, 'utf8');
+  for (const m of s.matchAll(/label: '((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/const KIND_LABEL = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'([^']*)'/g)) add(v[1]);
+  for (const m of s.matchAll(/(?:REVIEW_TIME|badge:?)\s*[=:]\s*'((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
+}
 // Worker error messages shown to users.
-for (const f of ['worker/app.js', 'worker/supervise.js', 'worker/app-util.js', 'worker/evidence.js', 'worker/email-verify.js', 'worker/password.js']) {
+for (const f of ['worker/app.js', 'worker/supervise.js', 'worker/app-util.js', 'worker/evidence.js', 'worker/email-verify.js', 'worker/password.js', 'worker/supervisor-apply.js', 'worker/supervisor-lifecycle.js', 'worker/organisations.js', 'worker/search.js', 'worker/professional.js']) {
   const s = fs.readFileSync(f, 'utf8');
   for (const m of s.matchAll(/error: '((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
   for (const m of s.matchAll(/error: `([^`$]*)`/g)) add(m[1]);
