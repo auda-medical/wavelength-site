@@ -2,7 +2,9 @@
 // Usage: node tools/e2e-evidence.mjs <outdir> [base]
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import { localOnly } from './local-only.mjs';
 const out = process.argv[2] || 'shots'; const BASE = process.argv[3] || 'http://localhost:8787';
+localOnly(BASE, 'tools/e2e-evidence.mjs');
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
 const errors = [];

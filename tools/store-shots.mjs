@@ -7,9 +7,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { harness } from './native-harness.mjs';
+import { localOnly } from './local-only.mjs';
 
 const out = path.resolve(process.argv[2] || 'store-shots');
 const API = process.argv[3] || 'http://localhost:8787';
+localOnly(API, 'tools/store-shots.mjs');
 fs.mkdirSync(out, { recursive: true });
 const errors = [];
 const { browser, newApp } = await harness({ api: API, errors });
