@@ -153,6 +153,12 @@ export function render(kind, d) {
       paragraphs: [hi, `${d.supervisor} is no longer available for new supervision through Wavelength.`, 'Sign-offs and assessments they completed while active stay in your portfolio.', d.returned ? `${d.returned} open ${d.returned === 1 ? 'request has' : 'requests have'} come back to you. In the app you can send ${d.returned === 1 ? 'it' : 'them'} to another approved supervisor or to a one-off assessor, or cancel ${d.returned === 1 ? 'it' : 'them'}. Nothing needs re-entering.` : null, 'Please arrange another suitable supervisor.'],
       button: { href: `${APP}/supervisors`, label: 'Open your supervisors' },
     }),
+    signup_exists: () => ({
+      subject: 'Someone tried to create a Wavelength account with your email',
+      heading: 'You already have an account',
+      paragraphs: [hi, 'Someone, perhaps you, tried to create a new Wavelength account with this email address. You already have an account, so nothing has changed.', 'If it was you, log in with your password. If you have forgotten it, use the option to reset your password on the login screen.', 'If it was not you, you can ignore this email. Your account and logbook have not been changed.'],
+      button: { href: `${SITE}/app/`, label: 'Log in' },
+    }),
     search_request: () => ({
       subject: 'New supervision request on Wavelength',
       heading: 'Supervision request',
