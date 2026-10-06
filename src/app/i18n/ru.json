@@ -1455,5 +1455,12 @@
 "Passwords match.": "Пароли совпадают.",
 "GMC, NMC or HCPC": "GMC, NMC или HCPC",
 "Learners send sign-off requests straight to your own dashboard.": "Обучающиеся отправляют запросы на подтверждение прямо в вашу панель.",
-"Apply to teach on Wavelength ultrasound courses.": "Подайте заявку, чтобы преподавать на курсах УЗИ Wavelength."
+"Apply to teach on Wavelength ultrasound courses.": "Подайте заявку, чтобы преподавать на курсах УЗИ Wavelength.",
+"Settings": "Настройки",
+"Appearance": "Оформление",
+"Match my phone": "Как в телефоне",
+"Light": "Светлая",
+"Dark": "Тёмная",
+"Match my phone follows the light or dark setting on your phone.": "«Как в телефоне» повторяет светлую или тёмную тему вашего телефона.",
+"App language": "Язык приложения"
 }

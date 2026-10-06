@@ -4,7 +4,7 @@ The store apps are native Capacitor 8 apps with the logbook packaged inside them
 
 Native features, worth naming in review notes and the listing:
 - Works offline: open the app, log scans and see progress with no connection; changes sync when the phone is back online.
-- App lock with fingerprint or face (Me > Security), asked at launch and after 90 seconds in the background.
+- App lock with fingerprint or face (Me > Settings > Security), asked at launch and after 90 seconds in the background.
 - Camera and video capture hand-off for scan images and clips, photo library picker, all images kept in on-device storage.
 - Native share sheet and file saving for PDF, Excel, CSV and backup exports; certificates save and share as PDF.
 - Android back button, haptic feedback, system bars in brand navy, in-app browser for website links.
@@ -88,7 +88,7 @@ Not collected: photos and videos (they stay on the device; images shared in a si
 
 ## App Review notes (Apple) and access instructions (Google)
 
-Wavelength is a training logbook for clinicians who use point-of-care ultrasound. Log in with the review account below. To see the main features: tap + to log a scan (any image works), open Progress to see pathway targets, tap a scan and choose Sign off to see in-person sign-off, and open Me to change language or delete the account. The logbook is built into the app and works offline; it connects to our server only to sync the written record, sign-offs and assessments, so clinicians on the web and in the app share one logbook. Try Me > Security to lock the app with fingerprint or face, and Me > Export your logbook to save or share a PDF through the share sheet. The app uses the camera and photo library only when the user adds an image, and images stay on the phone. There are no purchases.
+Wavelength is a training logbook for clinicians who use point-of-care ultrasound. Log in with the review account below. To see the main features: tap + to log a scan (any image works), open Progress to see pathway targets, tap a scan and choose Sign off to see in-person sign-off, and open Me > Settings (gear, top right) to change appearance or language, or delete the account. The logbook is built into the app and works offline; it connects to our server only to sync the written record, sign-offs and assessments, so clinicians on the web and in the app share one logbook. Try Me > Settings (gear, top right) > Security to lock the app with fingerprint or face, and Me > Export your logbook to save or share a PDF through the share sheet. The app uses the camera and photo library only when the user adds an image, and images stay on the phone. There are no purchases.
 
 ## Pending: professional verification (not live yet)
 
