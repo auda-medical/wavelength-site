@@ -170,7 +170,7 @@ test('with no supported source (the live configuration), a registration waits fo
   assert.ok(!(await c.call('/api/app/professional')).body.badges.some((b) => b.kind === 'registration'), 'no badge from self-declaration');
   const id = await idOf(env, 'manual@x.co');
   const row = await env.DB.prepare('SELECT id FROM professional_registrations').first();
-  const html = await supervisorsAdminHtml(env, new URL('https://x/volunteer/admin/supervisors/'));
+  const html = await supervisorsAdminHtml(env, new URL('https://x/volunteer/admin/supervisors/?tab=claims'));
   assert.ok(html.includes('manual verification required'), 'it appears in the admin queue');
   const noName = await supervisorsAdminPost(env, adminForm({ action: 'reg_verify', learner: id, sid: row.id, register_name: 'John Smith', checked: '1' }), 'wavelength');
   assert.match(noName.m, /Enter your name/);

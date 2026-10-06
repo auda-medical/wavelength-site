@@ -288,7 +288,7 @@ export default {
       if (p === '/volunteer/admin/supervisors/') {
         if (req.method === 'POST') {
           const r = await supervisorsAdminPost(env, await req.formData(), s.admin_username, ctx);
-          return redirect(`/volunteer/admin/supervisors/?${r.id ? `id=${r.id}&` : ''}${r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`);
+          return redirect(`/volunteer/admin/supervisors/?${r.app ? `app=${r.app}&` : r.id ? `id=${r.id}&` : ''}${r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`);
         }
         const shell = await env.ASSETS.fetch(new Request(new URL('/volunteer/admin/', req.url).toString()));
         const html = await supervisorsAdminHtml(env, url, s.admin_username);
