@@ -257,3 +257,22 @@ test('autofill of a field named website no longer drops a real sign-up', async (
   assert.equal(trap.body.trap, true);
   assert.equal((await env.DB.prepare('SELECT COUNT(*) AS n FROM learners WHERE email = ?').bind('bot@x.co').first()).n, 0);
 });
+
+test('the sign-off email tells the learner where to turn these emails off', async () => {
+  const { withMailbox } = await import('./helpers/verify.mjs');
+  const env = makeEnv({ ZEPTOMAIL_TOKEN: 'test', ZEPTOMAIL_API: 'https://mail.test/' });
+  await withMailbox(async (box) => {
+    const a = await account(env, 'notify@x.co');
+    const id = 'notifyentry1';
+    await a.call('/api/app/sync', { entries: [entry(id)] });
+    const req = await a.call('/api/app/signoff/request', { entryIds: [id] });
+    const token = req.body.link.split('#')[1];
+    const sup = client(handleApp, env);
+    const r = await sup.call('/api/app/signoff/complete', { token, name: 'Dr One', role: 'Consultant', confirm: true, signature: SIG, decisions: { [id]: 'confirmed' } });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    await box.settle();
+    const mail = box.sent.find((m) => /untick the setting/.test(String(m.textbody)));
+    assert.ok(mail, 'the learner got a sign-off email');
+    assert.match(String(mail.textbody), /under Me, Settings, in the app/);
+  });
+});
