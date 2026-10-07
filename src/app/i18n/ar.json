@@ -1796,5 +1796,11 @@
 "Your email address is not confirmed.": "عنوان بريدك الإلكتروني غير مؤكد.",
 "Your professional registration is no longer verified as current.": "لم يعد تسجيلك المهني موثّقًا على أنه ساري.",
 "Your review date has passed.": "انقضى موعد المراجعة.",
-"also known as {name}": "ويُعرف أيضًا باسم {name}"
+"also known as {name}": "ويُعرف أيضًا باسم {name}",
+"Changing the modules sends this credential to be checked again. Your reference, dates and evidence stay.": "تغيير الوحدات يعيد هذه الشهادة للتحقق مرة أخرى. يبقى المرجع والتواريخ والأدلة كما هي.",
+"Choose modules from the list for this credential.": "اختر الوحدات من قائمة هذه الشهادة.",
+"Keep at least one module for each credential you hold.": "احتفظ بوحدة واحدة على الأقل لكل شهادة تحملها.",
+"Keep at least one module.": "احتفظ بوحدة واحدة على الأقل.",
+"That claim was not found.": "لم يُعثر على هذا الطلب.",
+"This credential can no longer be changed.": "لم يعد بالإمكان تغيير هذه الشهادة."
 }

@@ -308,7 +308,12 @@ export async function submitCredential(env, l, d) {
   let cred = await env.DB.prepare('SELECT * FROM credentials WHERE learner_id = ? AND credential_type = ? AND active = 1').bind(l.id, type.id).first();
   if (cred && cred.status === 'verified' && modules.every((m) => parseList(cred.modules).includes(m))) return json({ ok: true, credential: publicCredential(cred) });
   if (cred) {
-    // A different set of modules is a new claim. The holder can narrow or change it; it is checked again.
+    // A different set of modules is a new claim. The holder can narrow or change it; it is checked again. Reference,
+    // dates and note the request leaves out are kept.
+    if (d.reference === undefined) f.reference = cred.reference;
+    if (d.issuedOn === undefined) f.issued_on = cred.issued_on;
+    if (d.expiresOn === undefined) f.expires_on = cred.expires_on;
+    if (d.note === undefined) f.claim_note = cred.claim_note;
     await env.DB.prepare("UPDATE credentials SET modules = ?, reference = ?, issued_on = ?, expires_on = ?, claim_note = ?, status = 'claimed', verified_at = NULL, verified_by = NULL, verification_method = NULL, match_result = NULL, updated_at = datetime('now') WHERE id = ?")
       .bind(JSON.stringify(modules), f.reference, f.issued_on, f.expires_on, f.claim_note, cred.id).run();
   } else {
@@ -319,6 +324,29 @@ export async function submitCredential(env, l, d) {
   await logEvent(env, { learnerId: l.id, subjectType: 'credential', subjectId: cred.id, action: 'credential_submitted', actor: 'learner', scope: modules.join(',') });
   cred = await checkCredential(env, cred, 'claim');
   return json({ ok: true, credential: publicCredential(cred) });
+}
+
+// Add or remove modules on a credential the person already holds, keeping the same record, its reference, dates, note
+// and evidence. Only modules named in `remove` are taken off, so nothing previously claimed disappears by omission.
+// A changed set is a new claim and is checked again; an unchanged set changes nothing.
+export async function amendCredentialModules(env, l, d) {
+  const cred = await env.DB.prepare('SELECT * FROM credentials WHERE id = ? AND learner_id = ? AND active = 1').bind(Number(d.id), l.id).first();
+  if (!cred) return json({ ok: false, error: 'That claim was not found.' }, 404);
+  const type = TYPE[cred.credential_type];
+  if (!type) return json({ ok: false, error: 'This credential can no longer be changed.' }, 400);
+  const ids = (v) => [...new Set((Array.isArray(v) ? v : []).map(String))];
+  const add = ids(d.add), remove = ids(d.remove);
+  if ([...add, ...remove].some((m) => !type.modules.some((x) => x.id === m))) return json({ ok: false, error: 'Choose modules from the list for this credential.' }, 400);
+  const before = parseList(cred.modules);
+  const after = type.modules.map((x) => x.id).filter((m) => (before.includes(m) || add.includes(m)) && !remove.includes(m));
+  if (!after.length) return json({ ok: false, error: 'Keep at least one module.' }, 400);
+  if (after.length === before.length && after.every((m) => before.includes(m))) return json({ ok: true, credential: publicCredential(cred), changed: false });
+  if ((await recentCount(env, l.id, 'credential_submitted')) >= LIMITS.credential) return json({ ok: false, error: 'You have made several changes today. Try again tomorrow.' }, 429);
+  await env.DB.prepare("UPDATE credentials SET modules = ?, status = 'claimed', verified_at = NULL, verified_by = NULL, verification_method = NULL, match_result = NULL, updated_at = datetime('now') WHERE id = ?")
+    .bind(JSON.stringify(after), cred.id).run();
+  await logEvent(env, { learnerId: l.id, subjectType: 'credential', subjectId: cred.id, action: 'credential_submitted', actor: 'learner', scope: after.join(','), notes: `modules changed from ${before.join(',')}` });
+  const fresh = await checkCredential(env, await env.DB.prepare('SELECT * FROM credentials WHERE id = ?').bind(cred.id).first(), 'claim');
+  return json({ ok: true, credential: publicCredential(fresh), changed: true });
 }
 
 const CRED_MESSAGES = {

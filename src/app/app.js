@@ -1863,7 +1863,14 @@
       if (step === 'experience') {
         var held = P.credentials || [];
         body = '<p class="small">' + esc(T('Ultrasound credentials you hold (optional). They are issued by the named bodies, not by Wavelength, and listing them does not imply their endorsement.')) + '</p>' +
-          held.map(function (c) { return '<label class="pathcard"><input type="checkbox" name="credId" value="' + c.id + '"' + (a.credentialIds.indexOf(c.id) >= 0 ? ' checked' : '') + '><div><b>' + esc(T(c.label)) + '</b><span>' + esc(c.issuer + ((c.moduleLabels || []).length ? ' · ' + c.moduleLabels.map(T).join(', ') : '')) + '</span> ' + verifyChip(c.status) + '</div></label>'; }).join('') +
+          held.map(function (c) {
+            var t = svEditable(cfg, c), on = a.credentialIds.indexOf(c.id) >= 0 ? ' checked' : '';
+            if (!t) return '<label class="pathcard"><input type="checkbox" name="credId" value="' + c.id + '"' + on + '><div><b>' + esc(T(c.label)) + '</b><span>' + esc(c.issuer + ((c.moduleLabels || []).length ? ' · ' + c.moduleLabels.map(T).join(', ') : '')) + '</span> ' + verifyChip(c.status) + '</div></label>';
+            // Modules of a credential already held stay editable: ticked as held, a change sends it to be checked again.
+            return '<div class="pathcard" style="display:block"><label class="check"><input type="checkbox" name="credId" value="' + c.id + '"' + on + '><span><b>' + esc(T(c.label)) + '</b> · ' + esc(c.issuer) + '</span></label> ' + verifyChip(c.status) +
+              '<div class="mods" data-held="' + c.id + '" style="margin:6px 0 0 30px">' + t.modules.map(function (m) { return '<label class="check"><input type="checkbox" name="hmod-' + c.id + '" value="' + esc(m.id) + '"' + (c.modules.indexOf(m.id) >= 0 ? ' checked' : '') + '><span>' + esc(T(m.label)) + '</span></label>'; }).join('') +
+              '<p class="small muted" style="margin:6px 0 0">' + esc(T('Changing the modules sends this credential to be checked again. Your reference, dates and evidence stay.')) + '</p></div></div>';
+          }).join('') +
           cfg.credentialTypes.filter(function (t) { return !held.some(function (c) { return c.type === t.id; }); }).map(function (t) { return '<div class="pathcard" style="display:block"><label class="check"><input type="checkbox" name="credType" value="' + esc(t.id) + '"><span><b>' + esc(T(t.label)) + '</b> · ' + esc(t.issuer) + '</span></label><div class="mods" data-for="' + esc(t.id) + '" hidden style="margin:6px 0 0 30px">' + t.modules.map(function (m) { return '<label class="check"><input type="checkbox" name="mod-' + esc(t.id) + '" value="' + esc(m.id) + '"' + (t.modules.length === 1 ? ' checked' : '') + '><span>' + esc(T(m.label)) + '</span></label>'; }).join('') + '</div></div>'; }).join('') +
           '<h3 style="margin:16px 0 8px">' + esc(T('Your experience')) + '</h3>' +
           '<div class="field"><label for="se1">' + esc(T('Years of ultrasound practice')) + '</label><select id="se1" name="years"><option value="">' + esc(T('Choose')) + '</option>' + cfg.bands.years.map(function (b) { return '<option value="' + esc(b) + '"' + (a.experience.years === b ? ' selected' : '') + '>' + esc(T(b)) + '</option>'; }).join('') + '</select></div>' +
@@ -1933,6 +1940,7 @@
       rg.onchange = setReg; setReg();
     }
     if (step === 'experience') $$('input[name=credType]').forEach(function (x) { x.onchange = function () { $('.mods[data-for="' + x.value + '"]').hidden = !x.checked; }; });
+    if (step === 'experience') $$('.mods[data-held] input').forEach(function (x) { x.addEventListener('change', function () { var id = x.closest('.mods').dataset.held, box = $('input[name=credId][value="' + id + '"]'); if (box) box.checked = true; }); });
     if (step === 'evidence') {
       var sj = $('#sj'), cnt = function () { $('#sjc').textContent = T('{n} characters', { n: sj.value.length }) + (a.evidence.length ? '' : ' · ' + T('at least 80 without documents')); };
       sj.oninput = cnt; cnt();
@@ -1965,6 +1973,11 @@
       img.src = u;
     });
   }
+  // The credential type of a held credential when its modules can be changed here (more than one to choose from).
+  function svEditable(cfg, c) {
+    var t = ((cfg && cfg.credentialTypes) || []).filter(function (x) { return x.id === c.type; })[0];
+    return t && t.modules.length > 1 && ['revoked', 'withdrawn'].indexOf(c.status) < 0 ? t : null;
+  }
   // Reads one step into the fields saveDraft expects, or returns a message for the learner.
   function svCollect(step, f, a, P) {
     var v = function (id) { var el = $('#' + id, f); return el ? el.value.trim() : ''; };
@@ -1985,11 +1998,20 @@
     if (step === 'experience') {
       var creds = [], bad = '';
       $$('input[name=credType]:checked', f).forEach(function (x) { var mods = $$('input[name="mod-' + x.value + '"]:checked', f).map(function (m) { return m.value; }); if (!mods.length) bad = T('Choose at least one module for each credential you ticked.'); creds.push({ type: x.value, modules: mods }); });
+      var amend = [];
+      (P.credentials || []).forEach(function (c) {
+        if (!svEditable(P.config, c) || !$('.mods[data-held="' + c.id + '"]', f)) return;
+        var now = $$('input[name="hmod-' + c.id + '"]:checked', f).map(function (m) { return m.value; });
+        if (!now.length) bad = T('Keep at least one module for each credential you hold.');
+        var add = now.filter(function (m) { return c.modules.indexOf(m) < 0; }), remove = c.modules.filter(function (m) { return now.indexOf(m) < 0; });
+        if (add.length || remove.length) amend.push({ id: c.id, add: add, remove: remove });
+      });
       if (bad) return bad;
       var yn = function (n) { var c = $('input[name=' + n + ']:checked', f); return c ? c.value === 'yes' : null; };
       if (!v('se1') || !v('se2b')) return T('Answer how long you have practised ultrasound and roughly how many scans you have done.');
       var d = { credentialIds: $$('input[name=credId]:checked', f).map(function (x) { return Number(x.value); }), experience: { years: v('se1'), scans: v('se2b'), teaching: yn('teaching'), supervision: yn('supervision'), deptRole: v('se5') } };
       if (creds.length) d.credentials = creds;
+      if (amend.length) d.credentialModules = amend;
       return d;
     }
     if (step === 'evidence') {

@@ -13,7 +13,7 @@
 // stays off for everyone else. Viewing one's own status and stopping work whenever migration 0012 is applied.
 import LOGBOOK from '../data/logbook.json';
 import { json, clip, body, fullName, TITLES, lifecycleReady } from './app-util.js';
-import { currentStatus, submitRegistration, submitCredential, addEvidence, publicRegistration, publicCredential, config, logEvent, parseList, scopeLabel, TYPE } from './professional.js';
+import { currentStatus, submitRegistration, submitCredential, amendCredentialModules, addEvidence, publicRegistration, publicCredential, config, logEvent, parseList, scopeLabel, TYPE } from './professional.js';
 import { standingOf, applyOn, areaLabels, AREAS, withdrawSupervisor, WITHDRAW_REASONS, activeBlock } from './supervisor-lifecycle.js';
 import { queueStmt, deliverLater } from './notify.js';
 import { auditStmt, audit } from './audit.js';
@@ -154,20 +154,32 @@ async function saveDraft(env, l, d) {
   }
   // Step 3, ultrasound experience: credentials from Wavelength's framework (issued by the named bodies, never by
   // Wavelength) and short structured answers.
+  // Credentials claimed or amended in this save are always linked to the application; credentialIds (the held
+  // credentials the applicant ticked) never drops them.
+  const touched = [];
   if (Array.isArray(d.credentials)) {
-    const ids = new Set(list(a.credential_ids));
     for (const c of d.credentials.slice(0, 10)) {
       const res = await submitCredential(env, l, c || {});
       const j = await res.json();
       if (!j.ok) return json(j, res.status);
-      ids.add(j.credential.id);
+      touched.push(j.credential.id);
     }
-    set.credential_ids = JSON.stringify([...ids]);
   }
+  // Modules added to or removed from a credential already held (same record, checked again).
+  if (Array.isArray(d.credentialModules)) {
+    for (const c of d.credentialModules.slice(0, 20)) {
+      const res = await amendCredentialModules(env, l, c || {});
+      const j = await res.json();
+      if (!j.ok) return json(j, res.status);
+      touched.push(j.credential.id);
+    }
+  }
+  let ticked = null;
   if (Array.isArray(d.credentialIds)) {
     const mine = ((await env.DB.prepare('SELECT id FROM credentials WHERE learner_id = ? AND active = 1').bind(l.id).all()).results || []).map((r) => r.id);
-    set.credential_ids = JSON.stringify(d.credentialIds.map(Number).filter((x) => mine.includes(x)).slice(0, 20));
+    ticked = d.credentialIds.map(Number).filter((x) => mine.includes(x));
   }
+  if (ticked || touched.length) set.credential_ids = JSON.stringify([...new Set([...touched, ...(ticked || list(a.credential_ids).map(Number))])].slice(0, 20));
   if (d.experience && typeof d.experience === 'object') {
     const e = d.experience;
     set.experience = JSON.stringify({
