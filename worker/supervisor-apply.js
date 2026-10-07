@@ -223,6 +223,21 @@ async function problems(env, l, a) {
   if (a.kind === 'renewal' && !a.nothing_changed && !a.changes_note) out.push({ step: 'changes', error: 'Tell us what has changed, or confirm that nothing material has changed.' });
   return out;
 }
+// The applicant receipt for the send that made an application 'submitted'. The first send is keyed by the
+// application; a resubmission after "Ask for more information" (more_info_at before submitted_at) is keyed by that
+// request's time, so each return-and-resubmit gets its own receipt, while a double tap or retry of the same send meets
+// the same key and is ignored by the outbox. The admin "Send submission receipt" action rebuilds the same key.
+export function receiptKey(a) {
+  const resubmit = !!a.more_info_at && (!a.submitted_at || a.more_info_at < a.submitted_at);
+  const kind = `${a.kind === 'renewal' ? 'renew' : 'app'}_${resubmit ? 'resubmitted' : 'received'}`;
+  return { kind, resubmit, key: resubmit ? `${kind}:${a.id}:${a.more_info_at}` : `${kind}:${a.id}` };
+}
+export async function receiptFor(env, l, a) {
+  const r = receiptKey(a);
+  const inviter = a.link_id ? await env.DB.prepare('SELECT t.title, t.first_name, t.last_name FROM supervisor_links s JOIN learners t ON t.id = s.learner_id WHERE s.id = ?').bind(a.link_id).first() : null;
+  const reviewOn = a.kind === 'renewal' ? (await currentStatus(env, l.id)).approvals.map((x) => x.review_on).filter(Boolean).sort()[0] : null;
+  return { ...r, stmt: queueStmt(env, { key: r.key, learnerId: l.id, kind: r.kind, to: l.email, toName: fullName(l), data: { firstName: l.first_name, learner: inviter ? fullName(inviter) : null, reviewOn } }) };
+}
 async function submit(env, l, d, ctx) {
   const a = await openApplication(env, l);
   if (!a || !['draft', 'more_info'].includes(a.status)) return json({ ok: false, error: 'There is no application to send.' }, 404);
@@ -245,13 +260,13 @@ async function submit(env, l, d, ctx) {
   const res = await env.DB.prepare("UPDATE supervisor_applications SET status = 'submitted', submitted_at = ?, declared_at = ?, declaration_version = ?, current_at_submit = ?, full_name = COALESCE(full_name, ?), updated_at = datetime('now') WHERE id = ? AND status IN ('draft', 'more_info')")
     .bind(at, at, DECLARATION_VERSION, currentAtSubmit, fullName(l), a.id).run();
   if (!(res.meta && res.meta.changes)) return json({ ok: false, error: 'Your application has already been sent.' }, 409);
-  const inviter = a.link_id ? await env.DB.prepare('SELECT t.title, t.first_name, t.last_name FROM supervisor_links s JOIN learners t ON t.id = s.learner_id WHERE s.id = ?').bind(a.link_id).first() : null;
   const renewal = a.kind === 'renewal';
-  const reviewOn = renewal ? (await currentStatus(env, l.id)).approvals.map((x) => x.review_on).filter(Boolean).sort()[0] : null;
-  const keys = [`${renewal ? 'renew_received' : 'app_received'}:${a.id}`, `app_admin:${a.id}:${at}`];
+  const receipt = await receiptFor(env, l, { ...a, submitted_at: at });
+  const resubmit = receipt.resubmit;
+  const keys = [receipt.key, `app_admin:${a.id}:${at}`];
   await env.DB.batch([
-    queueStmt(env, { key: keys[0], learnerId: l.id, kind: renewal ? 'renew_received' : 'app_received', to: l.email, toName: fullName(l), data: { firstName: l.first_name, learner: inviter ? fullName(inviter) : null, reviewOn } }),
-    queueStmt(env, { key: keys[1], kind: 'app_admin', to: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', toName: 'Wavelength', data: { application: a.id, renewal, basis } }),
+    receipt.stmt,
+    queueStmt(env, { key: keys[1], kind: 'app_admin', to: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', toName: 'Wavelength', data: { application: a.id, renewal, basis, resubmitted: resubmit } }),
     auditStmt(env, { actorType: 'learner', actorId: l.id, action: a.status === 'more_info' ? 'application.resubmit' : 'application.submit', subjectType: 'application', subjectId: a.id, meta: { kind: a.kind, evidence: files, basis: files ? 'documents' : 'explanation' } }),
   ]);
   await logEvent(env, { learnerId: l.id, subjectType: 'application', subjectId: a.id, action: 'application_submitted', outcome: 'submitted', actor: 'learner', notes: `${a.kind}; basis: ${basis}` });
