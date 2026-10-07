@@ -100,7 +100,7 @@ export function render(kind, d) {
       subject: `${d.resubmitted ? 'Updated' : 'New'} supervisor ${d.renewal ? 'renewal' : 'application'} to review`,
       heading: `${d.resubmitted ? 'Updated supervisor' : 'Supervisor'} ${d.renewal ? 'renewal' : 'application'} waiting`,
       paragraphs: [d.resubmitted ? `A supervisor ${d.renewal ? 'renewal' : 'application'} (number ${d.application}) has been sent again with more information and is waiting for review.` : `A supervisor ${d.renewal ? 'renewal' : 'application'} (number ${d.application}) is waiting for review.`, d.basis ? `Basis: ${d.basis}.` : null, 'Open the supervisor verification console to review it. This email holds no personal details.'],
-      button: { href: `${SITE}/volunteer/admin/supervisors/?tab=new`, label: 'Open the console' },
+      button: { href: `${SITE}/admin/supervisors/?tab=new`, label: 'Open the console' },
     }),
     app_more: () => ({
       subject: 'More information needed for your supervisor application',

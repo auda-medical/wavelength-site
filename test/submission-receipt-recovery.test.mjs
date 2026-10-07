@@ -171,10 +171,10 @@ test('only for a submitted application; a receipt already in the outbox is deliv
   assert.equal(await recover(env, draft.id), 'This application has already been decided or withdrawn.');
   await send(c);
   const a = await appOf(env, sid);
-  const page = (await supervisorsAdminHtml(env, new URL(`https://x/volunteer/admin/supervisors/?app=${a.id}`), 'wavelength'));
+  const page = (await supervisorsAdminHtml(env, new URL(`https://x/admin/supervisors/?app=${a.id}`), 'wavelength'));
   assert.match(page, /Send submission receipt/);
   await ask(env, a.id);
-  const waiting = await supervisorsAdminHtml(env, new URL(`https://x/volunteer/admin/supervisors/?app=${a.id}`), 'wavelength');
+  const waiting = await supervisorsAdminHtml(env, new URL(`https://x/admin/supervisors/?app=${a.id}`), 'wavelength');
   assert.doesNotMatch(waiting, /Send submission receipt/, 'not offered while waiting for information');
   const before = await snapshot(env, sid);
   assert.equal(await recover(env, a.id), 'A receipt can be sent only while the application is submitted.');

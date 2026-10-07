@@ -3,7 +3,7 @@
 //                             emails the team at hello@ through ZeptoMail, then redirects to /faculty/join/thanks/.
 import FORM from './faculty-form.json';
 const { professions: PROFESSIONS, experience: EXPERIENCE, credentials: CREDENTIALS, applications: APPLICATIONS, interests: INTERESTS } = FORM;
-// The admin list lives at /volunteer/admin/faculty/ (worker/index.js handles the login).
+// The admin list lives at /admin/faculty/ (worker/index.js handles the login).
 
 
 const clip = (v, n) => String(v || '').trim().slice(0, n);
@@ -40,8 +40,8 @@ async function notifyTeam(env, id, d) {
   const mark = (err) => env.DB.prepare(err ? 'UPDATE faculty_applications SET email_error = ? WHERE id = ?' : "UPDATE faculty_applications SET emailed_at = datetime('now') WHERE id = ?").bind(...(err ? [String(err).slice(0, 500), id] : [id])).run();
   if (!env.ZEPTOMAIL_TOKEN) return mark('Email not set up yet (ZEPTOMAIL_TOKEN missing)');
   const rows = [['Name', `${d.first} ${d.last}`], ['Email', d.email], ['Phone', d.phone], ['Role', d.profession], ['Specialty', d.specialty], ['Workplace', d.org], ['Registration', d.registration], ['Ultrasound experience', d.experience], ['Credentials', d.credentials], ['Applications', d.applications], ['Interested in', d.interests], ['Experience and credentials', d.details]].filter(([, v]) => v);
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#0F1E33"><p>A new faculty application arrived through the website.</p><table cellpadding="6" style="border-collapse:collapse">${rows.map(([k, v]) => `<tr><td style="vertical-align:top;color:#5B6878;white-space:nowrap">${esc(k)}</td><td style="white-space:pre-wrap">${esc(v)}</td></tr>`).join('')}</table><p>See all applications: https://thewavelength.co.uk/volunteer/admin/faculty/</p></div>`;
-  const text = `A new faculty application arrived through the website.\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nSee all applications: https://thewavelength.co.uk/volunteer/admin/faculty/`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#0F1E33"><p>A new faculty application arrived through the website.</p><table cellpadding="6" style="border-collapse:collapse">${rows.map(([k, v]) => `<tr><td style="vertical-align:top;color:#5B6878;white-space:nowrap">${esc(k)}</td><td style="white-space:pre-wrap">${esc(v)}</td></tr>`).join('')}</table><p>See all applications: https://thewavelength.co.uk/admin/faculty/</p></div>`;
+  const text = `A new faculty application arrived through the website.\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nSee all applications: https://thewavelength.co.uk/admin/faculty/`;
   try {
     const res = await fetch(env.ZEPTOMAIL_API || 'https://cpaas.zoho.eu/v1.1/email', {
       method: 'POST',
@@ -77,7 +77,7 @@ export async function facultyAdminHtml(env) {
       <form method="post" onsubmit="return confirm(this.dataset.confirm)" data-confirm="Delete ${esc(r.first_name)} ${esc(r.last_name)} permanently?"><input type="hidden" name="id" value="${r.id}"><input type="hidden" name="action" value="delete"><button class="btn btn-ghost small danger" type="submit">Delete</button></form>
     </td></tr>`).join('');
   return `<h2 class="display" style="font-size:34px;margin:0 0 8px">Faculty applications</h2>
-  <p class="admin-summary">${results.length} application${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/volunteer/admin/faculty/applications.csv">Download as spreadsheet (CSV)</a> · <a class="text-link" href="/volunteer/admin/">Volunteers</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy</a></p>
+  <p class="admin-summary">${results.length} application${results.length === 1 ? '' : 's'}, ${results.filter((r) => !r.contacted).length} not yet contacted. <a class="text-link" href="/admin/faculty/applications.csv">Download as spreadsheet (CSV)</a> · <a class="text-link" href="/admin/volunteers/">Volunteers</a> · <a class="text-link" href="/admin/academy/">Academy</a></p>
   ${results.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Received</th><th scope="col">Name and contact</th><th scope="col">Role</th><th scope="col">Ultrasound</th><th scope="col">In their words</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="admin-summary">No applications yet. They appear here as soon as someone submits the form at /faculty/join/.</p>'}`;
 }
 

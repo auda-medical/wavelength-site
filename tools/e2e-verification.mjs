@@ -96,14 +96,14 @@ if (P0.badges.some((b) => b.kind !== 'email')) fail('a badge appeared from self-
 
 // ---- 5. Admin panel: verify registration, approve credential, approve a scope ----
 const adm = await ctxFor('admin', { w: 1440 });
-await adm.page.goto(BASE + '/volunteer/login/');
+await adm.page.goto(BASE + '/admin/login/');
 await adm.page.fill('input[name=username]', 'wavelength'); await adm.page.fill('input[name=password]', process.env.ADMIN_PASSWORD || '');
 await adm.page.click('form.vol-login button');
-await adm.page.goto(BASE + '/volunteer/admin/supervisors/');
+await adm.page.goto(BASE + '/admin/supervisors/');
 await adm.page.waitForSelector('text=Needs a decision');
 await shot(adm.page, 'admin-queue-1440');
 const supId = (await get(app.page, '/api/app/me')).account.id;
-await adm.page.goto(`${BASE}/volunteer/admin/supervisors/?id=${supId}`);
+await adm.page.goto(`${BASE}/admin/supervisors/?id=${supId}`);
 await adm.page.waitForSelector('text=Professional registration');
 const regForm = adm.page.locator('form:has(input[value=reg_verify])');
 await regForm.locator('input[name=register_name]').fill('John Smith');

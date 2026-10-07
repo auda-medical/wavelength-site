@@ -139,7 +139,7 @@ Data minimisation:
 - File bytes are purged `PURGE_EVIDENCE_DAYS` (30) after a final decision, and at once on withdrawal. The hash and description stay as the reference.
 - Admins download evidence as an attachment, with `Content-Security-Policy: sandbox`.
 
-## 7. Admin panel (`/volunteer/admin/supervisors/`, `worker/supervisors-admin.js`)
+## 7. Admin panel (`/admin/supervisors/`, `worker/supervisors-admin.js`)
 
 The panel uses the admin login.
 

@@ -90,7 +90,7 @@ test('manual review: evidence, then admin approval, rejection, revocation and re
   assert.equal(ev.file_type, 'application/pdf');
   assert.equal(ev.file_sha256.length, 64);
   const lid = await idOf(env, 'manualcred@x.co');
-  const html = await supervisorsAdminHtml(env, new URL(`https://x/volunteer/admin/supervisors/?id=${lid}`));
+  const html = await supervisorsAdminHtml(env, new URL(`https://x/admin/supervisors/?id=${lid}`));
   assert.ok(html.includes('cert.pdf'));
   const file = await evidenceFile(env, ev.id);
   assert.equal(file.headers.get('Content-Type'), 'application/pdf');
@@ -287,7 +287,7 @@ test('admin pages escape everything a professional typed', async () => {
   await c.call('/api/app/professional/evidence', { subject: 'credential', id: 1, kind: 'letter', description: EVIL, url: 'javascript:alert(1)' });
   await c.call('/api/app/professional/evidence', { subject: 'credential', id: 1, kind: 'letter', description: EVIL });
   const lid = await idOf(env, 'evil@x.co');
-  const html = await supervisorsAdminHtml(env, new URL(`https://x/volunteer/admin/supervisors/?id=${lid}`)) + await supervisorsAdminHtml(env, new URL('https://x/volunteer/admin/supervisors/'));
+  const html = await supervisorsAdminHtml(env, new URL(`https://x/admin/supervisors/?id=${lid}`)) + await supervisorsAdminHtml(env, new URL('https://x/admin/supervisors/'));
   assert.ok(!html.includes('<img src=x'));
   assert.ok(!html.includes('javascript:'));
 });

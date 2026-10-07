@@ -1,4 +1,4 @@
-// Admin: professional and supervisor verification (/volunteer/admin/supervisors/, admin login only).
+// Admin: professional and supervisor verification (/admin/supervisors/, admin login only).
 // Lists what needs a person (manual checks, ambiguous matches, evidence, rechecks), and for each professional shows
 // registrations, credentials, evidence, supervisor approvals and the full verification history. Every decision is
 // written to verification_events with the reviewer's name, the scope and the evidence it relied on. Routine work never
@@ -23,11 +23,11 @@ const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const date = (v) => (ISO.test(String(v || '')) ? String(v) : null);
 const nowIso = () => new Date().toISOString();
-const BASE = '/volunteer/admin/supervisors/';
+const BASE = '/admin/supervisors/';
 const PATHS = LOGBOOK.pathways.filter((p) => p.modules && p.modules.length);
 const REG_QUEUE = ['pending', 'manual_verification_required', 'manual_review', 'mismatch', 'source_unavailable'];
 const CRED_QUEUE = ['claimed', 'evidence_required', 'manual_review', 'more_evidence', 'not_found', 'source_unavailable'];
-const NAV = `<a class="text-link" href="/volunteer/admin/">Volunteers</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy</a> · <a class="text-link" href="${BASE}">Supervisor verification</a> · <a class="text-link" href="/volunteer/admin/organisations/">Organisations</a>`;
+const NAV = `<a class="text-link" href="/admin/volunteers/">Volunteers</a> · <a class="text-link" href="/admin/academy/">Academy</a> · <a class="text-link" href="${BASE}">Supervisor verification</a> · <a class="text-link" href="/admin/organisations/">Organisations</a>`;
 const name = (l) => [l.title, l.first_name, l.last_name].filter(Boolean).join(' ');
 const reviewerField = '<label>Your name (recorded with the decision)<input name="reviewer" autocomplete="name" maxlength="80" required></label>';
 const form = (action, hidden, inner, button, confirmText) => `<form class="form sv-form" method="post"${confirmText ? ` onsubmit="return confirm(this.dataset.confirm)" data-confirm="${esc(confirmText)}"` : ''}><input type="hidden" name="action" value="${action}">${Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join('')}${inner}${reviewerField}<button class="btn btn-ghost small" type="submit">${esc(button)}</button></form>`;

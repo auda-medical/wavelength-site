@@ -11,11 +11,11 @@ import { normOrg } from '../worker/org-norm.js';
 import SEED from '../data/organisations.json' with { type: 'json' };
 
 globalThis.fetch = async () => new Response('{}');
-const EVIL = "x');fetch('/volunteer/admin/',{method:'POST'});('\"><img src=x onerror=alert(1)>";
+const EVIL = "x');fetch('/admin/',{method:'POST'});('\"><img src=x onerror=alert(1)>";
 const orgs = async (q) => client(handleApp, makeEnv()).call('/api/app/organisations?q=' + encodeURIComponent(q));
 const names = (r) => r.body.results.map((x) => x.name);
 const admin = (env, o, access = '') => organisationsAdminPost(env, adminForm(access ? o : { reviewer: 'Firas', ...o }), 'wavelength', { access });
-const html = (env, q = '') => organisationsAdminHtml(env, new URL('https://x/volunteer/admin/organisations/' + q));
+const html = (env, q = '') => organisationsAdminHtml(env, new URL('https://x/admin/organisations/' + q));
 
 test('normalisation: case, "&", apostrophes and punctuation', () => {
   assert.equal(normOrg("Guy's & St Thomas'  NHS-Trust"), 'guys and st thomas nhs trust');
@@ -185,7 +185,7 @@ test('the admin page escapes typed text and puts none of it inside a script or h
   assert.ok(!/confirm\('/.test(page));
   assert.match(page, /data-confirm=/);
   assert.match(await html(env, '?q=wl-2'), /Darent Valley Hospital/);
-  const withAccess = await organisationsAdminHtml(env, new URL('https://x/volunteer/admin/organisations/'), { access: 'ops@x.co' });
+  const withAccess = await organisationsAdminHtml(env, new URL('https://x/admin/organisations/'), { access: 'ops@x.co' });
   assert.ok(!withAccess.includes('name="reviewer"'), 'no typed name with Access on');
 });
 

@@ -2,7 +2,7 @@
 //   GET  organisations?q=&country=     public; 2 characters minimum; up to 10 suggestions; cached for an hour
 //   GET  organisations/<id>            public; one organisation, following merged_into
 //   POST organisations/request {name}  logged in; "My organisation is not listed"
-// Admin page /volunteer/admin/organisations/ (worker/index.js): request queue, aliases, merges, legacy free text.
+// Admin page /admin/organisations/ (worker/index.js): request queue, aliases, merges, legacy free text.
 // Rules: the typed text is always kept beside any id; an id is added only when the person picked a suggestion or an
 // administrator confirmed a match; nothing is merged silently and nothing is deleted.
 // Before migration 0013 every endpoint degrades quietly: no suggestions, typed text saved as before.
@@ -143,8 +143,8 @@ export async function handleOrganisations(env, req, url, p, l, ctx, readBody) {
 
 // ---------- Admin ----------
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-const BASE = '/volunteer/admin/organisations/';
-const NAV = `<a class="text-link" href="/volunteer/admin/">Volunteers</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy</a> · <a class="text-link" href="/volunteer/admin/supervisors/">Supervisor verification</a> · <a class="text-link" href="${BASE}">Organisations</a>`;
+const BASE = '/admin/organisations/';
+const NAV = `<a class="text-link" href="/admin/volunteers/">Volunteers</a> · <a class="text-link" href="/admin/academy/">Academy</a> · <a class="text-link" href="/admin/supervisors/">Supervisor verification</a> · <a class="text-link" href="${BASE}">Organisations</a>`;
 const STYLE = '<style>.og-form{display:grid;gap:8px;margin:8px 0;padding:10px;border:1px dashed #E4E0D7;border-radius:10px}.og-form label{display:grid;gap:4px;font-size:14px}.og-form button{justify-self:start;width:auto;min-height:0}.og-row{display:flex;flex-wrap:wrap;gap:6px 14px}.og-row label{display:inline-flex;flex-direction:row;gap:6px;align-items:center}.og-form input[type=checkbox],.og-form input[type=radio]{width:18px;height:18px;min-height:0;margin:0}.og-small{font-size:13px;color:#5B6878}</style>';
 // With Cloudflare Access on, the admin's email is the actor and no typed name is needed.
 const reviewerField = (access) => (access ? `<p class="og-small">Recorded as ${esc(access)}.</p>` : '<label>Your name (recorded with the decision)<input name="reviewer" autocomplete="name" maxlength="80" required></label>');

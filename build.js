@@ -1553,12 +1553,37 @@ pages['/volunteer/thanks/'] = layout({
   body: `${volHero('Thank you.', 'We have your details. The Wavelength team will email you to confirm a date, timings and the venue.')}
 <section class="section"><div class="wrap"><p><a class="btn" href="/volunteer/">Add another volunteer</a></p>${volLogout}</div></section>`,
 });
-pages['/volunteer/admin/'] = layout({
-  title: 'Volunteer sign-ups',
-  pathname: '/volunteer/admin/',
+
+// Wavelength admin console (hidden, not linked, not in sitemap). worker/index.js guards every /admin/ page with its own
+// login and session, separate from the volunteer area; /volunteer/admin/* addresses redirect here.
+const adminHero = (title, lede) => pageHero({ eyebrow: 'Wavelength admin', title, lede });
+pages['/admin/'] = layout({
+  title: 'Admin console',
+  pathname: '/admin/',
   noindex: true,
-  body: `${volHero('Volunteer sign-ups.', 'Private to the Wavelength team. Volunteers never see this page.')}
-<section class="section"><div class="wrap"><div id="admin-root"></div>${volLogout}</div></section>`,
+  body: `${adminHero('Admin console.', 'Private to the Wavelength team. Volunteers and learners never see these pages.')}
+<section class="section"><div class="wrap"><div id="admin-root"></div></div></section>`,
+});
+pages['/admin/login/'] = layout({
+  title: 'Admin login',
+  pathname: '/admin/login/',
+  noindex: true,
+  body: `${adminHero('Admin login.', 'For the Wavelength team. Volunteers log in at the volunteer area instead.')}
+<section class="section"><div class="wrap">
+  <form class="form vol-login" method="post" action="/admin/login/">
+    <p class="form-error" data-show-on="error" hidden>The username or password is not correct. Try again.</p>
+    <label>Username<input name="username" autocomplete="username" autocapitalize="none" required></label>
+    <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+    <div><button class="btn" type="submit">Log in ${arrow}</button></div>
+    <p class="form-note">The admin console moved here from /volunteer/admin/ in October 2026. It has its own login, separate from the volunteer area.</p>
+  </form>
+</div></section>`,
+});
+pages['/admin/unavailable/'] = layout({
+  title: 'Admin console',
+  pathname: '/admin/unavailable/',
+  noindex: true,
+  body: `${adminHero('Not set up yet.', 'The admin console needs its logins in the database first.')}`,
 });
 pages['/volunteer/unavailable/'] = layout({
   title: 'Volunteer area',
@@ -1905,7 +1930,7 @@ const notFound = layout({
 
   // English pages: hreflang where a translation exists, a language menu in the header and footer, and the browser-language offer.
   for (const [p, html] of Object.entries(pages)) {
-    if (p.startsWith('/volunteer/') || p.startsWith('/email/')) continue;
+    if (p.startsWith('/volunteer/') || p.startsWith('/admin/') || p.startsWith('/email/')) continue;
     const alts = altsFor(p);
     let h = html;
     if (alts && !/noindex/.test(h.slice(0, 2000))) h = h.replace('</head>', hreflang(alts) + '\n</head>');
@@ -2188,7 +2213,7 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisall
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
-    .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !/^\/elearning\/[^/]+\/(learn|assessment)\//.test(p) && !['/elearning/certificate/', '/elearning/account/'].includes(p) && !(p === '/elearning/' && !liveModules.length) && !modules.some((m) => m.draft === true && p.startsWith(`/elearning/${m.slug}/`)) && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => (p === `/learn/${x.slug}/` || p === `/learn/${x.slug}/test/`) && x.draft === true)) && !(p === '/learn/test/' && !posts.some((x) => x.draft !== true && x.questions.length)))
+    .filter((p) => !p.includes('/thanks/') && p !== '/booked/' && !p.startsWith('/volunteer/') && !p.startsWith('/admin/') && !/^\/elearning\/[^/]+\/(learn|assessment)\//.test(p) && !['/elearning/certificate/', '/elearning/account/'].includes(p) && !(p === '/elearning/' && !liveModules.length) && !modules.some((m) => m.draft === true && p.startsWith(`/elearning/${m.slug}/`)) && !(p === '/learn/' && !posts.some((x) => x.draft !== true)) && !(posts.find((x) => (p === `/learn/${x.slug}/` || p === `/learn/${x.slug}/test/`) && x.draft === true)) && !(p === '/learn/test/' && !posts.some((x) => x.draft !== true && x.questions.length)))
     .filter((p) => !/^\/learn\/[^/]+\/test\/$/.test(p) && !['/verify/', '/elearning/verify/'].includes(p))
     .filter((p) => !(p === '/guides/' && !liveGuides.length) && !guides.some((g) => g.draft === true && p.startsWith(`/guides/${g.slug}/`)))
     // Utility pages that should stay reachable but are not search landing pages. One-page guides are noindex: the full guide ranks.

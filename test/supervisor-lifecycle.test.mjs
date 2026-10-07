@@ -22,7 +22,7 @@ const subjects = (addr) => mailTo(addr).map((m) => m.subject);
 
 const ON = { SUPERVISOR_APPLY: 'true', SUPERVISOR_APPROVAL_REQUIRED: 'true', ZEPTOMAIL_TOKEN: 'test' };
 const admin = (env, o) => supervisorsAdminPost(env, adminForm({ reviewer: 'Firas', ...o }), 'wavelength', ctx);
-const html = (env, q) => supervisorsAdminHtml(env, new URL(`https://x/volunteer/admin/supervisors/${q}`), 'wavelength');
+const html = (env, q) => supervisorsAdminHtml(env, new URL(`https://x/admin/supervisors/${q}`), 'wavelength');
 const EXPLAIN = 'I have led the emergency department ultrasound programme for six years and supervise lung and cardiac scans weekly.';
 const kind = LOGBOOK.assessmentKinds[0].id;
 

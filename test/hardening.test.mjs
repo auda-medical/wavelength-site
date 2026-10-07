@@ -172,12 +172,17 @@ test('Access roles: owner by default until admin_roles exists, then only the lis
   assert.deepEqual(rolesFor('{"A@x.co":["verifier","made-up"]}', 'a@x.co'), ['verifier']);
   assert.deepEqual(rolesFor('{"b@x.co":["owner"]}', 'a@x.co'), []);
   assert.deepEqual(rolesFor('not json', 'a@x.co'), []);
-  assert.equal(roleForPath('/volunteer/admin/organisations/'), 'verifier');
-  assert.equal(roleForPath('/volunteer/admin/academy/learners.csv'), 'academy');
-  assert.equal(roleForPath('/volunteer/admin/'), 'owner');
-  assert.ok(allowed(['verifier'], '/volunteer/admin/supervisors/'));
-  assert.ok(!allowed(['verifier'], '/volunteer/admin/export.csv'));
-  assert.ok(allowed(['owner'], '/volunteer/admin/newsletter/'));
+  assert.equal(roleForPath('/admin/organisations/'), 'verifier');
+  assert.equal(roleForPath('/admin/academy/learners.csv'), 'academy');
+  assert.equal(roleForPath('/admin/volunteers/'), 'owner');
+  assert.equal(roleForPath('/admin/logins/'), 'owner');
+  assert.equal(roleForPath('/admin/'), 'any', 'the console home lists only what a person can open');
+  assert.ok(allowed(['verifier'], '/admin/supervisors/'));
+  assert.ok(allowed(['verifier'], '/admin/'));
+  assert.ok(!allowed([], '/admin/'), 'no roles, no console');
+  assert.ok(!allowed(['verifier'], '/admin/volunteers/export.csv'));
+  assert.ok(!allowed(['verifier'], '/admin/logins/'));
+  assert.ok(allowed(['owner'], '/admin/newsletter/'));
 });
 
 async function adminEnv(extra) {
@@ -185,7 +190,7 @@ async function adminEnv(extra) {
   const ADMIN = 'Admin password 12345';
   for (const [k, v] of [['volunteer_username', 'volunteer'], ['admin_username', 'wavelength'], ['volunteer_hash', await hashPassword('Volunteer pw 12345')], ['admin_hash', await hashPassword(ADMIN)], ['session_secret', 'test-secret']]) await env.DB.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').bind(k, v).run();
   const f = new FormData(); f.append('username', 'wavelength'); f.append('password', ADMIN);
-  const res = await worker.fetch(new Request(ORIGIN + '/volunteer/login/', { method: 'POST', body: f }), env, ctx);
+  const res = await worker.fetch(new Request(ORIGIN + '/admin/login/', { method: 'POST', body: f }), env, ctx);
   const cookie = res.headers.get('Set-Cookie').split(';')[0];
   const req = (path, headers = {}, body) => worker.fetch(new Request(ORIGIN + path, { method: body ? 'POST' : 'GET', headers: { Cookie: cookie, ...headers }, body }), env, ctx);
   return { env, req };
@@ -197,22 +202,22 @@ test('admin area: with Access on, a valid Access token and the password are both
   clearKeyCache();
   // Access off: exactly as before.
   const off = await adminEnv({});
-  assert.equal((await off.req('/volunteer/admin/export.csv')).status, 200);
+  assert.equal((await off.req('/admin/volunteers/export.csv')).status, 200);
 
   const { env, req } = await adminEnv(ACCESS);
-  assert.equal((await req('/volunteer/admin/export.csv')).status, 403, 'no Access token');
+  assert.equal((await req('/admin/volunteers/export.csv')).status, 403, 'no Access token');
   const tok = await jwt(kp.privateKey, claims());
   const H = { 'Cf-Access-Jwt-Assertion': tok };
-  assert.equal((await req('/volunteer/admin/export.csv', { 'Cf-Access-Jwt-Assertion': await jwt(kp.privateKey, claims({ aud: ['x'] })) })).status, 403, 'wrong audience');
-  assert.equal((await req('/volunteer/admin/export.csv', H)).status, 200, 'owner while no admin_roles setting exists');
-  const noPw = await worker.fetch(new Request(ORIGIN + '/volunteer/admin/export.csv', { headers: H }), env, ctx);
+  assert.equal((await req('/admin/volunteers/export.csv', { 'Cf-Access-Jwt-Assertion': await jwt(kp.privateKey, claims({ aud: ['x'] })) })).status, 403, 'wrong audience');
+  assert.equal((await req('/admin/volunteers/export.csv', H)).status, 200, 'owner while no admin_roles setting exists');
+  const noPw = await worker.fetch(new Request(ORIGIN + '/admin/volunteers/export.csv', { headers: H }), env, ctx);
   assert.equal(noPw.status, 303, 'the password login is still needed');
 
   await env.DB.prepare("INSERT INTO settings (key, value) VALUES ('admin_roles', ?)").bind(JSON.stringify({ 'ops@x.co': ['verifier'] })).run();
-  assert.equal((await req('/volunteer/admin/export.csv', H)).status, 403, 'a verifier is not an owner');
-  assert.equal((await req('/volunteer/admin/academy/learners.csv', H)).status, 403);
+  assert.equal((await req('/admin/volunteers/export.csv', H)).status, 403, 'a verifier is not an owner');
+  assert.equal((await req('/admin/academy/learners.csv', H)).status, 403);
   const f = new FormData(); f.append('action', 'alias_add'); f.append('org', 'wl-2'); f.append('alias', 'Darent');
-  const post = await req('/volunteer/admin/organisations/', H, f);
+  const post = await req('/admin/organisations/', H, f);
   assert.equal(post.status, 303);
   const ev = await env.DB.prepare("SELECT actor_type, actor_id FROM audit_events WHERE action = 'organisation.alias_add'").first();
   assert.deepEqual({ ...ev }, { actor_type: 'admin', actor_id: 'ops@x.co' }, 'no typed name needed; the Access email is the actor');

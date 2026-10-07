@@ -15,6 +15,8 @@
 const ACCOUNTS = 'https://accounts.zoho.eu';
 const API = 'https://campaigns.zoho.eu/api/v1.1';
 const SITE = 'https://thewavelength.co.uk';
+// The redirect URI stays the one registered in the Zoho API console. The Worker forwards it, with its query, to
+// /admin/newsletter/callback/. To move it, add the new URI in the Zoho API console first, then change it here.
 const REDIRECT = `${SITE}/volunteer/admin/newsletter/callback/`;
 const SCOPES = 'ZohoCampaigns.campaign.ALL,ZohoCampaigns.contact.ALL';
 const LIST_NAME = 'Wavelength newsletter';
@@ -237,16 +239,16 @@ export async function newsletterAdminHtml(env, msg) {
   const connected = !!s.zoho_refresh_token;
   const status = !s.zoho_client_id ? 'Zoho API client not set up yet.' : connected ? 'Connected to Zoho Campaigns.' : 'Not connected.';
   return `<h2 class="display" style="font-size:34px;margin:0 0 8px">Newsletter</h2>
-  <p class="admin-summary">${esc(status)} Automatic weekly send: <b>${s.newsletter_auto === 'off' ? 'paused' : 'on'}</b>, Tuesdays at 7:30am UK time, to the Zoho list "${LIST_NAME}". <a class="text-link" href="/volunteer/admin/">Volunteers</a> · <a class="text-link" href="/volunteer/admin/academy/">Academy</a></p>
+  <p class="admin-summary">${esc(status)} Automatic weekly send: <b>${s.newsletter_auto === 'off' ? 'paused' : 'on'}</b>, Tuesdays at 7:30am UK time, to the Zoho list "${LIST_NAME}". <a class="text-link" href="/admin/volunteers/">Volunteers</a> · <a class="text-link" href="/admin/academy/">Academy</a></p>
   ${msg ? `<p class="form-note" style="font-weight:600">${esc(msg)}</p>` : ''}
   ${issue ? `<p class="admin-summary">This week: <b>${esc(issue.subject)}</b> (drafted ${esc(issue.drafted)}${issue.ready ? '' : ', on hold'}). <a class="text-link" href="/email/pearl/" target="_blank" rel="noopener">Preview</a></p>` : ''}
   <div style="display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 32px">
-    ${s.zoho_client_id ? `<a class="btn btn-ghost small" href="/volunteer/admin/newsletter/connect/">${connected ? 'Reconnect' : 'Connect'} Zoho Campaigns</a>` : ''}
+    ${s.zoho_client_id ? `<a class="btn btn-ghost small" href="/admin/newsletter/connect/">${connected ? 'Reconnect' : 'Connect'} Zoho Campaigns</a>` : ''}
     <form method="post"><input type="hidden" name="action" value="toggle"><button class="btn btn-ghost small" type="submit">${s.newsletter_auto === 'off' ? 'Resume' : 'Pause'} automatic sending</button></form>
     ${connected ? `<form method="post"><input type="hidden" name="action" value="test"><button class="btn btn-ghost small" type="submit">Test connection (sends nothing)</button></form><form method="post"><input type="hidden" name="action" value="dryrun"><button class="btn btn-ghost small" type="submit">Dry run (draft only, sends nothing)</button></form>` : ''}
     ${connected ? `<form method="post" onsubmit="return confirm('Send this week\\'s issue to the whole list now?')"><input type="hidden" name="action" value="send"><button class="btn small" type="submit">Send this week's issue now</button></form>` : ''}
   </div>
-  ${connected ? '' : `<form class="form pw-form" method="post" style="max-width:560px;margin-bottom:32px"><input type="hidden" name="action" value="client"><p class="admin-summary">Step 1: paste the Client ID and Client Secret from the Zoho API console (server-based application, redirect URI ${REDIRECT}). Step 2: click Connect.</p><label>Client ID<input name="client_id" autocomplete="off" required maxlength="200" value="${esc(s.zoho_client_id || '')}"></label><label>Client Secret<input name="client_secret" type="password" autocomplete="off" required maxlength="200"></label><button class="btn btn-ghost small" type="submit">Save</button></form>`}
+  ${connected ? '' : `<form class="form pw-form" method="post" style="max-width:560px;margin-bottom:32px"><input type="hidden" name="action" value="client"><p class="admin-summary" style="overflow-wrap:anywhere">Step 1: paste the Client ID and Client Secret from the Zoho API console (server-based application, redirect URI ${REDIRECT}). Step 2: click Connect.</p><label>Client ID<input name="client_id" autocomplete="off" required maxlength="200" value="${esc(s.zoho_client_id || '')}"></label><label>Client Secret<input name="client_secret" type="password" autocomplete="off" required maxlength="200"></label><button class="btn btn-ghost small" type="submit">Save</button></form>`}
   ${results.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Updated</th><th scope="col">Issue</th><th scope="col">Status</th><th scope="col">Detail</th></tr></thead><tbody>${results.map((r) => `<tr><td>${esc(r.updated_at)}</td><td>${esc(r.slug)}</td><td>${esc(r.status)}</td><td>${esc(r.detail)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No issues sent yet.</p>'}`;
 }
 
