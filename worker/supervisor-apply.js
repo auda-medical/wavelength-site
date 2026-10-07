@@ -248,10 +248,15 @@ async function submit(env, l, d, ctx) {
   const inviter = a.link_id ? await env.DB.prepare('SELECT t.title, t.first_name, t.last_name FROM supervisor_links s JOIN learners t ON t.id = s.learner_id WHERE s.id = ?').bind(a.link_id).first() : null;
   const renewal = a.kind === 'renewal';
   const reviewOn = renewal ? (await currentStatus(env, l.id)).approvals.map((x) => x.review_on).filter(Boolean).sort()[0] : null;
-  const keys = [`${renewal ? 'renew_received' : 'app_received'}:${a.id}`, `app_admin:${a.id}:${at}`];
+  // One receipt per legitimate send. The first send is keyed by the application; a resubmission after "Ask for more
+  // information" is keyed by that request's time, so each return-and-resubmit gets its own receipt, while a double tap
+  // or retry of the same send is refused above or meets the same key and is ignored by the outbox.
+  const resubmit = a.status === 'more_info';
+  const receipt = `${renewal ? 'renew' : 'app'}_${resubmit ? 'resubmitted' : 'received'}`;
+  const keys = [resubmit ? `${receipt}:${a.id}:${a.more_info_at || at}` : `${receipt}:${a.id}`, `app_admin:${a.id}:${at}`];
   await env.DB.batch([
-    queueStmt(env, { key: keys[0], learnerId: l.id, kind: renewal ? 'renew_received' : 'app_received', to: l.email, toName: fullName(l), data: { firstName: l.first_name, learner: inviter ? fullName(inviter) : null, reviewOn } }),
-    queueStmt(env, { key: keys[1], kind: 'app_admin', to: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', toName: 'Wavelength', data: { application: a.id, renewal, basis } }),
+    queueStmt(env, { key: keys[0], learnerId: l.id, kind: receipt, to: l.email, toName: fullName(l), data: { firstName: l.first_name, learner: inviter ? fullName(inviter) : null, reviewOn } }),
+    queueStmt(env, { key: keys[1], kind: 'app_admin', to: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', toName: 'Wavelength', data: { application: a.id, renewal, basis, resubmitted: resubmit } }),
     auditStmt(env, { actorType: 'learner', actorId: l.id, action: a.status === 'more_info' ? 'application.resubmit' : 'application.submit', subjectType: 'application', subjectId: a.id, meta: { kind: a.kind, evidence: files, basis: files ? 'documents' : 'explanation' } }),
   ]);
   await logEvent(env, { learnerId: l.id, subjectType: 'application', subjectId: a.id, action: 'application_submitted', outcome: 'submitted', actor: 'learner', notes: `${a.kind}; basis: ${basis}` });
