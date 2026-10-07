@@ -36,6 +36,8 @@ CROP = {
     'central-line-wire-pearl.webp': (0.535, 1.0, 0.14),
     'radial-arterial-line-pearl.webp': (0.03, 0.36, 0.52),
     'iv-flush-test-pearl.webp': (0.56, 1.0, 0.13),
+    'vein-or-artery-pearl.webp': (0.62, 1.0, 0.11),
+    'choose-the-vein-pearl.webp': (0.03, 0.34, 0.53),
 }
 os.makedirs(OUT, exist_ok=True)
 for f in sorted(glob.glob(os.path.join(SRC, '*-pearl.webp'))):
