@@ -1732,5 +1732,11 @@
 "Your email address is not confirmed.": "Ihre E-Mail-Adresse ist nicht bestätigt.",
 "Your professional registration is no longer verified as current.": "Ihre berufliche Registrierung ist nicht mehr als gültig verifiziert.",
 "Your review date has passed.": "Ihr Überprüfungsdatum ist überschritten.",
-"also known as {name}": "auch bekannt als {name}"
+"also known as {name}": "auch bekannt als {name}",
+"Changing the modules sends this credential to be checked again. Your reference, dates and evidence stay.": "Wenn Sie die Module ändern, wird diese Qualifikation erneut geprüft. Referenz, Daten und Nachweise bleiben erhalten.",
+"Choose modules from the list for this credential.": "Wählen Sie Module aus der Liste dieser Qualifikation.",
+"Keep at least one module for each credential you hold.": "Behalten Sie für jede Qualifikation, die Sie haben, mindestens ein Modul.",
+"Keep at least one module.": "Behalten Sie mindestens ein Modul.",
+"That claim was not found.": "Diese Angabe wurde nicht gefunden.",
+"This credential can no longer be changed.": "Diese Qualifikation kann nicht mehr geändert werden."
 }

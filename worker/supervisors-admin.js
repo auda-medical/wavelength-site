@@ -230,7 +230,7 @@ async function applicationDetail(env, appId, note) {
   ${dl([
     ['Name', esc(a.full_name || name(a))], ['Email', `${esc(a.email)} (${esc(String((st.learner || {}).email_status || '').replace(/_/g, ' '))})`], ['Role or grade', esc(a.role || '')], ['Organisation', esc(a.organisation || '')],
     ['Registration', reg ? `${esc((REG[reg.regulator] || {}).name || reg.regulator)} ${esc(reg.registration_number)} ${pill(reg.status)}` : a.no_registration ? `Not on a statutory register${a.other_regulator ? `: ${esc(a.other_regulator)}` : ''}<div class="sv-text">${esc(a.no_registration_reason || '')}</div>` : 'None given'],
-    ['Credentials', creds.length ? creds.map((c) => `${esc((TYPE[c.credential_type] || {}).label || c.credential_type)} ${pill(c.status)}`).join('<br>') : 'None claimed'],
+    ['Credentials', creds.length ? creds.map((c) => { const t = TYPE[c.credential_type] || { label: c.credential_type, modules: [] }; const mods = parseList(c.modules).map((m) => (t.modules.find((x) => x.id === m) || { label: m }).label); return `${esc(t.label)}${mods.length ? `: ${esc(mods.join(', '))}` : ''} ${pill(c.status)}`; }).join('<br>') : 'None claimed'],
     ['Years of ultrasound', esc(ex.years || '')], ['Scans (approx.)', esc(ex.scans || '')], ['Teaches ultrasound', ex.teaching == null ? '' : ex.teaching ? 'Yes' : 'No'], ['Supervises now', ex.supervision == null ? '' : ex.supervision ? 'Yes' : 'No'], ['Departmental role', esc(ex.deptRole || '')],
     ['Areas requested', esc(areaNames(areas).join(', '))], ['Pathways requested', esc(pathways.map((x) => PATHWAY_NAMES[x] || x).join(', '))],
     ['Evidence route', esc(a.evidence_mode || '')],

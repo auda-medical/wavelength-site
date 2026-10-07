@@ -1716,5 +1716,11 @@
 "Your email address is not confirmed.": "您的邮箱地址尚未确认。",
 "Your professional registration is no longer verified as current.": "您的执业注册已不再被验证为有效。",
 "Your review date has passed.": "您的复审日期已过。",
-"also known as {name}": "又名 {name}"
+"also known as {name}": "又名 {name}",
+"Changing the modules sends this credential to be checked again. Your reference, dates and evidence stay.": "更改模块后，此资质将重新审核。您的编号、日期和证明材料保持不变。",
+"Choose modules from the list for this credential.": "请从此资质的列表中选择模块。",
+"Keep at least one module for each credential you hold.": "您持有的每项资质至少保留一个模块。",
+"Keep at least one module.": "至少保留一个模块。",
+"That claim was not found.": "未找到该申报。",
+"This credential can no longer be changed.": "此资质已无法更改。"
 }

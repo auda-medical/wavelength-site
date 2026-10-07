@@ -1732,5 +1732,11 @@
 "Your email address is not confirmed.": "Il tuo indirizzo email non è confermato.",
 "Your professional registration is no longer verified as current.": "La tua iscrizione professionale non risulta più verificata come valida.",
 "Your review date has passed.": "La data di revisione è passata.",
-"also known as {name}": "noto anche come {name}"
+"also known as {name}": "noto anche come {name}",
+"Changing the modules sends this credential to be checked again. Your reference, dates and evidence stay.": "Modificare i moduli invia di nuovo questa qualifica alla verifica. Riferimento, date e documenti restano invariati.",
+"Choose modules from the list for this credential.": "Scegli i moduli dall'elenco di questa qualifica.",
+"Keep at least one module for each credential you hold.": "Mantieni almeno un modulo per ogni qualifica che possiedi.",
+"Keep at least one module.": "Mantieni almeno un modulo.",
+"That claim was not found.": "Dichiarazione non trovata.",
+"This credential can no longer be changed.": "Questa qualifica non può più essere modificata."
 }

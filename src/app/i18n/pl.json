@@ -1764,5 +1764,11 @@
 "Your email address is not confirmed.": "Twój adres e-mail nie jest potwierdzony.",
 "Your professional registration is no longer verified as current.": "Twój wpis do rejestru zawodowego nie jest już potwierdzony jako aktualny.",
 "Your review date has passed.": "Data przeglądu minęła.",
-"also known as {name}": "znany też jako {name}"
+"also known as {name}": "znany też jako {name}",
+"Changing the modules sends this credential to be checked again. Your reference, dates and evidence stay.": "Zmiana modułów przekazuje to uprawnienie do ponownej weryfikacji. Numer, daty i dokumenty pozostają bez zmian.",
+"Choose modules from the list for this credential.": "Wybierz moduły z listy dla tego uprawnienia.",
+"Keep at least one module for each credential you hold.": "Zachowaj co najmniej jeden moduł dla każdego posiadanego uprawnienia.",
+"Keep at least one module.": "Zachowaj co najmniej jeden moduł.",
+"That claim was not found.": "Nie znaleziono tego zgłoszenia.",
+"This credential can no longer be changed.": "Tego uprawnienia nie można już zmienić."
 }
