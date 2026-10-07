@@ -207,3 +207,16 @@ test('console navigation and home without Access list every section', () => {
   assert.match(consoleHome({ on: false }), /href="\/admin\/logins\/"/);
   assert.match(consoleHome({ on: true, email: 'x@x.co', roles: [] }), /do not open any section/);
 });
+
+test('team emails link to the console at its new address, with the resubmission wording kept', async () => {
+  const { render } = await import('../worker/notify.js');
+  for (const d of [{ application: 1 }, { application: 1, resubmitted: true }, { application: 2, renewal: true, resubmitted: true }]) {
+    const m = render('app_admin', d);
+    assert.match(m.text + m.button.href, /https:\/\/thewavelength\.co\.uk\/admin\/supervisors\/\?tab=new/);
+    assert.doesNotMatch(m.text + m.button.href, /volunteer\/admin/);
+  }
+  assert.equal(render('app_admin', { application: 1, resubmitted: true }).subject, 'Updated supervisor application to review');
+  assert.equal(render('app_admin', { application: 2, renewal: true }).subject, 'New supervisor renewal to review');
+  assert.equal(render('app_resubmitted', {}).subject, 'Updated supervisor application received');
+  assert.equal(render('renew_resubmitted', {}).subject, 'Updated supervisor renewal received');
+});

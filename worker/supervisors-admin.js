@@ -14,6 +14,7 @@ import { sendMail } from './academy.js';
 import { verificationReady, lifecycleReady, fullName } from './app-util.js';
 import { standingOf, suggestedScopes, areaLabels, activateClaimedLinks, supervisorUnavailable, AREAS } from './supervisor-lifecycle.js';
 import { queueStmt, deliver, deliverLater } from './notify.js';
+import { receiptKey, receiptFor } from './supervisor-apply.js';
 import { auditStmt, audit } from './audit.js';
 import { ukDate, addDays, addMonths, businessDaysSince, longDate } from './time.js';
 
@@ -214,6 +215,7 @@ async function applicationDetail(env, appId, note) {
       <label>Approved until (12 months at most)<input type="date" name="review_on" value="${esc(until)}" max="${esc(until)}" required></label>
       ${st.hasReg ? '' : '<label class="consent"><input type="checkbox" name="exempt" value="1"><span>Registration exemption: approve without a verified registration</span></label><label>Reason for the exemption, and how you checked identity and experience instead<textarea name="exempt_reason" maxlength="1000"></textarea></label>'}
       <label>Decision note (basis and reasoning; not sent to the applicant)<textarea name="notes" required maxlength="1000"></textarea></label>`, renewal ? 'Approve renewal' : 'Approve')}
+    ${a.status === 'submitted' ? form('app_receipt', H, '<p class="form-note">Sends the applicant the normal receipt for their current submission if it was never sent. It never sends a second copy and changes nothing in the application.</p>', 'Send submission receipt') : ''}
     ${a.status === 'submitted' ? form('app_more', H, '<label>What you need (emailed to the applicant)<textarea name="notes" required maxlength="800"></textarea></label>', 'Ask for more information') : ''}
     ${form('app_reject', H, `<label>Grounds<select name="grounds" required><option value="insufficient_evidence">Not enough evidence or experience</option><option value="verification_or_safety">Verification or safety grounds (blocks one-off assessor signing)</option></select></label>
       <label>Internal note (not sent)<textarea name="notes" required maxlength="1000"></textarea></label>
@@ -579,6 +581,26 @@ async function applicationPost(env, f, action, { actor, adminAudit, notes, ctx }
     const k = Object.keys(cols);
     return env.DB.prepare(`UPDATE supervisor_applications SET ${k.map((x) => `${x} = ?`).join(', ')}, updated_at = datetime('now') WHERE id = ? AND status IN ('submitted', 'more_info')`).bind(...k.map((x) => cols[x]), a.id);
   };
+
+  // Recovery for a receipt that was never queued (the resubmission receipt bug fixed in October 2026). It rebuilds the
+  // exact key the submit code uses for the current submission and goes through the outbox like any other email, so a
+  // receipt already sent, or already queued, is never sent twice. Application data is only read.
+  if (action === 'app_receipt') {
+    if (a.status !== 'submitted') return back('A receipt can be sent only while the application is submitted.');
+    const r = receiptKey(a);
+    const row = await env.DB.prepare('SELECT status FROM notification_log WHERE key = ?').bind(r.key).first();
+    const record = (outcome) => adminAudit({ action: 'application.receipt', subjectType: 'application', subjectId: a.id, meta: { kind: a.kind, template: r.kind, outcome } });
+    if (row && row.status === 'sent') { await record('already_sent').run(); return back('Receipt already sent'); }
+    if (row && row.status !== 'pending') { await record(`exists_${row.status}`).run(); return back(`This receipt is already in the email outbox with status "${row.status}". Nothing was sent. Check it on the System tab.`); }
+    if (!row) {
+      if (!l) return back('The applicant account no longer exists.');
+      await env.DB.batch([(await receiptFor(env, l, a)).stmt, record('queued')]);
+    } else await record('pending_delivered').run();
+    await deliver(env, [r.key]);
+    const now = await env.DB.prepare('SELECT status FROM notification_log WHERE key = ?').bind(r.key).first();
+    const label = r.resubmit ? 'updated submission receipt' : 'submission receipt';
+    return back(now && now.status === 'sent' ? `The ${label} was sent.` : `The ${label} is in the email outbox (status "${now ? now.status : 'missing'}"). Check it on the System tab.`);
+  }
 
   if (action === 'app_more') {
     if (a.status !== 'submitted') return back('This application is already waiting for information.');

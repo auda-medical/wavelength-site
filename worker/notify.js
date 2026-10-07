@@ -84,10 +84,22 @@ export function render(kind, d) {
       paragraphs: [hi, 'Thank you for renewing your Wavelength supervisor status. Your renewal is pending review by the Wavelength team.', d.reviewOn ? `Your current approval runs until ${longDate(d.reviewOn)}. If your renewal is still being reviewed then, your status shows as "Renewal under review" for up to 30 days, as long as nothing else has changed.` : null, REVIEW_TIME],
       button: { href: `${APP}/supervisor`, label: 'See your renewal' },
     }),
+    app_resubmitted: () => ({
+      subject: 'Updated supervisor application received',
+      heading: 'Updated application received',
+      paragraphs: [hi, 'Thank you. We have received your updated Wavelength supervisor application and it is back with the Wavelength team for review.', REVIEW_TIME, 'We will contact you if we need more information.'],
+      button: { href: `${APP}/supervisor`, label: 'See your application' },
+    }),
+    renew_resubmitted: () => ({
+      subject: 'Updated supervisor renewal received',
+      heading: 'Updated renewal received',
+      paragraphs: [hi, 'Thank you. We have received your updated Wavelength supervisor renewal and it is back with the Wavelength team for review.', d.reviewOn ? `Your current approval runs until ${longDate(d.reviewOn)}. If your renewal is still being reviewed then, your status shows as "Renewal under review" for up to 30 days, as long as nothing else has changed.` : null, REVIEW_TIME],
+      button: { href: `${APP}/supervisor`, label: 'See your renewal' },
+    }),
     app_admin: () => ({
-      subject: `New supervisor ${d.renewal ? 'renewal' : 'application'} to review`,
-      heading: `Supervisor ${d.renewal ? 'renewal' : 'application'} waiting`,
-      paragraphs: [`A supervisor ${d.renewal ? 'renewal' : 'application'} (number ${d.application}) is waiting for review.`, d.basis ? `Basis: ${d.basis}.` : null, 'Open the supervisor verification console to review it. This email holds no personal details.'],
+      subject: `${d.resubmitted ? 'Updated' : 'New'} supervisor ${d.renewal ? 'renewal' : 'application'} to review`,
+      heading: `${d.resubmitted ? 'Updated supervisor' : 'Supervisor'} ${d.renewal ? 'renewal' : 'application'} waiting`,
+      paragraphs: [d.resubmitted ? `A supervisor ${d.renewal ? 'renewal' : 'application'} (number ${d.application}) has been sent again with more information and is waiting for review.` : `A supervisor ${d.renewal ? 'renewal' : 'application'} (number ${d.application}) is waiting for review.`, d.basis ? `Basis: ${d.basis}.` : null, 'Open the supervisor verification console to review it. This email holds no personal details.'],
       button: { href: `${SITE}/admin/supervisors/?tab=new`, label: 'Open the console' },
     }),
     app_more: () => ({
