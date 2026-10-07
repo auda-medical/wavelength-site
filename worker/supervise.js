@@ -168,6 +168,21 @@ export async function assessmentComplete(env, req) {
 }
 
 // ---------- Supervisor links ----------
+// What the invitation email tells the supervisor to do next. Only with SUPERVISOR_APPROVAL_REQUIRED on does it say that
+// Wavelength approval comes before dashboard supervision; with it off, accepting activates the link at once and the
+// email offers the application as optional, saying the learner sees the supervisor's status.
+export function invitationWording({ journey, required, hasAccount, approved, learner = 'The learner' }) {
+  if (approved) return { label: 'Log in and accept', next: 'Log in to Wavelength with this email address to accept.' };
+  if (required) {
+    return hasAccount
+      ? { label: 'Continue to supervisor verification', next: 'Log in with this email address and complete the short supervisor verification. Wavelength approval is required before dashboard supervision begins.' }
+      : { label: 'Register as a supervisor', next: 'Register as a Wavelength supervisor with this email address. Wavelength approval is required before dashboard supervision begins. It takes a few minutes, and your account also gives you a free logbook of your own.' };
+  }
+  const first = hasAccount ? 'Log in to Wavelength with this email address to accept.' : 'Create a free Wavelength account with this email address to accept.';
+  const label = hasAccount ? 'Log in and accept' : 'Create your account';
+  if (!journey) return { label, next: first };
+  return { label, next: `${first} You can also apply in the app to become a Wavelength-approved supervisor. ${learner} sees whether you are Wavelength-approved or not yet verified.` };
+}
 export async function supervisorAdd(env, l, req, ctx) {
   const d = await body(req);
   const email = clip(d && d.email, 160).toLowerCase();
@@ -195,14 +210,13 @@ export async function supervisorAdd(env, l, req, ctx) {
   // carries no email address.
   const who = fullName(l).replace(/[<>"\r\n]/g, '').slice(0, 80) || 'A Wavelength learner';
   const link = `${SITE}/app/#/supervise${invite}`;
-  // With supervisor applications open, the button says what the person will actually do next: register as a
-  // supervisor, continue to supervisor verification, or (already approved) log in and accept.
-  const journey = applyOn(env) && (await lifecycleReady(env));
-  const approved = journey && sup ? (await standingOf(env, sup.id)).current.length > 0 : false;
-  const label = !journey ? (sup ? 'Log in and accept' : 'Create your account') : !sup ? 'Register as a supervisor' : approved ? 'Log in and accept' : 'Continue to supervisor verification';
-  const next = !journey ? (sup ? 'Log in to Wavelength with this email address to accept.' : 'Create a free Wavelength account with this email address to accept.')
-    : !sup ? 'Register as a Wavelength supervisor with this email address. Wavelength checks every supervisor before they can sign anything; it takes a few minutes, and your account also gives you a free logbook of your own.'
-    : approved ? 'Log in to Wavelength with this email address to accept.' : 'Log in with this email address and complete the short supervisor verification. Wavelength checks every supervisor before they can sign anything.';
+  // The button and the "what next" line follow the live switches (invitationWording), so the email never claims more
+  // than the Worker enforces during a staged rollout.
+  const life = await lifecycleReady(env);
+  const journey = applyOn(env) && life;
+  const required = approvalRequired(env) && life;
+  const approved = (journey || required) && sup ? (await standingOf(env, sup.id)).current.length > 0 : false;
+  const { label, next } = invitationWording({ journey, required, hasAccount: !!sup, approved, learner: who });
   const emailed = await sendMail(env, {
     to: email,
     fromName: `${who} via Wavelength`,
