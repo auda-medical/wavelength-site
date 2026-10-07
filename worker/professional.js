@@ -126,7 +126,7 @@ export function badgesFrom(env, st) {
   for (const r of st.registrations.filter(isCurrentReg)) {
     if (!showSource(env, r.verification_source)) continue;
     const reg = REG[r.regulator] || { short: r.regulator, name: r.regulator };
-    out.push({ kind: 'registration', label: `${reg.short} registration verified`, issuer: reg.name, credential: r.profession || 'Registered professional', source: sourceText(r, `the ${reg.short} register`), verifiedAt: r.verified_at, lastChecked: r.last_checked_at });
+    out.push({ kind: 'registration', label: 'Professional registration ✓', regulator: reg.short, issuer: reg.name, credential: r.profession || 'Registered professional', source: sourceText(r, `the ${reg.short} register`), verifiedAt: r.verified_at, lastChecked: r.last_checked_at });
   }
   for (const c of st.credentials.filter(isCurrentCred)) {
     if (!showSource(env, c.verification_source)) continue;
@@ -135,7 +135,7 @@ export function badgesFrom(env, st) {
     out.push({ kind: 'credential', label: `${t.label} verified`, issuer: b.name, credential: t.label, modules: moduleLabels(t, parseList(c.modules)), source: sourceText(c, `the ${b.short} record`), verifiedAt: c.verified_at, expiresOn: c.expires_on, reviewOn: c.review_on, note: 'Issued by ' + b.name + ', not by Wavelength.' });
   }
   const scopes = st.approvals.filter((a) => a.current);
-  if (scopes.length) out.push({ kind: 'wavelength-supervisor', label: 'Wavelength verified supervisor', issuer: 'Wavelength', scopes: scopes.map((a) => ({ pathway: a.pathway, module: a.module, label: scopeLabel(a.pathway, a.module), approvedAt: a.approved_at, reviewOn: a.review_on })) });
+  if (scopes.length) out.push({ kind: 'wavelength-supervisor', label: 'Wavelength Verified Supervisor', issuer: 'Wavelength', scopes: scopes.map((a) => ({ pathway: a.pathway, module: a.module, label: scopeLabel(a.pathway, a.module), approvedAt: a.approved_at, reviewOn: a.review_on })) });
   return out;
 }
 
@@ -152,8 +152,9 @@ export async function checkRegistration(env, row, kind = 'claim', actor = 'syste
   const u = { last_checked_at: nowIso(), verification_source: res.source || null };
   let outcome = res.outcome, match = null;
   if (outcome === 'manual') {
-    // No supported source. A verified registration stays verified (an administrator checked it); anything else waits.
-    if (row.status === 'verified') return row;
+    // No supported source. A verified registration stays verified (an administrator checked it), and one held for an
+    // administrator's decision stays held; anything else waits.
+    if (row.status === 'verified' || row.failure_state === 'register_restriction') return row;
     Object.assign(u, { status: 'manual_verification_required', next_check_at: null, failure_state: null });
   } else if (outcome === 'unavailable') {
     // A source outage is never a lapse: keep the current status and try again later.
@@ -233,7 +234,7 @@ export async function submitRegistration(env, l, d) {
 }
 
 const REG_MESSAGES = {
-  verified: 'Verified against the register.',
+  verified: 'Checked by Wavelength against the public register.',
   pending: 'Waiting to be checked.',
   manual_verification_required: 'Wavelength cannot check this register automatically yet. The Wavelength team will check it by hand against the public register.',
   manual_review: UNAVAILABLE,
@@ -524,7 +525,7 @@ export async function snapshotFor(env, { entries = [], pathway, module, declared
 }
 // The three labels used on verify pages, the app and exports.
 export const SIGNER_LABELS = {
-  approved: 'Wavelength-approved supervisor',
+  approved: 'Wavelength Verified Supervisor',
   account_not_approved: 'Wavelength account, not approved as a supervisor at the time of signing',
   self_declared: 'Self-declared (not verified by Wavelength)',
 };

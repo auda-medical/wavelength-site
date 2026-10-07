@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeEnv, ctx } from './helpers/env.mjs';
-import { verifiedAccount, idOf, adminForm } from './helpers/verify.mjs';
+import { verifiedAccount, idOf, adminForm, gmcCheck } from './helpers/verify.mjs';
 import { supervisorsAdminPost } from '../worker/supervisors-admin.js';
 import { deliver, queue, render } from '../worker/notify.js';
 import { ukDate, addDays } from '../worker/time.js';
@@ -94,7 +94,7 @@ test('renewals: one receipt on sending, a fresh one after each return for more i
   const { c, sid } = await applicant(env, email);
   await send(c);
   const reg = await env.DB.prepare('SELECT id FROM professional_registrations WHERE learner_id = ?').bind(sid).first();
-  assert.equal((await admin(env, { action: 'reg_verify', learner: sid, sid: reg.id, register_name: 'John Smith', checked: '1', notes: 'GMC register' })).m, 'Registration verified.');
+  assert.equal((await admin(env, { action: 'reg_gmc_check', learner: sid, sid: reg.id, ...gmcCheck() })).m, 'GMC registration verified.');
   assert.match((await admin(env, { action: 'app_approve', app: (await appOf(env, sid)).id, scope: ['famus:famus-thoracic'], notes: 'Basis' })).m, /^Approved until/);
   await env.DB.prepare('UPDATE supervisor_approvals SET review_on = ? WHERE learner_id = ?').bind(addDays(ukDate(), 20), sid).run();
   await settle();

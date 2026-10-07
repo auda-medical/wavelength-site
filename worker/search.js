@@ -160,7 +160,7 @@ export async function setSearchable(env, l, d) {
   if (!(await ready(env))) return json(OFF, 503);
   const block = await env.DB.prepare('SELECT id FROM supervisor_blocks WHERE learner_id = ? AND lifted_at IS NULL AND one_off_permitted = 0').bind(l.id).first();
   if (block) return json({ ok: false, error: NEUTRAL_REFUSAL }, 403);
-  if (!(await eligibleNow(env, l.id))) return json({ ok: false, error: 'Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.' }, 403);
+  if (!(await eligibleNow(env, l.id))) return json({ ok: false, error: 'Only a current Wavelength Verified Supervisor can be found in search. Your approval, registration and email all need to be current.' }, 403);
   const cur = await env.DB.prepare('SELECT supervisor_searchable, searchable_at, supervisor_public_ref FROM learners WHERE id = ?').bind(l.id).first();
   const rotate = !!(d && d.rotate) || !cur.supervisor_public_ref;
   const at = cur.supervisor_searchable && cur.searchable_at ? cur.searchable_at : nowIso();

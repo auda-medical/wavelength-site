@@ -111,7 +111,7 @@ export function render(kind, d) {
     app_approved: () => ({
       subject: d.renewal ? 'Your Wavelength supervisor status has been renewed' : 'Your Wavelength supervisor status has been approved',
       heading: d.renewal ? 'Supervisor status renewed' : 'Supervisor status approved',
-      paragraphs: [hi, d.renewal ? 'Your Wavelength supervisor renewal has been approved.' : 'Your application has been approved. You are now a Wavelength-approved supervisor.', d.areas && d.areas.length ? `Approved by Wavelength to supervise: ${list(d.areas)}.` : null, d.reviewOn ? `Your approval runs until ${longDate(d.reviewOn)}. We will remind you to renew from 60 days before.` : null, d.learners && d.learners.length ? `${list(d.learners)} ${d.learners.length === 1 ? 'is' : 'are'} waiting: your supervision is now active.` : null, 'This approval is given by Wavelength. It is not an accreditation by RCEM, FAMUS, FUSIC or any other body.'],
+      paragraphs: [hi, d.renewal ? 'Your Wavelength supervisor renewal has been approved.' : 'Your application has been approved. You are now a Wavelength Verified Supervisor.', d.areas && d.areas.length ? `Approved to supervise: ${list(d.areas)}.` : null, d.reviewOn ? `Your approval runs until ${longDate(d.reviewOn)}. We will remind you to renew from 60 days before.` : null, d.learners && d.learners.length ? `${list(d.learners)} ${d.learners.length === 1 ? 'is' : 'are'} waiting: your supervision is now active.` : null, 'This approval is given by Wavelength. It is not an accreditation by RCEM, FAMUS, FUSIC or any other body.'],
       button: { href: `${APP}/supervise`, label: 'Open your supervisor dashboard' },
     }),
     app_rejected: () => ({
@@ -122,7 +122,7 @@ export function render(kind, d) {
     link_active: () => ({
       subject: 'Your supervisor is now active',
       heading: 'Supervisor active',
-      paragraphs: [hi, `${d.supervisor} is now a Wavelength-approved supervisor and your supervision link is active.`, 'You can send sign-off and assessment requests to their dashboard.'],
+      paragraphs: [hi, `${d.supervisor} is now a Wavelength Verified Supervisor and your supervision link is active.`, 'You can send sign-off and assessment requests to their dashboard.'],
       button: { href: `${APP}/supervisors`, label: 'Open your supervisors' },
     }),
     link_ended: () => ({

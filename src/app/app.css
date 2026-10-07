@@ -69,7 +69,7 @@ h2.sec a { font: 600 13px var(--sans); text-decoration: none; }
 .card p { margin: 0 0 10px; }
 .card p:last-child { margin-bottom: 0; }
 .row { display: flex; align-items: center; gap: 12px; }
-.row .grow { flex: 1; min-width: 0; }
+.row .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 
 /* Buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 999px; background: var(--btn); color: var(--btn-ink); font-weight: 600; padding: 13px 20px; cursor: pointer; text-decoration: none; min-height: 48px; font-size: 15px; }
@@ -428,3 +428,11 @@ html[data-theme="dark"] input::placeholder, html[data-theme="dark"] textarea::pl
 .sv-result { display: flex; gap: 12px; align-items: flex-start; }
 .sv-result .grow { min-width: 0; }
 .sv-badge { display: inline-block; font-size: 12px; font-weight: 600; color: var(--chip-teal); background: var(--chip-teal-bg); border-radius: 999px; padding: 2px 8px; margin: 4px 0; }
+
+/* Supervisor verification wording: approved scopes list, "What does Wavelength Verified mean?" and the pre-application note */
+.sv-scopes { margin: 4px 0 0; padding-left: 18px; }
+.sv-scopes li { margin: 2px 0; }
+.wv-explain summary { cursor: pointer; font-weight: 600; color: var(--link); }
+.wv-explain p:last-child { margin-bottom: 0; }
+.sv-how ul { margin: 6px 0 0; padding-left: 18px; }
+.sv-how li { margin: 4px 0; }

@@ -31,11 +31,19 @@ export function typesOf(a) {
   const mods = a.module === '*' ? pw.modules || [] : (pw.modules || []).filter((m) => m.id === a.module);
   return [...new Set(mods.flatMap((m) => m.types || []))];
 }
-// Plain labels for approved areas, never naming RCEM, FAMUS, FUSIC or any international body as the approver.
+// What a supervisor is approved to supervise, shown under "Approved to supervise:": one label per approval row passed
+// in (callers pass only current approvals), naming the exact pathway module, e.g. "Thoracic (FAMUS pathway)". Never
+// wider than the approval, and never derived from requested areas or suggested scopes. The pathway names the
+// logbook pathway the module belongs to, not an approver: approval is always Wavelength's own.
+export function approvedScopeLabel(pathway, module) {
+  const pw = PATHS[pathway];
+  if (!pw) return scopeLabel(pathway, module);
+  if (module === '*') return `All modules (${pw.label} pathway)`;
+  const m = (pw.modules || []).find((x) => x.id === module);
+  return `${m ? m.label : module} (${pw.label} pathway)`;
+}
 export function areaLabels(approvals) {
-  const types = new Set(approvals.flatMap(typesOf));
-  const out = AREAS.filter((ar) => (ar.types.length && ar.types.every((t) => types.has(t))) || (ar.modules || []).some((sc) => approvals.some((a) => coversScope(a, sc)))).map((a) => a.label);
-  return out.length ? out : approvals.map((a) => scopeLabel(a.pathway, a.module));
+  return [...new Set(approvals.map((a) => approvedScopeLabel(a.pathway, a.module)))];
 }
 // Pathway modules to pre-tick for requested areas and pathways: every module whose scan types all fall within the
 // requested areas (plus an area's explicit modules). The administrator can change the selection.
@@ -368,7 +376,7 @@ export function linkState(link, sup, enforced) {
     return { state: 'verifying', label: 'Supervisor verification in progress' };
   }
   // active
-  if (sup && sup.current.length) return { state: 'active', label: 'Wavelength-approved supervisor', areas: areaLabels(sup.current), renewal: sup.standing === 'renewal_review' };
+  if (sup && sup.current.length) return { state: 'active', label: 'Wavelength Verified ✓', areas: areaLabels(sup.current), renewal: sup.standing === 'renewal_review' };
   if (!enforced) return { state: 'not_verified', label: 'Not yet verified by Wavelength' };
   if (sup && sup.open && sup.open.status !== 'draft') return { state: 'verifying', label: 'Supervisor verification in progress' };
   return { state: 'unavailable', label: 'Not available for new supervision' };

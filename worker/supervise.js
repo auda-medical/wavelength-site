@@ -181,7 +181,7 @@ export function invitationWording({ journey, required, hasAccount, approved, lea
   const first = hasAccount ? 'Log in to Wavelength with this email address to accept.' : 'Create a free Wavelength account with this email address to accept.';
   const label = hasAccount ? 'Log in and accept' : 'Create your account';
   if (!journey) return { label, next: first };
-  return { label, next: `${first} You can also apply in the app to become a Wavelength-approved supervisor. ${learner} sees whether you are Wavelength-approved or not yet verified.` };
+  return { label, next: `${first} You can also apply in the app to become a Wavelength Verified Supervisor. ${learner} sees whether you are a Wavelength Verified Supervisor or not yet verified.` };
 }
 export async function supervisorAdd(env, l, req, ctx) {
   const d = await body(req);

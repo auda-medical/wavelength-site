@@ -41,7 +41,7 @@ const supEmail = `sup${t}@example.com`, lEmail = `learner${t}@example.com`, invE
 // ---- 1. Sign up in the "native shell" (WavelengthApp user agent), see the confirm-email card ----
 const app = await ctxFor('app', { ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 WavelengthApp' });
 await app.page.goto(BASE + '/app/#/signup');
-await app.page.fill('#fn', 'John'); await app.page.fill('#ln', 'Smith'); await app.page.fill('#em', supEmail); await app.page.fill('#pw', 'Long-password-1');
+await app.page.fill('#fn', 'John'); await app.page.fill('#ln', 'Smith'); await app.page.fill('#em', supEmail); await app.page.fill('#pw', 'Long-password-1'); await app.page.fill('#pw-2', 'Long-password-1');
 await app.page.fill('#org', 'Darent Valley Hospital');
 await app.page.check('input[name=terms]'); await app.page.click('#f button[type=submit]');
 await app.page.waitForSelector('.pathcard'); // onboarding
@@ -105,11 +105,16 @@ await shot(adm.page, 'admin-queue-1440');
 const supId = (await get(app.page, '/api/app/me')).account.id;
 await adm.page.goto(`${BASE}/admin/supervisors/?id=${supId}`);
 await adm.page.waitForSelector('text=Professional registration');
-const regForm = adm.page.locator('form:has(input[value=reg_verify])');
+// GMC registrations get the GMC check form (worker/verification/register-review.js); the link only opens the register.
+const gmcLink = await adm.page.locator('a:has-text("Open GMC register")').first().getAttribute('href').catch(() => null);
+if (!/^https:\/\/www\.gmc-uk\.org\/registrants\/\d{7}$/.test(gmcLink || '')) fail('Open GMC register link: ' + gmcLink); else ok('Open GMC register links to the official entry');
+const regForm = adm.page.locator('form:has(input[value=reg_gmc_check])');
 await regForm.locator('input[name=register_name]').fill('John Smith');
-await regForm.locator('input[name=checked]').check(); await regForm.locator('input[name=notes]').fill('GMC online register checked'); await regForm.locator('input[name=reviewer]').fill('E2E reviewer');
+for (const n of ['number_matched', 'registration_current', 'licence_current']) await regForm.locator(`input[name=${n}]`).check();
+await regForm.locator('input[name=restriction][value=none]').check();
+await regForm.locator('input[name=notes]').fill('GMC online register checked'); await regForm.locator('input[name=reviewer]').fill('E2E reviewer');
 await regForm.locator('button').click();
-await adm.page.waitForSelector('text=Registration verified.').then(() => ok('admin verified the registration')).catch(() => fail('admin registration verify'));
+await adm.page.waitForSelector('text=GMC registration verified.').then(() => ok('admin verified the registration')).catch(() => fail('admin registration verify'));
 const credForm = adm.page.locator('form:has(input[value=cred_approve])');
 await credForm.locator('input[name=notes]').fill('Supervisor email from SAM'); await credForm.locator('input[name=reviewer]').fill('E2E reviewer');
 await credForm.locator('select[name=evidence]').selectOption({ index: 1 });
@@ -161,7 +166,7 @@ const N = await ctxFor('new-supervisor');
 await N.page.goto(`${BASE}/app/?login=${encodeURIComponent(invEmail)}#/supervise?invite=${invTok}`);
 await N.page.waitForSelector('#em');
 await N.page.goto(`${BASE}/app/#/signup`);
-await N.page.fill('#fn', 'Ivy'); await N.page.fill('#ln', 'Ng'); await N.page.fill('#em', invEmail); await N.page.fill('#pw', 'longpassword3');
+await N.page.fill('#fn', 'Ivy'); await N.page.fill('#ln', 'Ng'); await N.page.fill('#em', invEmail); await N.page.fill('#pw', 'Long-password-3'); await N.page.fill('#pw-2', 'Long-password-3');
 await N.page.check('input[name=terms]'); await N.page.click('#f button[type=submit]');
 await N.page.waitForTimeout(1500);
 const me = await get(N.page, '/api/app/me');
