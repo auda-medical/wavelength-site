@@ -88,7 +88,7 @@ test('without migration 0012 nothing changes: the endpoints say not yet, and acc
 });
 
 test('with both switches off, an accepted link works as before and is labelled "Not yet verified by Wavelength"', async () => {
-  const env = makeEnv({ ZEPTOMAIL_TOKEN: 'test' });
+  const env = makeEnv({ SUPERVISOR_APPLY: 'false', SUPERVISOR_APPROVAL_REQUIRED: 'false', ZEPTOMAIL_TOKEN: 'test' });
   const p = await invitedSupervisor(env, 'off@x.co');
   assert.equal(p.acc.body.next, 'dashboard');
   const link = (await p.learner.call('/api/app/supervisors')).body.supervisors[0];
@@ -99,6 +99,72 @@ test('with both switches off, an accepted link works as before and is labelled "
   assert.equal(me.available, false, 'the application journey stays closed');
   assert.equal((await p.sup.call('/api/app/supervisor/application', { role: 'x' })).status, 503);
   assert.equal((await supervisorEligibility(env, p.sid)).enforced, false);
+});
+
+// The production configuration from Step 3a (7 October 2026), read from wrangler.jsonc: applications open, approval
+// enforcement and search off. Existing links behave as before, an unconfirmed email cannot apply, and starting,
+// cancelling or sending an application never makes anyone approved.
+test('production configuration: applications open, enforcement and search off', async () => {
+  const mailsBefore = mail.length;
+  const env = makeEnv({ ZEPTOMAIL_TOKEN: 'test' });
+  assert.equal(env.SUPERVISOR_APPLY, 'true');
+  assert.equal(env.SUPERVISOR_APPROVAL_REQUIRED, 'false');
+  assert.equal(env.SUPERVISOR_SEARCH, 'false');
+  assert.equal(env.PROFESSIONAL_VERIFY, undefined);
+  assert.equal(env.DIRECTORY_PUBLIC, undefined);
+  assert.equal(env.APP_MIN_VERSION, '');
+  assert.equal(env.APP_RECOMMENDED_VERSION, '');
+
+  const p = await invitedSupervisor(env, 'prod@x.co');
+  assert.equal(p.acc.body.next, 'dashboard', 'accepting an invitation still activates the link');
+  const link = (await p.learner.call('/api/app/supervisors')).body.supervisors[0];
+  assert.equal(link.state, 'not_verified');
+  assert.equal((await p.sup.call('/api/app/supervise/learner?id=' + p.lid)).status, 200, 'dashboard access as before');
+  assert.equal((await supervisorEligibility(env, p.sid)).enforced, false);
+  const me = (await p.sup.call('/api/app/me')).body.supervisor;
+  assert.equal(me.apply, true);
+  assert.equal(me.required, false);
+  assert.equal(me.search, false);
+  assert.equal((await p.sup.call('/api/app/supervisor')).body.available, true, 'the application journey is open');
+
+  // An account whose email is not confirmed sees the journey but cannot save or send anything.
+  const unconfirmed = await signup(env, 'unconfirmed@x.co');
+  const ov = (await unconfirmed.call('/api/app/supervisor')).body;
+  assert.equal(ov.available, true);
+  assert.equal(ov.emailVerified, false);
+  for (const path of ['/api/app/supervisor/application', '/api/app/supervisor/submit']) {
+    const r = await unconfirmed.call(path, { role: 'x', declaration: true });
+    assert.equal(r.status, 403, path);
+    assert.equal(r.body.needVerify, true);
+  }
+  const uid = await idOf(env, 'unconfirmed@x.co');
+  assert.equal(await env.DB.prepare('SELECT COUNT(*) AS n FROM supervisor_applications WHERE learner_id = ?').bind(uid).first('n'), 0);
+
+  // A draft, then cancelled: no approval, standing back to none.
+  await fillDraft(p.sup);
+  assert.equal((await p.sup.call('/api/app/supervisor')).body.standing, 'applying');
+  assert.equal((await p.sup.call('/api/app/supervisor/application/cancel', {})).status, 200);
+  assert.equal((await p.sup.call('/api/app/supervisor')).body.application, null);
+  assert.equal(await env.DB.prepare("SELECT COUNT(*) AS n FROM supervisor_applications WHERE learner_id = ? AND status IN ('draft', 'submitted', 'more_info')").bind(p.sid).first('n'), 0);
+
+  // Sent: waiting for review, still not approved, link and dashboard unchanged.
+  await fillDraft(p.sup);
+  assert.equal((await p.sup.call('/api/app/supervisor/submit', { declaration: true })).status, 200);
+  assert.equal(await env.DB.prepare('SELECT COUNT(*) AS n FROM supervisor_approvals').first('n'), 0, 'nobody is approved by applying');
+  const after = await supervisorEligibility(env, p.sid, { force: true });
+  assert.equal(after.ok, false, 'not approved when checked as if enforcement were on');
+  assert.deepEqual(after.approvedFor, []);
+  assert.equal((await supervisorEligibility(env, p.sid)).enforced, false);
+  assert.notEqual((await p.sup.call('/api/app/supervisor')).body.standing, 'active');
+  assert.equal((await p.learner.call('/api/app/supervisors')).body.supervisors[0].state, 'not_verified');
+  assert.equal((await p.sup.call('/api/app/supervise/learner?id=' + p.lid)).status, 200);
+
+  // Search stays closed, for searching and for opting in.
+  assert.equal((await p.learner.call('/api/app/supervisors/search?q=smi')).status, 503);
+  assert.equal((await p.sup.call('/api/app/supervisor/searchable', { on: true })).status, 503);
+  assert.match(await html(env, ''), /Needs a decision|New/);
+  await settle();
+  mail.length = mailsBefore; // later tests count the admin alerts they cause
 });
 
 test('an invited supervisor claims the link, applies, and is approved for a subset of scopes; emails go once', async () => {
