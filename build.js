@@ -291,6 +291,7 @@ const PEARL_LOG_SLUG = {
   'fascia-iliaca-block-infra-inguinal': ['fib'], 'fascia-iliaca-block-supra-inguinal': ['fib'], 'portal-vein-pulsatility': null, 'pseudoaneurysm-ultrasound': null,
   'ultrasound-guided-iv-centre-the-vein': ['pva'], 'ultrasound-guided-iv-probe-pressure': ['pva'], 'difficult-iv-access-vein-distension': ['pva'],
   'ultrasound-guided-iv-posterior-wall-puncture': ['pva'], 'ultrasound-guided-iv-threading-failure': ['pva'], 'ultrasound-iv-flush-test': ['pva'],
+  'vein-or-artery-ultrasound-compression': ['pva'], 'ultrasound-guided-iv-choose-the-vein': ['pva'],
   'central-line-ultrasound-guidewire-check': ['cvc'], 'ultrasound-guided-radial-arterial-line': ['procedure'],
 };
 function logStrip(p) {
