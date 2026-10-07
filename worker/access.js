@@ -2,14 +2,14 @@
 //
 // Runs only when both Worker vars ACCESS_TEAM_DOMAIN (for example "wavelength.cloudflareaccess.com") and ACCESS_AUD
 // (the Access application's audience tag) are set; they are not in wrangler.jsonc and are added by the owner after
-// setting up Access. Then every /volunteer/admin/* request must carry a valid Cf-Access-Jwt-Assertion: RS256, signed
+// setting up Access. Then every /admin/* request must carry a valid Cf-Access-Jwt-Assertion: RS256, signed
 // by one of the team's current keys (fetched from <team>/cdn-cgi/access/certs and cached for an hour), with this
 // audience, this issuer and an expiry in the future. The email in the token is the admin's identity and becomes the
 // actor in audit events. The existing admin password login stays as a second check.
 //
 // Roles, kept in D1 settings under key 'admin_roles' as JSON { "email": ["verifier", ...] }, are enforced only while
 // Access is on:
-//   owner       everything, including volunteers, faculty, departments, passwords and role changes
+//   owner       everything, including volunteers, faculty, departments, logins and role changes
 //   verifier    supervisor verification and organisations
 //   academy     Academy learners, certificates and exports
 //   newsletter  the newsletter page
@@ -88,14 +88,18 @@ export function rolesFor(settingValue, email) {
   const found = Object.entries(map).find(([k]) => String(k).trim().toLowerCase() === email);
   return found && Array.isArray(found[1]) ? found[1].filter((r) => ROLES.includes(r)) : [];
 }
-// The role a path needs.
+// The role a path needs. The console home lists only the sections a person's roles open, so any role reaches it.
 export function roleForPath(path) {
-  if (path.startsWith('/volunteer/admin/supervisors/') || path.startsWith('/volunteer/admin/organisations/')) return 'verifier';
-  if (path.startsWith('/volunteer/admin/academy/')) return 'academy';
-  if (path.startsWith('/volunteer/admin/newsletter/')) return 'newsletter';
+  if (path === '/admin/') return 'any';
+  if (path.startsWith('/admin/supervisors/') || path.startsWith('/admin/organisations/')) return 'verifier';
+  if (path.startsWith('/admin/academy/')) return 'academy';
+  if (path.startsWith('/admin/newsletter/')) return 'newsletter';
   return 'owner';
 }
-export const allowed = (roles, path) => roles.includes('owner') || roles.includes(roleForPath(path));
+export function allowed(roles, path) {
+  const need = roleForPath(path);
+  return roles.includes('owner') || (need === 'any' ? roles.length > 0 : roles.includes(need));
+}
 
 // For worker/index.js: { on: false } with Access off; otherwise { on: true, ok, email, roles, reason }.
 export async function adminAccess(env, req, settings = {}) {

@@ -11,7 +11,7 @@ import { suggestedScopes } from '../worker/supervisor-lifecycle.js';
 globalThis.fetch = async () => new Response('{}');
 const ON = { SUPERVISOR_APPLY: 'true', ZEPTOMAIL_TOKEN: 'test' };
 const admin = (env, o) => supervisorsAdminPost(env, adminForm({ reviewer: 'Firas', ...o }), 'wavelength', ctx);
-const html = (env, q) => supervisorsAdminHtml(env, new URL(`https://x/volunteer/admin/supervisors/${q}`), 'wavelength');
+const html = (env, q) => supervisorsAdminHtml(env, new URL(`https://x/admin/supervisors/${q}`), 'wavelength');
 const FOUR = ['thoracic', 'dvt', 'abdo-renal', 'pva'];
 const FIVE = [...FOUR, 'lp'];
 const EXPERIENCE = { years: 'More than 10 years', scans: 'More than 1,000', teaching: true, supervision: true };

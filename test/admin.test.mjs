@@ -7,7 +7,7 @@ import { enquireTraining, departmentsAdminHtml } from '../worker/departments.js'
 import FACULTY from '../worker/faculty-form.json' with { type: 'json' };
 import DEPT from '../worker/department-form.json' with { type: 'json' };
 
-const EVIL = "x');fetch('/volunteer/admin/',{method:'POST'});('\"><img src=x onerror=alert(1)>";
+const EVIL = "x');fetch('/admin/',{method:'POST'});('\"><img src=x onerror=alert(1)>";
 const form = (o) => { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.append(k, v); return new Request(ORIGIN + '/api/x', { method: 'POST', body: f }); };
 function noScriptBreakout(html) {
   assert.ok(!/confirm\('/.test(html), 'no inline confirm() with interpolated text');
