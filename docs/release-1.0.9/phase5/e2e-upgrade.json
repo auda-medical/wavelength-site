@@ -1,5 +1,5 @@
 {
-  "run": "2026-10-08T15:41:33.897Z",
+  "run": "2026-10-08T15:57:57.529Z",
   "from": "1.0.8",
   "results": [
     {
@@ -12,13 +12,13 @@
       "id": "U1",
       "name": "In 1.0.8: signed in, a signed-off scan, an assessment, a scan saved offline and waiting, two photos",
       "pass": true,
-      "detail": "version 1.0.8, entries 2 (waiting 1), photos 2, sign-off SO-LHK6-HG3C, assessment AS-86TQ-PUS5, database v2"
+      "detail": "version 1.0.8, entries 2 (waiting 1), photos 2, sign-off SO-MV9V-2A8X, assessment AS-EPAJ-RT6D, database v2"
     },
     {
       "id": "U2",
       "name": "First start of 1.0.9 offline: app lock still on, asks with the phone prompt, then opens the logbook",
       "pass": true,
-      "detail": "version 1.0.9, prompt after 152 ms, allowed [3,7]"
+      "detail": "version 1.0.9, prompt after 157 ms, allowed [3,7]"
     },
     {
       "id": "U3",

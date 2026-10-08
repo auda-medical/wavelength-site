@@ -1882,5 +1882,8 @@
 "Web app": "App web",
 "Website": "Sito web",
 "Wavelength could not open the logbook saved on this phone.": "Wavelength non è riuscita ad aprire il registro salvato su questo telefono.",
-"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "Non è stato eliminato nulla. Chiudi completamente Wavelength, poi riaprila. Se continua a succedere, riavvia il telefono."
+"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "Non è stato eliminato nulla. Chiudi completamente Wavelength, poi riaprila. Se continua a succedere, riavvia il telefono.",
+"Could not check your phone's lock. Tap Unlock to try again.": "Impossibile verificare il blocco del telefono. Tocca Sblocca per riprovare.",
+"This phone no longer has a screen lock. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.": "Questo telefono non ha più un blocco schermo. Impostane uno nelle impostazioni del telefono, poi tocca Sblocca, oppure esci e accedi di nuovo con la tua password.",
+"This phone needs a fingerprint (or a secure face unlock) to unlock Wavelength. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.": "Questo telefono richiede un'impronta digitale (o uno sblocco con il volto sicuro) per sbloccare Wavelength. Impostalo nelle impostazioni del telefono, poi tocca Sblocca, oppure esci e accedi di nuovo con la tua password."
 }

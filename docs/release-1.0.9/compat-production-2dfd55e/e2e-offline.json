@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-08T15:44:36.512Z",
+  "at": "2026-10-08T15:59:22.504Z",
   "api": "http://localhost:8789",
   "site": "https://thewavelength.co.uk",
   "results": [
@@ -7,25 +7,25 @@
       "id": "S1",
       "name": "Cold start, server never answers: logbook opens within 3 s",
       "pass": true,
-      "detail": "logbook after 230 ms"
+      "detail": "logbook after 182 ms"
     },
     {
       "id": "S2",
       "name": "Cold start, slow network, app lock on: fingerprint prompt within 2 s",
       "pass": true,
-      "detail": "prompt after 317 ms"
+      "detail": "prompt after 211 ms"
     },
     {
       "id": "S3",
       "name": "Cold start, calls fail at once, app lock on: prompt and logbook within 2 s",
       "pass": true,
-      "detail": "prompt 277 ms, logbook 279 ms"
+      "detail": "prompt 200 ms, logbook 204 ms"
     },
     {
       "id": "S4",
       "name": "Cold start, server never answers, app lock on: fingerprint prompt within 2 s",
       "pass": true,
-      "detail": "prompt after 259 ms"
+      "detail": "prompt after 192 ms"
     },
     {
       "id": "Y1",
@@ -85,13 +85,13 @@
       "id": "Y8a",
       "name": "Scan left out of the server answer: status says unable to sync, Settings lists it",
       "pass": true,
-      "detail": "status \"Sync status: Unable to sync. Your entries remain saved on this device.\"; panel: \"Unable to sync. Your entries remain saved on this device.Entries awaiting sync1Last synced8 Oct 2026, 15:44Not accepted by the serverAbdominal aorta (AAA), 8 Oct 2026: The server did not accept this entry.Retry syncSync \""
+      "detail": "status \"Sync status: Unable to sync. Your entries remain saved on this device.\"; panel: \"Unable to sync. Your entries remain saved on this device.Entries awaiting sync1Last synced8 Oct 2026, 15:59Not accepted by the serverAbdominal aorta (AAA), 8 Oct 2026: The server did not accept this entry.Retry syncSync \""
     },
     {
       "id": "Y8b",
       "name": "Retry sync sends it; the panel then says all changes synced",
       "pass": true,
-      "detail": "server has it; panel: \"All changes synced.Entries awaiting sync0Last synced8 Oct 2026, 15:44Retry syncSync covers your logbook entries. Photos and clips stay on this device and are no\""
+      "detail": "server has it; panel: \"All changes synced.Entries awaiting sync0Last synced8 Oct 2026, 15:59Retry syncSync covers your logbook entries. Photos and clips stay on this device and are no\""
     },
     {
       "id": "Y9",

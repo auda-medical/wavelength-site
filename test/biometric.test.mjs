@@ -69,3 +69,15 @@ test('a failed or cancelled prompt never unlocks', async () => {
   bio.verifyIdentity = () => Promise.reject(new Error('User cancelled'));
   assert.equal(await N.verify(TEXT), false);
 });
+
+test('a failed availability check is reported as unknown (null), not as "no lock", so the lock stays on', async () => {
+  const { N } = load('android', ANDROID14, () => Promise.reject(new Error('plugin error')));
+  assert.equal(await N.lockAvailable(), null);
+});
+
+test('the app lock never switches itself off when the phone lock is missing or cannot be checked', () => {
+  const app = readFileSync(new URL('../src/app/app.js', import.meta.url), 'utf8');
+  const fn = app.slice(app.indexOf('function unlock()'), app.indexOf('function lockCard()'));
+  assert.doesNotMatch(fn, /setLock\(false\)|hideLock\(\);\s*toast/, 'unlock() must keep the lock screen up');
+  assert.match(fn, /ok === null/);
+});

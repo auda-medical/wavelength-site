@@ -1859,5 +1859,8 @@
 "Web app": "网页应用",
 "Website": "网站",
 "Wavelength could not open the logbook saved on this phone.": "Wavelength 无法打开保存在此手机上的记录。",
-"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "没有删除任何内容。请完全关闭 Wavelength，然后重新打开。如果问题持续，请重启手机。"
+"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "没有删除任何内容。请完全关闭 Wavelength，然后重新打开。如果问题持续，请重启手机。",
+"Could not check your phone's lock. Tap Unlock to try again.": "无法检查手机的锁定设置。请点按“解锁”重试。",
+"This phone no longer has a screen lock. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.": "此手机已不再设置屏幕锁定。请在手机设置中设置屏幕锁定，然后点按“解锁”，或退出登录后用密码重新登录。",
+"This phone needs a fingerprint (or a secure face unlock) to unlock Wavelength. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.": "此手机需要指纹（或安全的面部解锁）才能解锁 Wavelength。请在手机设置中设置，然后点按“解锁”，或退出登录后用密码重新登录。"
 }

@@ -3,7 +3,7 @@
 //   R1 damaged cached account   R2 phone storage that will not open   R3 resume after a long time away
 //   R4 failed and cancelled fingerprint   R5 editing a scan offline   R6 a large media collection backed up and
 //   restored on a fresh phone   R7 a backup from another account   R8 no login token or passphrase in the logs
-//   R9 no photo or clip ever sent to the server
+//   R9 no photo or clip ever sent to the server   R4b phone lock removed   R7b restore question closed with Escape
 //
 // Setup: WL_APP_VERSION=1.0.9 WL_VERSION_CODE=15 node mobile/scripts/build-www.mjs,
 //        then node --import ./test/helpers/register.mjs tools/dev-worker.mjs
@@ -135,6 +135,27 @@ const A = await account('a');
   record('R4', 'A failed or cancelled fingerprint keeps the logbook locked; the next good one opens it', stillLocked && lockedAgain && open && tries >= 3, `locked after failure ${stillLocked}, after retry ${lockedAgain}, open after success ${open}, prompts ${tries}`);
   }
   await R4.ctx.close();
+
+  // R4b: the phone's own lock was removed while the app lock was on. The logbook stays locked with an explanation
+  // (it never switches the lock off by itself); Log out is the way on, and the lock is off after that.
+  const R4b = await phone(A.token, { init: ['window.__bio = { available: false };'] });
+  await R4b.page.evaluate(() => { const p = JSON.parse(localStorage.getItem('__prefs') || '{}'); p['wl-lock'] = '1'; localStorage.setItem('__prefs', JSON.stringify(p)); });
+  await R4b.page.goto('https://localhost/');
+  {
+  const page = R4b.page;
+  await page.waitForSelector('.app-lock', { timeout: 8000 });
+  await page.waitForTimeout(800);
+  const locked = !!(await page.$('.app-lock'));
+  const msg = await page.$eval('.app-lock [data-lockmsg]', (x) => x.textContent).catch(() => '');
+  const lockPref = await page.evaluate(() => JSON.parse(localStorage.getItem('__prefs') || '{}')['wl-lock']);
+  const prompts = await page.evaluate(() => window.__calls.filter((c) => c.method === 'verifyIdentity').length);
+  await page.click('.app-lock [data-lockout]');
+  await page.waitForTimeout(1200);
+  const out = !(await page.$('.app-lock')) && !(await page.$('nav.tabs'));
+  const lockAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('__prefs') || '{}')['wl-lock']);
+  record('R4b', 'Phone lock removed: the logbook stays locked and says why; Log out works and leaves the lock off', locked && /screen lock/.test(msg) && lockPref === '1' && prompts === 0 && out && !lockAfter, `locked ${locked}, message "${msg}", lock setting kept ${lockPref === '1'}, signed out ${out}, lock after log-out ${lockAfter || 'off'}`);
+  }
+  await R4b.ctx.close();
   // Lock off again for the rest (R5 edits a scan without prompts in the way).
   await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('__prefs') || '{}'); delete p['wl-lock']; localStorage.setItem('__prefs', JSON.stringify(p)); });
   await page.goto('https://localhost/');
@@ -214,6 +235,27 @@ let bfile = '';
   await page.waitForTimeout(800);
   const imgs = await idb(page, other.id, 'images');
   record('R7', 'A backup from another account asks before restoring; Cancel restores nothing', asked && imgs.length === 0, `asked ${asked}, media restored ${imgs.length}`);
+  // R7b: the same question closed with Escape (or Back, or a tap outside) counts as Cancel; asking again and
+  // choosing Restore then restores everything.
+  await page.setInputFiles('#rf', bfile);
+  await page.waitForSelector('#rpf');
+  await page.fill('#rpp', PASS);
+  await page.click('#rpf button.teal');
+  const asked2 = await page.waitForSelector('text=Restore into this account?', { timeout: 60000 }).then(() => true, () => false);
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(800);
+  const afterEsc = (await idb(page, other.id, 'images')).length;
+  const sheetGone = !(await page.$('.sheet-bg'));
+  await page.setInputFiles('#rf', bfile);
+  await page.waitForSelector('#rpf');
+  await page.fill('#rpp', PASS);
+  await page.click('#rpf button.teal');
+  await page.waitForSelector('text=Restore into this account?', { timeout: 60000 });
+  await page.click('.sheet [data-ok]');
+  await page.waitForFunction(() => (window.__toasts || []).some((x) => /Restored/.test(x)), null, { timeout: 180000 }).catch(() => {});
+  const imgs2 = (await idb(page, other.id, 'images')).filter((x) => /^big/.test(x.id));
+  record('R7b', 'Closing that question with Escape restores nothing; asking again and choosing Restore restores all 30 files', asked2 && afterEsc === 0 && sheetGone && imgs2.length === 30, `asked ${asked2}, media after Escape ${afterEsc}, sheet closed ${sheetGone}, media after Restore ${imgs2.length}`);
   await ctx.close();
 }
 

@@ -1928,5 +1928,8 @@
 "Web app": "Веб-приложение",
 "Website": "Сайт",
 "Wavelength could not open the logbook saved on this phone.": "Wavelength не удалось открыть журнал, сохранённый на этом телефоне.",
-"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "Ничего не удалено. Полностью закройте Wavelength и откройте снова. Если это повторяется, перезагрузите телефон."
+"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "Ничего не удалено. Полностью закройте Wavelength и откройте снова. Если это повторяется, перезагрузите телефон.",
+"Could not check your phone's lock. Tap Unlock to try again.": "Не удалось проверить блокировку телефона. Нажмите «Разблокировать», чтобы попробовать снова.",
+"This phone no longer has a screen lock. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.": "На этом телефоне больше нет блокировки экрана. Настройте её в настройках телефона и нажмите «Разблокировать» или выйдите и войдите снова с паролем.",
+"This phone needs a fingerprint (or a secure face unlock) to unlock Wavelength. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.": "Чтобы разблокировать Wavelength, на этом телефоне нужен отпечаток пальца (или надёжная разблокировка по лицу). Настройте его в настройках телефона и нажмите «Разблокировать» или выйдите и войдите снова с паролем."
 }

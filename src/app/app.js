@@ -99,7 +99,7 @@
     if (data !== undefined) { opt.method = 'POST'; opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(data); }
     if (o && o.timeout) opt.timeout = o.timeout;
     return NAT.net(path, opt).then(function (r) {
-      return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { authExpired(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
+      return r.json().catch(function (ex) { if (ex && ex.name === 'AbortError') { ex.network = true; ex.timeout = true; throw ex; } return {}; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { authExpired(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
     });
   }
   // A network failure or a call that got no answer, as opposed to an answer from the server.
@@ -304,10 +304,15 @@
     if (cur.length) out.push(cur);
     return out;
   }
-  function pushBatch(group) {
+  // Bumped on every log-out. A sync answer that arrives after a log-out (or a log-in to another account) is
+  // dropped, so it can never be written into the next account's logbook.
+  var SESSION = 0;
+  function stale(gen) { if (gen !== SESSION) { var e = new Error('signed out'); e.stale = true; throw e; } }
+  function pushBatch(group, gen) {
     var pushed = {}; group.forEach(function (e) { pushed[e.id] = e; });
     var conflicts = 0;
     return api('/api/app/sync', { entries: group.map(strip) }, { timeout: 30000 }).then(function (res) {
+      stale(gen);
       if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; throw er; }
       var answered = {};
       var jobs = (res.saved || []).map(function (s) {
@@ -333,24 +338,25 @@
   }
   function doSync(manual) {
     var dirty = S.entries.filter(function (e) { return e._dirty && (manual || !e._syncError); });
-    var conflicts = 0;
-    var push = batches(dirty).reduce(function (p, group) { return p.then(function () { return pushBatch(group).then(function (c) { conflicts += c; }); }); }, Promise.resolve());
-    return push.then(function () { return pullAll(); }).then(function () {
-      return api('/api/app/signoffs').then(function (r) { if (r.ok) return setPending(r.signoffs); });
-    }).then(loadAssessments).then(function () {
+    var conflicts = 0, gen = SESSION;
+    var push = batches(dirty).reduce(function (p, group) { return p.then(function () { return pushBatch(group, gen).then(function (c) { conflicts += c; }); }); }, Promise.resolve());
+    return push.then(function () { return pullAll(0, gen); }).then(function () {
+      return api('/api/app/signoffs').then(function (r) { stale(gen); if (r.ok) return setPending(r.signoffs); });
+    }).then(function () { return loadAssessments(gen); }).then(function () {
       SY.fail = ''; SY.ran = true; SY.lastOk = Date.now();
       // Started offline: the account details and supervisor links could not load then, so fetch them now.
       if (!S.me) loadMe();
       if (!S.links) loadLinks();
       return setKv('lastSyncOk', SY.lastOk);
     }, function (ex) {
+      if (ex && ex.stale) return;
       // Kept on this device either way. Offline or no answer: wait for the connection. Anything else: show it.
       SY.ran = true;
       SY.fail = !S.account ? '' : netFail(ex) ? 'offline' : 'failed';
       SY.error = (ex && ex.message) || '';
     }).then(function () {
       S.syncing = false;
-      if (!S.account) return;
+      if (!S.account || gen !== SESSION) return;
       var left = S.entries.some(function (e) { return e._dirty && !e._syncError; });
       if (SY.fail || left) { SY.tries++; scheduleRetry(); } else SY.tries = 0;
       setSyncDot(); resumeShares();
@@ -371,9 +377,10 @@
     return true;
   }
   // Pull every change since the last sync, a page at a time.
-  function pullAll(guard) {
+  function pullAll(guard, gen) {
     var q = '/api/app/sync?since=' + (S.kv.lastSync || 0) + (S.kv.lastSyncAfter ? '&after=' + encodeURIComponent(S.kv.lastSyncAfter) : '');
     return api(q).then(function (res) {
+      stale(gen);
       if (!res.ok) throw new Error(res.error || 'Sync failed');
       var fresh = [];
       return Promise.all((res.entries || []).map(function (e) {
@@ -389,13 +396,14 @@
         toast(newsText(fresh), 4000);
         return setKv('news', keep.concat(fresh).slice(-50));
       }).then(function () { return setKv('lastSyncAfter', res.after || ''); }).then(function () { return setKv('lastSync', res.now); }).then(function () {
-        if (res.more && (guard || 0) < 200) return pullAll((guard || 0) + 1);
+        if (res.more && (guard || 0) < 200) return pullAll((guard || 0) + 1, gen);
       });
     });
   }
   function dropImages(entryId) { return imagesFor(entryId).then(function (list) { return Promise.all(list.map(function (r) { return del('images', r.id); })); }).catch(function () {}); }
-  function loadAssessments() {
-    return api('/api/app/assessments').then(function (res) { if (res.ok) { S.assessments = res.assessments || []; setKv('assessments', S.assessments); } });
+  function loadAssessments(gen) {
+    if (gen === undefined) gen = SESSION;
+    return api('/api/app/assessments').then(function (res) { stale(gen); if (res.ok) { S.assessments = res.assessments || []; setKv('assessments', S.assessments); } });
   }
   function signedAssessments() { return S.assessments.filter(function (a) { return a.status === 'signed'; }); }
 
@@ -704,7 +712,7 @@
   }
   // Logging out, or a login the server no longer accepts, never deletes this device's logbook: it stays in this
   // account's local database and syncs when the same account logs in here again.
-  function signedOut(to) { clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
+  function signedOut(to) { SESSION++; clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
   // The server says this login has ended (expired, password changed, logged out from another device).
   function authExpired() {
     var acc = S.account; if (!acc) return;
@@ -2653,10 +2661,14 @@
   }
   function confirmAccount(man) {
     if (!man.account || man.account === S.account.email) return Promise.resolve(true);
-    return new Promise(function (ok) {
+    return new Promise(function (answer) {
+      var done = false, ok = function (v) { if (!done) { done = true; answer(v); } };
       sheet('<h2>' + esc(T('Restore into this account?')) + '</h2><p class="small">' + esc(T('This backup belongs to {email}. Restore it into this account anyway?', { email: man.account })) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Restore')) + '</button><button class="btn ghost block" data-no>' + esc(T('Cancel')) + '</button></div>', function (root) {
         $('[data-ok]', root).onclick = function () { sheet('<h2>' + esc(T('Restoring…')) + '</h2><p class="small muted" role="status" data-rprog></p>'); ok(true); };
         $('[data-no]', root).onclick = function () { closeSheet(); ok(false); };
+        // Closed with Back, Escape or a tap outside: the same as Cancel.
+        var watch = new MutationObserver(function () { if (!root.isConnected) { watch.disconnect(); ok(false); } });
+        watch.observe(document.body, { childList: true });
       });
     });
   }
@@ -2987,6 +2999,8 @@
     if (S.account && !lockBusy && NAT.lockOn() && e.detail && e.detail.away > LOCK_AFTER) showLock();
     sync();
   });
+  // The lock setting was read late (slow secure storage at start): lock now.
+  window.addEventListener('wl:lock', function () { if (S.account && NAT.lockOn()) showLock(); });
   // On start the lock covers the screen before the logbook is drawn behind it.
   function lockFirst() { if (NAT.lockOn()) showLock(); }
   function hideLock(all) { $$('.app-lock').forEach(function (x) { x.remove(); }); if (all) lockBusy = false; }
@@ -2994,17 +3008,24 @@
     if (document.querySelector('.app-lock')) return unlock();
     var el = document.createElement('div');
     el.className = 'app-lock'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', T('Logbook locked'));
-    el.innerHTML = '<div class="app-lock-in">' + MARK(64, 'rgba(247,245,240,.7)') + '<div class="wm">WAVELENGTH</div><p>' + esc(T('Your logbook is locked.')) + '</p><button class="btn teal block" type="button" data-unlock>' + esc(T('Unlock')) + '</button><button class="btn ghost block" type="button" data-lockout>' + esc(T('Log out')) + '</button></div>';
+    el.innerHTML = '<div class="app-lock-in">' + MARK(64, 'rgba(247,245,240,.7)') + '<div class="wm">WAVELENGTH</div><p>' + esc(T('Your logbook is locked.')) + '</p><p class="small" role="status" data-lockmsg></p><button class="btn teal block" type="button" data-unlock>' + esc(T('Unlock')) + '</button><button class="btn ghost block" type="button" data-lockout>' + esc(T('Log out')) + '</button></div>';
     document.body.appendChild(el);
     $('[data-unlock]', el).onclick = unlock;
-    $('[data-lockout]', el).onclick = function () { api('/api/app/logout', {}).then(signedOut, signedOut); };
+    // Logging in again needs the account password, so the lock starts off after that (it can be turned on again).
+    $('[data-lockout]', el).onclick = function () { NAT.setLock(false); api('/api/app/logout', {}, { timeout: 8000 }).then(function () { signedOut(); }, function () { signedOut(); }); };
     unlock();
   }
   function unlock() {
     if (lockBusy) return;
     lockBusy = true;
     NAT.lockAvailable().then(function (ok) {
-      if (!ok) { NAT.setLock(false); hideLock(); toast(NAT.pinFallback ? T('App lock is off: this phone has no screen lock set up.') : T('App lock is off: this phone has no fingerprint or face unlock set up.'), 5000); return; }
+      // The lock never switches itself off. If the phone's lock was removed (or, on Android 7 to 10, only a weak
+      // face unlock is left), the logbook stays locked: set the phone's lock up again, or log out and log in with
+      // the account password. Logging out keeps the logbook saved on this phone.
+      var msg = $('[data-lockmsg]');
+      if (ok === null) { if (msg) msg.textContent = T('Could not check your phone\'s lock. Tap Unlock to try again.'); return; }
+      if (!ok) { if (msg) msg.textContent = NAT.pinFallback ? T('This phone no longer has a screen lock. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.') : T('This phone needs a fingerprint (or a secure face unlock) to unlock Wavelength. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.'); return; }
+      if (msg) msg.textContent = '';
       return NAT.verify({ reason: T('Unlock your Wavelength logbook'), title: T('Unlock Wavelength'), subtitle: T('Your ultrasound logbook'), cancel: T('Cancel') }).then(function (yes) { if (yes) { hideLock(); NAT.haptic('success'); } });
     }).then(function () { lockBusy = false; }, function () { lockBusy = false; });
   }
@@ -3054,7 +3075,8 @@
       if (NAT.on && c && c.id && NAT.signedIn()) { diag('path', 'local'); return open(c); }
       if (NAT.on && c && c.id && NAT.readFailed()) { diag('path', 'recovery'); return viewRecovery(); }
       diag('path', 'server');
-      return api('/api/app/me', undefined, { timeout: NAT.on ? 8000 : 10000 }).then(function (res) {
+      // Leave time to open the logbook offline before BOOT_WAIT shows the recovery screen.
+      return api('/api/app/me', undefined, { timeout: Math.max(2000, BOOT_WAIT - 2000 - (Date.now() - t0)) }).then(function (res) {
         diag('me', String(res._status)); diag('meMs', Date.now() - t0);
         if (res.ok) { S.me = res; return open(res.account); }
         if (res._status >= 500) return offline();

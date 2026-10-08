@@ -82,16 +82,24 @@ A and B produce byte-identical files, so a later switch to B needs no format cha
   offered in the same prompt.
 - **Android 7 to 10:** Android cannot combine strong biometrics with the screen lock in one prompt there, so the prompt
   is `BIOMETRIC_STRONG` only and the lock can be switched on only when `isAvailable` reports strength 1 (strong). A
-  phone with only weak face unlock cannot turn the lock on, and a lock already on is switched off at the next
-  launch with "App lock is off: this phone has no fingerprint or face unlock set up".
+  phone with only weak face unlock cannot turn the lock on. A lock already on stays on (changed after the Phase 5
+  review, see below): the lock screen says a fingerprint or secure face unlock is needed, and offers Log out.
 - **iPhone:** `deviceOwnerAuthentication` (Face ID or Touch ID, passcode fallback), unchanged.
 - **Enrolment changes:** the lock is a gate in front of the app, not a key: each unlock asks the system prompt, which
   accepts whatever strong biometrics are enrolled at that moment. Enrolling a new fingerprint already requires the
   phone's PIN, pattern or password, which the prompt accepts anyway, so a new enrolment gives no extra access. A
   Keystore key bound to biometrics with `setInvalidatedByBiometricEnrollment` would need native code and would sign
   the learner out on every enrolment change; not done in 1.0.9 (listed as an option in outstanding issues).
-- **Removed screen lock:** if the phone's screen lock is removed, `lockAvailable()` returns false and the app turns
-  the lock off with a message rather than locking the learner out; the logbook stays on the device.
+- **Removed screen lock (changed after the Phase 5 independent review):** the lock never switches itself off. 1.0.8
+  turned it off whenever the availability check said no, or failed, which let anyone holding the phone in by
+  removing the phone's screen lock, and 1.0.9's strong-only rule would have made that happen to more people. Now:
+  - the check fails (plugin error): the logbook stays locked with "Could not check your phone's lock. Tap Unlock to
+    try again.";
+  - no suitable lock on the phone: the logbook stays locked and says what to set up. The way on is to set the lock up
+    again, or Log out and log in with the account password. Logging out keeps the logbook on the phone, and entries
+    waiting to sync go up after the same account logs in again (Phase 2, Y6). The lock is off after that login and
+    can be turned on again in Settings.
+  - Covered by `test/biometric.test.mjs` and `tools/e2e-resilience.mjs` R4b.
 - A failed or cancelled prompt never unlocks (`test/biometric.test.mjs`, 5 tests).
 
 ## 4. Local data protection (review, no changes needed in 1.0.9)
@@ -120,6 +128,6 @@ A and B produce byte-identical files, so a later switch to B needs no format cha
 
 No storage migration: IndexedDB version unchanged (2), token key unchanged (`wavelength.session`), `wl-lock`
 preference unchanged. A learner with the app lock already on keeps it; on Android 11+ the next prompt simply also
-offers the PIN, and weak face unlock stops being offered. On Android 7 to 10 with only weak face unlock, the lock is
-switched off with a message at the next launch instead of locking the learner out. To verify on the physical phone
-(Phase 5 checklist).
+offers the PIN, and weak face unlock stops being offered. On Android 7 to 10 with only weak face unlock, the logbook
+stays locked at the next launch and asks for a fingerprint to be set up, or for Log out and log in with the password
+(nothing on the phone is deleted). To verify on the physical phone (Phase 5 checklist).

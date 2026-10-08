@@ -9,7 +9,7 @@ Date: 8 October 2026. Branch `claude/release-1.0.9`. Applies to Android and iPho
 | The start screen waited for `/api/app/me` with no time limit | A phone that is signed in opens its logbook from the phone straight away. The server check runs behind it |
 | Fingerprint prompt only after the server answered | The lock screen covers the app first and the fingerprint prompt comes at once (S2, S4: about 160 ms) |
 | The logbook could show for a moment before the lock covered it | The lock is drawn before the logbook |
-| No limit on any server call | Every call has a time limit (20 s by default, 8 s for the start-up check, 30 s per sync batch) and then fails like an offline call |
+| No limit on any server call | Every call has a time limit (20 s by default, 30 s per sync batch, and the start-up check ends in time to open the logbook offline before the recovery screen) and then fails like an offline call. Uploads get extra time for their size (16 KB/s), and a response that stalls after its headers is cut off after 60 s, so sync can never hang (added after the Phase 5 review) |
 | A secure-storage read that never answered would hold start-up | Start-up carries on after 4 s. If a token cannot be read, the app shows the recovery screen and never treats it as "signed out", so the offline account cache is kept |
 | Nothing ever replaced a stuck start screen | After 10 s with the start screen still up, a recovery screen appears: "Wavelength is taking longer than usual to start.", with Try again |
 | Nothing recorded about slow starts | The last 10 starts are kept on the device (route, time to logbook, server result and time; no personal data). They are shown under Settings, Sync, Start-up details |

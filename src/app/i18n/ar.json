@@ -1974,5 +1974,8 @@
 "Web app": "تطبيق الويب",
 "Website": "الموقع الإلكتروني",
 "Wavelength could not open the logbook saved on this phone.": "تعذّر على Wavelength فتح السجل المحفوظ على هذا الهاتف.",
-"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "لم يُحذف أي شيء. أغلق Wavelength تمامًا ثم افتحه مجددًا. إذا تكرر ذلك، أعد تشغيل هاتفك."
+"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "لم يُحذف أي شيء. أغلق Wavelength تمامًا ثم افتحه مجددًا. إذا تكرر ذلك، أعد تشغيل هاتفك.",
+"Could not check your phone's lock. Tap Unlock to try again.": "تعذّر التحقق من قفل هاتفك. اضغط فتح القفل للمحاولة مرة أخرى.",
+"This phone no longer has a screen lock. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.": "لم يعد لهذا الهاتف قفل شاشة. اضبط واحدًا في إعدادات الهاتف ثم اضغط فتح القفل، أو سجّل الخروج ثم سجّل الدخول بكلمة المرور.",
+"This phone needs a fingerprint (or a secure face unlock) to unlock Wavelength. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.": "يحتاج هذا الهاتف إلى بصمة إصبع (أو فتح آمن بالوجه) لفتح قفل Wavelength. اضبط ذلك في إعدادات الهاتف ثم اضغط فتح القفل، أو سجّل الخروج ثم سجّل الدخول بكلمة المرور."
 }

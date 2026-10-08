@@ -44,18 +44,29 @@
   // Both reads are local. A plugin that never answers must not hold the app on its start screen, so after
   // READY_WAIT the app carries on and readFailed() says the token could not be read (never "signed out").
   var READY_WAIT = 4000, READ_DONE = false, READ_FAILED = false;
+  // A read that finishes after READY_WAIT never replaces a login made in the meantime. A lock found that late is
+  // shown at once (app.js listens for wl:lock).
+  var TOKEN_SET = false;
   var ready = on ? Promise.race([
-    Promise.all([readToken(), pref('wl-lock')]).then(function (v) { TOKEN = v[0]; LOCK = v[1] === '1'; READ_DONE = true; READ_FAILED = false; }),
+    Promise.all([readToken(), pref('wl-lock')]).then(function (v) {
+      var late = READ_FAILED;
+      if (!TOKEN_SET) TOKEN = v[0];
+      LOCK = v[1] === '1'; READ_DONE = true; READ_FAILED = false;
+      if (late && LOCK) window.dispatchEvent(new CustomEvent('wl:lock'));
+    }),
     new Promise(function (ok) { setTimeout(function () { if (!READ_DONE) READ_FAILED = true; ok(); }, READY_WAIT); })
   ]) : Promise.resolve();
-  function setToken(t) { if ((t || '') === TOKEN) return; TOKEN = t || ''; saveToken(TOKEN); }
+  function setToken(t) { TOKEN_SET = true; if ((t || '') === TOKEN) return; TOKEN = t || ''; saveToken(TOKEN); }
   // A path on the Wavelength website as an absolute address (the website itself keeps relative paths).
   function site(path) { return /^[a-z]+:/i.test(path) ? path : SITE + path; }
   // fetch() with a time limit (opt.timeout, default NET_WAIT). A call that gets no answer fails like an offline
-  // call, with err.timeout set, instead of waiting for ever.
-  var NET_WAIT = 20000;
+  // call, with err.timeout set, instead of waiting for ever. An upload gets extra time for its size (enough at
+  // 16 KB/s, a poor ward connection), and the answer's body gets BODY_WAIT after its headers arrive: a body that
+  // stalls is aborted, so reading it fails with an AbortError instead of hanging.
+  var NET_WAIT = 20000, BODY_WAIT = 60000, UPLOAD_BPS = 16384;
+  function bodySize(b) { return !b ? 0 : typeof b === 'string' ? b.length : b.byteLength || b.size || 0; }
   function timed(url, opt) {
-    var ms = opt.timeout || NET_WAIT, o = {};
+    var ms = (opt.timeout || NET_WAIT) + Math.ceil(bodySize(opt.body) / UPLOAD_BPS * 1000), o = {};
     for (var k in opt) if (k !== 'timeout') o[k] = opt[k];
     var ctl = typeof AbortController === 'function' ? new AbortController() : null;
     if (ctl) o.signal = ctl.signal;
@@ -64,7 +75,12 @@
       timer = setTimeout(function () { if (ctl) ctl.abort(); var e = new Error('No answer from the server'); e.timeout = true; e.network = true; no(e); }, ms);
     });
     var call = fetch(url, o).catch(function (e) { e.network = true; throw e; });
-    return Promise.race([call, limit]).then(function (r) { clearTimeout(timer); return r; }, function (e) { clearTimeout(timer); throw e; });
+    return Promise.race([call, limit]).then(function (r) {
+      clearTimeout(timer);
+      // Aborting after the body has been read does nothing.
+      if (ctl) setTimeout(function () { ctl.abort(); }, Math.max(ms, BODY_WAIT));
+      return r;
+    }, function (e) { clearTimeout(timer); throw e; });
   }
   // fetch() for the Wavelength server. In the app: absolute address, token header, no cookies, token kept fresh.
   function net(path, opt) {
@@ -129,10 +145,11 @@
   var PIN_FALLBACK = PLATFORM === 'ios' || ANDROID >= 11;
   function lockAvailable() {
     if (!Bio) return Promise.resolve(false);
+    // true: the lock can be used. false: the phone has no suitable lock set up. null: the check itself failed.
     return Bio.isAvailable({ useFallback: PIN_FALLBACK }).then(function (r) {
       if (!r || !r.isAvailable) return false;
       return PIN_FALLBACK || r.authenticationStrength === STRONG;
-    }, function () { return false; });
+    }, function () { return null; });
   }
   function verify(text) {
     if (!Bio) return Promise.resolve(false);

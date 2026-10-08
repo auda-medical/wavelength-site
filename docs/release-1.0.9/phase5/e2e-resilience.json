@@ -1,17 +1,17 @@
 {
-  "run": "2026-10-08T15:41:54.595Z",
+  "run": "2026-10-08T15:58:27.016Z",
   "results": [
     {
       "id": "R1",
       "name": "A damaged cached account does not stop the app: it checks with the server and opens the logbook",
       "pass": true,
-      "detail": "opened in 198 ms, logbook true"
+      "detail": "opened in 202 ms, logbook true"
     },
     {
       "id": "R2",
       "name": "Storage that will not open: a recovery screen with Try again appears at once, not an endless start screen",
       "pass": true,
-      "detail": "recovery after 162 ms, Try again true"
+      "detail": "recovery after 161 ms, Try again true"
     },
     {
       "id": "R3",
@@ -26,6 +26,12 @@
       "detail": "locked after failure true, after retry true, open after success true, prompts 3"
     },
     {
+      "id": "R4b",
+      "name": "Phone lock removed: the logbook stays locked and says why; Log out works and leaves the lock off",
+      "pass": true,
+      "detail": "locked true, message \"This phone no longer has a screen lock. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.\", lock setting kept true, signed out true, lock after log-out off"
+    },
+    {
       "id": "R5",
       "name": "A scan edited offline waits, then the edit reaches the server as the same record",
       "pass": true,
@@ -35,13 +41,19 @@
       "id": "R6",
       "name": "A 60 MB collection (30 photos and clips) backs up and restores on a fresh phone, every file intact",
       "pass": true,
-      "detail": "backup 60.0 MB in 3719 ms; restored 30 files in 3084 ms"
+      "detail": "backup 60.0 MB in 3701 ms; restored 30 files in 3233 ms"
     },
     {
       "id": "R7",
       "name": "A backup from another account asks before restoring; Cancel restores nothing",
       "pass": true,
       "detail": "asked true, media restored 0"
+    },
+    {
+      "id": "R7b",
+      "name": "Closing that question with Escape restores nothing; asking again and choosing Restore restores all 30 files",
+      "pass": true,
+      "detail": "asked true, media after Escape 0, sheet closed true, media after Restore 30"
     },
     {
       "id": "R8",
@@ -53,7 +65,7 @@
       "id": "R9",
       "name": "No photo or clip was sent to the server in any request",
       "pass": true,
-      "detail": "5 request bodies checked"
+      "detail": "7 request bodies checked"
     },
     {
       "id": "R10",

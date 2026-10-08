@@ -156,8 +156,15 @@ if (await page.$('.app-lock')) fail('a short trip away (camera, share sheet) loc
 await page.evaluate(() => { window.__bio.available = false; });
 await page.evaluate(() => window.dispatchEvent(new CustomEvent('wl:resume', { detail: { away: 120000 } })));
 await page.waitForTimeout(500);
-if (await page.$('.app-lock')) fail('lock screen stuck when the phone has no biometrics'); else ok('no biometrics on the phone: lock turns itself off, nobody is locked out');
+// The phone's own lock removed: the logbook stays locked and says why (the lock never switches itself off).
+if (!(await page.$('.app-lock'))) fail('the lock switched itself off when the phone lock was removed');
+else if (!/screen lock|fingerprint/.test(await page.$eval('[data-lockmsg]', (x) => x.textContent))) fail('the lock screen does not say why it cannot unlock');
+else ok('phone lock removed: the logbook stays locked and says what to set up');
 await page.evaluate(() => { window.__bio.available = true; });
+await page.click('[data-unlock]');
+await page.waitForSelector('.app-lock', { state: 'detached', timeout: 5000 }).then(() => ok('phone lock set up again: Unlock opens the logbook'), () => fail('Unlock did not open the logbook after the phone lock came back'));
+// Lock off again for the checks below, as before.
+await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('__prefs') || '{}'); delete p['wl-lock']; localStorage.setItem('__prefs', JSON.stringify(p)); });
 
 // Offline start: the logbook opens from the device with the scan in it.
 net.offline = true;
