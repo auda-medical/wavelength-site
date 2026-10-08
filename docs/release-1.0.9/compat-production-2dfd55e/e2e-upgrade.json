@@ -1,5 +1,5 @@
 {
-  "run": "2026-10-08T15:33:17.981Z",
+  "run": "2026-10-08T15:45:26.602Z",
   "from": "1.0.8",
   "results": [
     {
@@ -10,15 +10,15 @@
     },
     {
       "id": "U1",
-      "name": "In 1.0.8: signed in, one scan synced, one scan saved offline and waiting, two photos",
+      "name": "In 1.0.8: signed in, a signed-off scan, an assessment, a scan saved offline and waiting, two photos",
       "pass": true,
-      "detail": "version 1.0.8, entries 2 (waiting 1), photos 2, database v2"
+      "detail": "version 1.0.8, entries 2 (waiting 1), photos 2, sign-off SO-GJ4Z-8XKX, assessment AS-RJKZ-9USR, database v2"
     },
     {
       "id": "U2",
       "name": "First start of 1.0.9 offline: app lock still on, asks with the phone prompt, then opens the logbook",
       "pass": true,
-      "detail": "version 1.0.9, prompt after 159 ms, allowed [3,7]"
+      "detail": "version 1.0.9, prompt after 180 ms, allowed [3,7]"
     },
     {
       "id": "U3",
@@ -28,9 +28,9 @@
     },
     {
       "id": "U4",
-      "name": "Every entry and photo is still on the device, and the offline scan is still waiting",
+      "name": "Every entry, photo, sign-off and assessment is still on the device, and the offline scan is still waiting",
       "pass": true,
-      "detail": "entries 2/2, photos 2/2, database v2"
+      "detail": "entries 2/2, photos 2/2, sign-off kept true, assessments 1, database v2"
     },
     {
       "id": "U5",
@@ -61,6 +61,12 @@
       "name": "Me shows Version 1.0.9 (15)",
       "pass": true,
       "detail": "Version 1.0.9 (15)"
+    },
+    {
+      "id": "U11",
+      "name": "A second signed-in session on another device shows the scan saved offline in 1.0.8",
+      "pass": true,
+      "detail": "found true, separate login true"
     },
     {
       "id": "U10",
