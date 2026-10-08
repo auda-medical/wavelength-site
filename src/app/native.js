@@ -180,6 +180,29 @@
     });
   }
 
+  // ---------- The phone's network (Android: WLNetwork plugin in MainActivity, over ConnectivityManager) ----------
+  // Android WebView's navigator.onLine follows the default network only, and a VPN that stays up while the network
+  // under it comes and goes can hide every change from it. The plugin reports the default network's real state
+  // (internet, validated by Android, VPN, Wi-Fi or mobile data) and fires on every change, VPN ones included.
+  // Read-only: it never changes the phone's network, VPN or routing. Where the plugin is missing (iPhone, website,
+  // an older build) netStatus() answers null and the app falls back to navigator.onLine.
+  var Net = plugin('WLNetwork');
+  var NET_OK = !!(Net && PLATFORM === 'android');
+  function shape(s) {
+    if (!s || typeof s.connected !== 'boolean') return null;
+    return { known: true, connected: s.connected, validated: !!s.validated, vpn: !!s.vpn, transports: Array.isArray(s.transports) ? s.transports.slice().sort() : [], id: s.id == null ? '' : String(s.id) };
+  }
+  function netStatus() {
+    if (!NET_OK) return Promise.resolve(null);
+    try { return Net.getStatus().then(shape, function () { return null; }); } catch (e) { return Promise.resolve(null); }
+  }
+  if (NET_OK) {
+    try {
+      var sub = Net.addListener('networkStatusChange', function (s) { var v = shape(s); if (v) window.dispatchEvent(new CustomEvent('wl:net', { detail: v })); });
+      if (sub && sub.catch) sub.catch(function () { NET_OK = false; });
+    } catch (e) { NET_OK = false; }
+  }
+
   // The installed app's version and build, read from the app's own metadata (Android versionName and versionCode,
   // iOS CFBundleShortVersionString and CFBundleVersion), so About always matches the store listing. Falls back to the
   // numbers the bundle was built with, then to none. Never needs the network.
@@ -216,6 +239,7 @@
     lockOn: function () { return on && LOCK; },
     setLock: setLock,
     verify: verify,
+    netStatus: netStatus,
     plugin: plugin
   };
 })();

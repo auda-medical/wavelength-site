@@ -41,6 +41,9 @@ export const BRIDGE = `(() => {
     // The installed app's metadata (versionName/versionCode, CFBundleShortVersionString/CFBundleVersion). A test can set
     // window.__appInfo before the app loads, or window.__appInfoFail to make the call fail.
     App: { exitApp: () => ({}), getInfo: () => { if (window.__appInfoFail) throw new Error('not available'); return window.__appInfo || { name: 'Wavelength', id: 'uk.co.thewavelength.app', version: '1.0.9', build: '15' }; } },
+    // The phone's network (WLNetwork, Android ConnectivityManager). A test sets it with setDevice() below; by
+    // default the phone reports Wi-Fi with validated internet access.
+    WLNetwork: { getStatus: () => window.__netdev || { connected: true, validated: true, vpn: false, transports: ['wifi'], id: '1' } },
     NativeBiometric: {
       // Secure data store (Keystore / Keychain on a phone), kept apart from Preferences so tests can tell them apart.
       setData: (o) => { const d = JSON.parse(localStorage.getItem('__secure') || '{}'); d[o.key] = o.value; localStorage.setItem('__secure', JSON.stringify(d)); return {}; },
@@ -53,7 +56,7 @@ export const BRIDGE = `(() => {
   const header = (name, methods, cb = []) => ({ name, methods: methods.map((m) => ({ name: m, rtype: 'promise' })).concat(cb.map((m) => ({ name: m, rtype: 'callback' }))) });
   window.Capacitor = {
     Plugins: {},
-    PluginHeaders: Object.entries(impl).map(([n, o]) => header(n, Object.keys(o), n === 'App' ? ['addListener', 'removeListener'] : [])),
+    PluginHeaders: Object.entries(impl).map(([n, o]) => header(n, Object.keys(o), n === 'App' || n === 'WLNetwork' ? ['addListener', 'removeListener'] : [])),
     nativePromise(plugin, method, options) {
       calls.push({ plugin, method, options, t: performance.now() });
       try { return Promise.resolve(impl[plugin][method](options || {})); } catch (e) { return Promise.reject(e); }
@@ -71,7 +74,21 @@ export const BRIDGE = `(() => {
 // The network as the phone sees it. offline: every call fails at once (aeroplane mode on most phones). hang: calls
 // never answer (no signal, a captive portal, a stalled connection). delay: milliseconds before each answer.
 export const ANDROID_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36 WavelengthApp';
-export const net = { offline: false, hang: false, delay: 0 };
+// blocked: the phone has a network but the Wavelength server cannot be reached through it (a VPN or filter that
+// drops the traffic). challenge: something on the way answers with its own page (403, no CORS headers), which the
+// app's WebView sees as a failed request.
+export const net = { offline: false, hang: false, delay: 0, blocked: false, challenge: false };
+// What the phone reports about its network (WLNetwork), and a change event as Android sends it.
+export const DEVICE = {
+  wifi: { connected: true, validated: true, vpn: false, transports: ['wifi'], id: '1' },
+  none: { connected: false, validated: false, vpn: false, transports: [], id: '' },
+  vpn: { connected: true, validated: true, vpn: true, transports: ['vpn', 'wifi'], id: '2' },
+  vpnStale: { connected: true, validated: false, vpn: true, transports: ['vpn'], id: '2' },
+  cellular: { connected: true, validated: true, vpn: false, transports: ['cellular'], id: '3' },
+};
+export function setDevice(page, status) {
+  return page.evaluate((s) => { window.__netdev = s; if (window.__fire) window.__fire('WLNetwork', 'networkStatusChange', s); }, status);
+}
 // Android WebView reports connectivity changes only when the app holds ACCESS_NETWORK_STATE. Without it,
 // navigator.onLine stays true and the online and offline events never fire. Add this init script to model that.
 export const NO_NETWORK_EVENTS = `(() => {
@@ -99,6 +116,8 @@ export async function harness({ api = 'http://localhost:8787', errors = [] } = {
     // The Wavelength server, played by the local Worker. Offline mode drops every call.
     await ctx.route(SITE + '/**', async (route) => {
       if (net.offline) return route.abort('internetdisconnected');
+      if (net.blocked) return route.abort('connectionrefused');
+      if (net.challenge) return route.fulfill({ status: 403, headers: { 'Content-Type': 'text/html' }, body: '<html>Access denied</html>' });
       if (net.hang) return new Promise(() => {});
       if (net.delay) await new Promise((r) => setTimeout(r, net.delay));
       const req = route.request();
