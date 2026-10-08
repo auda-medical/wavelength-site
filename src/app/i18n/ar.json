@@ -1972,5 +1972,7 @@
 "Wavelength app support": "دعم تطبيق Wavelength",
 "Wavelength is built with these open-source components. Thank you to their authors.": "بُني Wavelength باستخدام مكوّنات المصادر المفتوحة هذه. شكرًا لمؤلفيها.",
 "Web app": "تطبيق الويب",
-"Website": "الموقع الإلكتروني"
+"Website": "الموقع الإلكتروني",
+"Wavelength could not open the logbook saved on this phone.": "تعذّر على Wavelength فتح السجل المحفوظ على هذا الهاتف.",
+"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "لم يُحذف أي شيء. أغلق Wavelength تمامًا ثم افتحه مجددًا. إذا تكرر ذلك، أعد تشغيل هاتفك."
 }

@@ -3063,12 +3063,17 @@
         else if (res.academy && !location.hash.match(/login|signup|reset/)) location.hash = '#/signup';
         render(); opened();
       }, function (ex) { diag('me', ex && ex.timeout ? 'timeout' : 'offline'); return offline(); });
+    }).catch(function () {
+      // The logbook on the phone could not be opened (storage error). Say so at once, rather than wait for BOOT_WAIT.
+      if (S.db) return;
+      diag('path', 'storage-error'); viewRecovery(true);
     });
   }
   var BOOT_WAIT = 10000;
   // Shown instead of an endless start screen. Nothing on the phone is changed or deleted.
-  function viewRecovery() {
-    authFrame(T('Wavelength is taking longer than usual to start.'), T('Your entries stay saved on this device. Check your connection, then try again.'),
+  function viewRecovery(storage) {
+    if (storage) authFrame(T('Wavelength could not open the logbook saved on this phone.'), T('Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.'), '<div class="btns"><button class="btn teal block" type="button" data-retry>' + esc(T('Try again')) + '</button></div>');
+    else authFrame(T('Wavelength is taking longer than usual to start.'), T('Your entries stay saved on this device. Check your connection, then try again.'),
       '<div class="btns"><button class="btn teal block" type="button" data-retry>' + esc(T('Try again')) + '</button>' + (cachedAccount() ? '' : '<a class="btn ghost block" href="#/login">' + esc(T('Log in')) + '</a>') + '</div>');
     $('[data-retry]').onclick = function () { location.reload(); };
   }

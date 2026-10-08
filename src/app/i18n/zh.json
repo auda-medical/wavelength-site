@@ -1857,5 +1857,7 @@
 "Wavelength app support": "Wavelength 应用支持",
 "Wavelength is built with these open-source components. Thank you to their authors.": "Wavelength 使用了以下开源组件。感谢它们的作者。",
 "Web app": "网页应用",
-"Website": "网站"
+"Website": "网站",
+"Wavelength could not open the logbook saved on this phone.": "Wavelength 无法打开保存在此手机上的记录。",
+"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "没有删除任何内容。请完全关闭 Wavelength，然后重新打开。如果问题持续，请重启手机。"
 }

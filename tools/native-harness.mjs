@@ -21,7 +21,7 @@ export const BRIDGE = `(() => {
   let cbid = 1;
   const prefs = () => JSON.parse(localStorage.getItem('__prefs') || '{}');
   const savePrefs = (p) => localStorage.setItem('__prefs', JSON.stringify(p));
-  window.__bio = { available: true, pass: true };
+  window.__bio = Object.assign({ available: true, pass: true }, window.__bio); // a test may preset it in an init script
   const impl = {
     Preferences: {
       get: (o) => ({ value: prefs()[o.key] ?? null }),

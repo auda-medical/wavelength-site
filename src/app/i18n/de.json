@@ -1880,5 +1880,7 @@
 "Wavelength app support": "Support für die Wavelength-App",
 "Wavelength is built with these open-source components. Thank you to their authors.": "Wavelength ist mit diesen Open-Source-Komponenten gebaut. Danke an ihre Autorinnen und Autoren.",
 "Web app": "Web-App",
-"Website": "Website"
+"Website": "Website",
+"Wavelength could not open the logbook saved on this phone.": "Wavelength konnte das auf diesem Telefon gespeicherte Logbuch nicht öffnen.",
+"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "Es wurde nichts gelöscht. Schließen Sie Wavelength vollständig und öffnen Sie es erneut. Wenn das weiterhin passiert, starten Sie Ihr Telefon neu."
 }

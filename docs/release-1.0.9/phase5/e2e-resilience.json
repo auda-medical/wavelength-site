@@ -1,0 +1,65 @@
+{
+  "run": "2026-10-08T15:41:54.595Z",
+  "results": [
+    {
+      "id": "R1",
+      "name": "A damaged cached account does not stop the app: it checks with the server and opens the logbook",
+      "pass": true,
+      "detail": "opened in 198 ms, logbook true"
+    },
+    {
+      "id": "R2",
+      "name": "Storage that will not open: a recovery screen with Try again appears at once, not an endless start screen",
+      "pass": true,
+      "detail": "recovery after 162 ms, Try again true"
+    },
+    {
+      "id": "R3",
+      "name": "Back after a long time away: asks for the fingerprint again and sends the waiting scan",
+      "pass": true,
+      "detail": "prompt true, scan on server true"
+    },
+    {
+      "id": "R4",
+      "name": "A failed or cancelled fingerprint keeps the logbook locked; the next good one opens it",
+      "pass": true,
+      "detail": "locked after failure true, after retry true, open after success true, prompts 3"
+    },
+    {
+      "id": "R5",
+      "name": "A scan edited offline waits, then the edit reaches the server as the same record",
+      "pass": true,
+      "detail": "waiting true, server text \"Dummy scan edited offline\""
+    },
+    {
+      "id": "R6",
+      "name": "A 60 MB collection (30 photos and clips) backs up and restores on a fresh phone, every file intact",
+      "pass": true,
+      "detail": "backup 60.0 MB in 3719 ms; restored 30 files in 3084 ms"
+    },
+    {
+      "id": "R7",
+      "name": "A backup from another account asks before restoring; Cancel restores nothing",
+      "pass": true,
+      "detail": "asked true, media restored 0"
+    },
+    {
+      "id": "R8",
+      "name": "No login token or backup passphrase appears in anything the app logged",
+      "pass": true,
+      "detail": "3 log lines checked"
+    },
+    {
+      "id": "R9",
+      "name": "No photo or clip was sent to the server in any request",
+      "pass": true,
+      "detail": "5 request bodies checked"
+    },
+    {
+      "id": "R10",
+      "name": "No page errors",
+      "pass": true,
+      "detail": "none"
+    }
+  ]
+}

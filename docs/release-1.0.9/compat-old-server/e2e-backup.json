@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-08T15:24:16.213Z",
+  "at": "2026-10-08T15:33:03.690Z",
   "results": [
     {
       "id": "B1",
@@ -11,7 +11,7 @@
       "id": "B2",
       "name": "Backup created in the app cache as one .wlbackup file, without claiming it was saved",
       "pass": true,
-      "detail": "backup/Wavelength-backup-2026-10-08.wlbackup, 253441 bytes, 1779 ms in headless Chromium (64 MiB Argon2id)"
+      "detail": "backup/Wavelength-backup-2026-10-08.wlbackup, 253441 bytes, 2238 ms in headless Chromium (64 MiB Argon2id)"
     },
     {
       "id": "B3",

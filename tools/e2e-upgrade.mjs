@@ -17,6 +17,9 @@ import path from 'node:path';
 import { harness, net, serve, WWW } from './native-harness.mjs';
 import { localOnly } from './local-only.mjs';
 
+const LOGBOOK = JSON.parse(fs.readFileSync(new URL('../data/logbook.json', import.meta.url), 'utf8'));
+const SIG = 'data:image/png;base64,iVBORw0KGgo=';
+
 const OLD = path.resolve(process.argv[2] || '');
 const OUT = process.argv[3] || '';
 const API = process.argv[4] || 'http://localhost:8787';
@@ -52,7 +55,8 @@ const serverEntries = () => fetch(API + '/__dev/entries').then((r) => r.json()).
 const local = (page) => page.evaluate((id) => new Promise((ok) => {
   const r = indexedDB.open('wavelength-' + id);
   r.onsuccess = () => { const db = r.result; const out = {}; const tx = db.transaction(['entries', 'images', 'kv']);
-    tx.objectStore('entries').getAll().onsuccess = (e) => { out.entries = e.target.result.map((x) => ({ id: x.id, dirty: !!x._dirty, deleted: !!x.deleted, note: x.reflection || x.refl || '' })); };
+    tx.objectStore('entries').getAll().onsuccess = (e) => { out.entries = e.target.result.map((x) => ({ id: x.id, dirty: !!x._dirty, deleted: !!x.deleted, signoff: x.signoff && x.signoff.code || '' })); };
+    tx.objectStore('kv').get('assessments').onsuccess = (e) => { const v = e.target.result; out.assessments = v && Array.isArray(v.v) ? v.v.map((a) => a.code || a.id) : []; };
     tx.objectStore('images').getAll().onsuccess = (e) => { out.images = e.target.result.map((x) => ({ id: x.id, entryId: x.entryId, size: x.blob && x.blob.size })); };
     tx.oncomplete = () => { out.version = db.version; db.close(); ok(out); }; };
   r.onerror = () => ok(null);
@@ -95,13 +99,21 @@ await page.evaluate(() => window.Capacitor.Plugins.Preferences ? null : null);
 await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('__prefs') || '{}'); p['wl-lock'] = '1'; localStorage.setItem('__prefs', JSON.stringify(p)); });
 const synced = await saveScan(page, 'Dummy synced scan before the upgrade');
 for (let end = Date.now() + 15000; Date.now() < end && !(await serverEntries()).some((r) => r.id === synced);) await page.waitForTimeout(400);
+// A supervisor signs that scan off from their dashboard and records an assessment, then 1.0.8 syncs them in.
+const s1link = ((await A.call('/api/app/supervisors')).supervisors || []).find((x) => x.email === S1.email);
+const req = await A.call('/api/app/signoff/request', { entryIds: [synced], supervisorLink: s1link && s1link.id });
+const so = await S1.call('/api/app/supervise/signoff', { code: req.code, name: 'Dr Dummy One', role: 'Consultant', confirm: true, signature: SIG, decisions: { [synced]: 'confirmed' } });
+const pw = LOGBOOK.pathways.find((x) => x.modules && x.modules.length);
+const as = await S1.call('/api/app/supervise/assessment/new', { learnerId: A.id, pathway: pw.id, module: pw.modules[0].id, kind: LOGBOOK.assessmentKinds[0].id, name: 'Dr Dummy One', role: 'Consultant', confirm: true, signature: SIG, outcome: 'competent', domains: { [LOGBOOK.assessmentDomains[0].id]: LOGBOOK.assessmentScale[0] } });
+await page.evaluate(() => window.__fire('App', 'appStateChange', { isActive: true }));
+for (let end = Date.now() + 15000; Date.now() < end;) { const l = await local(page); if (l.entries.some((e) => e.id === synced && e.signoff) && l.assessments.length) break; await page.waitForTimeout(500); }
 net.offline = true;
 const pending = await saveScan(page, 'Dummy scan saved offline in 1.0.8');
 await page.waitForTimeout(1500);
 const before = await local(page);
 const prefsBefore = await page.evaluate(() => ({ prefs: localStorage.getItem('__prefs'), theme: localStorage.getItem('wl-theme'), acc: !!localStorage.getItem('wl-acc'), lang: localStorage.getItem('wl-lang') }));
-record('U1', 'In ' + ver108 + ': signed in, one scan synced, one scan saved offline and waiting, two photos', ver108 === oldVersion && token108 && (await serverEntries()).some((r) => r.id === synced) && before.entries.find((e) => e.id === pending && e.dirty) && before.images.length === 2,
-  `version ${ver108}, entries ${before.entries.length} (waiting ${before.entries.filter((e) => e.dirty).length}), photos ${before.images.length}, database v${before.version}`);
+record('U1', 'In ' + ver108 + ': signed in, a signed-off scan, an assessment, a scan saved offline and waiting, two photos', ver108 === oldVersion && token108 && (await serverEntries()).some((r) => r.id === synced) && before.entries.find((e) => e.id === pending && e.dirty) && before.images.length === 2 && before.entries.find((e) => e.id === synced && e.signoff === so.code) && before.assessments.includes(as.code),
+  `version ${ver108}, entries ${before.entries.length} (waiting ${before.entries.filter((e) => e.dirty).length}), photos ${before.images.length}, sign-off ${so.code}, assessment ${as.code}, database v${before.version}`);
 
 // ---------- The update: same storage, new bundle, first start with no network ----------
 await page.goto('about:blank');
@@ -119,8 +131,8 @@ const login = await page.evaluate(() => ({ auth: !!document.querySelector('#app 
 record('U3', 'Still signed in with the same login: no sign-in screen, token unchanged in secure storage', !login.auth && login.token === token108, `sign-in screen ${login.auth}, same token ${login.token === token108}`);
 const after = await local(page);
 const kept = before.entries.every((b) => after.entries.some((a) => a.id === b.id)) && before.images.every((b) => after.images.some((a) => a.id === b.id && a.size === b.size));
-record('U4', 'Every entry and photo is still on the device, and the offline scan is still waiting', kept && after.entries.find((e) => e.id === pending && e.dirty) && after.version === before.version,
-  `entries ${after.entries.length}/${before.entries.length}, photos ${after.images.length}/${before.images.length}, database v${after.version}`);
+record('U4', 'Every entry, photo, sign-off and assessment is still on the device, and the offline scan is still waiting', kept && after.entries.find((e) => e.id === pending && e.dirty) && after.version === before.version && after.entries.find((e) => e.id === synced && e.signoff === so.code) && after.assessments.includes(as.code),
+  `entries ${after.entries.length}/${before.entries.length}, photos ${after.images.length}/${before.images.length}, sign-off kept ${!!after.entries.find((e) => e.id === synced && e.signoff === so.code)}, assessments ${after.assessments.length}, database v${after.version}`);
 const prefsAfter = await page.evaluate(() => ({ prefs: localStorage.getItem('__prefs'), theme: localStorage.getItem('wl-theme'), acc: !!localStorage.getItem('wl-acc'), lang: localStorage.getItem('wl-lang'), dark: document.documentElement.dataset.theme }));
 record('U5', 'Preferences kept: dark theme, app lock setting, cached account', prefsAfter.theme === 'dark' && prefsAfter.dark === 'dark' && prefsAfter.prefs === prefsBefore.prefs && prefsAfter.acc, JSON.stringify(prefsAfter));
 const st = await page.evaluate(() => (document.querySelector('.sync-ind') || {}).getAttribute && document.querySelector('.sync-ind').getAttribute('aria-label'));
@@ -150,6 +162,24 @@ await page.waitForTimeout(400);
 const foot = await page.evaluate(() => document.querySelector('.about-foot [data-appver]').textContent);
 record('U9', 'Me shows Version 1.0.9 (15)', foot === 'Version 1.0.9 (15)', foot);
 await ctx.close();
+
+// ---------- A second signed-in session (another phone) sees the scan that was saved offline ----------
+{
+  const lg = await fetch(API + '/api/app/login', { method: 'POST', headers: H, body: JSON.stringify({ email: A.email, password: PW }) });
+  const tok2 = lg.headers.get('X-Wavelength-Token');
+  const B = await newApp(390, 844);
+  await B.page.goto('https://localhost/');
+  await B.page.evaluate((tok) => localStorage.setItem('__secure', JSON.stringify({ 'wavelength.session': tok })), tok2);
+  await B.page.goto('https://localhost/');
+  await B.page.waitForSelector('nav.tabs', { timeout: 15000 });
+  let seen = null;
+  for (let end = Date.now() + 15000; Date.now() < end && !(seen = (await local(B.page)).entries.find((e) => e.id === pending));) await B.page.waitForTimeout(500);
+  await B.page.evaluate((id) => { location.hash = '#/entry/' + id; }, pending);
+  await B.page.waitForTimeout(800);
+  const shown = await B.page.evaluate(() => document.querySelector('#app').innerText);
+  record('U11', 'A second signed-in session on another device shows the scan saved offline in 1.0.8', !!seen && tok2 && tok2 !== token108 && /Dummy scan saved offline in 1\.0\.8/.test(shown), `found ${!!seen}, separate login ${tok2 !== token108}`);
+  await B.ctx.close();
+}
 await browser.close();
 const bad = errors.filter((e) => !/internetdisconnected|Failed to fetch|ERR_INTERNET_DISCONNECTED/i.test(e));
 record('U10', 'No page errors in either version', !bad.length, bad.slice(0, 3).join(' | ') || 'none');

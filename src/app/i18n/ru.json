@@ -1926,5 +1926,7 @@
 "Wavelength app support": "Поддержка приложения Wavelength",
 "Wavelength is built with these open-source components. Thank you to their authors.": "Wavelength создан с использованием этих компонентов с открытым исходным кодом. Спасибо их авторам.",
 "Web app": "Веб-приложение",
-"Website": "Сайт"
+"Website": "Сайт",
+"Wavelength could not open the logbook saved on this phone.": "Wavelength не удалось открыть журнал, сохранённый на этом телефоне.",
+"Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.": "Ничего не удалено. Полностью закройте Wavelength и откройте снова. Если это повторяется, перезагрузите телефон."
 }
