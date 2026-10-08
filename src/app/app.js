@@ -99,7 +99,7 @@
     if (data !== undefined) { opt.method = 'POST'; opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(data); }
     if (o && o.timeout) opt.timeout = o.timeout;
     return NAT.net(path, opt).then(function (r) {
-      return r.json().catch(function (ex) { if (ex && ex.name === 'AbortError') { ex.network = true; ex.timeout = true; throw ex; } return {}; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { authExpired(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
+      return r.json().catch(function (ex) { if (ex && ex.name === 'AbortError') { ex.network = true; ex.timeout = true; throw ex; } return { _nojson: true }; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { authExpired(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
     });
   }
   // A network failure or a call that got no answer, as opposed to an answer from the server.
@@ -236,56 +236,119 @@
   function strip(e) { var o = {}; for (var k in e) if (k.charAt(0) !== '_') o[k] = e[k]; return o; }
   function saveLocal(e) { var i = S.entries.findIndex(function (x) { return x.id === e.id; }); if (i >= 0) S.entries[i] = e; else S.entries.push(e); return put('entries', e); }
   // ---------- Sync status ----------
-  // The status comes from what the last attempt actually did, never from navigator.onLine alone: Android WebView
-  // can report "online" with no connection. Logbook entries only; photos and clips stay on this device and are
-  // backed up separately (Back up and restore).
-  var SY = { lastOk: 0, fail: '', tries: 0, timer: 0, ran: false };
-  // Retry gaps after each failure in a row (each with ±20% jitter). Leaving aeroplane mode takes a phone a few
-  // seconds to reconnect, so the first gaps are short; after that, no more than every 5 minutes.
-  var RETRY = [2e3, 5e3, 10e3, 20e3, 30e3, 60e3, 120e3, 300e3];
+  // The status comes from what the last attempt actually did, combined with what the phone says about its network
+  // (netstate.js): never from navigator.onLine alone. "Offline" means this device has no network; "Can't sync" means
+  // it has one but the Wavelength server could not be reached (a VPN, firewall or network filter, or the server).
+  // Each device shows its own status. Logbook entries only; photos and clips stay on this device and are backed up
+  // separately (Back up and restore).
+  var NETR = window.WLNet;
+  var SY = { lastOk: 0, lastTry: 0, fail: '', tries: 0, timer: 0, ran: false, err: null };
+  S.net = null; // the phone's network (WLNetwork plugin), or null where only navigator.onLine is known
+  function deviceNet() { return S.net || { known: false, online: navigator.onLine !== false }; }
   function pendingList() { return S.entries.filter(function (e) { return e._dirty; }); }
   function refused() { return S.entries.filter(function (e) { return e._dirty && e._syncError; }); }
   function syncState() {
-    if (!S.account) return '';
-    if (S.syncing) return 'syncing';
-    if (SY.fail === 'offline' || navigator.onLine === false) return 'offline';
-    if (SY.fail || refused().length) return 'failed';
-    if (pendingList().length) return 'pending';
-    return SY.ran ? 'synced' : '';
+    return NETR.state({ account: !!S.account, update: SY.fail === 'update', syncing: S.syncing, fail: SY.fail, dev: deviceNet(), pending: pendingList().length, refused: refused().length, ran: SY.ran });
   }
   function syncText(st) {
     var n = pendingList().length;
     if (st === 'offline') return T('You\'re offline. Your entries are saved on this device and will sync when you\'re back online.');
+    if (st === 'unreachable') return T('Can\'t connect to Wavelength. Your entries remain saved on this device.');
     if (st === 'pending') return N(n, 'Saved on this device. {n} entry awaiting sync.', 'Saved on this device. {n} entries awaiting sync.');
     if (st === 'syncing') return n ? N(n, 'Synchronising {n} entry…', 'Synchronising {n} entries…') : T('Synchronising…');
     if (st === 'synced') return T('All changes synced.');
     if (st === 'failed') return T('Unable to sync. Your entries remain saved on this device.');
     if (st === 'auth') return T('Sign in again to continue synchronising. Your local entries are safe.');
+    if (st === 'update') return T('Update Wavelength to keep syncing. Your logbook stays on this phone and you can still read and export it.');
     return '';
   }
+  // Small line icons for the status pill and banners (stroke follows the text colour).
+  var SI = {
+    check: ic('<path d="M5 12.5l4.2 4.2L19 7"/>', 14),
+    clock: ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', 14),
+    sync: ic('<path d="M20 12a8 8 0 0 1-14.3 4.9M4 12a8 8 0 0 1 14.3-4.9"/><path d="M18.5 3.5v3.8h-3.8M5.5 20.5v-3.8h3.8"/>', 14),
+    offline: ic('<path d="M3 3l18 18"/><path d="M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 4-2.4M19 12.9a10 10 0 0 0-2.2-1.6M2 9.3a15 15 0 0 1 4.3-2.8M22 9.3A15 15 0 0 0 10.6 5"/><circle cx="12" cy="20" r=".6"/>', 14),
+    alert: ic('<path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.2M12 17.2v.3"/>', 14),
+    lock: ic('<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>', 14),
+    chev: '<svg class="chev flip" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>'
+  };
+  function pillInner(st) {
+    var p = NETR.pill(st);
+    return '<span class="sp-ic" aria-hidden="true">' + SI[p.icon] + '</span><span class="sp-tx">' + esc(T(p.label, { n: pendingList().length })) + '</span>' + SI.chev;
+  }
+  // Banner below the header. Pending and syncing wait a moment before showing, so a save that syncs at once never
+  // flashes a warning; "All changes synced." shows briefly after a warning, then goes, leaving the pill.
+  var BAN = { st: null, at: 0, shown: false, okUntil: 0, timer: 0 };
+  function bannerHtml(b, n) {
+    var body = b.icon === 'clock' ? N(n, '{n} scan is saved on this device. Wavelength will retry automatically.', '{n} scans are saved on this device. Wavelength will retry automatically.') : b.body ? T(b.body) : '';
+    return '<div class="sb sb-' + b.tone + '"><span class="sb-ic" aria-hidden="true">' + SI[b.icon] + '</span><div class="sb-tx"><b>' + esc(T(b.title)) + '</b>' +
+      (body ? '<p>' + esc(body) + '</p>' : '') +
+      (b.pending ? '<p class="sb-n">' + esc(N(b.pending, '{n} scan waiting to sync.', '{n} scans waiting to sync.')) + '</p>' : '') +
+      (b.hint ? '<p class="sb-hint">' + esc(T(b.hint)) + '</p>' : '') +
+      (b.progress ? '<span class="sb-prog" aria-hidden="true"><i></i></span>' : '') +
+      (b.retry || b.details ? '<div class="sb-act">' + (b.retry ? '<button type="button" class="btn sm" data-sbretry' + (S.syncing ? ' disabled' : '') + '>' + esc(T('Retry sync')) + '</button>' : '') + (b.details ? '<button type="button" class="link small" data-syncpill>' + esc(T('Details')) + '</button>' : '') + '</div>' : '') +
+      '</div></div>';
+  }
   function setSyncDot() {
-    var st = syncState(), text = syncText(st);
-    $$('.sync-ind').forEach(function (a) {
-      a.className = 'sync-ind st-' + (st || 'none');
-      a.setAttribute('aria-label', text ? T('Sync status: {status}', { status: text }) : T('Sync status'));
-      a.title = text;
+    var st = syncState(), text = syncText(st), n = pendingList().length, now = Date.now();
+    if (st !== BAN.st) { if (st === 'synced' && BAN.shown) BAN.okUntil = now + 3000; BAN.st = st; BAN.at = now; }
+    var settle = st === 'pending' ? 3000 : st === 'syncing' ? 800 : 0, age = now - BAN.at;
+    var b = NETR.banner(st, n, { settled: age >= settle, justSynced: now < BAN.okUntil });
+    clearTimeout(BAN.timer);
+    if (settle && age < settle) BAN.timer = setTimeout(setSyncDot, settle - age + 20);
+    else if (b && st === 'synced') BAN.timer = setTimeout(setSyncDot, BAN.okUntil - now + 20);
+    if (st !== 'synced') BAN.shown = !!b;
+    var cls = NETR.pill(st).cls, inner = pillInner(st);
+    $$('button.sync-pill').forEach(function (a) {
+      a.className = 'sync-pill p-' + cls;
+      if (a.dataset.k !== inner) { a.innerHTML = inner; a.dataset.k = inner; }
+      a.setAttribute('aria-label', (text ? T('Sync status: {status}', { status: text }) : T('Sync status')) + ' ' + T('Open sync details.'));
     });
-    $$('[data-syncline]').forEach(function (p) {
-      var show = st && st !== 'synced';
-      p.hidden = !show; p.className = 'sync-line st-' + (st || 'none');
-      if (show) p.querySelector('span').textContent = text;
+    $$('[data-syncbanner]').forEach(function (el) {
+      var html = b ? bannerHtml(b, n) : '', key = (b ? st + n + (S.syncing ? 's' : '') : '');
+      if (el.dataset.k === key) return;
+      el.dataset.k = key;
+      if (!b) { el.hidden = true; el.innerHTML = ''; return; }
+      el.innerHTML = html; el.hidden = false;
+      // Fades in only when the status itself changes, not every time a screen is drawn.
+      el.classList.toggle('in', BAN.key !== key);
     });
-    var panel = $('#syncpanel'); if (panel) fillSyncPanel(panel);
+    BAN.key = b ? st + n + (S.syncing ? 's' : '') : '';
+    $$('[data-syncpanel]').forEach(fillSyncPanel);
+  }
+  // Retry Sync from a banner or the details panel: start the back-off again and send entries the server refused.
+  function retryNow() { SY.tries = 0; if (SY.fail === 'offline') SY.fail = ''; return sync(true); }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest ? ev.target.closest('[data-syncpill],[data-sbretry]') : null; if (!t) return;
+    ev.preventDefault();
+    if (t.hasAttribute('data-sbretry')) { t.disabled = true; retryNow(); return; }
+    openSyncSheet();
+  });
+  function openSyncSheet() {
+    if ($('.sheet [data-syncpanel]')) return;
+    sheet('<h2>' + esc(T('Sync on this device')) + '</h2><div data-syncpanel></div><div class="btns"><button class="btn ghost block" type="button" data-close>' + esc(T('Close')) + '</button></div>', function (root) { fillSyncPanel($('[data-syncpanel]', root)); });
   }
   function scheduleRetry() {
     clearTimeout(SY.timer);
-    var d = RETRY[Math.min(Math.max(SY.tries - 1, 0), RETRY.length - 1)] * (0.8 + Math.random() * 0.4);
-    SY.timer = setTimeout(function () { SY.timer = 0; sync(); }, d);
+    SY.timer = setTimeout(function () { SY.timer = 0; sync(); }, NETR.retryDelay(SY.tries, Math.random()));
   }
+  // The phone's network changed (Wi-Fi or mobile data back, a VPN connected, reconnected or switched off): try again
+  // soon, from the start of the back-off. Changes arrive in bursts while a VPN reconnects, so wait for them to settle.
+  function onNet(v) {
+    var was = S.net; S.net = v;
+    if (!NETR.netChanged(was, v)) return;
+    setSyncDot();
+    if (!S.account || !NETR.deviceOnline(v)) return;
+    SY.tries = 0; clearTimeout(SY.netTimer);
+    SY.netTimer = setTimeout(function () { if (SY.fail || pendingList().length) sync(); }, 1500);
+  }
+  window.addEventListener('wl:net', function (e) { onNet(e.detail); });
+  if (NAT.netStatus) NAT.netStatus().then(function (v) { if (v) { S.net = v; setSyncDot(); } });
   // manual: the learner pressed Retry sync. Entries the server refused are only sent again then, or after an edit.
   function sync(manual) {
     if (!S.account) return Promise.resolve();
     if (updateLevel() === 'required') { SY.fail = 'update'; setSyncDot(); return Promise.resolve(); }
+    if (SY.fail === 'update') SY.fail = '';
     if (S.syncing) { S.again = S.again || S.syncP.then(function () { S.again = null; return sync(manual); }); return S.again; }
     clearTimeout(SY.timer); SY.timer = 0;
     S.syncing = true; setSyncDot();
@@ -313,7 +376,7 @@
     var conflicts = 0;
     return api('/api/app/sync', { entries: group.map(strip) }, { timeout: 30000 }).then(function (res) {
       stale(gen);
-      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; throw er; }
+      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; er.nojson = !!res._nojson; throw er; }
       var answered = {};
       var jobs = (res.saved || []).map(function (s) {
         answered[s.id] = true;
@@ -339,11 +402,12 @@
   function doSync(manual) {
     var dirty = S.entries.filter(function (e) { return e._dirty && (manual || !e._syncError); });
     var conflicts = 0, gen = SESSION;
+    SY.lastTry = Date.now();
     var push = batches(dirty).reduce(function (p, group) { return p.then(function () { return pushBatch(group, gen).then(function (c) { conflicts += c; }); }); }, Promise.resolve());
     return push.then(function () { return pullAll(0, gen); }).then(function () {
       return api('/api/app/signoffs').then(function (r) { stale(gen); if (r.ok) return setPending(r.signoffs); });
     }).then(function () { return loadAssessments(gen); }).then(function () {
-      SY.fail = ''; SY.ran = true; SY.lastOk = Date.now();
+      SY.fail = ''; SY.ran = true; SY.lastOk = Date.now(); SY.err = null;
       // Started offline: the account details and supervisor links could not load then, so fetch them now.
       if (!S.me) loadMe();
       if (!S.links) loadLinks();
@@ -351,14 +415,17 @@
     }, function (ex) {
       if (ex && ex.stale) return;
       // Kept on this device either way. Offline or no answer: wait for the connection. Anything else: show it.
+      // Which failure it was decides the words shown: no network here, server unreachable from here, no answer in
+      // time, the login ended, or a refusal. Only the kind and time are kept, never server text or entry content.
       SY.ran = true;
-      SY.fail = !S.account ? '' : netFail(ex) ? 'offline' : 'failed';
-      SY.error = (ex && ex.message) || '';
+      SY.fail = !S.account ? '' : NETR.classify(ex, deviceNet());
+      SY.err = SY.fail ? { kind: SY.fail, at: Date.now(), status: (ex && ex.status) || 0, vpn: !!(S.net && S.net.vpn) } : null;
     }).then(function () {
       S.syncing = false;
       if (!S.account || gen !== SESSION) return;
       var left = S.entries.some(function (e) { return e._dirty && !e._syncError; });
-      if (SY.fail || left) { SY.tries++; scheduleRetry(); } else SY.tries = 0;
+      if (SY.fail === 'auth') { /* signed out: nothing to retry until the learner signs in */ }
+      else if (SY.fail || left) { SY.tries++; scheduleRetry(); } else SY.tries = 0;
       setSyncDot(); resumeShares();
       // Send rebased edits straight away, at most twice in a row so a misbehaving server cannot loop us.
       if (!conflicts) S.rebases = 0; else if (!S.again && (S.rebases = (S.rebases || 0) + 1) <= 2) sync();
@@ -381,7 +448,7 @@
     var q = '/api/app/sync?since=' + (S.kv.lastSync || 0) + (S.kv.lastSyncAfter ? '&after=' + encodeURIComponent(S.kv.lastSyncAfter) : '');
     return api(q).then(function (res) {
       stale(gen);
-      if (!res.ok) throw new Error(res.error || 'Sync failed');
+      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; er.nojson = !!res._nojson; throw er; }
       var fresh = [];
       return Promise.all((res.entries || []).map(function (e) {
         var local = S.entries.find(function (x) { return x.id === e.id; });
@@ -498,18 +565,20 @@
     leaving = false; lastHash = location.hash;
     render(); window.scrollTo(0, 0);
   });
-  window.addEventListener('online', function () { S.online = true; if (SY.fail === 'offline') SY.fail = ''; setSyncDot(); sync(); });
+  window.addEventListener('online', function () { S.online = true; if (SY.fail === 'offline') SY.fail = ''; SY.tries = 0; setSyncDot(); sync(); });
   window.addEventListener('offline', function () { S.online = false; setSyncDot(); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync(); });
 
-  function syncInd() { return '<a class="sync-ind" href="#/settings?sync=1"><span class="sync-dot" aria-hidden="true"></span></a>'; }
-  // The one-line status in the logbook and on Home, hidden while everything is synced.
-  function syncLine() { return '<a class="sync-line" data-syncline href="#/settings?sync=1" hidden role="status"><span></span></a>'; }
+  // The sync status pill in the header: icon, short label and chevron; opens the sync details for this device.
+  function syncInd() { var st = syncState(); return '<button type="button" class="sync-pill p-' + NETR.pill(st).cls + '" data-syncpill>' + pillInner(st) + '</button>'; }
+  // The connection banner under the header. Left out of the scan form (the pill still shows the status), so a change
+  // of status never moves the fields while someone is typing, and out of Settings, which shows the full panel.
+  function syncBanner() { return ['new', 'edit', 'settings'].indexOf(route().name) >= 0 ? '' : '<div class="sync-banner" data-syncbanner role="status" aria-live="polite" hidden></div>'; }
   function shell(opts, body) {
     var r = route().name;
     var tab = function (name, href, icon, label, dot) { return '<a href="#/' + href + '"' + (r === name || (opts.tab === name) ? ' aria-current="page"' : '') + '>' + icon + '<span>' + esc(label) + '</span>' + (dot ? '<i class="nd" aria-label="' + esc(T('New sign-off')) + '"></i>' : '') + '</a>'; };
     var top = opts.hero ? '' : '<header class="top">' + (opts.back != null ? '<a class="back" href="#/' + opts.back + '" aria-label="' + esc(T('Back')) + '">' + I.back + '</a>' : MARK(34, 'rgba(247,245,240,.5)')) + '<h1>' + esc(opts.title) + '</h1>' + (opts.action || '') + syncInd() + '</header>';
-    return top + (opts.hero || '') + '<main class="' + (opts.hero ? 'flush' : '') + '">' + updateBanner() + (r === 'home' || r === 'log' ? syncLine() : '') + body + '</main>' +
+    return top + (opts.hero || '') + '<main class="' + (opts.hero ? 'flush' : '') + '">' + updateBanner() + syncBanner() + body + '</main>' +
       '<nav class="tabs" aria-label="App">' + tab('home', '', I.home, T('Home')) + tab('log', 'log', I.book, T('Logbook'), news().length) + '<a class="plus" href="#/new" aria-label="' + esc(T('Log a scan')) + '">' + I.plus + '<span>' + esc(T('Log')) + '</span></a>' + tab('progress', 'progress', I.chart, T('Progress')) + tab('me', 'me', I.user, T('Me')) + '</nav>';
   }
 
@@ -526,6 +595,8 @@
     var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute };
     (views[r.name] || viewHome)(r);
     setSyncDot();
+    // A new screen fades in once (CSS, 180 ms, none with reduced motion). A redraw of the same screen does not.
+    if (!soft) { var mn = $('main', app); if (mn) mn.classList.add('enter'); }
     if (!soft) announce();
     if (soft) window.scrollTo(0, keepScroll);
   }
@@ -784,7 +855,8 @@
     var hour = new Date().getHours(), hi = hour < 12 ? T('Good morning, {name}.', { name: name }) : hour < 18 ? T('Good afternoon, {name}.', { name: name }) : T('Good evening, {name}.', { name: name });
     var hero = '<header class="top" style="padding-bottom:4px"><a class="brand-link" href="/">' + MARK(34, 'rgba(247,245,240,.5)') + '<h1 style="font:600 13px var(--sans);letter-spacing:.38em">WAVELENGTH</h1></a>' + syncInd() + '</header>' +
       '<section class="hero"><p class="hi">' + esc(hi) + '</p><p class="sub">' + esc(ents.length ? T('{scans} in your logbook.', { scans: plural(ents.length, 'scan') }) : T('Log your first scan to start tracking your targets.')) + '</p>' +
-      '<div class="stats"><div class="stat"><b>' + ents.length + '</b><span>' + esc(T('Scans')) + '</span></div><div class="stat"><b>' + ents.filter(function (e) { return e.date.slice(0, 7) === month; }).length + '</b><span>' + esc(T('This month')) + '</span></div><div class="stat"><b>' + signed + '</b><span>' + esc(T('Signed off')) + '</span></div><div class="stat"><b>' + signedAssessments().length + '</b><span>' + esc(T('Assessments')) + '</span></div></div></section>';
+      // Each count opens the records it counts: the same filters, so the numbers match (homeCounts).
+      '<div class="stats">' + homeCounts(ents, month).map(function (c) { return '<a class="stat" href="#/' + c.href + '"><b>' + c.n + '</b><span>' + esc(c.label) + '</span></a>'; }).join('') + '</div></section>';
     var quick = '<div class="card" style="margin-top:16px;padding:10px"><div class="quick">' +
       [['new', I.plus, T('Log a scan')], ['signoff', I.pen, T('Sign-off')], ['assess', I.star, T('Assessment')], ['export', I.file, T('Export')]].map(function (q) { return '<a href="#/' + q[0] + '"><span>' + q[1] + '</span>' + esc(q[2]) + '</a>'; }).join('') + '</div></div>';
     var install = canInstall() ? '<div style="margin:0 0 12px">' + installButton() + '</div>' : '';
@@ -813,6 +885,15 @@
       (course ? '<h2 class="sec">' + esc(T('Next course')) + '</h2><a class="card teal" href="/courses/' + esc(course.slug) + '/" style="display:block;text-decoration:none"><p class="eyebrow" style="color:var(--teal-l)">' + esc(fmt(course.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })) + '</p><h3>' + esc(course.title) + '</h3><p class="muted" style="color:#cfe3e6">' + esc([course.venue, course.city].filter(Boolean).join(', ')) + '</p><span class="btn light sm">' + esc(T('See the course')) + '</span></a>' : '')));
     var nx = $('#nwx'); if (nx) nx.onclick = function () { setKv('news', []).then(function () { render(true); }); };
     loadThumbs();
+  }
+  // The four Home counts and where each opens. Own logbook only (supervised learners' scans are never in S.entries).
+  function homeCounts(ents, month) {
+    return [
+      { n: ents.length, label: T('Scans'), href: 'log' },
+      { n: ents.filter(function (e) { return (e.date || '').slice(0, 7) === month; }).length, label: T('This month'), href: 'log?m=' + month },
+      { n: ents.filter(function (e) { return stateMatch(e, 'signed'); }).length, label: T('Signed off'), href: 'log?s=signed' },
+      { n: signedAssessments().length, label: T('Assessments'), href: 'assess?view=signed' }
+    ];
   }
   function superviseCard() {
     var L2 = S.links; if (!L2) return '';
@@ -868,7 +949,9 @@
   }
   function viewLog(r) {
     var f = r.q.get('type') || 'all', q = (r.q.get('q') || '').toLowerCase(), st = r.q.get('s') || '';
-    var ents = live().sort(sortEntries);
+    var m = /^\d{4}-\d{2}$/.test(r.q.get('m') || '') ? r.q.get('m') : '';
+    // A month (from Home's "This month") narrows everything on the page, counts included, by the scan's date.
+    var ents = live().filter(function (e) { return !m || (e.date || '').slice(0, 7) === m; }).sort(sortEntries);
     var used = {}; ents.forEach(function (e) { used[e.type] = (used[e.type] || 0) + 1; });
     var list = ents.filter(function (e) {
       if (f !== 'all' && e.type !== f) return false;
@@ -880,16 +963,28 @@
     var filt = function (k, label, n) { return '<button type="button" data-f="' + k + '" aria-pressed="' + (f === k) + '">' + esc(label) + (n != null ? ' · ' + n : '') + '</button>'; };
     mount(shell({ title: T('Logbook'), action: '<a class="act" href="#/signoff" style="text-decoration:none">' + esc(T('Sign-off')) + '</a>' },
       '<div class="search"><input type="search" id="q" placeholder="' + esc(T('Search your logbook')) + '" value="' + esc(q) + '" aria-label="' + esc(T('Search')) + '"><a class="btn ghost sm" href="#/export" style="flex:none">' + esc(T('Export')) + '</a></div>' +
+      activeFilters(m, f, st, q) +
       '<div class="filters">' + filt('all', T('All'), ents.length) + Object.keys(used).map(function (t) { return filt(t, T((TYPES[t] || {}).short || t), used[t]); }).join('') + '</div>' +
       '<div class="seg" style="margin:0 0 6px">' + [['', T('All')], ['todo', T('Not sent')], ['waiting', T('Awaiting')], ['signed', T('Signed off')], ['none', T('No sign-off')]].map(function (o) { var n = o[0] ? ents.filter(function (e) { return stateMatch(e, o[0]); }).length : ents.length; return (o[0] === 'none' && !n && st !== 'none') ? '' : '<input type="radio" name="st" id="st' + o[0] + '" value="' + o[0] + '"' + (st === o[0] ? ' checked' : '') + '><label for="st' + o[0] + '">' + esc(o[1]) + ' · ' + n + '</label>'; }).join('') + '</div>' +
       (list.length ? Object.keys(groups).map(function (m) { return '<p class="month">' + esc(fmt(m + '-15', { month: 'long', year: 'numeric' })) + ' · ' + groups[m].length + '</p>' + groups[m].map(entryRow).join(''); }).join('') :
-        '<div class="empty">' + I.book.replace('width="24" height="24"', 'width="48" height="48"') + '<p>' + esc(ents.length ? T('No scans match.') : T('Your logbook is empty.')) + '</p><a class="btn teal" href="#/new">' + esc(T('Log a scan')) + '</a></div>')));
+        '<div class="empty">' + I.book.replace('width="24" height="24"', 'width="48" height="48"') + '<p>' + esc(m && !ents.length ? T('No scans logged in {month}.', { month: fmt(m + '-15', { month: 'long', year: 'numeric' }) }) : ents.length ? T('No scans match.') : T('Your logbook is empty.')) + '</p>' + (m || f !== 'all' || st || q ? '<a class="btn ghost" href="#/log">' + esc(T('Clear filters')) + '</a> ' : '') + '<a class="btn teal" href="#/new">' + esc(T('Log a scan')) + '</a></div>')));
     var upd = function (k, v) { var p = route().q; if (v) p.set(k, v); else p.delete(k); history.replaceState(null, '', '#/log?' + p.toString()); viewLog(route()); };
     $$('[data-f]').forEach(function (b) { b.addEventListener('click', function () { upd('type', b.dataset.f === 'all' ? '' : b.dataset.f); }); });
     $$('input[name=st]').forEach(function (i) { i.addEventListener('change', function () { upd('s', i.value); }); });
     if (news().length) setKv('news', []).then(function () { var d = $('.tabs .nd'); if (d) d.remove(); });
     var qi = $('#q'), tmr; qi.addEventListener('input', function () { clearTimeout(tmr); tmr = setTimeout(function () { upd('q', qi.value); var n = $('#q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); });
     loadThumbs();
+  }
+
+  // The filters in force, in words, with one way to clear them all.
+  function activeFilters(m, f, st, q) {
+    var bits = [];
+    if (m) bits.push(fmt(m + '-15', { month: 'long', year: 'numeric' }));
+    if (f !== 'all') bits.push(T((TYPES[f] || {}).short || f));
+    var stl = { todo: 'Not sent', waiting: 'Awaiting', signed: 'Signed off', none: 'No sign-off', unsigned: 'Not signed off' }[st]; if (stl) bits.push(T(stl));
+    if (q) bits.push('“' + q + '”');
+    if (!bits.length) return '';
+    return '<div class="active-f" role="status"><span class="muted small">' + esc(T('Showing')) + '</span>' + bits.map(function (b) { return '<span class="chip teal">' + esc(b) + '</span>'; }).join('') + '<a class="link small" href="#/log">' + esc(bits.length > 1 ? T('Clear filters') : T('Clear filter')) + '</a></div>';
   }
 
   // ---------- Entry form ----------
@@ -927,6 +1022,42 @@
     myPaths().forEach(function (pid) { PATHS[pid].modules.forEach(function (m) { if (m.types.indexOf(type) >= 0) out.push({ id: m.id, label: PATHS[pid].label + ' ' + T(m.label) }); }); });
     return out;
   }
+  // Required scan fields: is this one filled in?
+  function fieldOk(form, k) {
+    if (k === 'type' || k === 'supervision') return !!form.querySelector('input[name=' + k + ']:checked');
+    if (k === 'date') { var v = (form.querySelector('#date') || {}).value; return !!v && v <= today(); }
+    return true;
+  }
+  // Marks a field as missing (msg) or clears it (''): red border, a short line of help tied to the controls.
+  function markField(fl, msg) {
+    if (!fl) return;
+    var id = 'err-' + fl.dataset.req, p = $('#' + id, fl);
+    fl.classList.toggle('invalid', !!msg);
+    $$('input,select,textarea', fl).forEach(function (c) { if (msg) { c.setAttribute('aria-invalid', 'true'); c.setAttribute('aria-describedby', id); } else { c.removeAttribute('aria-invalid'); c.removeAttribute('aria-describedby'); } });
+    if (!msg) { if (p) p.remove(); fl.removeAttribute('tabindex'); fl.removeAttribute('role'); fl.removeAttribute('aria-describedby'); return; }
+    if (!p) { p = document.createElement('p'); p.className = 'ferr'; p.id = id; fl.appendChild(p); }
+    p.innerHTML = '<span aria-hidden="true">' + SI.alert + '</span>' + esc(msg);
+    // The field itself takes focus (not a control), so no keyboard or picker opens, and screen readers read the help.
+    fl.setAttribute('tabindex', '-1'); fl.setAttribute('role', 'group'); fl.setAttribute('aria-describedby', id);
+    var lab = $('.lab,label', fl); if (lab) { if (!lab.id) lab.id = 'lab-' + fl.dataset.req; fl.setAttribute('aria-labelledby', lab.id); }
+  }
+  // The note after saving a scan: what is true now, then (after the sync that follows) whether the server has it.
+  function savedNote(id, isNew) {
+    var t = document.createElement('div'); t.className = 'toast act'; t.setAttribute('role', 'status');
+    var words = function () {
+      var e = S.entries.find(function (x) { return x.id === id; });
+      if (e && !e._dirty) return isNew ? T('Scan saved and synced.') : T('Changes saved and synced.');
+      var off = !NETR.deviceOnline(deviceNet()) || ['offline', 'unreachable', 'timeout'].indexOf(SY.fail) >= 0;
+      return off ? T('Saved on this device. Awaiting sync.') : isNew ? T('Scan saved.') : T('Changes saved.');
+    };
+    t.innerHTML = '<span data-msg></span>' + (isNew ? '<a href="#/entry/' + esc(id) + '">' + esc(T('View scan')) + '</a><a href="#/new?copy=' + esc(id) + '">' + esc(T('Same patient')) + '</a>' : '');
+    $('[data-msg]', t).textContent = words();
+    $$('a', t).forEach(function (a) { a.addEventListener('click', function () { t.remove(); }); });
+    $$('.toast.act').forEach(function (x) { x.remove(); });
+    document.body.appendChild(t);
+    var timer = setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 200); }, 6000);
+    return { update: function () { if (!document.body.contains(t)) return; var w = words(); if (w !== $('[data-msg]', t).textContent) { $('[data-msg]', t).textContent = w; clearTimeout(timer); timer = setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 200); }, 4000); } } };
+  }
   var draftImages = []; // images and clips added in the form but not yet saved: { id, blob, thumb, w, h, kind }
   function viewEdit(r) {
     var editing = r.name === 'edit' ? S.entries.find(function (x) { return x.id === r.arg; }) : null;
@@ -939,9 +1070,10 @@
     var supNames = []; live().forEach(function (x) { if (x.supervisor && supNames.indexOf(x.supervisor) < 0) supNames.push(x.supervisor); });
     var body = '<form id="ef" novalidate>' +
       (copyFrom ? '<div class="ok">' + esc(T('Same patient as your {type} scan. Choose the next application.', { type: T((TYPES[copyFrom.type] || {}).label || '') })) + '</div>' : '') +
-      '<div class="field"><span class="lab">' + esc(T('Application')) + '</span><div class="seg types">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>' +
+      '<div class="field" data-req="type"><span class="lab" id="lab-type">' + esc(T('Application')) + '</span><div class="seg types">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>' +
       '<div id="rest"' + (e.type ? '' : ' hidden') + '>' +
-      '<div class="two"><div class="field"><label for="date">' + esc(T('Date')) + '</label><input id="date" name="date" type="date" max="' + today() + '" value="' + esc(e.date) + '" required></div>' +
+      '<p class="type-ok" id="typeok" aria-live="polite"></p>' +
+      '<div class="two"><div class="field" data-req="date"><label for="date">' + esc(T('Date')) + '</label><input id="date" name="date" type="date" max="' + today() + '" value="' + esc(e.date) + '" required></div>' +
       '<div class="field"><label for="setting">' + esc(T('Setting')) + '</label><select id="setting" name="setting"><option value="">' + esc(T('Choose')) + '</option>' + C.settings.map(function (s) { return '<option value="' + esc(s) + '"' + (e.setting === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
       '<div class="two"><div class="field"><label for="age">' + esc(T('Age band')) + '</label><select id="age" name="age"><option value="">' + esc(T('Not recorded')) + '</option>' + C.ageBands.map(function (s) { return '<option value="' + esc(s) + '"' + (e.age === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
       '<div class="field"><label for="sex">' + esc(T('Sex')) + '</label><select id="sex" name="sex"><option value="">' + esc(T('Not recorded')) + '</option>' + ['Female', 'Male'].map(function (s) { return '<option value="' + s + '"' + (e.sex === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
@@ -953,7 +1085,7 @@
       '<div class="two"><div class="field"><label for="conf">' + esc(T('Confirmed by')) + '</label><select id="conf" name="confirmation"><option value="">' + esc(T('Not yet')) + '</option>' + C.confirmation.map(function (s) { return '<option value="' + esc(s) + '"' + (e.confirmation === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
       '<div class="field"><label for="conc">' + esc(T('Agreement')) + '</label><select id="conc" name="concordant"><option value="">' + esc(T('Not applicable')) + '</option>' + ['Agreed', 'Partly agreed', 'Disagreed'].map(function (s) { return '<option value="' + s + '"' + (e.concordant === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
       '<div class="field"><label for="impact">' + esc(T('Impact on management')) + '</label><input id="impact" name="impact" type="text" placeholder="' + esc(T('For example, changed fluid plan, avoided CT')) + '" value="' + esc(e.impact || '') + '"></div>' +
-      '<div class="field"><span class="lab">' + esc(T('Supervision')) + '</span>' + seg('supervision', C.supervision, e.supervision) + '</div>' +
+      '<div class="field" data-req="supervision"><span class="lab" id="lab-supervision">' + esc(T('Supervision')) + '</span>' + seg('supervision', C.supervision, e.supervision) + '</div>' +
       '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" list="supl" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"><datalist id="supl">' + supNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></div>' +
       '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>' + esc(T('No sign-off needed for this scan')) + '</span></label></div>' +
       '<div class="field"><span class="lab">' + esc(T('Images and clips')) + '</span><p class="hint">' + esc(T('Stay on this phone only. Crop and cover identifiers before you save. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
@@ -968,6 +1100,8 @@
       var t = TYPES[(form.querySelector('input[name=type]:checked') || {}).value];
       $('#rest').hidden = !t;
       if (!t) return;
+      $('#typeok').innerHTML = '<span class="ok-ic" aria-hidden="true">' + SI.check + '</span><span>' + esc(T('{type} selected', { type: T(t.label) })) + '</span><button type="button" class="link small" data-chgtype>' + esc(T('Change')) + '</button>';
+      $('[data-chgtype]', form).onclick = function () { var c = form.querySelector('input[name=type]:checked') || form.querySelector('input[name=type]'); scrollToField(c.closest('.field'), true); c.focus({ preventScroll: true }); };
       var cur = readFindings();
       $('#findings').innerHTML = '<p class="eyebrow">' + esc(T('{type} findings', { type: T(t.label) })) + '</p>' + t.fields.map(function (fd) { return fieldHtml(fd, cur[fd.id] != null ? cur[fd.id] : (e.type === t.id ? (e.findings || {})[fd.id] : null)); }).join('');
       var mods = modulesForType(t.id), ex = e.exclude || [];
@@ -978,12 +1112,24 @@
       fd.forEach(function (v, k) { if (k.indexOf('f.') !== 0) return; var id = k.slice(2); var t = TYPES[(form.querySelector('input[name=type]:checked') || {}).value]; var def = t && t.fields.find(function (x) { return x.id === id; }); if (def && def.type === 'multi') (out[id] = out[id] || []).push(v); else if (v !== '') out[id] = def && def.type === 'number' ? Number(v) : v; });
       return out;
     };
-    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; setTimeout(function () {
-      // The next inputs after the application are the Date and Setting row: its labels land just below the header.
-      scrollToField($('#date').closest('.two'), true);
-    }, 60); }); });
+    // After the application, the next thing to fill in is the date: bring the Date and Setting row up just below the
+    // header and mark it briefly. Nothing is focused, so no keyboard or date picker opens by itself.
+    var toDate = function () {
+      var row = $('#date').closest('.two'); scrollToField(row, true);
+      row.classList.remove('next-up'); void row.offsetWidth; row.classList.add('next-up');
+      setTimeout(function () { row.classList.remove('next-up'); }, 1600);
+    };
+    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; setTimeout(toDate, 60); }); });
     form.addEventListener('input', function () { form.dataset.dirty = '1'; });
+    // A required field marked as missing clears as soon as it is filled in.
+    var clearInvalid = function (ev) { var fl = ev.target.closest && ev.target.closest('.field.invalid'); if (fl && fieldOk(form, fl.dataset.req)) markField(fl, ''); };
+    form.addEventListener('change', clearInvalid); form.addEventListener('input', clearInvalid);
     drawFindings();
+    // "Log one" from a pathway (#/new?type=...): the application is already chosen, so go straight on to the date,
+    // after the screen has settled at the top (the router scrolls to the top after drawing).
+    if (!editing && !copyFrom && e.type && TYPES[e.type]) {
+      setTimeout(function () { if (document.body.contains(form)) { toDate(); announce(T('{type} selected. Next: the date of the scan.', { type: T(TYPES[e.type].label) })); } }, 80);
+    }
     // Images and clips
     var existing = editing ? (editing.images || []).slice() : [];
     var removed = [];
@@ -1018,8 +1164,10 @@
     $('#vcam').addEventListener('change', function () { onFiles(this, true); });
     $('#vpick').addEventListener('change', function () { onFiles(this, true); });
     // Save
+    var saving = false;
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
+      if (saving) return; // a second tap while the first save is still running
       var err = $('.err', form); err.hidden = true;
       var d = formData(form);
       var out = editing ? Object.assign({}, strip(editing)) : { id: uid(), createdAt: Date.now() };
@@ -1030,13 +1178,24 @@
       var mods = modulesForType(out.type).map(function (m) { return m.id; });
       var ticked = $$('input[name=count]:checked', form).map(function (i) { return i.value; });
       out.exclude = mods.filter(function (m) { return ticked.indexOf(m) < 0; });
-      if (!out.type) { err.textContent = T('Choose the application.'); err.hidden = false; return; }
-      if (!out.date || out.date > today()) { err.textContent = T('Enter the date of the scan.'); err.hidden = false; return; }
-      if (!out.supervision) { err.textContent = T('Choose the level of supervision.'); err.hidden = false; scrollToField($('input[name=supervision]').closest('.field')); return; }
+      // Required fields (unchanged from 1.0.9: application, a date not in the future, supervision): each one missing is
+      // marked where it is, and the first is brought into view and focused for screen readers. Nothing is cleared.
+      var missing = [['type', T('Choose the application.')], ['date', out.date > today() ? T('The date cannot be in the future.') : T('Enter the date of the scan.')], ['supervision', T('Choose the level of supervision.')]].filter(function (x) { return !fieldOk(form, x[0]); });
+      $$('.field.invalid', form).forEach(function (fl) { markField(fl, ''); });
+      if (missing.length) {
+        missing.forEach(function (x) { markField($('[data-req="' + x[0] + '"]', form), x[1]); });
+        var first = $('[data-req="' + missing[0][0] + '"]', form);
+        scrollToField(first, true);
+        first.focus({ preventScroll: true });
+        NAT.haptic('warning');
+        return;
+      }
       // The server refuses an entry over 20,000 characters, so say so here rather than keep one that cannot sync.
       if (JSON.stringify(strip(out)).length > 19000) { err.textContent = T('This scan has too much text to sync. Shorten the reflection or other notes.'); err.hidden = false; return; }
       var hits = guard(out);
       var finish = function () {
+        var btn = $('button[type=submit]', form);
+        saving = true; busy(btn, true, T('Saving…'));
         var keepImgs = existing.filter(function (x) { return removed.indexOf(x.id) < 0; });
         out.images = keepImgs.concat(draftImages.map(function (x) { var o = { id: x.id, w: x.w, h: x.h, declared: true }; if (x.kind === 'clip') { o.kind = 'clip'; o.dur = x.dur; } return o; }));
         out._dirty = true; if (!editing) out._new = true;
@@ -1050,10 +1209,17 @@
         }).then(function () { return saveLocal(out); }).then(function () {
           setKv('lastSetting', out.setting); draftImages = []; NAT.haptic('success');
           delete form.dataset.dirty;
-          sheet('<h2>' + esc(T('Scan saved')) + '</h2><p class="muted">' + esc(T((TYPES[out.type] || {}).label || '')) + ', ' + esc(fmt(out.date)) + '.</p>' + nextTargetsHtml(out) +
-            '<div class="btns"><a class="btn teal block" href="#/new?copy=' + out.id + '" data-close>' + esc(T('Another scan, same patient')) + '</a><a class="btn ghost block" href="#/new" data-close data-fresh>' + esc(T('New patient')) + '</a><a class="btn ghost block" href="#/entry/' + out.id + '" data-close>' + esc(T('View this scan')) + '</a></div>');
-          go('entry/' + out.id); sync();
-        }).catch(function (ex) { err.textContent = T('Could not save on this device: {why}', { why: (ex && ex.message) || ex }); err.hidden = false; });
+          // Saved on this device. A new scan goes back Home; an edit goes back to the scan. A short note says what
+          // actually happened, and changes to "synced" only once the server has acknowledged this scan.
+          var note = savedNote(out.id, !editing);
+          go(editing ? 'entry/' + out.id : '');
+          sync().then(function () { note.update(); });
+        }).catch(function (ex) {
+          // Not saved: stay on the form with everything as entered.
+          saving = false; busy(btn, false);
+          err.textContent = T('Could not save on this device: {why}', { why: (ex && ex.message) || ex }); err.hidden = false;
+          scrollToField(err, true);
+        });
       };
       if (hits.length) {
         sheet('<h2>' + esc(T('Check for identifiers')) + '</h2><p>' + esc(T('Your text looks like it includes {what}. Your logbook must never hold patient-identifiable information.', { what: hits.join(', ') })) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Go back and edit')) + '</button><button class="btn ghost block" data-ok>' + esc(T('It is not an identifier, save')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); finish(); }; });
@@ -1085,12 +1251,6 @@
       return (images || []).map(function (im, i) { return hs[i] ? { id: im.id, sha256: hs[i], kind: im.kind === 'clip' ? 'clip' : 'image' } : null; }).filter(Boolean);
     });
   }
-  function nextTargetsHtml(e) {
-    var rows = [];
-    myPaths().forEach(function (pid) { var ps = pathwayStats(pid); ps.stats.forEach(function (s) { if (s.mod.types.indexOf(e.type) >= 0 && (e.exclude || []).indexOf(s.mod.id) < 0 && s.total) rows.push('<div class="mod ' + s.colour + '" style="margin:0 0 8px;padding:12px"><div class="row"><b class="grow">' + esc(ps.pw.label + ' ' + T(s.mod.label)) + '</b><span>' + s.counted + ' / ' + s.total + '</span></div><p class="need small" style="margin:4px 0 0">' + esc(needText(s)) + '</p></div>'); }); });
-    return rows.length ? '<div style="margin:12px 0">' + rows.join('') + '</div>' : '';
-  }
-
   // ---------- Image editor: crop, cover identifiers, rotate. Re-encoding strips hidden photo data. ----------
   function editorFrame(title, extraTools, declText, saveLabel) {
     var el = document.createElement('div'); el.className = 'editor';
@@ -1642,9 +1802,12 @@
   function viewAssess(r) {
     var pre = r.q.get('p') && r.q.get('m') ? r.q.get('p') + '|' + r.q.get('m') : '';
     var preE = r.q.get('e');
-    var list = S.assessments.slice().sort(function (a, b) { return (b.assessed_on || b.created_at || '').localeCompare(a.assessed_on || a.created_at || ''); });
+    var only = r.q.get('view') === 'signed';
+    var list = (only ? signedAssessments() : S.assessments).slice().sort(function (a, b) { return (b.assessed_on || b.created_at || '').localeCompare(a.assessed_on || a.created_at || ''); });
     var hasMods = myPaths().some(function (p) { return PATHS[p].modules.length; });
-    mount(shell({ title: T('Assessments'), back: '' },
+    // From Home's Assessments count: the signed assessments it counts, first, with the filter shown.
+    var hist = '<h2 class="sec" id="ahist">' + esc(T('Your assessments')) + '</h2>' + (only ? '<div class="active-f" role="status"><span class="muted small">' + esc(T('Showing')) + '</span><span class="chip teal">' + esc(T('Signed')) + ' · ' + list.length + '</span><a class="link small" href="#/assess">' + esc(T('Clear filter')) + '</a></div>' : '') + (list.length ? list.map(asmRow).join('') : '<p class="muted small">' + esc(only ? T('No signed assessments yet.') : T('None yet.')) + '</p>');
+    mount(shell({ title: T('Assessments'), back: '' }, (only ? hist : '') +
       '<div class="card dark"><h3>' + esc(T('Structured assessments')) + '</h3><p class="muted small">' + esc(T('Your assessor rates preparation, image acquisition, optimisation, interpretation, clinical integration and documentation, then records an outcome and feedback. Formative assessments guide your learning. Summative, DOPS and final assessments count towards your targets when judged competent. Each one gets a code anyone can verify.')) + '</p></div>' +
       (hasMods ? '<form id="af" class="card"><h3>' + esc(T('New assessment')) + '</h3>' +
         '<div class="field"><label for="am">' + esc(T('Pathway module')) + '</label><select id="am" name="mod">' + moduleOptions(pre) + '</select></div>' +
@@ -1653,7 +1816,7 @@
         '<div class="field"><label for="arf">' + esc(T('Note for your assessor (optional)')) + '</label><textarea id="arf" name="learnerReflection" style="min-height:70px" placeholder="' + esc(T('What you want feedback on')) + '"></textarea></div>' +
         '<div class="btns"><button class="btn teal" type="button" data-m="person" style="flex:1">' + esc(T('Assessor is with me')) + '</button><button class="btn" type="button" data-m="link" style="flex:1">' + esc(T('Send a request')) + '</button></div></form>'
         : '<div class="card"><p class="muted small">' + esc(T('Choose a pathway with modules in Me to record assessments against it.')) + '</p><a class="btn sm" href="#/me?edit=pathways">' + esc(T('Choose pathways')) + '</a></div>') +
-      '<h2 class="sec">' + esc(T('Your assessments')) + '</h2>' + (list.length ? list.map(asmRow).join('') : '<p class="muted small">' + esc(T('None yet.')) + '</p>')));
+      (only ? '' : hist)));
     $$('[data-asm]').forEach(function (el) { el.onclick = function () { var a = S.assessments.find(function (x) { return x.id === el.dataset.asm; }); if (a) asmDetail(a); }; });
     var f = $('#af'); if (!f) return;
     var drawScans = function () {
@@ -2745,20 +2908,52 @@
     bindOrg($('#mf'), 'm4');
     $('#mf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); saveProfile({ grade: d.grade, registration: d.registration, supervisor: !!d.supervisor }, { firstName: d.firstName, lastName: d.lastName, organisation: d.organisation, organisationId: d.organisationId || null }).then(function () { toast(T('Profile saved.')); render(true); }).catch(function (ex) { toast(ex.message); }); });
   }
-  // ---------- Sync panel (Settings): status, waiting entries, last sync, Retry sync, start-up details ----------
+  // ---------- Sync panel (Settings and the status pill): this device's network, the server, waiting entries, ----------
+  // the last attempt and the last success, the last error, Retry sync and what to check. No entry content.
+  function when(t) { return t ? new Date(t).toLocaleString(LOCALES[LANG], { dateStyle: 'medium', timeStyle: 'short' }) : ''; }
+  function netWords() {
+    var d = deviceNet();
+    if (!d.known) return d.online ? T('Connected') : T('No network');
+    if (!d.connected) return T('No network');
+    var t = d.transports || [], via = t.indexOf('wifi') >= 0 ? T('Wi-Fi') : t.indexOf('cellular') >= 0 ? T('Mobile data') : t.indexOf('ethernet') >= 0 ? T('Ethernet') : T('Connected');
+    return via + (d.vpn ? ' · ' + T('VPN on') : '') + (d.validated ? '' : ' · ' + T('internet access not confirmed by the phone'));
+  }
+  function serverWords(st) {
+    if (S.syncing) return T('Checking…');
+    if (st === 'offline') return T('Not checked: no network');
+    if (st === 'unreachable') return SY.fail === 'timeout' ? T('No answer in time') : T('Not reachable from this network');
+    if (st === 'failed') return T('Reachable, but some changes were not accepted');
+    if (st === 'update') return T('Reachable');
+    return SY.lastOk ? T('Reachable') : T('Not checked yet');
+  }
   function fillSyncPanel(el) {
     if (!el) return;
     var st = syncState(), n = pendingList().length, bad = refused();
     var why = function (r) { return r === 'not-accepted' ? T('The server did not accept this entry.') : T(r); };
     var starts = []; try { starts = JSON.parse(localStorage.getItem('wl-diag') || '[]'); } catch (e) { starts = []; }
-    el.innerHTML = '<p class="sync-now st-' + (st || 'none') + '" role="status"><span class="sync-dot" aria-hidden="true"></span><span>' + esc(syncText(st) || T('Checking…')) + '</span></p>' +
-      '<dl class="sync-facts"><dt>' + esc(T('Entries awaiting sync')) + '</dt><dd>' + n + '</dd><dt>' + esc(T('Last synced')) + '</dt><dd>' + esc(SY.lastOk ? new Date(SY.lastOk).toLocaleString(LOCALES[LANG], { dateStyle: 'medium', timeStyle: 'short' }) : T('Not yet on this device')) + '</dd></dl>' +
+    var p = NETR.pill(st), err = SY.err;
+    // Redrawn only when something shown changes, so an open "Start-up details" or a focused button is kept.
+    var key = [st, n, bad.length, SY.lastTry, SY.lastOk, S.syncing, err && err.at, netWords()].join('|');
+    if (el.dataset.k === key) return;
+    el.dataset.k = key;
+    var help = st === 'unreachable' ? '<div class="sync-help"><b>' + esc(T('What to check')) + '</b><ul><li>' + esc(T('Open a website in your browser to check this network has internet access.')) + '</li><li>' + esc(T('A VPN, firewall or network restriction may be affecting the connection. Check your network or VPN settings, following your organisation\'s rules.')) + '</li><li>' + esc(T('Hospital guest Wi-Fi may need you to sign in on its page first.')) + '</li><li>' + esc(T('Then press Retry sync. Wavelength also retries by itself.')) + '</li></ul></div>'
+      : st === 'offline' ? '<div class="sync-help"><p>' + esc(T('Turn off aeroplane mode or connect to Wi-Fi or mobile data. Wavelength syncs by itself when a connection returns.')) + '</p></div>'
+      : st === 'failed' && !bad.length ? '<div class="sync-help"><p>' + esc(T('Wavelength will try again. If this keeps happening, contact hello@thewavelength.co.uk.')) + '</p></div>' : '';
+    el.innerHTML = '<p class="sync-now"><span class="sync-pill static p-' + p.cls + '"><span class="sp-ic" aria-hidden="true">' + SI[p.icon] + '</span><span class="sp-tx">' + esc(T(p.label, { n: n })) + '</span></span><span role="status">' + esc(syncText(st) || T('Checking…')) + '</span></p>' +
+      '<dl class="sync-facts"><dt>' + esc(T('Network on this device')) + '</dt><dd>' + esc(netWords()) + '</dd>' +
+      '<dt>' + esc(T('Wavelength server')) + '</dt><dd>' + esc(serverWords(st)) + '</dd>' +
+      '<dt>' + esc(T('Entries awaiting sync')) + '</dt><dd>' + n + '</dd>' +
+      '<dt>' + esc(T('Last attempt')) + '</dt><dd>' + esc(SY.lastTry ? when(SY.lastTry) : T('Not yet on this device')) + '</dd>' +
+      '<dt>' + esc(T('Last synced')) + '</dt><dd>' + esc(SY.lastOk ? when(SY.lastOk) : T('Not yet on this device')) + '</dd>' +
+      (err && err.kind ? '<dt>' + esc(T('Last error')) + '</dt><dd>' + esc(T(NETR.errorText(err.kind))) + ' (' + esc(when(err.at)) + ')</dd>' : '') + '</dl>' +
       (bad.length ? '<p class="small" style="margin:8px 0 4px"><b>' + esc(T('Not accepted by the server')) + '</b></p><ul class="small sync-bad">' + bad.map(function (e) { return '<li><a href="#/entry/' + esc(e.id) + '">' + esc(T((TYPES[e.type] || {}).label || e.type || '')) + (e.date ? ', ' + esc(fmt(e.date)) : '') + '</a>: ' + esc(why(e._syncError)) + '</li>'; }).join('') + '</ul>' : '') +
-      '<button class="btn sm" type="button" data-resync' + (S.syncing ? ' disabled' : '') + '>' + esc(T('Retry sync')) + '</button>' +
-      '<p class="small muted" style="margin:12px 0 0">' + esc(T('Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.')) + ' <a href="#/backup">' + esc(T('Back up and restore')) + '</a></p>' +
+      help +
+      '<button class="btn sm" type="button" data-resync' + (S.syncing ? ' disabled' : '') + '>' + esc(S.syncing ? T('Synchronising…') : T('Retry sync')) + '</button>' +
+      '<p class="small muted" style="margin:12px 0 0">' + esc(T('This status is for this device only. Another phone or computer shows its own, and a scan saved here reaches your other devices only after this device has synced it.')) + '</p>' +
+      '<p class="small muted" style="margin:8px 0 0">' + esc(T('Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped. Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.')) + ' <a href="#/backup">' + esc(T('Back up and restore')) + '</a></p>' +
       (starts.length ? '<details class="small muted" style="margin-top:10px"><summary>' + esc(T('Start-up details')) + '</summary><ul class="sync-diag">' + starts.slice().reverse().map(function (d) { return '<li>' + esc(new Date(d.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'short' })) + ': ' + esc(d.path || '?') + ', ' + esc(T('logbook in {ms} ms', { ms: d.ui || '?' })) + ', ' + esc(T('server {result}', { result: d.me || '?' })) + (d.meMs ? ' (' + d.meMs + ' ms)' : '') + '</li>'; }).join('') + '</ul></details>' : '');
     var b = $('[data-resync]', el);
-    if (b) b.onclick = function () { b.disabled = true; SY.tries = 0; if (SY.fail === 'offline') SY.fail = ''; sync(true); };
+    if (b) b.onclick = function () { b.disabled = true; b.textContent = T('Synchronising…'); retryNow(); };
   }
   // ---------- Settings: appearance, language, notifications, app lock, account ----------
   function viewSettings() {
@@ -2767,7 +2962,7 @@
     var cur = window.WLTheme ? WLTheme.get() : 'light';
     var opt = function (v, cls, label) { return '<input type="radio" name="theme" id="th-' + v + '" value="' + v + '"' + (cur === v ? ' checked' : '') + '><label for="th-' + v + '"><span class="sw ' + cls + '" aria-hidden="true"><i></i><b></b></span>' + esc(label) + '</label>'; };
     mount(shell({ title: T('Settings'), back: 'me', tab: 'me' },
-      '<h2 class="sec" style="margin-top:6px" id="sync">' + esc(T('Sync')) + '</h2><div class="card" id="syncpanel"></div>' +
+      '<h2 class="sec" style="margin-top:6px" id="sync">' + esc(T('Sync')) + '</h2><div class="card" id="syncpanel" data-syncpanel></div>' +
       '<h2 class="sec">' + esc(T('Backup')) + '</h2><div class="card"><p class="small muted" style="margin:0 0 10px">' + esc(S.kv.lastBackup ? T('Last backup file created {date}', { date: fmt(S.kv.lastBackup) }) : T('No backup file created on this device yet')) + '. ' + esc(T('Backups are encrypted with a passphrase you choose and saved where you decide.')) + '</p><a class="btn sm" href="#/backup">' + esc(T('Back up and restore')) + '</a></div>' +
       '<h2 class="sec">' + esc(T('Appearance')) + '</h2><div class="card"><div class="theme-pick" role="radiogroup" aria-label="' + esc(T('Appearance')) + '">' + opt('system', 's', T('Match my phone')) + opt('light', '', T('Light')) + opt('dark', 'd', T('Dark')) + '</div><p class="small muted" style="margin:12px 0 0">' + esc(T('Match my phone follows the light or dark setting on your phone.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Language')) + '</h2><div class="card set-lang"><div class="row"><span>' + I.globe + '</span><b class="grow">' + esc(T('App language')) + '</b>' + langPicker('lang-m') + '</div><p class="small muted" style="margin:8px 0 0">' + esc(T('Exports and certificates stay in English so any assessor can read them.')) + '</p></div>' +
@@ -2997,7 +3192,10 @@
   var lockBusy = false;
   window.addEventListener('wl:resume', function (e) {
     if (S.account && !lockBusy && NAT.lockOn() && e.detail && e.detail.away > LOCK_AFTER) showLock();
-    sync();
+    // Back in the app: read the network afresh (it may have changed while away) and try again from the start of
+    // the back-off, so a learner who has just fixed their connection is not left waiting minutes.
+    SY.tries = 0;
+    (NAT.netStatus ? NAT.netStatus() : Promise.resolve(null)).then(function (v) { if (v) S.net = v; sync(); });
   });
   // The lock setting was read late (slow secure storage at start): lock now.
   window.addEventListener('wl:lock', function () { if (S.account && NAT.lockOn()) showLock(); });

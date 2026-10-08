@@ -19,7 +19,7 @@ const results = [];
 const record = (id, name, pass, detail) => { results.push({ id, name, pass, detail }); console.log(pass ? 'PASS' : 'FAIL', id, name, '-', detail); };
 const errors = [];
 const { browser, newApp } = await harness({ api: API, errors });
-const reset = () => { net.offline = false; net.hang = false; net.delay = 0; };
+const reset = () => { net.offline = false; net.hang = false; net.delay = 0; net.blocked = false; net.challenge = false; };
 
 // A dummy account made straight against the local Worker, as the app would (Bearer token, native origin).
 async function account() {
@@ -71,7 +71,8 @@ async function saveScan(page) {
   await page.waitForSelector('#rest:not([hidden])');
   await page.locator('input[name=supervision]').first().check({ force: true });
   await page.click('form button[type=submit]');
-  await page.waitForFunction(() => /#\/entry\//.test(location.hash) || document.querySelector('.err:not([hidden])'), null, { timeout: 15000 });
+  // 1.0.10: a new scan goes back Home once saved on the device.
+  await page.waitForFunction(() => location.hash === '#/' || document.querySelector('.err:not([hidden]), .field.invalid'), null, { timeout: 15000 });
   await page.evaluate(() => document.querySelectorAll('.sheet-bg').forEach((s) => s.remove()));
 }
 // Unsynced entries in the phone's logbook database (read from Node, one short look at a time).
@@ -131,12 +132,12 @@ async function waitServer(learner, n, limit) {
   net.offline = true;
   await saveScan(page);
   await page.waitForTimeout(1500);
-  const dot = await page.evaluate(() => { const d = document.querySelector('.sync-ind') || document.querySelector('.sync-dot'); return d ? (d.getAttribute('aria-label') || d.title) : '(no indicator)'; });
-  const line = await page.evaluate(() => { const l = document.querySelector('[data-syncline]'); return l && !l.hidden ? l.textContent : ''; });
+  const dot = await page.evaluate(() => { const d = document.querySelector('button.sync-pill'); return d ? d.getAttribute('aria-label') : '(no indicator)'; });
+  const line = await page.evaluate(() => { const l = document.querySelector('[data-syncbanner]'); return l && !l.hidden ? l.textContent : ''; });
   net.offline = false;
   const ok = await waitServer(acc.id, 1, 25000);
   record('Y1', 'Saved offline, reconnected with no connectivity event: scan reaches the server within 25 s', ok, ok ? 'synced' : 'not on the server after 25 s');
-  record('Y2', 'While a sync is failing, the indicator says the entries are saved here, not "Synced"', /offline|awaiting|unable/i.test(dot), `indicator said: "${dot}"; logbook line: "${line}"`);
+  record('Y2', 'While a sync is failing, the indicator says the entries are saved here, not "Synced"', /offline|awaiting|unable|can't connect/i.test(dot), `indicator said: "${dot}"; logbook line: "${line}"`);
   await ctx.close();
 }
 {
@@ -228,7 +229,7 @@ async function waitServer(learner, n, limit) {
   await page.evaluate(() => { location.hash = '#/settings?sync=1'; });
   await page.waitForSelector('#syncpanel [data-resync]');
   const panel = await page.evaluate(() => document.querySelector('#syncpanel').textContent);
-  const st = await page.evaluate(() => (document.querySelector('.sync-ind') || {}).getAttribute && document.querySelector('.sync-ind').getAttribute('aria-label'));
+  const st = await page.evaluate(() => (document.querySelector('button.sync-pill') || {}).getAttribute && document.querySelector('button.sync-pill').getAttribute('aria-label'));
   record('Y8a', 'Scan left out of the server answer: status says unable to sync, Settings lists it', /Unable to sync/.test(st || '') && /Not accepted by the server/.test(panel) && /Entries awaiting sync\s*1/.test(panel), `status "${st}"; panel: "${panel.replace(/\s+/g, ' ').slice(0, 220)}"`);
   silent = false;
   await page.click('#syncpanel [data-resync]');

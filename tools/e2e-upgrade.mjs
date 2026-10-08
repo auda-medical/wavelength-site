@@ -135,7 +135,7 @@ record('U4', 'Every entry, photo, sign-off and assessment is still on the device
   `entries ${after.entries.length}/${before.entries.length}, photos ${after.images.length}/${before.images.length}, sign-off kept ${!!after.entries.find((e) => e.id === synced && e.signoff === so.code)}, assessments ${after.assessments.length}, database v${after.version}`);
 const prefsAfter = await page.evaluate(() => ({ prefs: localStorage.getItem('__prefs'), theme: localStorage.getItem('wl-theme'), acc: !!localStorage.getItem('wl-acc'), lang: localStorage.getItem('wl-lang'), dark: document.documentElement.dataset.theme }));
 record('U5', 'Preferences kept: dark theme, app lock setting, cached account', prefsAfter.theme === 'dark' && prefsAfter.dark === 'dark' && prefsAfter.prefs === prefsBefore.prefs && prefsAfter.acc, JSON.stringify(prefsAfter));
-const st = await page.evaluate(() => (document.querySelector('.sync-ind') || {}).getAttribute && document.querySelector('.sync-ind').getAttribute('aria-label'));
+const st = await page.evaluate(() => { const d = document.querySelector('button.sync-pill') || document.querySelector('.sync-ind'); return d && d.getAttribute('aria-label'); });
 record('U6', 'Offline status says the scan is saved on this device', /saved on this device/i.test(st || ''), st);
 
 // ---------- Network back ----------
