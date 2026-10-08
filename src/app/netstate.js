@@ -23,26 +23,33 @@
   function classify(ex, dev) {
     if (!ex) return 'failed';
     if (ex.stale) return '';
-    if (ex.status === 401 || ex.auth) return 'auth';
-    var net = !!(ex.network || ex.timeout || ex.name === 'TypeError' || ex.name === 'AbortError');
+    // Only the Wavelength API's own "login ended" answer asks to sign in. A 401 from something in between (a proxy or
+    // filter page) is not about the login: it falls through to unreachable below.
+    if (ex.auth) return 'auth';
+    // native.js marks every failed or timed-out request (ex.network, ex.timeout). A coding error is not a network
+    // problem and is reported as a failure, never with VPN advice.
+    var net = !!(ex.network || ex.timeout);
     if (net) {
       if (!deviceOnline(dev)) return 'offline';
       return ex.timeout ? 'timeout' : 'unreachable';
     }
     // An answer that is not the Wavelength API's (a network filter's block page, a proxy, a gateway error) or a
     // server error: the server was not usable from here, but nothing about the entries was refused.
-    if (ex.nojson || ex.status >= 500) return 'unreachable';
+    if (ex.nojson || ex.status >= 500 || ex.status === 401) return 'unreachable';
     return 'failed';
   }
 
   // The one status shown in the header pill, the banner and the sync panel.
-  // s: { account, syncing, update, fail, dev, pending, refused, ran }
+  // s: { account, syncing, auto, update, fail, dev, pending, refused, ran }. auto: the sync running is an automatic
+  // retry, not one the learner asked for.
   function state(s) {
     if (!s.account) return '';
     if (s.update) return 'update';
     // A phone with no network shows Offline even during a quick retry, so the pill does not flicker.
     if (!deviceOnline(s.dev)) return 'offline';
-    if (s.syncing) return 'syncing';
+    // While the server cannot be reached, a quiet automatic retry keeps the amber status (no flicker, no repeated
+    // announcement). A retry the learner asked for shows Syncing.
+    if (s.syncing && !(s.auto && (s.fail === 'unreachable' || s.fail === 'timeout'))) return 'syncing';
     if (s.fail === 'offline') return 'offline';
     if (s.fail === 'auth') return 'auth';
     if (s.fail === 'unreachable' || s.fail === 'timeout') return 'unreachable';
@@ -82,9 +89,12 @@
   // Leaving aeroplane mode takes a phone a few seconds, so the first gaps are short, and never more than 2 minutes
   // apart: a retry that fails at once costs next to nothing. A network-change event from the phone (Wi-Fi back, a
   // VPN reconnecting) starts the sequence again, so the cap is only a safety net if such an event is ever missed.
-  var RETRY = [2e3, 5e3, 10e3, 20e3, 30e3, 60e3, 120e3];
-  function retryDelay(tries, rnd) {
-    var base = RETRY[Math.min(Math.max(tries - 1, 0), RETRY.length - 1)];
+  // A refusal (the server answered and would not take the batch) cannot be fixed by the network, so its gaps grow
+  // to 5 minutes instead.
+  var RETRY = [2e3, 5e3, 10e3, 20e3, 30e3, 60e3, 120e3], RETRY_FAILED = RETRY.concat([300e3]);
+  function retryDelay(tries, rnd, kind) {
+    var list = kind === 'failed' ? RETRY_FAILED : RETRY;
+    var base = list[Math.min(Math.max(tries - 1, 0), list.length - 1)];
     return Math.round(base * (0.8 + (rnd == null ? Math.random() : rnd) * 0.4));
   }
 

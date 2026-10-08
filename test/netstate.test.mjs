@@ -41,7 +41,10 @@ test('a block page, proxy or gateway answer is unreachable; an API refusal is a 
   assert.equal(W.classify(Object.assign(new Error('x'), { status: 502, nojson: true }), phone()), 'unreachable');
   assert.equal(W.classify(Object.assign(new Error('x'), { status: 503 }), phone()), 'unreachable');
   assert.equal(W.classify(Object.assign(new Error('Too large'), { status: 400 }), phone()), 'failed');
-  assert.equal(W.classify(Object.assign(new Error('x'), { status: 401 }), phone()), 'auth');
+  assert.equal(W.classify(Object.assign(new Error('x'), { status: 401, auth: true }), phone()), 'auth', 'the API says the login ended');
+  assert.equal(W.classify(Object.assign(new Error('x'), { status: 401, nojson: true }), phone()), 'unreachable', 'a proxy or filter 401 is not about the login');
+  assert.equal(W.classify(Object.assign(new Error('x'), { status: 401 }), phone()), 'unreachable');
+  assert.equal(W.classify(new TypeError('x is not a function'), phone()), 'failed', 'a coding error is not shown as a network problem');
   assert.equal(W.classify(Object.assign(new Error('signed out'), { stale: true }), phone()), '');
 });
 
@@ -52,6 +55,8 @@ test('status: each state from the inputs, in priority order', () => {
   assert.equal(W.state(base), 'synced');
   assert.equal(W.state({ ...base, pending: 2 }), 'pending');
   assert.equal(W.state({ ...base, pending: 2, syncing: true }), 'syncing');
+  assert.equal(W.state({ ...base, pending: 2, syncing: true, auto: true, fail: 'unreachable' }), 'unreachable', 'quiet automatic retry: no flicker');
+  assert.equal(W.state({ ...base, pending: 2, syncing: true, auto: false, fail: 'unreachable' }), 'syncing', 'Retry sync shows Syncing');
   assert.equal(W.state({ ...base, pending: 2, dev: phone({ connected: false }) }), 'offline');
   assert.equal(W.state({ ...base, pending: 2, syncing: true, dev: phone({ connected: false }) }), 'offline', 'no flicker during a quick retry');
   assert.equal(W.state({ ...base, pending: 2, fail: 'unreachable' }), 'unreachable');
@@ -100,6 +105,7 @@ test('back-off grows, is capped at 2 minutes and has jitter', () => {
   assert.ok(d(2, 0.5) > d(1, 0.5) && d(4, 0.5) > d(2, 0.5));
   assert.equal(d(50, 0.5), 120000, 'never more than 2 minutes while the phone has a network');
   assert.equal(d(1, 0), 1600); assert.equal(d(1, 0.9999), 2400);
+  assert.equal(W.retryDelay(50, 0.5, 'failed'), 300000, 'a refusal waits up to 5 minutes');
 });
 
 test('network changes worth a retry: VPN up or down, Wi-Fi back in aeroplane mode, mobile data, validation', () => {

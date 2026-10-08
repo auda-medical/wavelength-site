@@ -248,7 +248,7 @@
   function pendingList() { return S.entries.filter(function (e) { return e._dirty; }); }
   function refused() { return S.entries.filter(function (e) { return e._dirty && e._syncError; }); }
   function syncState() {
-    return NETR.state({ account: !!S.account, update: SY.fail === 'update', syncing: S.syncing, fail: SY.fail, dev: deviceNet(), pending: pendingList().length, refused: refused().length, ran: SY.ran });
+    return NETR.state({ account: !!S.account, update: SY.fail === 'update', syncing: S.syncing, auto: !S.syncManual, fail: SY.fail, dev: deviceNet(), pending: pendingList().length, refused: refused().length, ran: SY.ran });
   }
   function syncText(st) {
     var n = pendingList().length;
@@ -302,7 +302,8 @@
     $$('button.sync-pill').forEach(function (a) {
       a.className = 'sync-pill p-' + cls;
       if (a.dataset.k !== inner) { a.innerHTML = inner; a.dataset.k = inner; }
-      a.setAttribute('aria-label', (text ? T('Sync status: {status}', { status: text }) : T('Sync status')) + ' ' + T('Open sync details.'));
+      // The accessible name starts with the words on the pill, so voice control ("tap Can't sync") finds it.
+      a.setAttribute('aria-label', T(NETR.pill(st).label, { n: n }) + '. ' + (text ? T('Sync status: {status}', { status: text }) : T('Sync status')) + ' ' + T('Open sync details.'));
     });
     $$('[data-syncbanner]').forEach(function (el) {
       var html = b ? bannerHtml(b, n) : '', key = (b ? st + n + (S.syncing ? 's' : '') : '');
@@ -330,7 +331,7 @@
   }
   function scheduleRetry() {
     clearTimeout(SY.timer);
-    SY.timer = setTimeout(function () { SY.timer = 0; sync(); }, NETR.retryDelay(SY.tries, Math.random()));
+    SY.timer = setTimeout(function () { SY.timer = 0; sync(); }, NETR.retryDelay(SY.tries, Math.random(), SY.fail));
   }
   // The phone's network changed (Wi-Fi or mobile data back, a VPN connected, reconnected or switched off): try again
   // soon, from the start of the back-off. Changes arrive in bursts while a VPN reconnects, so wait for them to settle.
@@ -339,8 +340,15 @@
     if (!NETR.netChanged(was, v)) return;
     setSyncDot();
     if (!S.account || !NETR.deviceOnline(v)) return;
-    SY.tries = 0; clearTimeout(SY.netTimer);
-    SY.netTimer = setTimeout(function () { if (SY.fail || pendingList().length) sync(); }, 1500);
+    netKick();
+  }
+  // A network that keeps flapping (a VPN in a reconnect loop) must not become a retry storm: the back-off starts
+  // again at most once a minute, and network-triggered syncs run at most every 10 seconds.
+  function netKick() {
+    var now = Date.now();
+    if (now - (SY.netResetAt || 0) > 60e3) { SY.tries = 0; SY.netResetAt = now; }
+    clearTimeout(SY.netTimer);
+    SY.netTimer = setTimeout(function () { SY.netSyncAt = Date.now(); if (SY.fail || pendingList().length) sync(); }, Math.max(1500, (SY.netSyncAt || 0) + 10e3 - now));
   }
   window.addEventListener('wl:net', function (e) { onNet(e.detail); });
   if (NAT.netStatus) NAT.netStatus().then(function (v) { if (v) { S.net = v; setSyncDot(); } });
@@ -351,7 +359,7 @@
     if (SY.fail === 'update') SY.fail = '';
     if (S.syncing) { S.again = S.again || S.syncP.then(function () { S.again = null; return sync(manual); }); return S.again; }
     clearTimeout(SY.timer); SY.timer = 0;
-    S.syncing = true; setSyncDot();
+    S.syncing = true; S.syncManual = !!manual; setSyncDot();
     S.syncP = doSync(manual);
     return S.syncP;
   }
@@ -376,7 +384,7 @@
     var conflicts = 0;
     return api('/api/app/sync', { entries: group.map(strip) }, { timeout: 30000 }).then(function (res) {
       stale(gen);
-      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; er.nojson = !!res._nojson; throw er; }
+      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; er.nojson = !!res._nojson; er.auth = res.auth === false; throw er; }
       var answered = {};
       var jobs = (res.saved || []).map(function (s) {
         answered[s.id] = true;
@@ -421,8 +429,10 @@
       SY.fail = !S.account ? '' : NETR.classify(ex, deviceNet());
       SY.err = SY.fail ? { kind: SY.fail, at: Date.now(), status: (ex && ex.status) || 0, vpn: !!(S.net && S.net.vpn) } : null;
     }).then(function () {
-      S.syncing = false;
+      S.syncing = false; S.syncManual = false;
       if (!S.account || gen !== SESSION) return;
+      // The server answered although the phone last said "no network": that reading is stale, so read it again.
+      if (!SY.fail && S.net && S.net.known && !S.net.connected && NAT.netStatus) NAT.netStatus().then(function (v) { if (v) { S.net = v; setSyncDot(); } });
       var left = S.entries.some(function (e) { return e._dirty && !e._syncError; });
       if (SY.fail === 'auth') { /* signed out: nothing to retry until the learner signs in */ }
       else if (SY.fail || left) { SY.tries++; scheduleRetry(); } else SY.tries = 0;
@@ -448,7 +458,7 @@
     var q = '/api/app/sync?since=' + (S.kv.lastSync || 0) + (S.kv.lastSyncAfter ? '&after=' + encodeURIComponent(S.kv.lastSyncAfter) : '');
     return api(q).then(function (res) {
       stale(gen);
-      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; er.nojson = !!res._nojson; throw er; }
+      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; er.nojson = !!res._nojson; er.auth = res.auth === false; throw er; }
       var fresh = [];
       return Promise.all((res.entries || []).map(function (e) {
         var local = S.entries.find(function (x) { return x.id === e.id; });
@@ -546,7 +556,8 @@
     if (!el) return;
     var top = $('.top'), head = top ? top.getBoundingClientRect().bottom : 0;
     var y = el.getBoundingClientRect().top + window.pageYOffset - Math.max(0, head) - 14;
-    window.scrollTo({ top: Math.max(0, y), behavior: smooth ? 'smooth' : 'auto' });
+    var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: Math.max(0, y), behavior: smooth && !still ? 'smooth' : 'auto' });
   }
   function go(h) { if (location.hash === '#/' + h) render(); else location.hash = '#/' + h; }
   // A scan form with unsaved changes asks before any navigation (header back, tabs, links, the Android back button).
@@ -565,9 +576,10 @@
     leaving = false; lastHash = location.hash;
     render(); window.scrollTo(0, 0);
   });
-  window.addEventListener('online', function () { S.online = true; if (SY.fail === 'offline') SY.fail = ''; SY.tries = 0; setSyncDot(); sync(); });
+  window.addEventListener('online', function () { S.online = true; if (SY.fail === 'offline') SY.fail = ''; setSyncDot(); if (S.account) netKick(); });
   window.addEventListener('offline', function () { S.online = false; setSyncDot(); });
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync(); });
+  // In the store apps, returning to the app arrives as wl:resume (below), which also reads the network first.
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && !NAT.on) sync(); });
 
   // The sync status pill in the header: icon, short label and chevron; opens the sync details for this device.
   function syncInd() { var st = syncState(); return '<button type="button" class="sync-pill p-' + NETR.pill(st).cls + '" data-syncpill>' + pillInner(st) + '</button>'; }
@@ -1034,7 +1046,7 @@
     var id = 'err-' + fl.dataset.req, p = $('#' + id, fl);
     fl.classList.toggle('invalid', !!msg);
     $$('input,select,textarea', fl).forEach(function (c) { if (msg) { c.setAttribute('aria-invalid', 'true'); c.setAttribute('aria-describedby', id); } else { c.removeAttribute('aria-invalid'); c.removeAttribute('aria-describedby'); } });
-    if (!msg) { if (p) p.remove(); fl.removeAttribute('tabindex'); fl.removeAttribute('role'); fl.removeAttribute('aria-describedby'); return; }
+    if (!msg) { if (p) p.remove(); ['tabindex', 'role', 'aria-describedby', 'aria-labelledby'].forEach(function (a) { fl.removeAttribute(a); }); return; }
     if (!p) { p = document.createElement('p'); p.className = 'ferr'; p.id = id; fl.appendChild(p); }
     p.innerHTML = '<span aria-hidden="true">' + SI.alert + '</span>' + esc(msg);
     // The field itself takes focus (not a control), so no keyboard or picker opens, and screen readers read the help.
@@ -1208,14 +1220,18 @@
             .concat(removed.map(function (id) { return del('images', id); }));
           return Promise.all(jobs);
         }).then(function () { return saveLocal(out); }).then(function () {
-          setKv('lastSetting', out.setting); draftImages = []; NAT.haptic('success');
-          delete form.dataset.dirty;
-          // Saved on this device. A new scan goes back Home; an edit goes back to the scan. A short note says what
-          // actually happened, and changes to "synced" only once the server has acknowledged this scan.
-          var note = savedNote(out.id, !editing);
-          go(editing ? 'entry/' + out.id : '');
-          sync().then(function () { note.update(); });
-        }).catch(function (ex) {
+          // Saved on this device. Nothing after this point may report the save as failed (a second Save would then
+          // make a duplicate), so the screen change runs on its own.
+          delete form.dataset.dirty; draftImages = [];
+          try { setKv('lastSetting', out.setting); NAT.haptic('success'); } catch (e) { /* not essential */ }
+          setTimeout(function () {
+            // A new scan goes back Home; an edit goes back to the scan. A short note says what actually happened,
+            // and changes to "synced" only once the server has acknowledged this scan.
+            var note = savedNote(out.id, !editing);
+            go(editing ? 'entry/' + out.id : '');
+            sync().then(function () { note.update(); });
+          }, 0);
+        }, function (ex) {
           // Not saved: stay on the form with everything as entered.
           saving = false; busy(btn, false);
           err.textContent = T('Could not save on this device: {why}', { why: (ex && ex.message) || ex }); err.hidden = false;
@@ -3278,7 +3294,8 @@
       return api('/api/app/me', undefined, { timeout: Math.max(2000, BOOT_WAIT - 2000 - (Date.now() - t0)) }).then(function (res) {
         diag('me', String(res._status)); diag('meMs', Date.now() - t0);
         if (res.ok) { S.me = res; return open(res.account); }
-        if (res._status >= 500) return offline();
+        // A server error, or an answer that is not the API's (a captive portal page): open from the phone.
+        if (res._status >= 500 || res._nojson) return offline();
         cacheAccount(null);
         if (qs.get('login')) location.hash = '#/login';
         else if (res.academy && !location.hash.match(/login|signup|reset/)) location.hash = '#/signup';

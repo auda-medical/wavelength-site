@@ -33,11 +33,13 @@ public class NetworkPlugin extends Plugin {
     public void load() {
         cm = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm == null) return;
+        // Inside the callbacks the status is built from the callback's own arguments: Android documents that
+        // asking getActiveNetwork() there is prone to races. onAvailable is always followed by
+        // onCapabilitiesChanged for the default network, so it sends nothing itself.
         callback = new ConnectivityManager.NetworkCallback() {
-            @Override public void onAvailable(Network network) { changed(); }
-            @Override public void onLost(Network network) { changed(); }
-            @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) { changed(); }
-            @Override public void onUnavailable() { changed(); }
+            @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) { changed(describe(network, caps)); }
+            @Override public void onLost(Network network) { changed(describe(null, null)); }
+            @Override public void onUnavailable() { changed(describe(null, null)); }
         };
         try {
             cm.registerDefaultNetworkCallback(callback);
@@ -56,27 +58,34 @@ public class NetworkPlugin extends Plugin {
 
     @PluginMethod
     public void getStatus(PluginCall call) {
-        call.resolve(status());
+        call.resolve(current());
     }
 
     // Only a change in what the logbook uses is sent on (not signal strength or bandwidth updates).
-    private synchronized void changed() {
-        JSObject s = status();
+    private synchronized void changed(JSObject s) {
         String key = s.toString();
         if (key.equals(last)) return;
         last = key;
         notifyListeners("networkStatusChange", s);
     }
 
-    private JSObject status() {
+    // Outside the callbacks (getStatus): the default network as it is now.
+    private JSObject current() {
+        try {
+            Network n = cm == null ? null : cm.getActiveNetwork();
+            return describe(n, n == null ? null : cm.getNetworkCapabilities(n));
+        } catch (RuntimeException e) {
+            return describe(null, null); // a permission or system error: "no network known" rather than a crash
+        }
+    }
+
+    private JSObject describe(Network n, NetworkCapabilities c) {
         JSObject s = new JSObject();
         JSArray transports = new JSArray();
         boolean connected = false, validated = false, vpn = false;
         String id = "";
         try {
-            Network n = cm == null ? null : cm.getActiveNetwork();
-            NetworkCapabilities c = n == null ? null : cm.getNetworkCapabilities(n);
-            if (c != null) {
+            if (n != null && c != null) {
                 connected = c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
                 validated = c.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
                 vpn = c.hasTransport(NetworkCapabilities.TRANSPORT_VPN);
