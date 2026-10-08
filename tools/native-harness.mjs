@@ -45,7 +45,7 @@ export const BRIDGE = `(() => {
     Plugins: {},
     PluginHeaders: Object.entries(impl).map(([n, o]) => header(n, Object.keys(o), n === 'App' ? ['addListener', 'removeListener'] : [])),
     nativePromise(plugin, method, options) {
-      calls.push({ plugin, method, options });
+      calls.push({ plugin, method, options, t: performance.now() });
       try { return Promise.resolve(impl[plugin][method](options || {})); } catch (e) { return Promise.reject(e); }
     },
     nativeCallback(plugin, method, options, callback) {
@@ -58,12 +58,22 @@ export const BRIDGE = `(() => {
   document.addEventListener('securitypolicyviolation', (e) => console.error('CSP violation: ' + e.violatedDirective + ' ' + e.blockedURI));
 })();`;
 
-export const net = { offline: false };
+// The network as the phone sees it. offline: every call fails at once (aeroplane mode on most phones). hang: calls
+// never answer (no signal, a captive portal, a stalled connection). delay: milliseconds before each answer.
+export const net = { offline: false, hang: false, delay: 0 };
+// Android WebView reports connectivity changes only when the app holds ACCESS_NETWORK_STATE. Without it,
+// navigator.onLine stays true and the online and offline events never fire. Add this init script to model that.
+export const NO_NETWORK_EVENTS = `(() => {
+  Object.defineProperty(Navigator.prototype, 'onLine', { get: () => true, configurable: true });
+  const stop = (e) => e.stopImmediatePropagation();
+  window.addEventListener('online', stop, true); window.addEventListener('offline', stop, true);
+})();`;
 export async function harness({ api = 'http://localhost:8787', errors = [] } = {}) {
   localOnly(api, 'The native harness');
   const browser = await chromium.launch();
-  async function newApp(width = 390, height = 844) {
+  async function newApp(width = 390, height = 844, { init = [] } = {}) {
     const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, isMobile: width < 600, hasTouch: true, locale: 'en-GB', serviceWorkers: 'block' });
+    for (const s of init) await ctx.addInitScript(s);
     await ctx.addInitScript(BRIDGE);
     // The bundle, served as Capacitor serves it from the phone. Paths without a file fall back to index.html.
     await ctx.route('https://localhost/**', async (route) => {
@@ -76,9 +86,11 @@ export async function harness({ api = 'http://localhost:8787', errors = [] } = {
     // The Wavelength server, played by the local Worker. Offline mode drops every call.
     await ctx.route(SITE + '/**', async (route) => {
       if (net.offline) return route.abort('internetdisconnected');
+      if (net.hang) return new Promise(() => {});
+      if (net.delay) await new Promise((r) => setTimeout(r, net.delay));
       const req = route.request();
-      const res = await route.fetch({ url: req.url().replace(SITE, api) });
-      return route.fulfill({ response: res });
+      // The app may be closed while a slow call is still in flight; that call simply goes nowhere.
+      try { return route.fulfill({ response: await route.fetch({ url: req.url().replace(SITE, api) }) }); } catch { return undefined; }
     });
     const page = await ctx.newPage();
     page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });
