@@ -163,6 +163,19 @@
     });
   }
 
+  // The installed app's version and build, read from the app's own metadata (Android versionName and versionCode,
+  // iOS CFBundleShortVersionString and CFBundleVersion), so About always matches the store listing. Falls back to the
+  // numbers the bundle was built with, then to none. Never needs the network.
+  var info = null;
+  function appInfo() {
+    if (info) return info;
+    var built = { version: VERSION, build: String((window.WL_NATIVE && window.WL_NATIVE.versionCode) || '') };
+    info = !on ? Promise.resolve({ version: '', build: '' })
+      : App && App.getInfo ? App.getInfo().then(function (r) { return { version: String((r && r.version) || built.version), build: String((r && r.build) || built.build) }; }, function () { return built; })
+      : Promise.resolve(built);
+    return info;
+  }
+
   // Android draws behind the status and navigation bars from Android 15. Mark the page so CSS can keep content clear.
   if (on) document.documentElement.classList.add('native', 'native-' + (cap.getPlatform ? cap.getPlatform() : 'app'));
 
@@ -175,6 +188,7 @@
     host: SITE.replace(/^[a-z]+:\/\//i, ''),
     net: net,
     version: VERSION,
+    appInfo: appInfo,
     ready: ready,
     readFailed: function () { return READ_FAILED && !TOKEN; },
     signedIn: function () { return !!TOKEN; },

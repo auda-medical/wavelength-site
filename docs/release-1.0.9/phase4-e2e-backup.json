@@ -1,0 +1,72 @@
+{
+  "at": "2026-10-08T15:20:50.613Z",
+  "results": [
+    {
+      "id": "B1",
+      "name": "A passphrase under 10 characters is refused",
+      "pass": true,
+      "detail": "message: \"Use at least 10 characters.\""
+    },
+    {
+      "id": "B2",
+      "name": "Backup created in the app cache as one .wlbackup file, without claiming it was saved",
+      "pass": true,
+      "detail": "backup/Wavelength-backup-2026-10-08.wlbackup, 253441 bytes, 1929 ms in headless Chromium (64 MiB Argon2id)"
+    },
+    {
+      "id": "B3",
+      "name": "The file is encrypted: no logbook text or media bytes in it",
+      "pass": true,
+      "detail": "magic WLBACKUP, Argon2id memory 65536 KiB"
+    },
+    {
+      "id": "B4",
+      "name": "Decrypted with the passphrase: the scan, its photo and its clip are all inside",
+      "pass": true,
+      "detail": "entries 1, files 4"
+    },
+    {
+      "id": "B5",
+      "name": "Home no longer shows the amber backup warning once a backup file exists",
+      "pass": true,
+      "detail": "home checked"
+    },
+    {
+      "id": "B6",
+      "name": "Wrong passphrase: refused with a clear message, nothing restored",
+      "pass": true,
+      "detail": "message: \"Wrong passphrase, or the file has been changed or damaged. Nothing was restored from the damaged part.\""
+    },
+    {
+      "id": "B7",
+      "name": "Correct passphrase: photo and clip restored to their scan",
+      "pass": true,
+      "detail": "media on phone B: 2; toast: \"Restored 0 entries and 2 photos or clips. 1 already on this device were kept as they are.\""
+    },
+    {
+      "id": "B8",
+      "name": "Restoring the same backup twice adds nothing twice",
+      "pass": true,
+      "detail": "media 2, copies of the scan 1; toast: \"Restored 0 entries and 0 photos or clips. 3 already on this device were kept as they are.\""
+    },
+    {
+      "id": "B9",
+      "name": "A changed backup file is refused as changed or damaged",
+      "pass": true,
+      "detail": "message: \"Wrong passphrase, or the file has been changed or damaged. Nothing was restored from the damaged part.\""
+    },
+    {
+      "id": "B10",
+      "name": "An old unencrypted ZIP restores after a warning to replace it with an encrypted backup",
+      "pass": true,
+      "detail": "warning shown: true; media: legacyimg1"
+    },
+    {
+      "id": "B11",
+      "name": "Any other file is refused as not a Wavelength backup",
+      "pass": true,
+      "detail": "toast: \"This is not a Wavelength backup file.\""
+    }
+  ],
+  "errors": []
+}

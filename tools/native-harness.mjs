@@ -36,7 +36,9 @@ export const BRIDGE = `(() => {
       getUri: (o) => ({ uri: 'file:///cache/' + o.path }),
       rmdir: (o) => { const f = window.__files || {}; for (const k of Object.keys(f)) if (k.startsWith(o.path + '/')) delete f[k]; return {}; },
     },
-    App: { exitApp: () => ({}) },
+    // The installed app's metadata (versionName/versionCode, CFBundleShortVersionString/CFBundleVersion). A test can set
+    // window.__appInfo before the app loads, or window.__appInfoFail to make the call fail.
+    App: { exitApp: () => ({}), getInfo: () => { if (window.__appInfoFail) throw new Error('not available'); return window.__appInfo || { name: 'Wavelength', id: 'uk.co.thewavelength.app', version: '1.0.9', build: '15' }; } },
     NativeBiometric: {
       // Secure data store (Keystore / Keychain on a phone), kept apart from Preferences so tests can tell them apart.
       setData: (o) => { const d = JSON.parse(localStorage.getItem('__secure') || '{}'); d[o.key] = o.value; localStorage.setItem('__secure', JSON.stringify(d)); return {}; },

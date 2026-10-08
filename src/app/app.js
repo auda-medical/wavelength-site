@@ -2721,7 +2721,8 @@
       '<h2 class="sec">' + esc(T('Certificates')) + ' <a href="/elearning/account/">' + esc(T('All')) + '</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="' + esc(T('Share certificate')) + '">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">' + esc(T('Pass a free Academy module to earn a verifiable CPD certificate.')) + '</p><a class="btn sm" href="/elearning/">' + esc(T('Browse modules')) + '</a></div>') +
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div>' + orgField('m4', T('Organisation'), acc.organisation, acc.organisationId) + '<div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
       '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up and restore')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
-      '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
+      aboutFooter()));
+    bindAbout();
     if (editPw) $('#pf').scrollIntoView();
     $$('[data-sharecert]').forEach(function (b) { b.onclick = function () { shareCertificate(b.dataset.sharecert, b.dataset.title); }; });
     $('#pf').addEventListener('submit', function (e) { e.preventDefault(); var ps = $$('input[name=p]:checked', this).map(function (i) { return i.value; }); if (!ps.length) { toast(T('Keep at least one pathway.')); return; } saveProfile({ pathways: ps }).then(function () { toast(T('Pathways saved.')); }).catch(function (ex) { toast(ex.message); }); });
@@ -2758,8 +2759,9 @@
       lockCard() +
       '<h2 class="sec">' + esc(T('Account')) + '</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">' + esc(T('Current password')) + '</label><input id="c1" name="current" type="password" autocomplete="current-password"></div>' + pwFields('c2', T('New password'), 'password') + '<button class="btn sm ghost">' + esc(T('Change password')) + '</button></form></div>' +
       '<div class="btns"><button class="btn ghost block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="loa">' + esc(T('Log out of all other devices')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
-      '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
+      aboutFooter()));
     fillSyncPanel($('#syncpanel'));
+    bindAbout();
     if (route().q.get('sync')) $('#sync').scrollIntoView();
     $$('input[name=theme]').forEach(function (i) { i.onchange = function () { if (window.WLTheme) WLTheme.set(i.value); NAT.haptic(); }; });
     bindPw($('#cpw'), 'c2');
@@ -2788,6 +2790,50 @@
         });
       });
     };
+  }
+  // ---------- About Wavelength: footer on Me and Settings, About sheet, open-source licences ----------
+  // Version and build come from the installed app's metadata (WLNative.appInfo), never from this file. Everything here
+  // is bundled and works offline; only the website, privacy and terms links need a connection.
+  var COPYRIGHT = '© 2026 Auda Medical Ltd';
+  var SUPPORT = 'hello@thewavelength.co.uk';
+  function appInfo() { return NAT.appInfo ? NAT.appInfo() : Promise.resolve({ version: '', build: '' }); }
+  function versionText(v) { return v.version ? (v.build ? T('Version {version} ({build})', { version: v.version, build: v.build }) : T('Version {version}', { version: v.version })) : T('Web app'); }
+  function aboutFooter() {
+    return '<footer class="about-foot"><p class="about-name">Wavelength</p><p data-appver>' + esc(NAT.version ? versionText({ version: NAT.version, build: '' }) : NAT.on ? '' : T('Web app')) + '</p><p><bdi dir="ltr">' + esc(COPYRIGHT) + '</bdi></p>' +
+      '<button type="button" class="about-link" data-about>' + esc(T('About Wavelength')) + '</button></footer>';
+  }
+  function bindAbout() {
+    var b = $('[data-about]'); if (b) b.onclick = aboutSheet;
+    appInfo().then(function (v) { $$('[data-appver]').forEach(function (el) { el.textContent = versionText(v); }); });
+  }
+  function aboutSheet() {
+    appInfo().then(function (v) {
+      var body = [T('App version: {v}', { v: v.version ? v.version + (v.build ? ' (' + v.build + ')' : '') : T('Web app') + ' ' + (window.WL_BUILD || '') }), T('Platform: {p}', { p: NAT.platform || 'web' }), T('App language: {l}', { l: LANG })].join('\n') + '\n\n';
+      var mail = 'mailto:' + SUPPORT + '?subject=' + encodeURIComponent(T('Wavelength app support')) + '&body=' + encodeURIComponent(body);
+      sheet('<div class="about-head">' + MARK(56) + '<h2>Wavelength <span>POCUS Logbook</span></h2></div>' +
+        '<dl class="about-facts"><dt>' + esc(T('Version')) + '</dt><dd>' + esc(v.version || T('Web app')) + '</dd><dt>' + esc(T('Build')) + '</dt><dd>' + esc(v.build || window.WL_BUILD || '–') + '</dd>' +
+        '<dt>' + esc(T('Developer')) + '</dt><dd>Auda Medical Ltd</dd><dt>' + esc(T('Website')) + '</dt><dd><a href="/">thewavelength.co.uk</a></dd></dl>' +
+        '<nav class="about-links" aria-label="' + esc(T('About Wavelength')) + '"><a href="' + esc(mail) + '">' + esc(T('Contact support')) + '</a><a href="/privacy/">' + esc(T('Privacy policy')) + '</a><a href="/app-terms/">' + esc(T('Terms of use')) + '</a><button type="button" data-lic>' + esc(T('Open-source licences')) + '</button></nav>' +
+        '<p class="small muted">' + esc(T('The support email includes only the app version, platform and language. The website, privacy policy and terms need an internet connection.')) + '</p>' +
+        '<p class="small muted"><bdi dir="ltr">' + esc(COPYRIGHT) + '</bdi></p><div class="btns"><button class="btn ghost block" data-close>' + esc(T('Close')) + '</button></div>', function (root) {
+        $('[data-lic]', root).onclick = licencesSheet;
+      });
+    });
+  }
+  function loadLicences() {
+    if (window.WL_LICENCES) return Promise.resolve(window.WL_LICENCES);
+    return new Promise(function (ok, no) { var sc = document.createElement('script'); sc.src = '/app/licences.js?v=' + (window.WL_BUILD || ''); sc.onload = function () { ok(window.WL_LICENCES); }; sc.onerror = no; document.head.appendChild(sc); });
+  }
+  function licencesSheet() {
+    loadLicences().then(function (L) {
+      var show = function (c) { return !c.platform || (c.platform === 'app' ? NAT.on : NAT.platform === c.platform); };
+      var groups = {}; L.components.filter(show).forEach(function (c) { (groups[c.licence] = groups[c.licence] || []).push(c); });
+      var html = Object.keys(groups).map(function (lic) {
+        return '<h3>' + esc(lic) + '</h3><ul class="lic-list">' + groups[lic].map(function (c) { return '<li><b>' + esc(c.name) + '</b>' + (c.version ? ' ' + esc(c.version) : '') + '<br><span class="muted">' + esc(c.copyright) + (c.note ? '. ' + esc(c.note) : '') + '</span></li>'; }).join('') + '</ul>' +
+          '<details class="lic-text"><summary>' + esc(T('Licence text: {name}', { name: lic })) + '</summary><pre lang="en" dir="ltr">' + esc(L.texts[lic] || '') + '</pre></details>';
+      }).join('');
+      sheet('<h2>' + esc(T('Open-source licences')) + '</h2><p class="small muted">' + esc(T('Wavelength is built with these open-source components. Thank you to their authors.')) + '</p>' + html + '<div class="btns"><button class="btn ghost block" data-back>' + esc(T('Back')) + '</button></div>', function (root) { $('[data-back]', root).onclick = aboutSheet; });
+    }).catch(function () { toast(T('Could not open the licences.')); });
   }
   function shareCertificate(code, title) {
     var link = NAT.origin + '/elearning/certificate/' + code + '/';

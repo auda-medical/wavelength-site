@@ -3,6 +3,8 @@
 //
 // Setup: node mobile/scripts/build-www.mjs, then node --import ./test/helpers/register.mjs tools/dev-worker.mjs
 // Run:   node tools/native-shots.mjs <outdir> [route ...]      (routes like '#/backup' '#/settings?sync=1')
+//        A route may name things to tap after it opens: '#/me@[data-about]@[data-lic]' shoots the licences sheet.
+//        Set WL_APP_VERSION=1.0.9 WL_VERSION_CODE=15 when building the bundle to see real version numbers.
 import fs from 'node:fs';
 import path from 'node:path';
 import { harness } from './native-harness.mjs';
@@ -31,11 +33,14 @@ for (const [variant, theme, lang] of [['light', 'light', 'en'], ['dark', 'dark',
   }, [token, theme, lang]);
   await page.goto('https://localhost/');
   await page.waitForSelector('nav.tabs', { timeout: 15000 });
-  for (const route of ROUTES) {
+  for (const spec of ROUTES) {
+    const [route, ...taps] = spec.split('@');
+    await page.evaluate(() => document.querySelectorAll('.sheet-bg').forEach((x) => x.remove()));
     await page.evaluate((r) => { location.hash = r; }, route);
     await page.waitForTimeout(900);
-    const name = route.replace(/^#\//, '').replace(/[^a-z0-9]+/gi, '-').replace(/-$/, '') || 'home';
-    await page.screenshot({ path: path.join(OUT, `${name}-${variant}.png`), fullPage: true });
+    for (const sel of taps) { await page.click(sel); await page.waitForTimeout(500); }
+    const name = (route.replace(/^#\//, '') + (taps.length ? '-sheet' + taps.length : '')).replace(/[^a-z0-9]+/gi, '-').replace(/-$/, '') || 'home';
+    await page.screenshot({ path: path.join(OUT, `${name}-${variant}.png`), fullPage: !taps.length });
     const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     if (wide > 1) problems.push(`${route} ${variant}: ${wide}px horizontal overflow`);
   }

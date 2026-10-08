@@ -1906,5 +1906,25 @@
 "few": "{n} фото или клипа",
 "many": "{n} фото или клипов",
 "other": "{n} фото или клипа"
-}
+},
+"About Wavelength": "О Wavelength",
+"App language: {l}": "Язык приложения: {l}",
+"App version: {v}": "Версия приложения: {v}",
+"Build": "Сборка",
+"Contact support": "Написать в поддержку",
+"Could not open the licences.": "Не удалось открыть лицензии.",
+"Developer": "Разработчик",
+"Licence text: {name}": "Текст лицензии: {name}",
+"Open-source licences": "Лицензии open source",
+"Platform: {p}": "Платформа: {p}",
+"Privacy policy": "Политика конфиденциальности",
+"Terms of use": "Условия использования",
+"The support email includes only the app version, platform and language. The website, privacy policy and terms need an internet connection.": "Письмо в поддержку содержит только версию приложения, платформу и язык. Для сайта, политики конфиденциальности и условий нужно подключение к интернету.",
+"Version": "Версия",
+"Version {version}": "Версия {version}",
+"Version {version} ({build})": "Версия {version} ({build})",
+"Wavelength app support": "Поддержка приложения Wavelength",
+"Wavelength is built with these open-source components. Thank you to their authors.": "Wavelength создан с использованием этих компонентов с открытым исходным кодом. Спасибо их авторам.",
+"Web app": "Веб-приложение",
+"Website": "Сайт"
 }

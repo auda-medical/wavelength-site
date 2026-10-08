@@ -1837,5 +1837,25 @@
 },
 "{n} photos or clips": {
 "other": "{n} 张照片或视频片段"
-}
+},
+"About Wavelength": "关于 Wavelength",
+"App language: {l}": "应用语言：{l}",
+"App version: {v}": "应用版本：{v}",
+"Build": "构建号",
+"Contact support": "联系支持",
+"Could not open the licences.": "无法打开许可证。",
+"Developer": "开发者",
+"Licence text: {name}": "许可证文本：{name}",
+"Open-source licences": "开源许可证",
+"Platform: {p}": "平台：{p}",
+"Privacy policy": "隐私政策",
+"Terms of use": "使用条款",
+"The support email includes only the app version, platform and language. The website, privacy policy and terms need an internet connection.": "支持邮件仅包含应用版本、平台和语言。网站、隐私政策和条款需要联网。",
+"Version": "版本",
+"Version {version}": "版本 {version}",
+"Version {version} ({build})": "版本 {version}（{build}）",
+"Wavelength app support": "Wavelength 应用支持",
+"Wavelength is built with these open-source components. Thank you to their authors.": "Wavelength 使用了以下开源组件。感谢它们的作者。",
+"Web app": "网页应用",
+"Website": "网站"
 }

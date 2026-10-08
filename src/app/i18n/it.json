@@ -1860,5 +1860,25 @@
 "{n} photos or clips": {
 "one": "{n} foto o clip",
 "other": "{n} foto o clip"
-}
+},
+"About Wavelength": "Informazioni su Wavelength",
+"App language: {l}": "Lingua dell'app: {l}",
+"App version: {v}": "Versione dell'app: {v}",
+"Build": "Build",
+"Contact support": "Contatta l'assistenza",
+"Could not open the licences.": "Impossibile aprire le licenze.",
+"Developer": "Sviluppatore",
+"Licence text: {name}": "Testo della licenza: {name}",
+"Open-source licences": "Licenze open source",
+"Platform: {p}": "Piattaforma: {p}",
+"Privacy policy": "Informativa sulla privacy",
+"Terms of use": "Condizioni d'uso",
+"The support email includes only the app version, platform and language. The website, privacy policy and terms need an internet connection.": "L'email di assistenza include solo versione dell'app, piattaforma e lingua. Il sito web, l'informativa sulla privacy e le condizioni richiedono una connessione a internet.",
+"Version": "Versione",
+"Version {version}": "Versione {version}",
+"Version {version} ({build})": "Versione {version} ({build})",
+"Wavelength app support": "Assistenza app Wavelength",
+"Wavelength is built with these open-source components. Thank you to their authors.": "Wavelength è realizzata con questi componenti open source. Grazie ai loro autori.",
+"Web app": "App web",
+"Website": "Sito web"
 }

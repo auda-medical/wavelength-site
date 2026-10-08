@@ -1952,5 +1952,25 @@
 "few": "{n} صور أو مقاطع",
 "many": "{n} صورة أو مقطعًا",
 "other": "{n} صورة أو مقطع"
-}
+},
+"About Wavelength": "حول Wavelength",
+"App language: {l}": "لغة التطبيق: {l}",
+"App version: {v}": "إصدار التطبيق: {v}",
+"Build": "رقم البناء",
+"Contact support": "التواصل مع الدعم",
+"Could not open the licences.": "تعذّر فتح التراخيص.",
+"Developer": "المطوّر",
+"Licence text: {name}": "نص الترخيص: {name}",
+"Open-source licences": "تراخيص المصادر المفتوحة",
+"Platform: {p}": "المنصة: {p}",
+"Privacy policy": "سياسة الخصوصية",
+"Terms of use": "شروط الاستخدام",
+"The support email includes only the app version, platform and language. The website, privacy policy and terms need an internet connection.": "تتضمن رسالة الدعم إصدار التطبيق والمنصة واللغة فقط. يحتاج الموقع وسياسة الخصوصية والشروط إلى اتصال بالإنترنت.",
+"Version": "الإصدار",
+"Version {version}": "الإصدار {version}",
+"Version {version} ({build})": "الإصدار {version} ({build})",
+"Wavelength app support": "دعم تطبيق Wavelength",
+"Wavelength is built with these open-source components. Thank you to their authors.": "بُني Wavelength باستخدام مكوّنات المصادر المفتوحة هذه. شكرًا لمؤلفيها.",
+"Web app": "تطبيق الويب",
+"Website": "الموقع الإلكتروني"
 }
