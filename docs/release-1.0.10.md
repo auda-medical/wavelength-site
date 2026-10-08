@@ -74,17 +74,22 @@ affecting the connection.
 
 | Suite | Result |
 | --- | --- |
-| `npm test` (Node, Worker with node:sqlite) | 254 of 254 pass (238 from 1.0.9 plus 16 new: `netstate.test.mjs`, `native-network.test.mjs`) |
+| `npm test` (Node, Worker with node:sqlite) | 260 of 260 pass (238 from 1.0.9 plus 22 new: `netstate.test.mjs`, `native-network.test.mjs`, `app-1010.test.mjs`) |
 | `tools/e2e-1010.mjs` (new, stand-in phone) | 44 of 44 pass: offline, VPN with the server blocked, stale VPN reconnecting, Wi-Fi back in aeroplane mode, mobile data, block page, Retry sync, no duplicates, pill by touch and keyboard, banners, Home counts and filters, AAA Log one, required fields, save flow (double tap, offline note, storage failure), reduced motion, 600-scan logbook, Arabic |
-| `tools/e2e-offline.mjs` | 15 of 15 pass |
+| `tools/e2e-offline.mjs` | 16 of 16 pass |
 | `tools/e2e-native.mjs` | 30 of 30 pass |
 | `tools/e2e-backup.mjs` (encrypted backup and restore) | 11 of 11 pass |
 | `tools/e2e-about.mjs` | 15 of 15 pass |
 | `tools/e2e-resilience.mjs` | 12 of 12 pass |
 | `tools/e2e-upgrade.mjs`, real 1.0.9 bundle to 1.0.10 | 12 of 12 pass: login, app lock, dark theme, entries, photos, sign-off, assessment, two supervisors and two trainees kept; the scan saved offline in 1.0.9 syncs once |
-| `tools/e2e-supervisor-ui.mjs` (local Wrangler) | 22 of 22 pass |
+| `tools/e2e-supervisor-ui.mjs` (local Wrangler) | 22 of 22 pass in most runs. One sign-up check ("account organisationId") fails intermittently on 1.0.10 and on the 1.0.9 baseline alike (2 of 6 baseline runs): an existing test flake |
 | `tools/theme-shots.mjs` | Both themes pass: contrast, overflow, console |
 | `tools/e2e-app.mjs`, `e2e-evidence.mjs`, `e2e-verification.mjs` | Stop at the same step on the 1.0.9 baseline and on 1.0.10 (the tools predate email verification and an admin console change). Not caused by 1.0.10; worth updating separately |
+
+An independent review of the networking, sync, persistence and accessibility changes found no high-severity
+defects and confirmed that entries are marked synced only from the server's answer and that accounts stay
+separate. Its ten medium and low findings were all fixed (commit "Review fixes: ...") and the suites above were
+run again afterwards.
 
 All browser results are simulations on a desktop Chromium with a stand-in native bridge. **None of them is a
 physical-device test.**
@@ -120,7 +125,23 @@ Cloudflare change is needed. The website's `/app/` gets the same interface on th
 
 ## 7. Build
 
-See `build-report` in the release bundle for the unsigned APK and AAB, their SHA-256 and the package metadata.
+Built in the cloud workspace from commit "Review fixes: ..." with the repository's own steps
+(`build-www.mjs`, `npx cap sync android`, `./gradlew clean bundleRelease assembleRelease`), Android SDK platform 36,
+build-tools 36.0.0, JDK 21, `WL_APP_VERSION=1.0.10`, `WL_VERSION_NAME=1.0.10`, `WL_VERSION_CODE=16` and no keystore.
+Maven Central rate-limited the workspace, so this build read the same artifacts from Google's public Maven Central
+mirror through a Gradle init script outside the repository.
+
+| Output | Size | SHA-256 |
+| --- | --- | --- |
+| `app-release-unsigned.apk` | 7,503,656 bytes | `f4d3a8c85d88d73472a672984a702d3e8f16144a8d46dea69f022d38544ac655` |
+| `app-release.aab` (unsigned) | 6,739,021 bytes | `288d479cca5f66007840c0669e808f932ce71ae4f35bd620613e41c7d658a928` |
+
+Checked with `aapt2 dump badging`: package `uk.co.thewavelength.app`, versionCode 16, versionName 1.0.10,
+targetSdk 36. Permissions unchanged from 1.0.9: INTERNET, ACCESS_NETWORK_STATE, VIBRATE, USE_BIOMETRIC,
+USE_FINGERPRINT and the dynamic-receiver permission. `apksigner verify` reports the APK as not signed and the AAB
+holds no signature files. The bundled `native-config.js` says version 1.0.10, code 16, and `NetworkPlugin` is in
+the dex. These cloud-built files are for inspection and testing; the release itself should come from the signed
+GitHub workflow or your own signing, from the same source.
 The repository's Android workflow sets `WL_VERSION_CODE` from `github.run_number`; to ship as version code 16, make
 sure the run number is 16, or set the code another way, before signing.
 
