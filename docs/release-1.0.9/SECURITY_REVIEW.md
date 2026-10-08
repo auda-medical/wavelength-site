@@ -25,7 +25,7 @@ nothing here ran on a physical phone.
 
 Format: `docs/backup-format.md` (WLBACKUP version 1).
 
-- **Key:** passphrase of at least 12 characters, Argon2id (64 MiB, 3 passes, 1 lane, 16-byte random salt), then
+- **Key:** passphrase of at least 10 characters, Argon2id (64 MiB, 3 passes, 1 lane, 16-byte random salt), then
   HKDF-SHA256 to the AES key. Argon2id comes from `@noble/hashes` 2.4.0, vendored unmodified with its MIT licence.
   **Its 2022 Cure53 audit did not cover Argon2.** Correctness is shown instead by the RFC 9106 test vector and by
   decrypting app-made files with `tools/backup-decrypt.py` (Python `argon2-cffi` and `cryptography`/OpenSSL).

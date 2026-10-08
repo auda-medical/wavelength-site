@@ -64,7 +64,7 @@ phone reconnected and synced.
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
 | E1 | App lock: turn it on (Me, gear, Security). Close and open. Try a fingerprint, then cancel and use the PIN | Fingerprint works; PIN or pattern also works (Android 11+). Weak camera face unlock is not offered | NOT RUN |
-| E2 | Me, Your data, Back up and restore: make an encrypted backup with a dummy 12+ character passphrase. Save it to Files | Backup created; note how long it took | NOT RUN |
+| E2 | Me, Your data, Back up and restore: make an encrypted backup with a dummy passphrase of 10 or more characters. Save it to Files | Backup created; note how long it took | NOT RUN |
 | E3 | Restore that backup with a wrong passphrase | Refused with a clear message; nothing changes | NOT RUN |
 | E4 | Restore it with the right passphrase | "Restored", with counts; nothing duplicated | NOT RUN |
 | E5 | Leave the app for more than 90 s and return (lock on) | Asks again | NOT RUN |
