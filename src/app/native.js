@@ -116,15 +116,29 @@
     } catch (e) { /* no haptics on this device */ }
   }
 
-  // ---------- App lock (fingerprint, face or device biometrics) ----------
+  // ---------- App lock (the phone's own fingerprint, face or screen-lock prompt) ----------
+  // Only the system prompt is used; the app never sees or stores a fingerprint or a face. On iPhone: Face ID or
+  // Touch ID with the passcode as fallback. On Android 11 and later: Class 3 (strong) biometrics, meaning
+  // fingerprint or a secure face or iris sensor, with the phone's PIN, pattern or password as fallback. Android's
+  // weaker camera-only face unlock is not accepted. Android 7 to 10 cannot combine strong biometrics with the PIN in
+  // one prompt, so there the lock needs a strong biometric (anyone locked out can still log out and log in with the
+  // account password). Nothing here uses the network.
+  var PLATFORM = on && cap.getPlatform ? cap.getPlatform() : 'web';
+  var ANDROID = PLATFORM === 'android' ? (parseInt((/Android (\d+)/.exec(navigator.userAgent) || [])[1], 10) || 0) : 0;
+  var STRONG = 1, FINGERPRINT_STRONG = 3, DEVICE_CREDENTIAL = 7; // plugin enums: AuthenticationStrength, BiometryType
+  var PIN_FALLBACK = PLATFORM === 'ios' || ANDROID >= 11;
   function lockAvailable() {
     if (!Bio) return Promise.resolve(false);
-    return Bio.isAvailable({ useFallback: false }).then(function (r) { return !!(r && r.isAvailable); }, function () { return false; });
+    return Bio.isAvailable({ useFallback: PIN_FALLBACK }).then(function (r) {
+      if (!r || !r.isAvailable) return false;
+      return PIN_FALLBACK || r.authenticationStrength === STRONG;
+    }, function () { return false; });
   }
   function verify(text) {
     if (!Bio) return Promise.resolve(false);
-    return Bio.verifyIdentity({ reason: text.reason, title: text.title, subtitle: text.subtitle, negativeButtonText: text.cancel, useFallback: true, maxAttempts: 5 })
-      .then(function () { return true; }, function () { return false; });
+    var o = { reason: text.reason, title: text.title, subtitle: text.subtitle, negativeButtonText: text.cancel, useFallback: true, maxAttempts: 5 };
+    if (PLATFORM === 'android') o.allowedBiometryTypes = PIN_FALLBACK ? [FINGERPRINT_STRONG, DEVICE_CREDENTIAL] : [FINGERPRINT_STRONG];
+    return Bio.verifyIdentity(o).then(function () { return true; }, function () { return false; });
   }
   function setLock(v) { LOCK = !!v; return setPref('wl-lock', LOCK ? '1' : ''); }
 
@@ -154,7 +168,8 @@
 
   window.WLNative = {
     on: on,
-    platform: on && cap.getPlatform ? cap.getPlatform() : 'web',
+    platform: PLATFORM,
+    pinFallback: PIN_FALLBACK,
     site: site,
     origin: SITE,
     host: SITE.replace(/^[a-z]+:\/\//i, ''),

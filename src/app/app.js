@@ -818,12 +818,13 @@
       (certs.length ? '<div style="margin-top:12px;display:grid;gap:6px">' + certs.slice(0, 3).map(function (c) { return '<a href="/elearning/certificate/' + esc(c.code) + '/" style="color:var(--cream);text-decoration:none;display:flex;justify-content:space-between;gap:10px;font-size:14px;border-top:1px solid rgba(247,245,240,.1);padding-top:8px"><span>' + esc(c.module_title) + '</span><span style="color:var(--teal-l)">' + esc(T('View')) + '</span></a>'; }).join('') + '</div>' : '') +
       '<div class="btns"><a class="btn light sm" href="/elearning/">' + esc(certs.length ? T('Continue learning') : T('Start a free module')) + '</a></div></div>';
   }
+  // Home: a calm reminder (not a warning) while photos or clips exist and no backup file was made in 14 days.
   function backupNudge() {
     var withImg = live().filter(function (e) { return (e.images || []).length; }).length;
     if (!withImg) return '';
     var last = S.kv.lastBackup, days = last ? daysBetween(last.slice(0, 10), today()) : null;
     if (last && days < 14) return '';
-    return '<div class="card" style="border-color:var(--amber-line);background:var(--amber-bg)"><div class="row"><span style="color:var(--warn-ink)">' + I.cloud + '</span><div class="grow"><h3>' + esc(T('Back up your photos')) + '</h3><p class="small" style="margin:0">' + esc((last ? T('Last backup {days} ago.', { days: plural(days, 'day') }) : T('Your scan photos live only on this phone.')) + ' ' + T('Save a copy to iCloud, Google Drive or OneDrive.')) + '</p></div></div><div class="btns"><a class="btn sm" href="#/backup">' + esc(T('Back up now')) + '</a></div></div>';
+    return '<div class="card"><div class="row"><span class="muted">' + I.cloud + '</span><div class="grow"><h3>' + esc(T('Photos and clips are only on this phone')) + '</h3><p class="small muted" style="margin:0">' + esc((last ? T('Last backup file created {days} ago.', { days: plural(days, 'day') }) : T('No backup file has been created on this device yet.')) + ' ' + T('An encrypted backup keeps a copy wherever you choose.')) + '</p></div></div><div class="btns"><a class="btn sm ghost" href="#/backup">' + esc(T('Back up')) + '</a></div></div>';
   }
 
   // ---------- Logbook list ----------
@@ -2506,52 +2507,204 @@
   }
 
   // ---------- Backup to the learner's own cloud ----------
+  // ---------- Back up and restore (encrypted, src/app/backup.js) ----------
+  // A backup holds this device's logbook entries, photos and clips in one file encrypted with a passphrase the
+  // learner chooses. Wavelength never receives the file or the passphrase, and cannot recover a forgotten one.
+  var BK_MIN = 10;
   function viewBackup() {
     all('images').then(function (imgs) {
       var size = imgs.reduce(function (s, r) { return s + (r.blob ? r.blob.size : 0) + (r.thumb ? r.thumb.size : 0); }, 0);
-      var clips = imgs.filter(isClip).length;
+      var clips = imgs.filter(isClip).length, n = pendingList().length;
       var last = S.kv.lastBackup;
-      mount(shell({ title: T('Backup'), back: '' },
-        '<div class="card dark"><h3>' + esc(T('Your photos, your cloud')) + '</h3><p class="muted small">' + esc(T('Your logbook text is safe in your Wavelength account. Your scan photos and clips live only on this phone. A backup packs them into one file you save to iCloud Drive, Google Drive, OneDrive or your computer. Wavelength never receives it.')) + '</p></div>' +
-        '<div class="card"><div class="row"><div class="grow"><b>' + esc(plural(imgs.length - clips, 'image') + (clips ? ' · ' + plural(clips, 'clip') : '')) + '</b><p class="small muted" style="margin:2px 0 0">' + (size / 1048576).toFixed(1) + ' MB · ' + esc(last ? T('Last backup {date}', { date: fmt(last) }) : T('Never backed up')) + '</p></div></div><div class="btns"><button class="btn teal block" id="bk"' + (imgs.length || live().length ? '' : ' disabled') + '>' + I.cloud + ' ' + esc(T('Back up now')) + '</button></div><p class="small muted" style="margin-top:10px">' + esc(T('On iPhone, choose Save to Files, then iCloud Drive. On Android, choose Drive or OneDrive.')) + '</p></div>' +
-        '<div class="card"><h3>' + esc(T('Restore from a backup')) + '</h3><p class="small muted">' + esc(T('On a new phone, log in, then choose your backup file. Images and clips return to their scans.')) + '</p><input type="file" id="rf" accept=".zip,application/zip" hidden><button class="btn ghost" id="rb">' + esc(T('Choose backup file')) + '</button></div>' +
-        '<div class="card"><h3>' + esc(T('Keep photos safe on this phone')) + '</h3><p class="small muted">' + esc(standalone ? T('You opened Wavelength as an app, so your phone keeps its storage.') : T('Add Wavelength to your home screen. On iPhone, Safari clears storage for websites you have not opened for a while; home screen apps are exempt.')) + '</p>' + (standalone ? '' : installButton(T('Add to home screen'))) + '</div>'));
-      $('#bk').onclick = function () { var b = this; busy(b, true, T('Packing your backup…')); makeBackup().then(function (out) { busy(b, false); setKv('lastBackup', new Date().toISOString()); deliver(out.blob, out.name); }).catch(function (ex) { busy(b, false); toast(ex.message); }); };
+      mount(shell({ title: T('Back up and restore'), back: 'me', tab: 'me' },
+        '<div class="card"><h3>' + esc(T('What a backup holds')) + '</h3><p class="small muted">' + esc(T('Your logbook entries, photos and clips from this device, in one file encrypted with a passphrase you choose. Photos and clips are kept only on this device, so a backup is their only copy anywhere else.')) + '</p>' +
+        '<p class="small muted">' + esc(n ? N(n, '{n} entry has not synced to your Wavelength account yet. It is included in the backup.', '{n} entries have not synced to your Wavelength account yet. They are included in the backup.') : T('Logbook entries also sync to your Wavelength account. Photos and clips do not.')) + ' ' + esc(T('Wavelength never receives the backup file or your passphrase.')) + '</p>' +
+        '<p class="small" style="margin:0"><b>' + esc(plural(imgs.length - clips, 'image') + (clips ? ' · ' + plural(clips, 'clip') : '')) + '</b> · ' + (size / 1048576).toFixed(1) + ' MB · ' + esc(last ? T('Last backup file created {date}', { date: fmt(last) }) : T('No backup file created on this device yet')) + '</p></div>' +
+        '<h2 class="sec">' + esc(T('Create an encrypted backup')) + '</h2><form class="card" id="bkf" novalidate>' +
+        '<div class="field"><label for="bkp">' + esc(T('Backup passphrase')) + '</label><p class="hint">' + esc(T('At least {n} characters. A few unrelated words are easy to remember and hard to guess.', { n: BK_MIN })) + '</p><input id="bkp" type="password" autocomplete="new-password" minlength="' + BK_MIN + '" required></div>' +
+        '<div class="field"><label for="bkp2">' + esc(T('Type the passphrase again')) + '</label><input id="bkp2" type="password" autocomplete="new-password" required></div>' +
+        '<label class="check"><input type="checkbox" id="bkok"><span>' + esc(T('I understand that Wavelength cannot recover a forgotten passphrase, and without it the backup cannot be opened.')) + '</span></label>' +
+        '<div class="err" hidden style="margin-top:12px"></div><p class="small muted bk-progress" role="status" hidden></p>' +
+        '<div class="btns"><button class="btn teal block" id="bk"' + (imgs.length || live().length ? '' : ' disabled') + '>' + I.cloud + ' ' + esc(T('Create encrypted backup')) + '</button></div>' +
+        '<p class="small muted" style="margin-top:10px">' + esc(T('You choose where to save the file: Files or iCloud Drive on iPhone, Google Drive or OneDrive on Android, or your computer. The file stays encrypted wherever you keep it, and whoever can open that storage can copy the file but not read it without the passphrase.')) + '</p></form>' +
+        '<h2 class="sec">' + esc(T('Restore from a backup')) + '</h2><div class="card"><p class="small muted">' + esc(T('Choose a Wavelength backup file. Entries and media already on this device are kept as they are; only missing ones are added. Older unencrypted backups (.zip) can still be restored.')) + '</p><input type="file" id="rf" hidden><button class="btn ghost" id="rb" type="button">' + esc(T('Choose backup file')) + '</button><p class="small muted bk-rprogress" role="status" hidden></p></div>' +
+        (standalone ? '' : '<div class="card"><h3>' + esc(T('Keep photos safe on this phone')) + '</h3><p class="small muted">' + esc(T('Add Wavelength to your home screen. On iPhone, Safari clears storage for websites you have not opened for a while; home screen apps are exempt.')) + '</p>' + installButton(T('Add to home screen')) + '</div>')));
+      var f = $('#bkf'), err = $('.err', f), prog = $('.bk-progress', f);
+      f.addEventListener('submit', function (ev) {
+        ev.preventDefault(); err.hidden = true;
+        var p1 = $('#bkp').value, p2 = $('#bkp2').value;
+        var bad = p1.length < BK_MIN ? T('Use at least {n} characters.', { n: BK_MIN }) : p1 !== p2 ? T('The passphrases do not match.') : !$('#bkok').checked ? T('Tick the box to confirm you understand the passphrase cannot be recovered.') : '';
+        if (bad) { err.textContent = bad; err.hidden = false; return; }
+        var b = $('#bk'); busy(b, true, T('Creating backup…')); prog.hidden = false;
+        makeBackup(p1, function (msg) { prog.textContent = msg; }).then(function (out) {
+          $('#bkp').value = ''; $('#bkp2').value = ''; busy(b, false); prog.hidden = true;
+          return setKv('lastBackup', new Date().toISOString()).then(function () { backupReady(out); });
+        }).catch(function (ex) { busy(b, false); prog.hidden = true; err.textContent = T('The backup was not created: {why}', { why: (ex && ex.message) || ex }); err.hidden = false; });
+      });
       $('#rb').onclick = function () { $('#rf').click(); };
-      $('#rf').onchange = function () { var f = this.files[0]; this.value = ''; if (f) restore(f); };
+      $('#rf').onchange = function () { var file = this.files[0]; this.value = ''; if (file) restore(file); };
     });
   }
-  function extOf(r) { var t = (r.blob && r.blob.type) || ''; return /mp4/.test(t) ? 'mp4' : /webm/.test(t) ? 'webm' : 'jpg'; }
-  function makeBackup() {
-    return all('images').then(function (imgs) {
-      return Promise.all(imgs.map(function (r) { return Promise.all([r.blob.arrayBuffer(), isClip(r) && r.thumb ? r.thumb.arrayBuffer() : null]).then(function (b) { return { r: r, b: new Uint8Array(b[0]), t: b[1] ? new Uint8Array(b[1]) : null }; }); }));
-    }).then(function (imgs) {
-      var manifest = { app: 'wavelength-logbook', version: 2, created: new Date().toISOString(), account: S.account.email, entries: live().map(strip), images: imgs.map(function (x) { return { id: x.r.id, entryId: x.r.entryId, w: x.r.w, h: x.r.h, kind: isClip(x.r) ? 'clip' : 'image', type: x.r.blob.type || 'image/jpeg', dur: x.r.dur, file: 'images/' + x.r.id + '.' + extOf(x.r), thumb: x.t ? 'images/' + x.r.id + '-thumb.jpg' : null }; }) };
-      var files = [{ name: 'wavelength-backup.json', data: JSON.stringify(manifest) }];
-      imgs.forEach(function (x) { files.push({ name: 'images/' + x.r.id + '.' + extOf(x.r), data: x.b }); if (x.t) files.push({ name: 'images/' + x.r.id + '-thumb.jpg', data: x.t }); });
-      return { blob: WLZip.zip(files), name: 'Wavelength-logbook-backup-' + dateStamp() + '.zip' };
+  // The finished file: share or save it. Only creation is claimed, never that it was saved somewhere.
+  function backupReady(out) {
+    var body = '<h2>' + esc(T('Encrypted backup created')) + '</h2><p class="muted small">' + esc(out.name) + ' · ' + (out.size / 1048576).toFixed(1) + ' MB</p><p class="small">' + esc(T('Now save it somewhere safe. Wavelength does not keep a copy.')) + '</p>';
+    if (out.uri) return sheet(body + '<div class="btns"><button class="btn teal block" data-share>' + I.share + ' ' + esc(T('Share or save')) + '</button><button class="btn ghost block" data-close>' + esc(T('Done')) + '</button></div>', function (root) {
+      $('[data-share]', root).onclick = function () { NATIVE.Share.share({ title: out.name, files: [out.uri] }).catch(function (e) { if (!/cancel/i.test(String(e && e.message))) toast(T('Could not share the file.')); }); };
     });
+    deliver(out.blob, out.name);
+  }
+  function b64(u8) { var s = ''; for (var i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); }
+  // Where the encrypted bytes go as they are made. In the app: appended to a file in the app's cache, so a large
+  // backup never sits in memory whole (only encrypted bytes are ever written). On the website: a Blob.
+  function backupSink(name) {
+    if (NATIVE && NATIVE.Filesystem && NATIVE.Filesystem.appendFile) {
+      var FS = NATIVE.Filesystem, path = 'backup/' + name, first = true, size = 0;
+      var ready = FS.rmdir({ path: 'backup', directory: 'CACHE', recursive: true }).catch(function () {});
+      return {
+        write: function (u8) { size += u8.length; var data = b64(u8); ready = ready.then(function () { var o = { path: path, data: data, directory: 'CACHE', recursive: true }; var go = first ? FS.writeFile(o) : FS.appendFile(o); first = false; return go; }); return ready; },
+        done: function () { return ready.then(function () { return FS.getUri({ path: path, directory: 'CACHE' }); }).then(function (r) { return { name: name, size: size, uri: r.uri }; }); }
+      };
+    }
+    var parts = [], total = 0;
+    return { write: function (u8) { parts.push(u8); total += u8.length; }, done: function () { return { name: name, size: total, blob: new Blob(parts, { type: 'application/octet-stream' }) }; } };
+  }
+  function extOf(r) { var t = (r.blob && r.blob.type) || ''; return /mp4/.test(t) ? 'mp4' : /webm/.test(t) ? 'webm' : 'jpg'; }
+  function makeBackup(passphrase, progress) {
+    var name = 'Wavelength-backup-' + dateStamp() + '.wlbackup';
+    var out = backupSink(name);
+    progress(T('Preparing the encryption key. This takes a few seconds…'));
+    var enc = WLBackup.encryptor(passphrase, function (u8) { return out.write(u8); }, { onKdfProgress: function (f) { progress(T('Preparing the encryption key… {pct}%', { pct: Math.round(f * 100) })); } });
+    var zw = WLZip.zipWriter(function (u8) { return enc.write(u8); });
+    return Promise.all([all('images'), enc.ready]).then(function (r) {
+      var imgs = r[0], done = 0;
+      // Image records only (blobs are read one at a time below), so the manifest is small.
+      var manifest = { app: 'wavelength-logbook', version: 3, created: new Date().toISOString(), account: S.account.email, entries: live().map(strip), images: imgs.map(function (x) { return { id: x.id, entryId: x.entryId, w: x.w, h: x.h, kind: isClip(x) ? 'clip' : 'image', type: (x.blob && x.blob.type) || 'image/jpeg', dur: x.dur, sha256: x.sha256 || undefined, file: 'images/' + x.id + '.' + extOf(x), thumb: isClip(x) && x.thumb && x.thumb.size ? 'images/' + x.id + '-thumb.jpg' : null }; }) };
+      var chain = zw.add('wavelength-backup.json', JSON.stringify(manifest));
+      imgs.forEach(function (x, i) {
+        var m = manifest.images[i];
+        chain = chain.then(function () {
+          progress(T('Encrypting photos and clips: {done} of {total}', { done: ++done, total: imgs.length }));
+          // A clip's poster frame goes first, so a restore has it when the clip arrives.
+          var th = m.thumb ? x.thumb.arrayBuffer().then(function (b) { return zw.add(m.thumb, new Uint8Array(b)); }) : Promise.resolve();
+          return th.then(function () { return x.blob.arrayBuffer(); }).then(function (b) { return zw.add(m.file, new Uint8Array(b)); });
+        });
+      });
+      return chain;
+    }).then(function () { return zw.finish(); }).then(function () { return enc.finish(); }).then(function () { return out.done(); });
   }
   function thumbOf(blob) {
     return new Promise(function (ok) { var u = URL.createObjectURL(blob), im = new Image(); im.onload = function () { var s = Math.min(1, 360 / Math.max(im.width, im.height)); var c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u); c.toBlob(ok, 'image/jpeg', 0.72); }; im.onerror = function () { ok(blob); }; im.src = u; });
   }
+  // Restore: an encrypted backup (WLBACKUP) streamed and checked chunk by chunk, or an older unencrypted ZIP.
+  // Entries and media already on this device are never overwritten; restored entries sync as restored copies, so a
+  // newer copy on the server wins.
   function restore(file) {
+    file.slice(0, 8).arrayBuffer().then(function (b) {
+      var head = new Uint8Array(b);
+      if (WLBackup.isBackup(head)) return askPassphrase(file);
+      if (head[0] === 0x50 && head[1] === 0x4b) {
+        return sheet('<h2>' + esc(T('This backup is not encrypted')) + '</h2><p class="small">' + esc(T('It was made by an earlier version of Wavelength. You can still restore it. Afterwards, create an encrypted backup and delete this old file from wherever you saved it, because anyone who can open that storage can read it.')) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Restore it')) + '</button><button class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); restoreLegacy(file); }; });
+      }
+      toast(T('This is not a Wavelength backup file.'), 4000);
+    }).catch(function () { toast(T('Could not read that file.'), 4000); });
+  }
+  function askPassphrase(file) {
+    sheet('<h2>' + esc(T('Enter the backup passphrase')) + '</h2><form id="rpf" novalidate><div class="field"><label for="rpp">' + esc(T('Backup passphrase')) + '</label><input id="rpp" type="password" autocomplete="current-password" required></div><div class="err" hidden></div><p class="small muted" role="status" data-rprog hidden></p><div class="btns"><button class="btn teal block">' + esc(T('Restore')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {
+      var f = $('#rpf', root), err = $('.err', f);
+      // Progress shows on whichever sheet is open (the account question can replace this one).
+      var progress = function (msg) { var el = document.querySelector('[data-rprog]'); if (el) { el.hidden = false; el.textContent = msg; } };
+      f.addEventListener('submit', function (ev) {
+        ev.preventDefault(); err.hidden = true;
+        var b = $('button', f); busy(b, true, T('Restoring…'));
+        restoreEncrypted(file, $('#rpp', f).value, progress).then(function (res) {
+          closeSheet(); restored(res);
+        }).catch(function (ex) {
+          if (ex && ex.code === 'cancel') { closeSheet(); return; }
+          var msg = ex && ex.code === 'auth' ? T('Wrong passphrase, or the file has been changed or damaged. Nothing was restored from the damaged part.') : ((ex && ex.message) ? T(ex.message) : T('Could not read that file.'));
+          if (!document.contains(err)) { closeSheet(); toast(msg, 6000); }
+          else { busy(b, false); var pg = $('[data-rprog]', f); if (pg) pg.hidden = true; err.textContent = msg; err.hidden = false; }
+          if (ex && ex.partial) render(true);
+        });
+      });
+    });
+  }
+  // Adds what the backup holds and this device lacks. Returns counts.
+  function restoreInto(man) {
+    var known = {}; S.entries.forEach(function (e) { known[e.id] = 1; });
+    var fresh = (man.entries || []).filter(function (e) { return e && e.id && !known[e.id] && !e.deleted; });
+    return Promise.all(fresh.map(function (e) { e._dirty = true; e._restored = true; e.updatedAt = 0; return saveLocal(e); })).then(function () { return { entries: fresh.length, media: 0, kept: (man.entries || []).length - fresh.length, damaged: 0 }; });
+  }
+  function sha256hex(u8) { return crypto.subtle.digest('SHA-256', u8).then(function (h) { return Array.prototype.map.call(new Uint8Array(h), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }); }
+  function putMedia(im, data, thumbs, res) {
+    return getOne('images', im.id).then(function (have) {
+      if (have) { res.kept++; return; }
+      var check = im.sha256 ? sha256hex(data).then(function (h) { return h === im.sha256; }) : Promise.resolve(true);
+      return check.then(function (ok) {
+        if (!ok) { res.damaged++; return; }
+        var clip = im.kind === 'clip', blob = new Blob([data], { type: im.type || 'image/jpeg' });
+        var th = clip ? Promise.resolve(thumbs[im.id] || new Blob([], { type: 'image/jpeg' })) : thumbOf(blob);
+        return th.then(function (t) { delete thumbs[im.id]; res.media++; return put('images', { id: im.id, entryId: im.entryId, blob: blob, thumb: t, w: im.w, h: im.h, kind: clip ? 'clip' : 'image', dur: im.dur, sha256: im.sha256, created: Date.now() }); });
+      });
+    });
+  }
+  function confirmAccount(man) {
+    if (!man.account || man.account === S.account.email) return Promise.resolve(true);
+    return new Promise(function (ok) {
+      sheet('<h2>' + esc(T('Restore into this account?')) + '</h2><p class="small">' + esc(T('This backup belongs to {email}. Restore it into this account anyway?', { email: man.account })) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Restore')) + '</button><button class="btn ghost block" data-no>' + esc(T('Cancel')) + '</button></div>', function (root) {
+        $('[data-ok]', root).onclick = function () { sheet('<h2>' + esc(T('Restoring…')) + '</h2><p class="small muted" role="status" data-rprog></p>'); ok(true); };
+        $('[data-no]', root).onclick = function () { closeSheet(); ok(false); };
+      });
+    });
+  }
+  function restoreEncrypted(file, passphrase, progress) {
+    var man = null, byFile = {}, thumbs = {}, res = null, stop = false;
+    progress(T('Checking the passphrase. This takes a few seconds…'));
+    var zr = WLZip.unzipReader(function (name, data) {
+      if (stop) return;
+      if (!man) {
+        if (name !== 'wavelength-backup.json') throw new Error('This is not a Wavelength backup file.');
+        man = JSON.parse(new TextDecoder().decode(data));
+        (man.images || []).forEach(function (im) { byFile[im.file] = im; if (im.thumb) byFile[im.thumb] = { thumbOf: im.id }; });
+        return confirmAccount(man).then(function (go) {
+          if (!go) { stop = true; var c = new Error('cancelled'); c.code = 'cancel'; throw c; }
+          return restoreInto(man).then(function (r) { res = r; });
+        });
+      }
+      var im = byFile[name]; if (!im) return;
+      if (im.thumbOf) { thumbs[im.thumbOf] = new Blob([data], { type: 'image/jpeg' }); return; }
+      return putMedia(im, data, thumbs, res);
+    });
+    return WLBackup.decrypt(passphrase, WLBackup.blobReader(file), file.size, function (plain, frac) {
+      progress(T('Restoring… {pct}%', { pct: Math.round(frac * 100) }));
+      return zr.push(plain);
+    }).then(function () { return zr.end(); }).then(function () {
+      if (stop) return { cancelled: true };
+      if (!res) throw new Error('The backup file is incomplete.');
+      return res;
+    }, function (ex) { if (res) ex.partial = true; throw ex; });
+  }
+  function restoreLegacy(file) {
     file.arrayBuffer().then(function (buf) {
-      var files = WLZip.unzip(buf), man = files['wavelength-backup.json'];
-      if (!man) throw new Error(T('This is not a Wavelength backup file.'));
-      man = JSON.parse(new TextDecoder().decode(man));
-      if (man.account && man.account !== S.account.email && !confirm(T('This backup belongs to {email}. Restore it into this account anyway?', { email: man.account }))) return;
-      var known = {}; S.entries.forEach(function (e) { known[e.id] = 1; });
-      var jobs = (man.entries || []).filter(function (e) { return !known[e.id]; }).map(function (e) { e._dirty = true; e._restored = true; e.updatedAt = 0; return saveLocal(e); });
-      var n = 0;
-      jobs = jobs.concat((man.images || []).map(function (im) {
-        var data = files[im.file]; if (!data) return null;
-        var clip = im.kind === 'clip', blob = new Blob([data], { type: im.type || 'image/jpeg' }); n++;
-        var th = clip && im.thumb && files[im.thumb] ? Promise.resolve(new Blob([files[im.thumb]], { type: 'image/jpeg' })) : clip ? Promise.resolve(new Blob([], { type: 'image/jpeg' })) : thumbOf(blob);
-        return th.then(function (t) { return put('images', { id: im.id, entryId: im.entryId, blob: blob, thumb: t, w: im.w, h: im.h, kind: clip ? 'clip' : 'image', dur: im.dur, created: Date.now() }); });
-      }));
-      return Promise.all(jobs).then(function () { toast(T('Restored {n}.', { n: plural(n, 'item') })); sync(); go(''); });
-    }).catch(function (ex) { toast(ex.message || T('Could not read that file.'), 4000); });
+      var files = WLZip.unzip(buf), m = files['wavelength-backup.json'];
+      if (!m) throw new Error(T('This is not a Wavelength backup file.'));
+      var man = JSON.parse(new TextDecoder().decode(m)), thumbs = {}, res;
+      return confirmAccount(man).then(function (go) {
+        if (!go) return null;
+        closeSheet();
+        return restoreInto(man).then(function (r) {
+          res = r;
+          (man.images || []).forEach(function (im) { if (im.thumb && files[im.thumb]) thumbs[im.id] = new Blob([files[im.thumb]], { type: 'image/jpeg' }); });
+          return (man.images || []).reduce(function (p, im) { return p.then(function () { return files[im.file] ? putMedia(im, files[im.file], thumbs, res) : null; }); }, Promise.resolve());
+        }).then(function () { restored(res); });
+      });
+    }).catch(function (ex) { toast((ex && ex.message) || T('Could not read that file.'), 4000); });
+  }
+  function restored(res) {
+    if (!res || res.cancelled) return;
+    var bits = [T('Restored {entries} and {media}.', { entries: plural(res.entries, 'entry', 'entries'), media: plural(res.media, 'photo or clip', 'photos or clips') })];
+    if (res.kept) bits.push(T('{n} already on this device were kept as they are.', { n: res.kept }));
+    if (res.damaged) bits.push(T('{n} could not be restored because they failed the integrity check.', { n: res.damaged }));
+    toast(bits.join(' '), 6000); sync(); go('');
   }
 
   // ---------- Me ----------
@@ -2567,7 +2720,7 @@
       '<h2 class="sec">' + esc(T('Pathways')) + '</h2><form id="pf" class="card">' + pathwayPicker(p.pathways || []) + '<div class="btns"><button class="btn sm">' + esc(T('Save pathways')) + '</button></div></form>' +
       '<h2 class="sec">' + esc(T('Certificates')) + ' <a href="/elearning/account/">' + esc(T('All')) + '</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="' + esc(T('Share certificate')) + '">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">' + esc(T('Pass a free Academy module to earn a verifiable CPD certificate.')) + '</p><a class="btn sm" href="/elearning/">' + esc(T('Browse modules')) + '</a></div>') +
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div>' + orgField('m4', T('Organisation'), acc.organisation, acc.organisationId) + '<div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
-      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up or restore photos and clips')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
+      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up and restore')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
       '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
     if (editPw) $('#pf').scrollIntoView();
     $$('[data-sharecert]').forEach(function (b) { b.onclick = function () { shareCertificate(b.dataset.sharecert, b.dataset.title); }; });
@@ -2598,6 +2751,7 @@
     var opt = function (v, cls, label) { return '<input type="radio" name="theme" id="th-' + v + '" value="' + v + '"' + (cur === v ? ' checked' : '') + '><label for="th-' + v + '"><span class="sw ' + cls + '" aria-hidden="true"><i></i><b></b></span>' + esc(label) + '</label>'; };
     mount(shell({ title: T('Settings'), back: 'me', tab: 'me' },
       '<h2 class="sec" style="margin-top:6px" id="sync">' + esc(T('Sync')) + '</h2><div class="card" id="syncpanel"></div>' +
+      '<h2 class="sec">' + esc(T('Backup')) + '</h2><div class="card"><p class="small muted" style="margin:0 0 10px">' + esc(S.kv.lastBackup ? T('Last backup file created {date}', { date: fmt(S.kv.lastBackup) }) : T('No backup file created on this device yet')) + '. ' + esc(T('Backups are encrypted with a passphrase you choose and saved where you decide.')) + '</p><a class="btn sm" href="#/backup">' + esc(T('Back up and restore')) + '</a></div>' +
       '<h2 class="sec">' + esc(T('Appearance')) + '</h2><div class="card"><div class="theme-pick" role="radiogroup" aria-label="' + esc(T('Appearance')) + '">' + opt('system', 's', T('Match my phone')) + opt('light', '', T('Light')) + opt('dark', 'd', T('Dark')) + '</div><p class="small muted" style="margin:12px 0 0">' + esc(T('Match my phone follows the light or dark setting on your phone.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Language')) + '</h2><div class="card set-lang"><div class="row"><span>' + I.globe + '</span><b class="grow">' + esc(T('App language')) + '</b>' + langPicker('lang-m') + '</div><p class="small muted" style="margin:8px 0 0">' + esc(T('Exports and certificates stay in English so any assessor can read them.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Notifications')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="nte"' + (p.notifyEmail === false ? '' : ' checked') + '><span>' + esc(T('Email me when a supervisor signs off or queries my scans by link or from their dashboard')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('The app also shows new sign-offs on your home screen and logbook.')) + '</p></div>' +
@@ -2800,13 +2954,13 @@
     if (lockBusy) return;
     lockBusy = true;
     NAT.lockAvailable().then(function (ok) {
-      if (!ok) { NAT.setLock(false); hideLock(); toast(T('App lock is off: this phone has no fingerprint or face unlock set up.'), 5000); return; }
+      if (!ok) { NAT.setLock(false); hideLock(); toast(NAT.pinFallback ? T('App lock is off: this phone has no screen lock set up.') : T('App lock is off: this phone has no fingerprint or face unlock set up.'), 5000); return; }
       return NAT.verify({ reason: T('Unlock your Wavelength logbook'), title: T('Unlock Wavelength'), subtitle: T('Your ultrasound logbook'), cancel: T('Cancel') }).then(function (yes) { if (yes) { hideLock(); NAT.haptic('success'); } });
     }).then(function () { lockBusy = false; }, function () { lockBusy = false; });
   }
   function lockCard() {
     if (!NAT.on) return '';
-    return '<h2 class="sec">' + esc(T('Security')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="lck"' + (NAT.lockOn() ? ' checked' : '') + '><span>' + esc(T('Lock the app with fingerprint or face')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.')) + '</p></div>';
+    return '<h2 class="sec">' + esc(T('Security')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="lck"' + (NAT.lockOn() ? ' checked' : '') + '><span>' + esc(T('Lock the app with fingerprint or face')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.')) + ' ' + esc(NAT.pinFallback ? T('Your phone\'s PIN, pattern or password also works. Wavelength uses your phone\'s own prompt and never sees your fingerprint or face.') : T('Wavelength uses your phone\'s own prompt and never sees your fingerprint or face.')) + '</p></div>';
   }
   function bindLockCard() {
     var c = $('#lck'); if (!c) return;
@@ -2815,7 +2969,7 @@
       if (!want) { NAT.setLock(false); toast(T('App lock off.')); return; }
       c.disabled = true; lockBusy = true;
       NAT.lockAvailable().then(function (ok) {
-        if (!ok) { c.checked = false; toast(T('Set up fingerprint or face unlock in your phone settings first.'), 5000); return; }
+        if (!ok) { c.checked = false; toast(NAT.pinFallback ? T('Set up a screen lock (PIN, pattern, password, fingerprint or face) in your phone settings first.') : T('Set up fingerprint or face unlock in your phone settings first.'), 5000); return; }
         return NAT.verify({ reason: T('Turn on app lock'), title: T('Turn on app lock'), subtitle: T('Your ultrasound logbook'), cancel: T('Cancel') }).then(function (yes) {
           if (!yes) { c.checked = false; return; }
           return NAT.setLock(true).then(function () { NAT.haptic('success'); toast(T('App lock on.')); });
