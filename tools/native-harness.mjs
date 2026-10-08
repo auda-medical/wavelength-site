@@ -8,6 +8,8 @@ import path from 'node:path';
 
 export const WWW = path.resolve('mobile/www');
 export const SITE = 'https://thewavelength.co.uk';
+// The app bundle the stand-in phone runs. An upgrade test points it at an older release's bundle, then at the new one.
+export const serve = { dir: WWW };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json' };
 if (!fs.existsSync(path.join(WWW, 'index.html'))) throw new Error('Build the bundle first: node mobile/scripts/build-www.mjs');
 
@@ -88,9 +90,10 @@ export async function harness({ api = 'http://localhost:8787', errors = [] } = {
     // The bundle, served as Capacitor serves it from the phone. Paths without a file fall back to index.html.
     await ctx.route('https://localhost/**', async (route) => {
       const u = new URL(route.request().url());
-      let f = path.join(WWW, decodeURIComponent(u.pathname));
-      if (!f.startsWith(WWW)) return route.fulfill({ status: 403, body: '' });
-      if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(WWW, 'index.html');
+      const root = serve.dir;
+      let f = path.join(root, decodeURIComponent(u.pathname));
+      if (!f.startsWith(root)) return route.fulfill({ status: 403, body: '' });
+      if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(root, 'index.html');
       return route.fulfill({ status: 200, headers: { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }, body: fs.readFileSync(f) });
     });
     // The Wavelength server, played by the local Worker. Offline mode drops every call.

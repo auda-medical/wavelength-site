@@ -118,3 +118,11 @@ test('Android manifest lets WebView see connectivity changes', () => {
   const m = readFileSync(new URL('../mobile/android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8');
   assert.match(m, /android\.permission\.ACCESS_NETWORK_STATE/);
 });
+
+test('after an offline start, the first good sync loads the account details and supervisor links', () => {
+  const ok = APP.slice(APP.indexOf("SY.fail = ''; SY.ran = true; SY.lastOk = Date.now();"), APP.indexOf("return setKv('lastSyncOk'"));
+  assert.match(ok, /if \(!S\.me\) loadMe\(\)/);
+  assert.match(ok, /if \(!S\.links\) loadLinks\(\)/);
+  const sv = APP.slice(APP.indexOf('function viewSupervisors()'), APP.indexOf('function viewSupervisors()') + 4000);
+  assert.match(sv, /!S\.links \? /, 'no "No supervisors linked yet" before the links have loaded');
+});

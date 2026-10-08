@@ -1,0 +1,95 @@
+{
+  "run": "2026-10-08T15:24:22.756Z",
+  "results": [
+    {
+      "id": "A1",
+      "name": "Me shows Wavelength, version and build, copyright and an About link",
+      "pass": true,
+      "detail": "Wavelength / Version 1.0.9 (15) / © 2026 Auda Medical Ltd / About Wavelength"
+    },
+    {
+      "id": "A2",
+      "name": "Settings shows the same footer",
+      "pass": true,
+      "detail": "Wavelength / Version 1.0.9 (15) / © 2026 Auda Medical Ltd / About Wavelength"
+    },
+    {
+      "id": "A3",
+      "name": "About sheet: logo, name, version, build, developer and website",
+      "pass": true,
+      "detail": "{\"title\":\"Wavelength POCUS Logbook\",\"logo\":true,\"facts\":{\"Version\":\"1.0.9\",\"Build\":\"15\",\"Developer\":\"Auda Medical Ltd\",\"Website\":\"thewavelength.co.uk\"}}"
+    },
+    {
+      "id": "A4",
+      "name": "Contact support emails hello@ with version, platform and language only, never account details",
+      "pass": true,
+      "detail": "\"App version: 1.0.9 (15)\\nPlatform: android\\nApp language: en\\n\\n\""
+    },
+    {
+      "id": "A5",
+      "name": "Privacy policy, terms of use and open-source licences are listed",
+      "pass": true,
+      "detail": "Contact support mailto:hello@thewavelength.co.uk?subject | Privacy policy /privacy/ | Terms of use /app-terms/ | Open-source licences"
+    },
+    {
+      "id": "A6",
+      "name": "Sheet is a labelled dialog and every row is at least 48px tall",
+      "pass": true,
+      "detail": "heights 48,48,48,48"
+    },
+    {
+      "id": "A7",
+      "name": "Privacy policy opens the website in the in-app browser",
+      "pass": true,
+      "detail": "[\"https://thewavelength.co.uk/privacy/\"]"
+    },
+    {
+      "id": "A8",
+      "name": "Open-source licences list every component, grouped by licence, with the MPL source link",
+      "pass": true,
+      "detail": "groups MIT, MPL-2.0, Apache-2.0, OFL-1.1"
+    },
+    {
+      "id": "A9",
+      "name": "Full licence text opens",
+      "pass": true,
+      "detail": "MIT License\n\nCopyright (c) <year> <copyr… 1156 chars"
+    },
+    {
+      "id": "A10",
+      "name": "Back returns to About; Escape closes it and focus returns to the About link",
+      "pass": true,
+      "detail": "{\"open\":false,\"focused\":true}"
+    },
+    {
+      "id": "A11",
+      "name": "Version and build are read from the installed app metadata, not fixed in the code",
+      "pass": true,
+      "detail": "Wavelength / Version 9.8.7 (654) / © 2026 Auda Medical Ltd / About Wavelength"
+    },
+    {
+      "id": "A12",
+      "name": "If the metadata cannot be read, the version the bundle was built with is shown",
+      "pass": true,
+      "detail": "Wavelength / Version 1.0.9 (15) / © 2026 Auda Medical Ltd / About Wavelength"
+    },
+    {
+      "id": "A13",
+      "name": "Offline: footer, About and licences all open",
+      "pass": true,
+      "detail": "licences true, footer Version 1.0.9 (15)"
+    },
+    {
+      "id": "A14",
+      "name": "Arabic: footer and About are translated, right to left, with no overflow",
+      "pass": true,
+      "detail": "Wavelength / الإصدار 1.0.9 (15) / © 2026 Auda Medical Ltd / حول Wavelength"
+    },
+    {
+      "id": "A15",
+      "name": "No page errors",
+      "pass": true,
+      "detail": "none"
+    }
+  ]
+}
