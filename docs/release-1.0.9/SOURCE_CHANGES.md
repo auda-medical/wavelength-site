@@ -107,7 +107,7 @@ nothing was pushed or merged. To see everything: `git diff pre-1.0.9-baseline..c
 
 ## Size
 
-About 73 files changed, about 8,900 lines added and 160 removed (`git diff --shortstat pre-1.0.9-baseline` gives the
-exact figure). About 2,200 of the added lines are the vendored Argon2 library, about 1,500 are test result files and
-most of the rest are documents and tests. The app code itself (`src/app/*.js` and `app.css`, without vendor files) is
-about 1,100 lines.
+75 files changed, 9,002 lines added and 159 removed (`git diff --shortstat pre-1.0.9-baseline`). Of the added lines,
+2,203 are the vendored Argon2 library and about 1,500 are test result files. Most of the rest are documents, tests and
+translations. The app code itself (`src/app` scripts, styles and page, without vendor files, licence texts or
+translations) is 839 lines added.
