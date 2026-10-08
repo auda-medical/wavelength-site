@@ -14,7 +14,8 @@ goes to learners.
 | 4 | iOS build and runtime | No Mac or Xcode here. Static review only | `IOS_READINESS.md` checks on a Mac | **Yes, for iOS** |
 | 5 | Translations of new text (8 languages) | Machine-drafted, like the rest of the app's translations | A native speaker's review of the strings added in 1.0.9 (`git diff pre-1.0.9-baseline -- src/app/i18n`) | Recommended |
 | 6 | Argon2id time on slow phones | Measured on a desktop only. 64 MiB and 3 passes may take several seconds on an old phone | Checklist step E2 records the time | No |
-| 7 | Whether the deployed Worker matches commit 2dfd55e | Compatibility was tested against the source labelled "main 2dfd55e production" in the recovery archive. The live Worker on Cloudflare was not read | A read-only look at the deployed Worker version, or Fero's confirmation | No |
+| 7 | Whether the deployed Worker still matches commit 2dfd55e | Compatibility was tested against the source labelled "main 2dfd55e production" in the recovery archive. An earlier read-only check in this project (8 October, before the 1.0.9 work) found the live Worker running main-equivalent code; it was not re-checked for this report | Fero's confirmation that nothing was deployed since | No |
+| 7a | One supervisor label untranslated with the live Worker (carried over from 1.0.8) | The live Worker sends "Wavelength-approved supervisor", which 1.0.8 and 1.0.9 no longer translate, so it shows in English in the other seven languages | Goes away when the 3dbdf3f Worker code is deployed | No |
 
 ## Decisions for Fero
 

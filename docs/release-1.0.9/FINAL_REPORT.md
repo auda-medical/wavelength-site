@@ -156,7 +156,9 @@ Details: `TEST_REPORT.md`.
 ## 11. Backend dependencies and deployment
 
 **None required.** 1.0.9 works fully against the production Worker code (2dfd55e, labelled production in the recovery
-archive). Whether the live Cloudflare Worker matches 2dfd55e is inferred, not read.
+archive). An earlier read-only check in this project found the live Worker running main-equivalent code; it was not
+re-checked for this report. One cosmetic gap carries over from 1.0.8: a supervisor label from the live Worker shows
+in English in the other seven languages.
 
 One optional, backward-compatible change exists: the `rejected` list in sync answers. It has no migration.
 

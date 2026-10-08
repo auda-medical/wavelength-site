@@ -18,8 +18,12 @@ switched on by a server flag. The GMC registration review and Wavelength Verifie
 ## 2. How compatibility was tested
 
 "Production" here means commit **2dfd55e** (main). Your recovery archive labels it as production
-(`wavelength-site-source-main-2dfd55e-production.tar.gz`). The live Worker on Cloudflare was not read, so it is
-**inferred**, not checked, that the deployed code matches 2dfd55e.
+(`wavelength-site-source-main-2dfd55e-production.tar.gz`). An earlier read-only check in this project (8 October,
+before the 1.0.9 work) found the live Worker running main-equivalent code. It was not re-checked for this report.
+
+Known cosmetic gap, carried over from 1.0.8: the live Worker sends the supervisor label "Wavelength-approved
+supervisor", which the app no longer translates. It shows in English in the other seven languages until the 3dbdf3f
+Worker code is deployed.
 
 Between 2dfd55e and the 1.0.8 source (3dbdf3f), only GMC and verification files changed. Nothing changed in the app's
 login, sync, `/me`, sign-off or assessment endpoints.
