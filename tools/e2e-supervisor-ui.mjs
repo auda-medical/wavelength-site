@@ -81,9 +81,11 @@ for (const w of [390, 1440]) {
   await page.check('.editor [data-decl]'); await page.click('.editor [data-a=save]');
   await page.waitForSelector('#gal img', { timeout: 5000 });
   await page.click('form button[type=submit], form .save button, #save').catch(() => {});
-  await page.waitForFunction(() => location.hash.startsWith('#/entry/'), null, { timeout: 8000 }).catch(() => fail('scan not saved'));
+  // 1.0.10: saving goes Home with a note; open the scan from its View scan link.
+  await page.waitForFunction(() => location.hash === '#/' && document.querySelector('.toast.act a[href^="#/entry/"]'), null, { timeout: 8000 }).catch(() => fail('scan not saved'));
   await page.waitForTimeout(2500);
-  if (await page.$('.sheet')) await page.keyboard.press('Escape'); // the "Scan saved" sheet
+  const href = await page.evaluate(() => { const a = document.querySelector('.toast.act a[href^="#/entry/"]'); return a && a.getAttribute('href'); });
+  if (href) { await page.evaluate((h) => { location.hash = h; }, href); await page.waitForTimeout(400); }
   const pulled = await get(page, '/api/app/sync?since=0');
   const ent = (pulled.entries || []).find((e) => (e.images || []).length);
   if (!ent || !(ent.media || []).length || !/^[0-9a-f]{64}$/.test(ent.media[0].sha256)) fail('fingerprint not synced ' + JSON.stringify(ent && ent.media)); else ok('fingerprint synced');

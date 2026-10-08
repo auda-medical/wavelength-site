@@ -10,6 +10,8 @@
 //
 // Setup: unzip the 1.0.8 APK's assets/public into a folder (read-only copy), then
 //        WL_APP_VERSION=1.0.9 WL_VERSION_CODE=15 node mobile/scripts/build-www.mjs
+// For 1.0.9 to 1.0.10: use the 1.0.9 bundle (assets/public of the 1.0.9 APK, or mobile/www built from the 1.0.9
+// source) as the old folder, and build this bundle with WL_APP_VERSION=1.0.10 WL_VERSION_CODE=16.
 //        node --import ./test/helpers/register.mjs tools/dev-worker.mjs
 // Run:   node tools/e2e-upgrade.mjs <1.0.8 assets/public folder> [results.json] [http://localhost:8787]
 import fs from 'node:fs';
@@ -26,6 +28,9 @@ const API = process.argv[4] || 'http://localhost:8787';
 localOnly(API, 'tools/e2e-upgrade.mjs');
 if (!fs.existsSync(path.join(OLD, 'app/native-config.js'))) { console.error('Give the folder holding the 1.0.8 bundle (assets/public from the APK).'); process.exit(2); }
 const oldVersion = (fs.readFileSync(path.join(OLD, 'app/native-config.js'), 'utf8').match(/"version":"([^"]*)"/) || [])[1];
+// The release being installed over it: the version and code its bundle was built with (and the installed metadata).
+const NEWCFG = fs.readFileSync(path.join(WWW, 'app/native-config.js'), 'utf8');
+const newVersion = (NEWCFG.match(/"version":"([^"]*)"/) || [])[1] || '1.0.9', newCode = (NEWCFG.match(/"versionCode":"([^"]*)"/) || [])[1] || '15';
 const results = [];
 const record = (id, name, pass, detail) => { results.push({ id, name, pass: !!pass, detail }); console.log(pass ? 'PASS' : 'FAIL', id, name, '-', detail); };
 const errors = [];
@@ -69,8 +74,9 @@ async function saveScan(page, note) {
   await page.locator('input[name=supervision]').first().check({ force: true });
   await page.fill('#refl', note);
   await page.click('form button[type=submit]');
-  await page.waitForFunction(() => /#\/entry\//.test(location.hash), null, { timeout: 15000 });
-  const id = await page.evaluate(() => location.hash.split('/')[2]);
+  // Up to 1.0.9 saving opens the scan; from 1.0.10 it goes Home with a View scan link.
+  await page.waitForFunction(() => /#\/entry\//.test(location.hash) || document.querySelector('.toast.act a[href^="#/entry/"]'), null, { timeout: 15000 });
+  const id = await page.evaluate(() => /#\/entry\//.test(location.hash) ? location.hash.split('/')[2] : document.querySelector('.toast.act a[href^="#/entry/"]').getAttribute('href').split('/')[2]);
   await page.evaluate(() => document.querySelectorAll('.sheet-bg').forEach((s) => s.remove()));
   // A photo as the camera hand-off leaves it (generated, not a patient image).
   await page.evaluate(([acc, eid]) => new Promise((ok) => {
@@ -118,6 +124,7 @@ record('U1', 'In ' + ver108 + ': signed in, a signed-off scan, an assessment, a 
 // ---------- The update: same storage, new bundle, first start with no network ----------
 await page.goto('about:blank');
 serve.dir = WWW;
+await ctx.addInitScript(`window.__appInfo = { name: 'Wavelength', id: 'uk.co.thewavelength.app', version: '${newVersion}', build: '${newCode}' };`);
 await page.evaluate(() => { window.__calls = []; }).catch(() => {});
 const t0 = Date.now();
 await page.goto('https://localhost/');
@@ -125,7 +132,7 @@ const prompt = await page.waitForFunction(() => (window.__calls || []).some((c) 
 await page.waitForSelector('nav.tabs', { timeout: 15000 });
 const ver109 = await page.evaluate(() => window.WL_NATIVE && window.WL_NATIVE.version);
 const verify = await page.evaluate(() => ((window.__calls || []).find((c) => c.method === 'verifyIdentity') || {}).options || null);
-record('U2', 'First start of 1.0.9 offline: app lock still on, asks with the phone prompt, then opens the logbook', ver109 === '1.0.9' && prompt >= 0 && prompt < 3000 && verify && JSON.stringify(verify.allowedBiometryTypes) === '[3,7]',
+record('U2', `First start of ${newVersion} offline: app lock still on, asks with the phone prompt, then opens the logbook`, ver109 === newVersion && prompt >= 0 && prompt < 3000 && verify && JSON.stringify(verify.allowedBiometryTypes) === '[3,7]',
   `version ${ver109}, prompt after ${prompt} ms, allowed ${verify && JSON.stringify(verify.allowedBiometryTypes)}`);
 const login = await page.evaluate(() => ({ auth: !!document.querySelector('#app .auth, #em'), token: JSON.parse(localStorage.getItem('__secure') || '{}')['wavelength.session'] || '' }));
 record('U3', 'Still signed in with the same login: no sign-in screen, token unchanged in secure storage', !login.auth && login.token === token108, `sign-in screen ${login.auth}, same token ${login.token === token108}`);
@@ -160,7 +167,7 @@ await page.evaluate(() => { location.hash = '#/me'; });
 await page.waitForSelector('.about-foot [data-appver]');
 await page.waitForTimeout(400);
 const foot = await page.evaluate(() => document.querySelector('.about-foot [data-appver]').textContent);
-record('U9', 'Me shows Version 1.0.9 (15)', foot === 'Version 1.0.9 (15)', foot);
+record('U9', `Me shows Version ${newVersion} (${newCode})`, foot === `Version ${newVersion} (${newCode})`, foot);
 await ctx.close();
 
 // ---------- A second signed-in session (another phone) sees the scan that was saved offline ----------

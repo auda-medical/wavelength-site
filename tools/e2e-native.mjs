@@ -81,12 +81,13 @@ await page.waitForTimeout(1000);
 // Choosing the application scrolls to the Date and Setting row, with its labels just below the sticky header.
 const land = await page.evaluate(() => ({ head: document.querySelector('.top').getBoundingClientRect().bottom, date: document.querySelector('label[for=date]').getBoundingClientRect().top, setting: document.querySelector('label[for=setting]').getBoundingClientRect().top, y: scrollY, max: document.documentElement.scrollHeight - innerHeight }));
 if (land.date < land.head || land.setting < land.head) fail('Date or Setting hidden under the header after choosing the application: ' + JSON.stringify(land));
-else if (land.date - land.head > 40 && land.y < land.max - 2) fail('form did not scroll to the Date row: ' + JSON.stringify(land));
+// 1.0.10: the "<application> selected" line sits just above the row, so the row lands a line lower.
+else if (land.date - land.head > 90 && land.y < land.max - 2) fail('form did not scroll to the Date row: ' + JSON.stringify(land));
 else ok('choosing the application scrolls to the Date and Setting row, clear of the header');
 await page.screenshot({ path: `${out}/03-new-scan.png`, fullPage: false });
 await page.locator('input[name=supervision]').first().check({ force: true });
 await page.click('form button[type=submit]');
-await page.waitForFunction(() => /#\/entry\//.test(location.hash) || document.querySelector('.err:not([hidden])'), null, { timeout: 15000 });
+await page.waitForFunction(() => location.hash === '#/' || document.querySelector('.err:not([hidden]), .field.invalid'), null, { timeout: 15000 });
 const saveErr = await page.evaluate(() => (document.querySelector('.err:not([hidden])') || {}).textContent || '');
 if (saveErr) fail('scan save error: ' + saveErr); else ok('scan saved');
 if (!(await calls(page, 'Haptics', 'notification')).length) fail('no haptic feedback on save'); else ok('haptic feedback on save');

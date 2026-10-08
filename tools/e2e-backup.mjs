@@ -57,8 +57,8 @@ await A.page.waitForSelector('#rest:not([hidden])');
 await A.page.locator('input[name=supervision]').first().check({ force: true });
 await A.page.fill('#refl', NOTE);
 await A.page.click('form button[type=submit]');
-await A.page.waitForFunction(() => /#\/entry\//.test(location.hash), null, { timeout: 15000 });
-const entryId = await A.page.evaluate(() => location.hash.split('/')[2]);
+await A.page.waitForFunction(() => location.hash === '#/' && document.querySelector('.toast.act a[href^="#/entry/"]'), null, { timeout: 15000 });
+const entryId = await A.page.evaluate(() => document.querySelector('.toast.act a[href^="#/entry/"]').getAttribute('href').split('/')[2]);
 // Media as the camera hand-off would leave it (dummy bytes, not a patient image).
 await A.page.evaluate(([id, eid]) => new Promise((ok) => {
   const c = document.createElement('canvas'); c.width = 64; c.height = 48; const g = c.getContext('2d'); g.fillStyle = '#0A1526'; g.fillRect(0, 0, 64, 48); g.fillStyle = '#5FB3B3'; g.fillRect(10, 10, 20, 20);

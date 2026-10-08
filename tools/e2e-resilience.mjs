@@ -57,9 +57,9 @@ async function saveScan(page, note) {
   await page.locator('input[name=supervision]').first().check({ force: true });
   await page.fill('#refl', note);
   await page.click('form button[type=submit]');
-  await page.waitForFunction(() => /#\/entry\//.test(location.hash), null, { timeout: 15000 });
-  await page.evaluate(() => document.querySelectorAll('.sheet-bg').forEach((s) => s.remove()));
-  return page.evaluate(() => location.hash.split('/')[2]);
+  // 1.0.10: a new scan goes back Home; its id is in the note's View scan link.
+  await page.waitForFunction(() => location.hash === '#/' && document.querySelector('.toast.act a[href^="#/entry/"]'), null, { timeout: 15000 });
+  return page.evaluate(() => document.querySelector('.toast.act a[href^="#/entry/"]').getAttribute('href').split('/')[2]);
 }
 const A = await account('a');
 

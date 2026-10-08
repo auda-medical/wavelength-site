@@ -3,7 +3,7 @@
 // version and build come from the installed app's metadata, the About sheet, the open-source licences, offline use,
 // keyboard and screen-reader basics, and Arabic.
 //
-// Setup: WL_APP_VERSION=1.0.9 WL_VERSION_CODE=15 node mobile/scripts/build-www.mjs,
+// Setup: WL_APP_VERSION=1.0.10 WL_VERSION_CODE=16 node mobile/scripts/build-www.mjs,
 //        then node --import ./test/helpers/register.mjs tools/dev-worker.mjs
 // Run:   node tools/e2e-about.mjs [results.json] [http://localhost:8787]
 import fs from 'node:fs';
@@ -98,7 +98,8 @@ const go = async (page, hash) => { await page.evaluate((x) => { location.hash = 
   const b = await phone({ init: ['window.__appInfoFail = true;'] });
   await go(b.page, '#/me');
   const g = await footer(b.page);
-  record('A12', 'If the metadata cannot be read, the version the bundle was built with is shown', g.includes('Version 1.0.9 (15)'), g);
+  const built = await b.page.evaluate(() => `Version ${window.WL_NATIVE.version} (${window.WL_NATIVE.versionCode})`);
+  record('A12', 'If the metadata cannot be read, the version the bundle was built with is shown', g.includes(built), g + ' (bundle built as ' + built + ')');
   await b.ctx.close();
 }
 

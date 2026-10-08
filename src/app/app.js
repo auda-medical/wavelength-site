@@ -291,13 +291,13 @@
   }
   function setSyncDot() {
     var st = syncState(), text = syncText(st), n = pendingList().length, now = Date.now();
-    if (st !== BAN.st) { if (st === 'synced' && BAN.shown) BAN.okUntil = now + 3000; BAN.st = st; BAN.at = now; }
+    if (st !== BAN.st) { if (st === 'synced') { if (BAN.shown) BAN.okUntil = now + 3000; BAN.shown = false; } BAN.st = st; BAN.at = now; }
     var settle = st === 'pending' ? 3000 : st === 'syncing' ? 800 : 0, age = now - BAN.at;
     var b = NETR.banner(st, n, { settled: age >= settle, justSynced: now < BAN.okUntil });
     clearTimeout(BAN.timer);
     if (settle && age < settle) BAN.timer = setTimeout(setSyncDot, settle - age + 20);
     else if (b && st === 'synced') BAN.timer = setTimeout(setSyncDot, BAN.okUntil - now + 20);
-    if (st !== 'synced') BAN.shown = !!b;
+    if (b && st !== 'synced') BAN.shown = true; // a warning was on screen: confirm briefly once everything has synced
     var cls = NETR.pill(st).cls, inner = pillInner(st);
     $$('button.sync-pill').forEach(function (a) {
       a.className = 'sync-pill p-' + cls;
@@ -1115,7 +1115,8 @@
     // After the application, the next thing to fill in is the date: bring the Date and Setting row up just below the
     // header and mark it briefly. Nothing is focused, so no keyboard or date picker opens by itself.
     var toDate = function () {
-      var row = $('#date').closest('.two'); scrollToField(row, true);
+      // The confirmation line sits just above the date row: both end up in view below the header.
+      var row = $('#date').closest('.two'); scrollToField($('#typeok') && $('#typeok').textContent ? $('#typeok') : row, true);
       row.classList.remove('next-up'); void row.offsetWidth; row.classList.add('next-up');
       setTimeout(function () { row.classList.remove('next-up'); }, 1600);
     };
@@ -2945,7 +2946,7 @@
       '<dt>' + esc(T('Entries awaiting sync')) + '</dt><dd>' + n + '</dd>' +
       '<dt>' + esc(T('Last attempt')) + '</dt><dd>' + esc(SY.lastTry ? when(SY.lastTry) : T('Not yet on this device')) + '</dd>' +
       '<dt>' + esc(T('Last synced')) + '</dt><dd>' + esc(SY.lastOk ? when(SY.lastOk) : T('Not yet on this device')) + '</dd>' +
-      (err && err.kind ? '<dt>' + esc(T('Last error')) + '</dt><dd>' + esc(T(NETR.errorText(err.kind))) + ' (' + esc(when(err.at)) + ')</dd>' : '') + '</dl>' +
+      (err && err.kind ? '<dt>' + esc(T('Last error')) + '</dt><dd>' + esc(when(err.at)) + '</dd><dd class="wide">' + esc(T(NETR.errorText(err.kind))) + '</dd>' : '') + '</dl>' +
       (bad.length ? '<p class="small" style="margin:8px 0 4px"><b>' + esc(T('Not accepted by the server')) + '</b></p><ul class="small sync-bad">' + bad.map(function (e) { return '<li><a href="#/entry/' + esc(e.id) + '">' + esc(T((TYPES[e.type] || {}).label || e.type || '')) + (e.date ? ', ' + esc(fmt(e.date)) : '') + '</a>: ' + esc(why(e._syncError)) + '</li>'; }).join('') + '</ul>' : '') +
       help +
       '<button class="btn sm" type="button" data-resync' + (S.syncing ? ' disabled' : '') + '>' + esc(S.syncing ? T('Synchronising…') : T('Retry sync')) + '</button>' +

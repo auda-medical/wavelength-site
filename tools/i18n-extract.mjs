@@ -24,6 +24,12 @@ lb.pathways.forEach((p) => { add(p.desc); add(p.region); p.modules.forEach((m) =
 ['assessmentKinds', 'assessmentDomains', 'assessmentOutcomes', 'qualityScale'].forEach((k) => (lb[k] || []).forEach((x) => { add(x.label); add(x.help); }));
 lb.destinations.forEach((d) => { add(d.label); d.steps.forEach(add); });
 ['Overall', 'Normal', 'Abnormal', 'Indeterminate', 'Good', 'Adequate', 'Limited', 'Inadequate', 'Female', 'Male', 'Agreed', 'Partly agreed', 'Disagreed', 'UK', 'Europe', 'Australia and New Zealand', 'Canada', 'United States', 'Portfolio', 'Image quality', 'Diagnostic accuracy'].forEach(add);
+// Connection and sync status words (src/app/netstate.js): pill labels, banner titles and text, error lines.
+{
+  const s = fs.readFileSync('src/app/netstate.js', 'utf8');
+  for (const m of s.matchAll(/(?:label|title|body|hint): '((?:[^'\\]|\\.)*)'/g)) if (!/\{n\} scans? (is|are) saved/.test(m[1])) add(m[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/^\s+(?:offline|unreachable|timeout|failed|auth|update): '((?:[^'\\]|\\.)*)',?$/gm)) add(m[1].replace(/\\'/g, "'"));
+}
 // Label maps in app.js passed to T() through a variable (supervisor standing, lapse reasons, wizard steps, signers).
 {
   const s = fs.readFileSync('src/app/app.js', 'utf8');
