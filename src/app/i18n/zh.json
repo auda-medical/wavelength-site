@@ -1731,5 +1731,49 @@
 "Wavelength verification is not accreditation or endorsement by an external professional body.": "Wavelength 认证并非外部专业机构的认证或认可。",
 "We look at your professional registration where applicable, your relevant ultrasound qualifications, credentials or supporting evidence, and the specific areas you want to supervise.": "我们会在适用时考虑您的执业注册、相关的超声资格、资质或证明材料，以及您希望督导的具体领域。",
 "We may ask for further evidence.": "我们可能会要求补充材料。",
-"What does Wavelength Verified mean?": "“Wavelength 认证”是什么意思？"
+"What does Wavelength Verified mean?": "“Wavelength 认证”是什么意思？",
+"You're offline. Your entries are saved on this device and will sync when you're back online.": "您已离线。您的记录已保存在此设备上，恢复联网后将自动同步。",
+"All changes synced.": "所有更改均已同步。",
+"Unable to sync. Your entries remain saved on this device.": "无法同步。您的记录仍保存在此设备上。",
+"Sign in again to continue synchronising. Your local entries are safe.": "请重新登录以继续同步。您的本地记录是安全的。",
+"Synchronising…": "正在同步…",
+"Sync": "同步",
+"Sync status": "同步状态",
+"Sync status: {status}": "同步状态：{status}",
+"Entries awaiting sync": "等待同步的记录",
+"Last synced": "上次同步",
+"Not yet on this device": "此设备上尚未同步",
+"Retry sync": "重试同步",
+"Not accepted by the server": "服务器未接受",
+"The server did not accept this entry.": "服务器未接受此记录。",
+"Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.": "同步仅包括您的日志记录。照片和视频片段保留在此设备上，不会上传：请通过“备份与恢复”妥善保存。",
+"Back up and restore": "备份与恢复",
+"Start-up details": "启动详情",
+"logbook in {ms} ms": "日志 {ms} 毫秒",
+"server {result}": "服务器 {result}",
+"Checking…": "正在检查…",
+"Could not reach Wavelength. Check your connection and try again.": "无法连接 Wavelength。请检查网络连接后重试。",
+"Log out?": "要退出登录吗？",
+"It stays saved on this device and syncs when you log in here again.": "它仍保存在此设备上，您在此重新登录后会同步。",
+"Stay logged in": "保持登录",
+"This scan has too much text to sync. Shorten the reflection or other notes.": "此扫查的文字过多，无法同步。请缩短反思或其他备注。",
+"Wavelength is taking longer than usual to start.": "Wavelength 的启动时间比平时更长。",
+"Your entries stay saved on this device. Check your connection, then try again.": "您的记录仍保存在此设备上。请检查网络连接，然后重试。",
+"Too many entries in one sync. It will be sent next time.": "单次同步的记录过多。将在下次发送。",
+"This entry has an invalid identifier.": "此记录的标识符无效。",
+"This entry belongs to another account.": "此记录属于另一个账户。",
+"This entry is missing its application or date.": "此记录缺少应用或日期。",
+"This entry is too long to sync. Shorten its text.": "此记录过长，无法同步。请缩短文字。",
+"Saved on this device. {n} entries awaiting sync.": {
+"other": "已保存在此设备上。{n} 条记录等待同步。"
+},
+"Synchronising {n} entries…": {
+"other": "正在同步 {n} 条记录…"
+},
+"{n} entries are waiting on this device.": {
+"other": "{n} 条记录在此设备上等待。"
+},
+"{n} entries on this device have not synced yet.": {
+"other": "此设备上有 {n} 条记录尚未同步。"
+}
 }

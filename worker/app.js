@@ -331,11 +331,16 @@ async function syncPost(env, l, req) {
   const incoming = d.entries.slice(0, 200);
   const now = Date.now();
   const saved = [];
+  // Every entry sent gets an answer: saved (or conflict) in `saved`, otherwise a reason in `rejected`, so the app
+  // never takes silence for success. Reasons are English keys the app translates. Older apps ignore `rejected`.
+  const rejected = [];
+  const refuse = (id, reason) => { if (id) rejected.push({ id: clip(id, 40), reason }); };
+  for (const raw of d.entries.slice(200)) refuse(String(raw && raw.id || ''), 'Too many entries in one sync. It will be sent next time.');
   for (const raw of incoming) {
     const id = String(raw && raw.id || '');
-    if (!ID.test(id)) continue;
+    if (!ID.test(id)) { refuse(id, 'This entry has an invalid identifier.'); continue; }
     const ex = await env.DB.prepare('SELECT * FROM logbook_entries WHERE id = ?').bind(id).first();
-    if (ex && ex.learner_id !== l.id) continue;
+    if (ex && ex.learner_id !== l.id) { refuse(id, 'This entry belongs to another account.'); continue; }
     // updatedAt is the server time of the copy the client edited. Missing means a new entry; 0 means a restored backup.
     const clientTime = raw.updatedAt == null ? now : Number(raw.updatedAt) || 0;
     if (ex && ex.updated_at > clientTime && !raw.force) { saved.push({ id, conflict: true, server: entryOut(ex) }); continue; }
@@ -346,7 +351,7 @@ async function syncPost(env, l, req) {
       continue;
     }
     const e = cleanEntry(raw);
-    if (!e) continue;
+    if (!e) { refuse(id, !raw.type || !/^\d{4}-\d{2}-\d{2}$/.test(raw.date || '') ? 'This entry is missing its application or date.' : 'This entry is too long to sync. Shorten its text.'); continue; }
     delete e.updatedAt; delete e.force;
     // Keep a supervisor's sign-off only while the signed content is unchanged (hash version 2 also covers the media
     // fingerprints). A void records which fields changed, never their values, and the learner's optional reason.
@@ -367,7 +372,7 @@ async function syncPost(env, l, req) {
     else await env.DB.prepare('INSERT INTO logbook_entries (id, learner_id, scan_type, scan_date, data, updated_at) VALUES (?,?,?,?,?,?)').bind(id, l.id, e.type, e.date, text, now).run();
     saved.push({ ...e, updatedAt: now });
   }
-  return json({ ok: true, now, saved });
+  return json({ ok: true, now, saved, rejected });
 }
 
 // ---------- Supervisor sign-off ----------

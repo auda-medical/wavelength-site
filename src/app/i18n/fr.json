@@ -1747,5 +1747,53 @@
 "Wavelength verification is not accreditation or endorsement by an external professional body.": "La vérification Wavelength n'est ni une accréditation ni une reconnaissance par un organisme professionnel externe.",
 "We look at your professional registration where applicable, your relevant ultrasound qualifications, credentials or supporting evidence, and the specific areas you want to supervise.": "Nous examinons votre inscription professionnelle le cas échéant, vos qualifications, accréditations ou justificatifs pertinents en échographie, et les domaines précis que vous souhaitez superviser.",
 "We may ask for further evidence.": "Nous pouvons demander des justificatifs supplémentaires.",
-"What does Wavelength Verified mean?": "Que signifie « Vérifié Wavelength » ?"
+"What does Wavelength Verified mean?": "Que signifie « Vérifié Wavelength » ?",
+"You're offline. Your entries are saved on this device and will sync when you're back online.": "Vous êtes hors ligne. Vos entrées sont enregistrées sur cet appareil et seront synchronisées dès votre retour en ligne.",
+"All changes synced.": "Toutes les modifications sont synchronisées.",
+"Unable to sync. Your entries remain saved on this device.": "Synchronisation impossible. Vos entrées restent enregistrées sur cet appareil.",
+"Sign in again to continue synchronising. Your local entries are safe.": "Reconnectez-vous pour poursuivre la synchronisation. Vos entrées locales sont en sécurité.",
+"Synchronising…": "Synchronisation…",
+"Sync": "Synchronisation",
+"Sync status": "État de la synchronisation",
+"Sync status: {status}": "État de la synchronisation : {status}",
+"Entries awaiting sync": "Entrées en attente de synchronisation",
+"Last synced": "Dernière synchronisation",
+"Not yet on this device": "Pas encore sur cet appareil",
+"Retry sync": "Relancer la synchronisation",
+"Not accepted by the server": "Non acceptée par le serveur",
+"The server did not accept this entry.": "Le serveur n'a pas accepté cette entrée.",
+"Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.": "La synchronisation concerne les entrées de votre carnet. Les photos et les clips restent sur cet appareil et ne sont pas envoyés : protégez-les avec Sauvegarder et restaurer.",
+"Back up and restore": "Sauvegarder et restaurer",
+"Start-up details": "Détails du démarrage",
+"logbook in {ms} ms": "carnet en {ms} ms",
+"server {result}": "serveur {result}",
+"Checking…": "Vérification…",
+"Could not reach Wavelength. Check your connection and try again.": "Impossible de joindre Wavelength. Vérifiez votre connexion et réessayez.",
+"Log out?": "Se déconnecter ?",
+"It stays saved on this device and syncs when you log in here again.": "Elle reste enregistrée sur cet appareil et sera synchronisée lorsque vous vous reconnecterez ici.",
+"Stay logged in": "Rester connecté",
+"This scan has too much text to sync. Shorten the reflection or other notes.": "Cet examen contient trop de texte pour être synchronisé. Raccourcissez la réflexion ou les autres notes.",
+"Wavelength is taking longer than usual to start.": "Wavelength met plus de temps que d'habitude à démarrer.",
+"Your entries stay saved on this device. Check your connection, then try again.": "Vos entrées restent enregistrées sur cet appareil. Vérifiez votre connexion, puis réessayez.",
+"Too many entries in one sync. It will be sent next time.": "Trop d'entrées en une seule synchronisation. Elle sera envoyée la prochaine fois.",
+"This entry has an invalid identifier.": "Cette entrée a un identifiant non valide.",
+"This entry belongs to another account.": "Cette entrée appartient à un autre compte.",
+"This entry is missing its application or date.": "Il manque l'application ou la date de cette entrée.",
+"This entry is too long to sync. Shorten its text.": "Cette entrée est trop longue pour être synchronisée. Raccourcissez son texte.",
+"Saved on this device. {n} entries awaiting sync.": {
+"one": "Enregistrée sur cet appareil. {n} entrée en attente de synchronisation.",
+"other": "Enregistrées sur cet appareil. {n} entrées en attente de synchronisation."
+},
+"Synchronising {n} entries…": {
+"one": "Synchronisation de {n} entrée…",
+"other": "Synchronisation de {n} entrées…"
+},
+"{n} entries are waiting on this device.": {
+"one": "{n} entrée attend sur cet appareil.",
+"other": "{n} entrées attendent sur cet appareil."
+},
+"{n} entries on this device have not synced yet.": {
+"one": "{n} entrée sur cet appareil n'est pas encore synchronisée.",
+"other": "{n} entrées sur cet appareil ne sont pas encore synchronisées."
+}
 }

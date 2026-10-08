@@ -31,16 +31,16 @@ async function account() {
   if (!token) throw new Error('signup gave no token: ' + JSON.stringify(j));
   const p = await fetch(API + '/api/app/profile', { method: 'POST', headers: { ...h, Authorization: 'Bearer ' + token }, body: JSON.stringify({ declaration: true, profile: { pathways: ['rcem'], grade: 'ST4', onboarded: true } }) }).then((x) => x.json());
   if (!p.ok) throw new Error('profile: ' + JSON.stringify(p));
-  return { token, id: p.account.id };
+  return { token, id: p.account.id, email: `offline${t}@example.com`, password: 'Long-password-1' };
 }
 async function serverEntries(learner) {
   const rows = await fetch(API + '/__dev/entries').then((r) => r.json());
   return rows.filter((r) => r.learner_id === learner && !r.deleted);
 }
 // A signed-in phone: token in secure storage, one online start so the account is cached for offline starts.
-async function phone({ lock = false, noEvents = false } = {}) {
+async function phone({ lock = false, noEvents = false, acc = null } = {}) {
   reset();
-  const acc = await account();
+  acc = acc || await account();
   const { ctx, page } = await newApp(390, 844, { init: noEvents ? [NO_NETWORK_EVENTS] : [] });
   await page.goto('https://localhost/');
   await page.evaluate(([tok, lk]) => { localStorage.setItem('__secure', JSON.stringify({ 'wavelength.session': tok })); if (lk) localStorage.setItem('__prefs', JSON.stringify({ 'wl-lock': '1' })); }, [acc.token, lock]);
@@ -73,6 +73,10 @@ async function saveScan(page) {
   await page.click('form button[type=submit]');
   await page.waitForFunction(() => /#\/entry\//.test(location.hash) || document.querySelector('.err:not([hidden])'), null, { timeout: 15000 });
   await page.evaluate(() => document.querySelectorAll('.sheet-bg').forEach((s) => s.remove()));
+}
+// Unsynced entries in the phone's logbook database (read from Node, one short look at a time).
+function localDirty(page, id) {
+  return page.evaluate((id) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id); r.onsuccess = () => { const t = r.result.transaction('entries').objectStore('entries').getAll(); t.onsuccess = () => { r.result.close(); ok(t.result.filter((e) => e._dirty).length); }; }; r.onerror = () => ok(-1); }), id);
 }
 async function waitServer(learner, n, limit) {
   const end = Date.now() + limit;
@@ -127,11 +131,12 @@ async function waitServer(learner, n, limit) {
   net.offline = true;
   await saveScan(page);
   await page.waitForTimeout(1500);
-  const dot = await page.evaluate(() => { const d = document.querySelector('.sync-dot'); return d ? d.title : '(no indicator)'; });
+  const dot = await page.evaluate(() => { const d = document.querySelector('.sync-ind') || document.querySelector('.sync-dot'); return d ? (d.getAttribute('aria-label') || d.title) : '(no indicator)'; });
+  const line = await page.evaluate(() => { const l = document.querySelector('[data-syncline]'); return l && !l.hidden ? l.textContent : ''; });
   net.offline = false;
   const ok = await waitServer(acc.id, 1, 25000);
   record('Y1', 'Saved offline, reconnected with no connectivity event: scan reaches the server within 25 s', ok, ok ? 'synced' : 'not on the server after 25 s');
-  record('Y2', 'While a sync is failing, the status does not say "Synced"', !/^Synced$/.test(dot), `indicator said: "${dot}"`);
+  record('Y2', 'While a sync is failing, the indicator says the entries are saved here, not "Synced"', /offline|awaiting|unable/i.test(dot), `indicator said: "${dot}"; logbook line: "${line}"`);
   await ctx.close();
 }
 {
@@ -169,6 +174,87 @@ async function waitServer(learner, n, limit) {
   const acked = (r.saved || []).some((s) => s.id === big.id);
   const refused = (r.rejected || []).some((s) => s.id === big.id && s.reason);
   record('Y5', 'Server refuses an entry: the answer names it with a reason (not a silent ok)', refused, `ok=${r.ok}, saved=${acked}, rejected=${JSON.stringify(r.rejected || null)}`);
+}
+
+{
+  // Y6: the login ends on the server (logged out from another device) while a scan waits on the phone. The app
+  // asks to sign in again, says the local entries are safe, keeps the scan, and sends it after signing in.
+  const { ctx, page, acc } = await phone({ noEvents: true });
+  net.offline = true;
+  await saveScan(page);
+  const h = { 'Content-Type': 'application/json', Accept: 'application/json', Origin: 'https://localhost', 'X-Wavelength-Client': 'app', Authorization: 'Bearer ' + acc.token };
+  await new Promise((r) => setTimeout(r, 1100)); // sessions_after has millisecond precision; keep clear of the token's issue time
+  const lo = await fetch(API + '/api/app/logout-all', { method: 'POST', headers: h, body: '{}' }).then((x) => x.json());
+  net.offline = false;
+  const asked = await page.waitForFunction(() => /#\/login/.test(location.hash) && /Sign in again to continue synchronising/.test(document.body.textContent), null, { timeout: 25000 }).then(() => true, () => false);
+  const note = await page.evaluate(() => (document.querySelector('.warn') || {}).textContent || '');
+  const kept = await page.evaluate((id) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id); r.onsuccess = () => { const t = r.result.transaction('entries').objectStore('entries').getAll(); t.onsuccess = () => ok(t.result.filter((e) => e._dirty).length); }; r.onerror = () => ok(-1); }), acc.id);
+  record('Y6a', 'Login ended on the server: app asks to sign in again and says local entries are safe', lo.ok && asked, `logout-all ok=${lo.ok}; note: "${note.trim()}"`);
+  record('Y6b', 'Login ended on the server: the unsynced scan is still on the device', kept === 1, `unsynced entries in the local database: ${kept}`);
+  if (asked) {
+    await page.fill('#em', acc.email); await page.fill('#pw', acc.password);
+    await page.click('#f button[type=submit]');
+  }
+  const ok = await waitServer(acc.id, 1, 20000);
+  record('Y6c', 'After signing in again with the same account, the waiting scan reaches the server', ok, ok ? 'synced' : 'not on the server after 20 s');
+  await ctx.close();
+}
+{
+  // Y7: the server saves a scan but its answer is lost on the way back. The retry must not make a duplicate.
+  const { ctx, page, acc } = await phone();
+  let dropped = 0;
+  await ctx.route(SITE + '/api/app/sync', async (route) => {
+    if (route.request().method() === 'POST' && !dropped) { dropped++; try { await route.fetch({ url: route.request().url().replace(SITE, API) }); } catch {} return route.abort('connectionreset'); }
+    return route.fallback();
+  });
+  await saveScan(page);
+  for (let end = Date.now() + 25000; Date.now() < end && (await localDirty(page, acc.id)) !== 0;) await page.waitForTimeout(500);
+  const rows = await serverEntries(acc.id);
+  const dirty = await page.evaluate((id) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id); r.onsuccess = () => { const t = r.result.transaction('entries').objectStore('entries').getAll(); t.onsuccess = () => ok(t.result.filter((e) => e._dirty).length); }; }), acc.id);
+  record('Y7', 'Answer lost after the server saved: retry leaves exactly one copy and the scan marked synced', dropped === 1 && rows.length === 1 && dirty === 0, `answers dropped ${dropped}, copies on server ${rows.length}, unsynced on device ${dirty}`);
+  await ctx.close();
+}
+{
+  // Y8: the server leaves a scan out of its answer (as the live Worker does for an entry it refuses). The scan stays
+  // unsynced, the status says sync failed, Settings lists it, and Retry sync sends it again.
+  const { ctx, page, acc } = await phone();
+  let silent = true;
+  await ctx.route(SITE + '/api/app/sync', async (route) => {
+    if (route.request().method() === 'POST' && silent) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, now: Date.now(), saved: [] }) });
+    return route.fallback();
+  });
+  await saveScan(page);
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => { location.hash = '#/settings?sync=1'; });
+  await page.waitForSelector('#syncpanel [data-resync]');
+  const panel = await page.evaluate(() => document.querySelector('#syncpanel').textContent);
+  const st = await page.evaluate(() => (document.querySelector('.sync-ind') || {}).getAttribute && document.querySelector('.sync-ind').getAttribute('aria-label'));
+  record('Y8a', 'Scan left out of the server answer: status says unable to sync, Settings lists it', /Unable to sync/.test(st || '') && /Not accepted by the server/.test(panel) && /Entries awaiting sync\s*1/.test(panel), `status "${st}"; panel: "${panel.replace(/\s+/g, ' ').slice(0, 220)}"`);
+  silent = false;
+  await page.click('#syncpanel [data-resync]');
+  const ok = await waitServer(acc.id, 1, 15000);
+  await page.waitForTimeout(800);
+  const after = await page.evaluate(() => document.querySelector('#syncpanel').textContent);
+  record('Y8b', 'Retry sync sends it; the panel then says all changes synced', ok && /All changes synced\./.test(after) && /Entries awaiting sync\s*0/.test(after), `server ${ok ? 'has it' : 'does not have it'}; panel: "${after.replace(/\s+/g, ' ').slice(0, 160)}"`);
+  await ctx.close();
+}
+{
+  // Y9: 130 waiting entries (a restored backup, a long time offline) go up in several smaller calls, all acknowledged.
+  const { ctx, page, acc } = await phone();
+  const sizes = [];
+  page.on('request', (r) => { if (r.url().endsWith('/api/app/sync') && r.method() === 'POST') sizes.push(JSON.parse(r.postData()).entries.length); });
+  net.offline = true;
+  await page.evaluate((id) => new Promise((ok) => {
+    const r = indexedDB.open('wavelength-' + id);
+    r.onsuccess = () => { const tx = r.result.transaction('entries', 'readwrite'); const st = tx.objectStore('entries'); for (let i = 0; i < 130; i++) st.put({ id: 'bulk' + String(i).padStart(4, '0') + 'x' + String(id), type: 'efast', date: '2026-09-01', supervision: 'direct', reflection: 'x'.repeat(3000), createdAt: Date.now(), updatedAt: 0, _dirty: true, _new: true }); tx.oncomplete = () => ok(); };
+  }), acc.id);
+  const { page: p2 } = await coldStart(ctx, page);
+  p2.on('request', (r) => { if (r.url().endsWith('/api/app/sync') && r.method() === 'POST') sizes.push(JSON.parse(r.postData()).entries.length); });
+  await p2.waitForSelector('nav.tabs');
+  net.offline = false;
+  const ok = await waitServer(acc.id, 130, 25000);
+  record('Y9', '130 waiting entries sync in batches of at most 50, all on the server', ok && sizes.length >= 3 && Math.max(...sizes) <= 50, `server has ${(await serverEntries(acc.id)).length}; batch sizes ${JSON.stringify(sizes)}`);
+  await ctx.close();
 }
 
 await browser.close();

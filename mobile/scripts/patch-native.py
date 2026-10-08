@@ -86,6 +86,12 @@ if '<queries>' not in m:
     </queries>
 
     <!-- Permissions -->''')
+if 'ACCESS_NETWORK_STATE' not in m:
+    # 1.0.9: without it Android WebView never reports going offline or coming back, so the logbook missed reconnects.
+    m = m.replace('    <uses-permission android:name="android.permission.INTERNET" />', '''    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Lets the app's WebView see when the phone goes offline and comes back, so the logbook syncs on reconnect.
+         A normal permission: no prompt, no access to other apps or to the network's content. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />''')
 man.write_text(m)
 domains = ['root', 'file', 'database', 'sharedpref', 'external', 'device_root', 'device_file', 'device_database', 'device_sharedpref']
 rules = ''.join(f'        <exclude domain="{d}" path="." />\n' for d in domains)

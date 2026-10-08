@@ -90,7 +90,7 @@ export async function harness({ api = 'http://localhost:8787', errors = [] } = {
       if (net.delay) await new Promise((r) => setTimeout(r, net.delay));
       const req = route.request();
       // The app may be closed while a slow call is still in flight; that call simply goes nowhere.
-      try { return route.fulfill({ response: await route.fetch({ url: req.url().replace(SITE, api) }) }); } catch { return undefined; }
+      try { return await route.fulfill({ response: await route.fetch({ url: req.url().replace(SITE, api) }) }); } catch { return undefined; }
     });
     const page = await ctx.newPage();
     page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });

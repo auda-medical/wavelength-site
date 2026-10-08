@@ -37,10 +37,28 @@ html { scroll-padding-top: calc(var(--safe-t) + 78px); scroll-padding-bottom: ca
 .top .mark { width: 34px; height: 34px; flex: none; }
 .top .brand-link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; color: inherit; text-decoration: none; border-radius: 8px; }
 .top .act { background: none; border: 0; color: var(--teal-l); font-weight: 600; cursor: pointer; padding: 6px 4px; }
-.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal-l); flex: none; }
-.sync-dot.off { background: #8796A8; }
-.sync-dot.busy { animation: pulse 1s infinite alternate; }
+/* Sync status. Header: a dot in a 32px tap target that opens the panel in Settings. Colour plus the text in the
+   label and the panel: grey offline, amber waiting, red failed, pulsing while syncing, teal synced. */
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal-l); flex: none; display: inline-block; }
+.sync-ind { display: grid; place-items: center; width: 32px; height: 32px; margin: -12px -10px -12px -4px; flex: none; border-radius: 50%; }
+.st-offline .sync-dot { background: #8796A8; }
+.st-pending .sync-dot { background: #E0A43A; }
+.st-failed .sync-dot { background: #E2665A; }
+.st-syncing .sync-dot { animation: pulse 1s infinite alternate; }
+.st-none .sync-dot { background: rgba(247,245,240,.35); }
 @keyframes pulse { to { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .st-syncing .sync-dot { animation: none; opacity: .6; } }
+.sync-line { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-size: 14px; text-decoration: none; background: var(--amber-bg); color: var(--warn-ink); border: 1px solid var(--amber-line); }
+.sync-line[hidden] { display: none; }
+.sync-line.st-offline, .sync-line.st-syncing { background: var(--field); color: var(--ink, inherit); border-color: var(--line); }
+.sync-line.st-failed { background: var(--red-bg); color: var(--red); border-color: var(--red-line); }
+.sync-now { display: flex; gap: 10px; align-items: baseline; margin: 0 0 10px; font-weight: 600; }
+.sync-now .sync-dot { transform: translateY(-1px); }
+.sync-now.st-synced .sync-dot, .sync-now.st-none .sync-dot { background: var(--teal); }
+.sync-facts { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0 0 12px; font-size: 14px; }
+.sync-facts dt { color: var(--muted, inherit); }
+.sync-facts dd { margin: 0; text-align: end; font-variant-numeric: tabular-nums; }
+.sync-bad, .sync-diag { margin: 4px 0 12px; padding-inline-start: 18px; }
 
 /* Hero on home */
 .hero { background: var(--deep); color: var(--cream); padding: 6px 20px 30px; position: relative; overflow: hidden; }

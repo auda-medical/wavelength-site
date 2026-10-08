@@ -45,4 +45,7 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Lets the app's WebView see when the phone goes offline and comes back, so the logbook syncs on reconnect.
+         A normal permission: no prompt, no access to other apps or to the network's content. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 </manifest>

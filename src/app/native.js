@@ -41,14 +41,35 @@
     if (!Bio) return setPref('wl-token', t);
     return (t ? Bio.setData({ key: SECURE_KEY, value: t }) : Bio.deleteData({ key: SECURE_KEY })).catch(function () {});
   }
-  var ready = on ? Promise.all([readToken(), pref('wl-lock')]).then(function (v) { TOKEN = v[0]; LOCK = v[1] === '1'; }) : Promise.resolve();
+  // Both reads are local. A plugin that never answers must not hold the app on its start screen, so after
+  // READY_WAIT the app carries on and readFailed() says the token could not be read (never "signed out").
+  var READY_WAIT = 4000, READ_DONE = false, READ_FAILED = false;
+  var ready = on ? Promise.race([
+    Promise.all([readToken(), pref('wl-lock')]).then(function (v) { TOKEN = v[0]; LOCK = v[1] === '1'; READ_DONE = true; READ_FAILED = false; }),
+    new Promise(function (ok) { setTimeout(function () { if (!READ_DONE) READ_FAILED = true; ok(); }, READY_WAIT); })
+  ]) : Promise.resolve();
   function setToken(t) { if ((t || '') === TOKEN) return; TOKEN = t || ''; saveToken(TOKEN); }
   // A path on the Wavelength website as an absolute address (the website itself keeps relative paths).
   function site(path) { return /^[a-z]+:/i.test(path) ? path : SITE + path; }
+  // fetch() with a time limit (opt.timeout, default NET_WAIT). A call that gets no answer fails like an offline
+  // call, with err.timeout set, instead of waiting for ever.
+  var NET_WAIT = 20000;
+  function timed(url, opt) {
+    var ms = opt.timeout || NET_WAIT, o = {};
+    for (var k in opt) if (k !== 'timeout') o[k] = opt[k];
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    if (ctl) o.signal = ctl.signal;
+    var timer;
+    var limit = new Promise(function (ok, no) {
+      timer = setTimeout(function () { if (ctl) ctl.abort(); var e = new Error('No answer from the server'); e.timeout = true; e.network = true; no(e); }, ms);
+    });
+    var call = fetch(url, o).catch(function (e) { e.network = true; throw e; });
+    return Promise.race([call, limit]).then(function (r) { clearTimeout(timer); return r; }, function (e) { clearTimeout(timer); throw e; });
+  }
   // fetch() for the Wavelength server. In the app: absolute address, token header, no cookies, token kept fresh.
   function net(path, opt) {
     opt = opt || {};
-    if (!on) return fetch(path, opt);
+    if (!on) return timed(path, opt);
     return ready.then(function () {
       var h = new Headers(opt.headers || {});
       h.set('X-Wavelength-Client', 'app');
@@ -57,7 +78,7 @@
       if (TOKEN) h.set('Authorization', 'Bearer ' + TOKEN);
       var o = {}; for (var k in opt) o[k] = opt[k];
       o.headers = h; o.credentials = 'omit'; o.mode = 'cors';
-      return fetch(site(path), o).then(function (r) {
+      return timed(site(path), o).then(function (r) {
         var t = r.headers.get('X-Wavelength-Token');
         if (t !== null) setToken(t);
         return r;
@@ -140,6 +161,7 @@
     net: net,
     version: VERSION,
     ready: ready,
+    readFailed: function () { return READ_FAILED && !TOKEN; },
     signedIn: function () { return !!TOKEN; },
     clearToken: function () { setToken(''); },
     openExternal: openExternal,

@@ -1779,5 +1779,61 @@
 "Wavelength verification is not accreditation or endorsement by an external professional body.": "Проверка Wavelength не является аккредитацией или одобрением внешней профессиональной организации.",
 "We look at your professional registration where applicable, your relevant ultrasound qualifications, credentials or supporting evidence, and the specific areas you want to supervise.": "Мы учитываем вашу профессиональную регистрацию, где это применимо, соответствующую квалификацию, документы или подтверждения по УЗИ, а также конкретные области, в которых вы хотите быть супервизором.",
 "We may ask for further evidence.": "Мы можем запросить дополнительные подтверждения.",
-"What does Wavelength Verified mean?": "Что означает «Проверено Wavelength»?"
+"What does Wavelength Verified mean?": "Что означает «Проверено Wavelength»?",
+"You're offline. Your entries are saved on this device and will sync when you're back online.": "Вы не в сети. Ваши записи сохранены на этом устройстве и синхронизируются, когда вы снова будете в сети.",
+"All changes synced.": "Все изменения синхронизированы.",
+"Unable to sync. Your entries remain saved on this device.": "Не удаётся синхронизировать. Ваши записи остаются сохранёнными на этом устройстве.",
+"Sign in again to continue synchronising. Your local entries are safe.": "Войдите снова, чтобы продолжить синхронизацию. Ваши локальные записи в безопасности.",
+"Synchronising…": "Синхронизация…",
+"Sync": "Синхронизация",
+"Sync status": "Состояние синхронизации",
+"Sync status: {status}": "Состояние синхронизации: {status}",
+"Entries awaiting sync": "Записи, ожидающие синхронизации",
+"Last synced": "Последняя синхронизация",
+"Not yet on this device": "Пока не на этом устройстве",
+"Retry sync": "Повторить синхронизацию",
+"Not accepted by the server": "Не приняты сервером",
+"The server did not accept this entry.": "Сервер не принял эту запись.",
+"Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.": "Синхронизация охватывает записи журнала. Фото и клипы остаются на этом устройстве и не загружаются: сохраните их в разделе «Резервная копия и восстановление».",
+"Back up and restore": "Резервная копия и восстановление",
+"Start-up details": "Сведения о запуске",
+"logbook in {ms} ms": "журнал за {ms} мс",
+"server {result}": "сервер {result}",
+"Checking…": "Проверка…",
+"Could not reach Wavelength. Check your connection and try again.": "Не удаётся связаться с Wavelength. Проверьте подключение и попробуйте снова.",
+"Log out?": "Выйти?",
+"It stays saved on this device and syncs when you log in here again.": "Она остаётся сохранённой на этом устройстве и синхронизируется, когда вы снова войдёте здесь.",
+"Stay logged in": "Остаться в системе",
+"This scan has too much text to sync. Shorten the reflection or other notes.": "В этом исследовании слишком много текста для синхронизации. Сократите рефлексию или другие заметки.",
+"Wavelength is taking longer than usual to start.": "Wavelength запускается дольше обычного.",
+"Your entries stay saved on this device. Check your connection, then try again.": "Ваши записи остаются сохранёнными на этом устройстве. Проверьте подключение и попробуйте снова.",
+"Too many entries in one sync. It will be sent next time.": "Слишком много записей за одну синхронизацию. Она будет отправлена в следующий раз.",
+"This entry has an invalid identifier.": "У этой записи недопустимый идентификатор.",
+"This entry belongs to another account.": "Эта запись принадлежит другой учётной записи.",
+"This entry is missing its application or date.": "В этой записи не указаны применение или дата.",
+"This entry is too long to sync. Shorten its text.": "Эта запись слишком длинная для синхронизации. Сократите текст.",
+"Saved on this device. {n} entries awaiting sync.": {
+"one": "Сохранено на этом устройстве. {n} запись ожидает синхронизации.",
+"few": "Сохранено на этом устройстве. {n} записи ожидают синхронизации.",
+"many": "Сохранено на этом устройстве. {n} записей ожидают синхронизации.",
+"other": "Сохранено на этом устройстве. {n} записи ожидают синхронизации."
+},
+"Synchronising {n} entries…": {
+"one": "Синхронизация {n} записи…",
+"few": "Синхронизация {n} записей…",
+"many": "Синхронизация {n} записей…",
+"other": "Синхронизация {n} записи…"
+},
+"{n} entries are waiting on this device.": {
+"one": "{n} запись ожидает на этом устройстве.",
+"few": "{n} записи ожидают на этом устройстве.",
+"many": "{n} записей ожидают на этом устройстве.",
+"other": "{n} записи ожидают на этом устройстве."
+},
+"{n} entries on this device have not synced yet.": {
+"one": "{n} запись на этом устройстве ещё не синхронизирована.",
+"few": "{n} записи на этом устройстве ещё не синхронизированы.",
+"many": "{n} записей на этом устройстве ещё не синхронизированы.",
+"other": "{n} записи на этом устройстве ещё не синхронизированы."
+}
 }

@@ -93,13 +93,17 @@
     var t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
     document.body.appendChild(t); setTimeout(function () { t.remove(); }, ms || 2600);
   }
-  function api(path, data) {
+  // o.timeout: milliseconds before a call with no answer fails as offline (native.js, default 20 s).
+  function api(path, data, o) {
     var opt = { credentials: 'same-origin', headers: { Accept: 'application/json', 'Accept-Language': LANG } };
     if (data !== undefined) { opt.method = 'POST'; opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(data); }
+    if (o && o.timeout) opt.timeout = o.timeout;
     return NAT.net(path, opt).then(function (r) {
-      return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { signedOut(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
+      return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { authExpired(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
     });
   }
+  // A network failure or a call that got no answer, as opposed to an answer from the server.
+  function netFail(ex) { return !!(ex && (ex.network || ex.timeout || ex.name === 'TypeError' || ex.name === 'AbortError')); }
   // ---------- Store app updates ----------
   // The server names a minimum and a recommended store version. Recommended: a banner the learner can dismiss.
   // Required (only for a security or data-integrity reason): a banner that stays, and sync pauses, but the logbook
@@ -231,21 +235,83 @@
   }
   function strip(e) { var o = {}; for (var k in e) if (k.charAt(0) !== '_') o[k] = e[k]; return o; }
   function saveLocal(e) { var i = S.entries.findIndex(function (x) { return x.id === e.id; }); if (i >= 0) S.entries[i] = e; else S.entries.push(e); return put('entries', e); }
-  function setSyncDot() { var d = $('.sync-dot'); if (!d) return; d.classList.toggle('off', !S.online); d.classList.toggle('busy', S.syncing); d.title = !S.online ? T('Offline. Changes save on this device and sync when you reconnect.') : S.syncing ? T('Syncing') : T('Synced'); }
-  function sync() {
-    if (!S.account || !navigator.onLine || updateLevel() === 'required') return Promise.resolve();
-    if (S.syncing) { S.again = S.again || S.syncP.then(function () { S.again = null; return sync(); }); return S.again; }
+  // ---------- Sync status ----------
+  // The status comes from what the last attempt actually did, never from navigator.onLine alone: Android WebView
+  // can report "online" with no connection. Logbook entries only; photos and clips stay on this device and are
+  // backed up separately (Back up and restore).
+  var SY = { lastOk: 0, fail: '', tries: 0, timer: 0, ran: false };
+  // Retry gaps after each failure in a row (each with ±20% jitter). Leaving aeroplane mode takes a phone a few
+  // seconds to reconnect, so the first gaps are short; after that, no more than every 5 minutes.
+  var RETRY = [2e3, 5e3, 10e3, 20e3, 30e3, 60e3, 120e3, 300e3];
+  function pendingList() { return S.entries.filter(function (e) { return e._dirty; }); }
+  function refused() { return S.entries.filter(function (e) { return e._dirty && e._syncError; }); }
+  function syncState() {
+    if (!S.account) return '';
+    if (S.syncing) return 'syncing';
+    if (SY.fail === 'offline' || navigator.onLine === false) return 'offline';
+    if (SY.fail || refused().length) return 'failed';
+    if (pendingList().length) return 'pending';
+    return SY.ran ? 'synced' : '';
+  }
+  function syncText(st) {
+    var n = pendingList().length;
+    if (st === 'offline') return T('You\'re offline. Your entries are saved on this device and will sync when you\'re back online.');
+    if (st === 'pending') return N(n, 'Saved on this device. {n} entry awaiting sync.', 'Saved on this device. {n} entries awaiting sync.');
+    if (st === 'syncing') return n ? N(n, 'Synchronising {n} entry…', 'Synchronising {n} entries…') : T('Synchronising…');
+    if (st === 'synced') return T('All changes synced.');
+    if (st === 'failed') return T('Unable to sync. Your entries remain saved on this device.');
+    if (st === 'auth') return T('Sign in again to continue synchronising. Your local entries are safe.');
+    return '';
+  }
+  function setSyncDot() {
+    var st = syncState(), text = syncText(st);
+    $$('.sync-ind').forEach(function (a) {
+      a.className = 'sync-ind st-' + (st || 'none');
+      a.setAttribute('aria-label', text ? T('Sync status: {status}', { status: text }) : T('Sync status'));
+      a.title = text;
+    });
+    $$('[data-syncline]').forEach(function (p) {
+      var show = st && st !== 'synced';
+      p.hidden = !show; p.className = 'sync-line st-' + (st || 'none');
+      if (show) p.querySelector('span').textContent = text;
+    });
+    var panel = $('#syncpanel'); if (panel) fillSyncPanel(panel);
+  }
+  function scheduleRetry() {
+    clearTimeout(SY.timer);
+    var d = RETRY[Math.min(Math.max(SY.tries - 1, 0), RETRY.length - 1)] * (0.8 + Math.random() * 0.4);
+    SY.timer = setTimeout(function () { SY.timer = 0; sync(); }, d);
+  }
+  // manual: the learner pressed Retry sync. Entries the server refused are only sent again then, or after an edit.
+  function sync(manual) {
+    if (!S.account) return Promise.resolve();
+    if (updateLevel() === 'required') { SY.fail = 'update'; setSyncDot(); return Promise.resolve(); }
+    if (S.syncing) { S.again = S.again || S.syncP.then(function () { S.again = null; return sync(manual); }); return S.again; }
+    clearTimeout(SY.timer); SY.timer = 0;
     S.syncing = true; setSyncDot();
-    S.syncP = doSync();
+    S.syncP = doSync(manual);
     return S.syncP;
   }
-  function doSync() {
-    var dirty = S.entries.filter(function (e) { return e._dirty; });
-    var pushed = {}; dirty.forEach(function (e) { pushed[e.id] = e; });
+  // The Worker takes at most 200 entries and 600 KB per call: send smaller batches, one after another.
+  var BATCH = 50, BATCH_BYTES = 400000;
+  function batches(list) {
+    var out = [], cur = [], size = 0;
+    list.forEach(function (e) {
+      var n = JSON.stringify(strip(e)).length;
+      if (cur.length && (cur.length >= BATCH || size + n > BATCH_BYTES)) { out.push(cur); cur = []; size = 0; }
+      cur.push(e); size += n;
+    });
+    if (cur.length) out.push(cur);
+    return out;
+  }
+  function pushBatch(group) {
+    var pushed = {}; group.forEach(function (e) { pushed[e.id] = e; });
     var conflicts = 0;
-    var push = dirty.length ? api('/api/app/sync', { entries: dirty.map(strip) }).then(function (res) {
-      if (!res.ok) throw new Error(res.error || 'Sync failed');
-      return Promise.all((res.saved || []).map(function (s) {
+    return api('/api/app/sync', { entries: group.map(strip) }, { timeout: 30000 }).then(function (res) {
+      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; throw er; }
+      var answered = {};
+      var jobs = (res.saved || []).map(function (s) {
+        answered[s.id] = true;
         var local = S.entries.find(function (x) { return x.id === s.id; });
         if (s.conflict) return resolveConflict(local, s.server) && ++conflicts;
         // Edited again while this push was in flight: keep the newer local edit and send it next time.
@@ -253,12 +319,38 @@
         if (s.deleted) { S.entries = S.entries.filter(function (x) { return x.id !== s.id; }); return del('entries', s.id); }
         var merged = Object.assign({}, s); if (local && local._new) delete merged._new;
         return saveLocal(merged);
-      }));
-    }) : Promise.resolve();
+      });
+      // Only the server's answer marks an entry as synced. One it refused, or left out of its answer, stays
+      // unsynced on this device with the reason, and is not sent again until it is edited or Retry sync is pressed.
+      group.forEach(function (e) {
+        if (answered[e.id]) return;
+        var why = (res.rejected || []).filter(function (x) { return x.id === e.id; })[0];
+        var local = S.entries.find(function (x) { return x.id === e.id; });
+        if (local && local === pushed[e.id]) { local._syncError = (why && why.reason) || 'not-accepted'; jobs.push(put('entries', local)); }
+      });
+      return Promise.all(jobs).then(function () { return conflicts; });
+    });
+  }
+  function doSync(manual) {
+    var dirty = S.entries.filter(function (e) { return e._dirty && (manual || !e._syncError); });
+    var conflicts = 0;
+    var push = batches(dirty).reduce(function (p, group) { return p.then(function () { return pushBatch(group).then(function (c) { conflicts += c; }); }); }, Promise.resolve());
     return push.then(function () { return pullAll(); }).then(function () {
       return api('/api/app/signoffs').then(function (r) { if (r.ok) return setPending(r.signoffs); });
-    }).then(loadAssessments).catch(function () { /* offline or server error: try again later */ }).then(function () {
-      S.syncing = false; setSyncDot(); resumeShares();
+    }).then(loadAssessments).then(function () {
+      SY.fail = ''; SY.ran = true; SY.lastOk = Date.now();
+      return setKv('lastSyncOk', SY.lastOk);
+    }, function (ex) {
+      // Kept on this device either way. Offline or no answer: wait for the connection. Anything else: show it.
+      SY.ran = true;
+      SY.fail = !S.account ? '' : netFail(ex) ? 'offline' : 'failed';
+      SY.error = (ex && ex.message) || '';
+    }).then(function () {
+      S.syncing = false;
+      if (!S.account) return;
+      var left = S.entries.some(function (e) { return e._dirty && !e._syncError; });
+      if (SY.fail || left) { SY.tries++; scheduleRetry(); } else SY.tries = 0;
+      setSyncDot(); resumeShares();
       // Send rebased edits straight away, at most twice in a row so a misbehaving server cannot loop us.
       if (!conflicts) S.rebases = 0; else if (!S.again && (S.rebases = (S.rebases || 0) + 1) <= 2) sync();
       if (['home', 'log', 'progress', 'entry', 'assess'].indexOf(route().name) >= 0 && !document.querySelector('form[data-dirty]') && !document.querySelector('.sheet-bg')) render(true);
@@ -395,15 +487,18 @@
     leaving = false; lastHash = location.hash;
     render(); window.scrollTo(0, 0);
   });
-  window.addEventListener('online', function () { S.online = true; setSyncDot(); sync(); });
+  window.addEventListener('online', function () { S.online = true; if (SY.fail === 'offline') SY.fail = ''; setSyncDot(); sync(); });
   window.addEventListener('offline', function () { S.online = false; setSyncDot(); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync(); });
 
+  function syncInd() { return '<a class="sync-ind" href="#/settings?sync=1"><span class="sync-dot" aria-hidden="true"></span></a>'; }
+  // The one-line status in the logbook and on Home, hidden while everything is synced.
+  function syncLine() { return '<a class="sync-line" data-syncline href="#/settings?sync=1" hidden role="status"><span></span></a>'; }
   function shell(opts, body) {
     var r = route().name;
     var tab = function (name, href, icon, label, dot) { return '<a href="#/' + href + '"' + (r === name || (opts.tab === name) ? ' aria-current="page"' : '') + '>' + icon + '<span>' + esc(label) + '</span>' + (dot ? '<i class="nd" aria-label="' + esc(T('New sign-off')) + '"></i>' : '') + '</a>'; };
-    var top = opts.hero ? '' : '<header class="top">' + (opts.back != null ? '<a class="back" href="#/' + opts.back + '" aria-label="' + esc(T('Back')) + '">' + I.back + '</a>' : MARK(34, 'rgba(247,245,240,.5)')) + '<h1>' + esc(opts.title) + '</h1>' + (opts.action || '') + '<span class="sync-dot" aria-hidden="true"></span></header>';
-    return top + (opts.hero || '') + '<main class="' + (opts.hero ? 'flush' : '') + '">' + updateBanner() + body + '</main>' +
+    var top = opts.hero ? '' : '<header class="top">' + (opts.back != null ? '<a class="back" href="#/' + opts.back + '" aria-label="' + esc(T('Back')) + '">' + I.back + '</a>' : MARK(34, 'rgba(247,245,240,.5)')) + '<h1>' + esc(opts.title) + '</h1>' + (opts.action || '') + syncInd() + '</header>';
+    return top + (opts.hero || '') + '<main class="' + (opts.hero ? 'flush' : '') + '">' + updateBanner() + (r === 'home' || r === 'log' ? syncLine() : '') + body + '</main>' +
       '<nav class="tabs" aria-label="App">' + tab('home', '', I.home, T('Home')) + tab('log', 'log', I.book, T('Logbook'), news().length) + '<a class="plus" href="#/new" aria-label="' + esc(T('Log a scan')) + '">' + I.plus + '<span>' + esc(T('Log')) + '</span></a>' + tab('progress', 'progress', I.chart, T('Progress')) + tab('me', 'me', I.user, T('Me')) + '</nav>';
   }
 
@@ -536,7 +631,7 @@
   }
   function viewLogin(r) {
     var pre = r.q.get('email') || new URLSearchParams(location.search).get('login') || '';
-    authFrame(T('Welcome back.'), '', '<form id="f" novalidate><div class="err" hidden></div>' +
+    authFrame(T('Welcome back.'), '', authNoteHtml() + '<form id="f" novalidate><div class="err" hidden></div>' +
       '<div class="field"><label for="em">' + esc(T('Email')) + '</label><input id="em" name="email" type="email" autocomplete="email" value="' + esc(pre) + '" required></div>' +
       '<div class="field"><label for="pw">' + esc(T('Password')) + '</label><input id="pw" name="password" type="password" autocomplete="current-password" required></div>' +
       '<button class="btn teal block" type="submit">' + esc(T('Log in')) + '</button><div class="btns" style="justify-content:space-between"><a class="link" href="#/reset">' + esc(T('Forgotten your password?')) + '</a><a class="link" href="#/signup">' + esc(T('Create an account')) + '</a></div><p class="small muted" style="margin-top:14px">' + esc(T('First time in the app after a Wavelength Academy module? Create your account with the same email.')) + '</p></form>');
@@ -546,7 +641,7 @@
       api('/api/app/login', formData(f)).then(function (res) {
         if (!res.ok) { var ex = new Error(res.error); ex.noPassword = res.noPassword; throw ex; }
         return signedIn(res.account);
-      }).catch(function (ex) { busy(b, false); err.innerHTML = esc(ex.message || T('Something went wrong.')) + (ex.noPassword ? ' <a href="#/signup">' + esc(T('Create your account')) + '</a>' : ''); err.hidden = false; });
+      }).catch(function (ex) { busy(b, false); err.innerHTML = esc(netFail(ex) ? T('Could not reach Wavelength. Check your connection and try again.') : (ex.message || T('Something went wrong.'))) + (ex.noPassword ? ' <a href="#/signup">' + esc(T('Create your account')) + '</a>' : ''); err.hidden = false; });
     });
   }
   function viewReset() {
@@ -585,6 +680,8 @@
     return openDb(acc.id).then(function (db) { S.db = db; return Promise.all([all('entries'), all('kv')]); }).then(function (r) {
       S.entries = r[0] || []; S.kv = {}; (r[1] || []).forEach(function (x) { S.kv[x.k] = x.v; });
       S.assessments = S.kv.assessments || [];
+      clearTimeout(SY.timer); SY = { lastOk: S.kv.lastSyncOk || 0, fail: '', tries: 0, timer: 0, ran: false };
+      var was = authNote(); if (was && was.id === acc.id) authNote(null);
       var next = new URLSearchParams(location.search).get('next');
       if (next && /^\/elearning\//.test(next)) { location.href = next; return; }
       if (location.search) history.replaceState(null, '', '/app/' + location.hash);
@@ -602,8 +699,24 @@
       else if (res.error) toast(res.error, 5000);
     }).catch(function () { /* offline: try again next time */ });
   }
-  function signedOut() { cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.assessments = []; S.links = null; location.hash = '#/welcome'; render(); }
-  function loadMe() { return api('/api/app/me').then(function (res) { if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); } }).catch(function () { /* offline: the cached account stays */ }); }
+  // Logging out, or a login the server no longer accepts, never deletes this device's logbook: it stays in this
+  // account's local database and syncs when the same account logs in here again.
+  function signedOut(to) { clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
+  // The server says this login has ended (expired, password changed, logged out from another device).
+  function authExpired() {
+    var acc = S.account; if (!acc) return;
+    authNote({ id: acc.id, email: acc.email || '', pending: pendingList().length });
+    signedOut('#/login?email=' + encodeURIComponent(acc.email || ''));
+  }
+  function authNote(v) {
+    try { if (v === undefined) return JSON.parse(localStorage.getItem('wl-auth') || 'null'); if (v) localStorage.setItem('wl-auth', JSON.stringify(v)); else localStorage.removeItem('wl-auth'); } catch (e) { /* storage blocked */ }
+    return null;
+  }
+  function authNoteHtml() {
+    var a = authNote(); if (!a) return '';
+    return '<div class="warn" role="status"><p style="margin:0">' + esc(T('Sign in again to continue synchronising. Your local entries are safe.')) + '</p>' + (a.pending ? '<p class="small" style="margin:6px 0 0">' + esc(N(a.pending, '{n} entry is waiting on this device.', '{n} entries are waiting on this device.')) + '</p>' : '') + '</div>';
+  }
+  function loadMe() { var t0 = Date.now(); return api('/api/app/me', undefined, { timeout: 15000 }).then(function (res) { if (!DIAG.me) { diag('me', String(res._status)); diag('meMs', Date.now() - t0); } if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); } }).catch(function (ex) { if (!DIAG.me) diag('me', ex && ex.timeout ? 'timeout' : 'offline'); /* offline: the cached account stays */ }); }
   function loadLinks() { return api('/api/app/supervisors').then(function (res) { if (res.ok) { S.links = res; if (['home', 'me', 'supervise', 'supervisors'].indexOf(route().name) >= 0 && !document.querySelector('.sheet-bg')) render(true); } }).catch(function () { /* offline: try again on the next sync */ }); }
 
   // ---------- Onboarding ----------
@@ -658,7 +771,7 @@
     var pending = ents.length - signed;
     var name = S.account.firstName;
     var hour = new Date().getHours(), hi = hour < 12 ? T('Good morning, {name}.', { name: name }) : hour < 18 ? T('Good afternoon, {name}.', { name: name }) : T('Good evening, {name}.', { name: name });
-    var hero = '<header class="top" style="padding-bottom:4px"><a class="brand-link" href="/">' + MARK(34, 'rgba(247,245,240,.5)') + '<h1 style="font:600 13px var(--sans);letter-spacing:.38em">WAVELENGTH</h1></a><span class="sync-dot" aria-hidden="true"></span></header>' +
+    var hero = '<header class="top" style="padding-bottom:4px"><a class="brand-link" href="/">' + MARK(34, 'rgba(247,245,240,.5)') + '<h1 style="font:600 13px var(--sans);letter-spacing:.38em">WAVELENGTH</h1></a>' + syncInd() + '</header>' +
       '<section class="hero"><p class="hi">' + esc(hi) + '</p><p class="sub">' + esc(ents.length ? T('{scans} in your logbook.', { scans: plural(ents.length, 'scan') }) : T('Log your first scan to start tracking your targets.')) + '</p>' +
       '<div class="stats"><div class="stat"><b>' + ents.length + '</b><span>' + esc(T('Scans')) + '</span></div><div class="stat"><b>' + ents.filter(function (e) { return e.date.slice(0, 7) === month; }).length + '</b><span>' + esc(T('This month')) + '</span></div><div class="stat"><b>' + signed + '</b><span>' + esc(T('Signed off')) + '</span></div><div class="stat"><b>' + signedAssessments().length + '</b><span>' + esc(T('Assessments')) + '</span></div></div></section>';
     var quick = '<div class="card" style="margin-top:16px;padding:10px"><div class="quick">' +
@@ -732,7 +845,7 @@
     var t = TYPES[e.type] || { label: e.type, short: e.type };
     var clips = (e.images || []).filter(function (x) { return x.kind === 'clip'; }).length;
     var col = STATES[signState(e)][0], isNew = news().some(function (n) { return n.id === e.id; });
-    return '<a class="entry' + (col ? ' s-' + col : '') + '" href="#/entry/' + esc(e.id) + '"><span class="thumb" data-thumb="' + esc(e.id) + '">' + esc(T(t.short)) + '</span><div class="grow"><h3>' + esc(T(t.label)) + '</h3><p>' + esc(fmt(e.date)) + (e.setting ? ' · ' + esc(T(e.setting)) : '') + '</p><div class="meta">' + (isNew ? '<span class="chip teal">' + esc(T('New')) + '</span>' : '') + statusChip(e) + (e.supervision === 'direct' ? '<span class="chip teal">' + esc(T('Supervised')) + '</span>' : '') + (clips ? '<span class="chip">' + I.video.replace(/22/g, '14') + ' ' + clips + '</span>' : '') + (e._dirty ? '<span class="chip">' + esc(T('Not synced')) + '</span>' : '') + '</div></div></a>';
+    return '<a class="entry' + (col ? ' s-' + col : '') + '" href="#/entry/' + esc(e.id) + '"><span class="thumb" data-thumb="' + esc(e.id) + '">' + esc(T(t.short)) + '</span><div class="grow"><h3>' + esc(T(t.label)) + '</h3><p>' + esc(fmt(e.date)) + (e.setting ? ' · ' + esc(T(e.setting)) : '') + '</p><div class="meta">' + (isNew ? '<span class="chip teal">' + esc(T('New')) + '</span>' : '') + statusChip(e) + (e.supervision === 'direct' ? '<span class="chip teal">' + esc(T('Supervised')) + '</span>' : '') + (clips ? '<span class="chip">' + I.video.replace(/22/g, '14') + ' ' + clips + '</span>' : '') + (e._dirty ? '<span class="chip' + (e._syncError ? ' red' : '') + '">' + esc(T('Not synced')) + '</span>' : '') + '</div></div></a>';
   }
   function loadThumbs() {
     $$('[data-thumb]').forEach(function (el) {
@@ -908,6 +1021,8 @@
       if (!out.type) { err.textContent = T('Choose the application.'); err.hidden = false; return; }
       if (!out.date || out.date > today()) { err.textContent = T('Enter the date of the scan.'); err.hidden = false; return; }
       if (!out.supervision) { err.textContent = T('Choose the level of supervision.'); err.hidden = false; scrollToField($('input[name=supervision]').closest('.field')); return; }
+      // The server refuses an entry over 20,000 characters, so say so here rather than keep one that cannot sync.
+      if (JSON.stringify(strip(out)).length > 19000) { err.textContent = T('This scan has too much text to sync. Shorten the reflection or other notes.'); err.hidden = false; return; }
       var hits = guard(out);
       var finish = function () {
         var keepImgs = existing.filter(function (x) { return removed.indexOf(x.id) < 0; });
@@ -2452,13 +2567,28 @@
       '<h2 class="sec">' + esc(T('Pathways')) + '</h2><form id="pf" class="card">' + pathwayPicker(p.pathways || []) + '<div class="btns"><button class="btn sm">' + esc(T('Save pathways')) + '</button></div></form>' +
       '<h2 class="sec">' + esc(T('Certificates')) + ' <a href="/elearning/account/">' + esc(T('All')) + '</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="' + esc(T('Share certificate')) + '">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">' + esc(T('Pass a free Academy module to earn a verifiable CPD certificate.')) + '</p><a class="btn sm" href="/elearning/">' + esc(T('Browse modules')) + '</a></div>') +
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div>' + orgField('m4', T('Organisation'), acc.organisation, acc.organisationId) + '<div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
-      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/backup">' + esc(T('Back up or restore photos and clips')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
+      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up or restore photos and clips')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
       '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
     if (editPw) $('#pf').scrollIntoView();
     $$('[data-sharecert]').forEach(function (b) { b.onclick = function () { shareCertificate(b.dataset.sharecert, b.dataset.title); }; });
     $('#pf').addEventListener('submit', function (e) { e.preventDefault(); var ps = $$('input[name=p]:checked', this).map(function (i) { return i.value; }); if (!ps.length) { toast(T('Keep at least one pathway.')); return; } saveProfile({ pathways: ps }).then(function () { toast(T('Pathways saved.')); }).catch(function (ex) { toast(ex.message); }); });
     bindOrg($('#mf'), 'm4');
     $('#mf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); saveProfile({ grade: d.grade, registration: d.registration, supervisor: !!d.supervisor }, { firstName: d.firstName, lastName: d.lastName, organisation: d.organisation, organisationId: d.organisationId || null }).then(function () { toast(T('Profile saved.')); render(true); }).catch(function (ex) { toast(ex.message); }); });
+  }
+  // ---------- Sync panel (Settings): status, waiting entries, last sync, Retry sync, start-up details ----------
+  function fillSyncPanel(el) {
+    if (!el) return;
+    var st = syncState(), n = pendingList().length, bad = refused();
+    var why = function (r) { return r === 'not-accepted' ? T('The server did not accept this entry.') : T(r); };
+    var starts = []; try { starts = JSON.parse(localStorage.getItem('wl-diag') || '[]'); } catch (e) { starts = []; }
+    el.innerHTML = '<p class="sync-now st-' + (st || 'none') + '" role="status"><span class="sync-dot" aria-hidden="true"></span><span>' + esc(syncText(st) || T('Checking…')) + '</span></p>' +
+      '<dl class="sync-facts"><dt>' + esc(T('Entries awaiting sync')) + '</dt><dd>' + n + '</dd><dt>' + esc(T('Last synced')) + '</dt><dd>' + esc(SY.lastOk ? new Date(SY.lastOk).toLocaleString(LOCALES[LANG], { dateStyle: 'medium', timeStyle: 'short' }) : T('Not yet on this device')) + '</dd></dl>' +
+      (bad.length ? '<p class="small" style="margin:8px 0 4px"><b>' + esc(T('Not accepted by the server')) + '</b></p><ul class="small sync-bad">' + bad.map(function (e) { return '<li><a href="#/entry/' + esc(e.id) + '">' + esc(T((TYPES[e.type] || {}).label || e.type || '')) + (e.date ? ', ' + esc(fmt(e.date)) : '') + '</a>: ' + esc(why(e._syncError)) + '</li>'; }).join('') + '</ul>' : '') +
+      '<button class="btn sm" type="button" data-resync' + (S.syncing ? ' disabled' : '') + '>' + esc(T('Retry sync')) + '</button>' +
+      '<p class="small muted" style="margin:12px 0 0">' + esc(T('Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.')) + ' <a href="#/backup">' + esc(T('Back up and restore')) + '</a></p>' +
+      (starts.length ? '<details class="small muted" style="margin-top:10px"><summary>' + esc(T('Start-up details')) + '</summary><ul class="sync-diag">' + starts.slice().reverse().map(function (d) { return '<li>' + esc(new Date(d.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'short' })) + ': ' + esc(d.path || '?') + ', ' + esc(T('logbook in {ms} ms', { ms: d.ui || '?' })) + ', ' + esc(T('server {result}', { result: d.me || '?' })) + (d.meMs ? ' (' + d.meMs + ' ms)' : '') + '</li>'; }).join('') + '</ul></details>' : '');
+    var b = $('[data-resync]', el);
+    if (b) b.onclick = function () { b.disabled = true; SY.tries = 0; if (SY.fail === 'offline') SY.fail = ''; sync(true); };
   }
   // ---------- Settings: appearance, language, notifications, app lock, account ----------
   function viewSettings() {
@@ -2467,19 +2597,27 @@
     var cur = window.WLTheme ? WLTheme.get() : 'light';
     var opt = function (v, cls, label) { return '<input type="radio" name="theme" id="th-' + v + '" value="' + v + '"' + (cur === v ? ' checked' : '') + '><label for="th-' + v + '"><span class="sw ' + cls + '" aria-hidden="true"><i></i><b></b></span>' + esc(label) + '</label>'; };
     mount(shell({ title: T('Settings'), back: 'me', tab: 'me' },
-      '<h2 class="sec" style="margin-top:6px">' + esc(T('Appearance')) + '</h2><div class="card"><div class="theme-pick" role="radiogroup" aria-label="' + esc(T('Appearance')) + '">' + opt('system', 's', T('Match my phone')) + opt('light', '', T('Light')) + opt('dark', 'd', T('Dark')) + '</div><p class="small muted" style="margin:12px 0 0">' + esc(T('Match my phone follows the light or dark setting on your phone.')) + '</p></div>' +
+      '<h2 class="sec" style="margin-top:6px" id="sync">' + esc(T('Sync')) + '</h2><div class="card" id="syncpanel"></div>' +
+      '<h2 class="sec">' + esc(T('Appearance')) + '</h2><div class="card"><div class="theme-pick" role="radiogroup" aria-label="' + esc(T('Appearance')) + '">' + opt('system', 's', T('Match my phone')) + opt('light', '', T('Light')) + opt('dark', 'd', T('Dark')) + '</div><p class="small muted" style="margin:12px 0 0">' + esc(T('Match my phone follows the light or dark setting on your phone.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Language')) + '</h2><div class="card set-lang"><div class="row"><span>' + I.globe + '</span><b class="grow">' + esc(T('App language')) + '</b>' + langPicker('lang-m') + '</div><p class="small muted" style="margin:8px 0 0">' + esc(T('Exports and certificates stay in English so any assessor can read them.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Notifications')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="nte"' + (p.notifyEmail === false ? '' : ' checked') + '><span>' + esc(T('Email me when a supervisor signs off or queries my scans by link or from their dashboard')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('The app also shows new sign-offs on your home screen and logbook.')) + '</p></div>' +
       lockCard() +
       '<h2 class="sec">' + esc(T('Account')) + '</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">' + esc(T('Current password')) + '</label><input id="c1" name="current" type="password" autocomplete="current-password"></div>' + pwFields('c2', T('New password'), 'password') + '<button class="btn sm ghost">' + esc(T('Change password')) + '</button></form></div>' +
       '<div class="btns"><button class="btn ghost block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="loa">' + esc(T('Log out of all other devices')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
       '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
+    fillSyncPanel($('#syncpanel'));
+    if (route().q.get('sync')) $('#sync').scrollIntoView();
     $$('input[name=theme]').forEach(function (i) { i.onchange = function () { if (window.WLTheme) WLTheme.set(i.value); NAT.haptic(); }; });
     bindPw($('#cpw'), 'c2');
     $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; var bad = pwProblem(f, 'c2'); if (bad) { toast(bad, 5000); return; } api('/api/app/password', formData(f)).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
     $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? T('Sign-off emails on.') : T('Sign-off emails off.')); }).catch(function (ex) { toast(ex.message); }); };
     bindLockCard();
-    $('#lo').onclick = function () { api('/api/app/logout', {}).then(signedOut, signedOut); };
+    $('#lo').onclick = function () {
+      var out = function () { api('/api/app/logout', {}, { timeout: 8000 }).then(function () { signedOut(); }, function () { signedOut(); }); };
+      var n = pendingList().length;
+      if (!n) return out();
+      sheet('<h2>' + esc(T('Log out?')) + '</h2><p class="muted small">' + esc(N(n, '{n} entry on this device has not synced yet.', '{n} entries on this device have not synced yet.')) + ' ' + esc(T('It stays saved on this device and syncs when you log in here again.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Stay logged in')) + '</button><button class="btn ghost block" data-ok>' + esc(T('Log out')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); out(); }; });
+    };
     $('#loa').onclick = function () {
       sheet('<h2>' + esc(T('Log out of all other devices?')) + '</h2><p class="muted small">' + esc(T('Every other phone, tablet and browser signed in to your account is logged out. Logbook entries they have not synced stay on them until someone logs in there again. This device stays logged in.')) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Log out other devices')) + '</button><button class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div>', function (root) {
         $('[data-ok]', root).onclick = function () { var b = this; busy(b, true); api('/api/app/logout-all', { keepThisDevice: true }).then(function (res) { closeSheet(); toast(res.ok ? T('Other devices are logged out.') : res.error, 4000); }).catch(function () { busy(b, false); toast(T('Could not log out other devices. Check your connection.')); }); };
@@ -2645,7 +2783,8 @@
     if (S.account && !lockBusy && NAT.lockOn() && e.detail && e.detail.away > LOCK_AFTER) showLock();
     sync();
   });
-  function lockOnStart() { if (S.account && NAT.lockOn()) showLock(); }
+  // On start the lock covers the screen before the logbook is drawn behind it.
+  function lockFirst() { if (NAT.lockOn()) showLock(); }
   function hideLock(all) { $$('.app-lock').forEach(function (x) { x.remove(); }); if (all) lockBusy = false; }
   function showLock() {
     if (document.querySelector('.app-lock')) return unlock();
@@ -2697,16 +2836,48 @@
     if (hr.name === 'verify-email') { render(); return; }
     if (qs.get('reset')) location.hash = '#/reset';
     else if (qs.get('login') && !/supervise/.test(location.hash)) location.hash = '#/login';
-    app.innerHTML = '<div class="auth"><div class="auth-head" style="padding-top:30vh">' + MARK(64, 'rgba(247,245,240,.6)') + '<div class="wm">WAVELENGTH</div></div></div>';
-    var offline = function () { var c = cachedAccount(); if (c && c.id && (!NAT.on || NAT.signedIn())) return signedIn(c).then(lockOnStart); render(); };
-    api('/api/app/me').then(function (res) {
-      if (res.ok) { S.me = res; return signedIn(res.account).then(lockOnStart); }
-      if (res._status >= 500) return offline();
-      cacheAccount(null);
-      if (qs.get('login')) location.hash = '#/login';
-      else if (res.academy && !location.hash.match(/login|signup|reset/)) location.hash = '#/signup';
-      render();
-    }).catch(offline);
+    app.innerHTML = '<div class="auth" data-boot><div class="auth-head" style="padding-top:30vh">' + MARK(64, 'rgba(247,245,240,.6)') + '<div class="wm">WAVELENGTH</div></div></div>';
+    var t0 = Date.now(), c = cachedAccount();
+    diag('path', 'start');
+    // Nothing may keep the start screen up: after BOOT_WAIT it gives way to a screen with a way on.
+    setTimeout(function () { if (app.querySelector('[data-boot]')) { diag('path', 'recovery'); viewRecovery(); } }, BOOT_WAIT);
+    var opened = function () { diag('ui', Date.now() - t0); };
+    var open = function (acc) { lockFirst(); return signedIn(acc).then(opened); };
+    var offline = function () { if (c && c.id && (!NAT.on || NAT.signedIn())) return open(c); render(); opened(); };
+    NAT.ready.then(function () {
+      // The app on a phone that is signed in opens its logbook from the phone at once, behind the app lock when it
+      // is on. The server check (loadMe) runs behind it: a login the server no longer accepts still signs out.
+      if (NAT.on && c && c.id && NAT.signedIn()) { diag('path', 'local'); return open(c); }
+      if (NAT.on && c && c.id && NAT.readFailed()) { diag('path', 'recovery'); return viewRecovery(); }
+      diag('path', 'server');
+      return api('/api/app/me', undefined, { timeout: NAT.on ? 8000 : 10000 }).then(function (res) {
+        diag('me', String(res._status)); diag('meMs', Date.now() - t0);
+        if (res.ok) { S.me = res; return open(res.account); }
+        if (res._status >= 500) return offline();
+        cacheAccount(null);
+        if (qs.get('login')) location.hash = '#/login';
+        else if (res.academy && !location.hash.match(/login|signup|reset/)) location.hash = '#/signup';
+        render(); opened();
+      }, function (ex) { diag('me', ex && ex.timeout ? 'timeout' : 'offline'); return offline(); });
+    });
+  }
+  var BOOT_WAIT = 10000;
+  // Shown instead of an endless start screen. Nothing on the phone is changed or deleted.
+  function viewRecovery() {
+    authFrame(T('Wavelength is taking longer than usual to start.'), T('Your entries stay saved on this device. Check your connection, then try again.'),
+      '<div class="btns"><button class="btn teal block" type="button" data-retry>' + esc(T('Try again')) + '</button>' + (cachedAccount() ? '' : '<a class="btn ghost block" href="#/login">' + esc(T('Log in')) + '</a>') + '</div>');
+    $('[data-retry]').onclick = function () { location.reload(); };
+  }
+  // A short record of the last 10 starts on this device (timings and outcomes only, no personal data), shown in
+  // Settings under Sync, so a slow or stuck start on a phone can be explained without debugging tools.
+  var DIAG = { at: Date.now(), path: '', ui: 0, me: '', meMs: 0 };
+  function diag(k, v) {
+    DIAG[k] = v;
+    try {
+      var a = JSON.parse(localStorage.getItem('wl-diag') || '[]');
+      if (a.length && a[a.length - 1].at === DIAG.at) a[a.length - 1] = DIAG; else a.push(DIAG);
+      localStorage.setItem('wl-diag', JSON.stringify(a.slice(-10)));
+    } catch (e) { /* storage blocked */ }
   }
   var want = pickLang();
   if (want === 'en') { setLangVars('en'); boot(); }
