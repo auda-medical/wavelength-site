@@ -630,6 +630,51 @@ if (want('B')) {
   }
 }
 
+// ---------- G: guides and accreditation ----------
+if (want('G')) {
+  for (const [pw, first] of [['rcem', 'rcem-ultrasound-sign-off'], ['famus', 'famus-accreditation'], ['fusic', 'fusic-accreditation'], ['acem', 'pocus-accreditation']]) {
+    const acc = await account('Gu', 'Ide', [pw]);
+    const { ctx, page } = await phone({ acc });
+    await go(page, '#/progress'); await page.waitForSelector('.guide-link');
+    const fromProgress = await page.$eval('.guide-link', (a) => a.getAttribute('href'));
+    await page.click('.guide-link'); await page.waitForSelector('.guide-body'); 
+    const opened = await page.evaluate(() => location.hash);
+    await go(page, '#/guides'); await page.waitForSelector('.guide-card.lead');
+    const lead = await page.$eval('.guide-card.lead', (a) => a.getAttribute('href'));
+    record('G1-' + pw, `${pw.toUpperCase()} learner: Progress opens the ${first} guide and the library puts it first`, fromProgress === '#/guides/' + first && opened === '#/guides/' + first && lead === '#/guides/' + first, `${fromProgress} / ${lead}`);
+    if (pw === 'rcem') await shot(page, 'G1-library');
+    await ctx.close();
+  }
+  const { ctx, page } = await phone();
+  await go(page, '#/guides/rcem-ultrasound-sign-off'); await page.waitForSelector('.guide-body h2');
+  const g = await page.evaluate(() => ({ note: document.querySelector('.guide-note').textContent, toc: document.querySelectorAll('[data-goto]').length, src: [...document.querySelectorAll('.guide-src a')].map((a) => [a.getAttribute('href'), a.target]), internal: [...document.querySelectorAll('.guide-body a')].map((a) => a.getAttribute('href')).filter((h) => h.startsWith('#/guides/')), ids: [...document.querySelectorAll('.guide-body h2')].map((h) => h.id) }));
+  record('G2', 'A guide says it is Wavelength\'s, not an official document, with its check date and official sources', /not an official document/.test(g.note) && /Checked against official sources 4 Oct 2026/.test(g.note) && g.src.length >= 5 && g.src.every(([h, t]) => /^https:\/\//.test(h) && t === '_blank'), JSON.stringify({ note: g.note.slice(0, 160), sources: g.src.length }));
+  record('G3', 'Contents list, and links to other guides open inside the app', g.toc >= 10 && g.internal.length >= 1, `${g.toc} sections; ${g.internal.join(', ')}`);
+  // Same source as the website: the section ids match the built /guides/ page.
+  const site = fs.readFileSync('dist/guides/rcem-ultrasound-sign-off/index.html', 'utf8');
+  const siteIds = [...site.matchAll(/<h2 id="([^"]+)"/g)].map((m) => m[1]);
+  record('G4', 'The app guide is the website guide (same Markdown, same sections)', JSON.stringify(siteIds.filter((x) => g.ids.includes(x))) === JSON.stringify(g.ids) && g.ids.length >= 10, `${g.ids.length} sections in both`);
+  await page.click('[data-goto="sources"]').catch(() => {}); await sleep(700);
+  await shot(page, 'G2-guide');
+  await go(page, '#/guides/rcem-ultrasound-sign-off/glance'); await page.waitForSelector('.guide-body.glance');
+  record('G5', 'The one-page summary opens in the app', (await text(page, '.guide-body.glance')).length > 300, '');
+  // Offline: the guides come with the app.
+  net.offline = true; await setNet(page, NONE); await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await page.goto('https://localhost/'); await page.waitForSelector('nav.tabs'); await go(page, '#/guides/famus-accreditation'); await page.waitForSelector('.guide-body h2', { timeout: 8000 }).catch(() => {});
+  record('G6', 'Offline, after a restart: guides open from the app itself', (await page.$$('.guide-body h2')).length > 5, '');
+  reset(); await setNet(page, WIFI);
+  await go(page, '#/guides'); await page.waitForSelector('a[href="#/guides/supervisor-verification"]');
+  record('G7', 'The library includes "How supervisor verification works"', true, '');
+  await ctx.close();
+  // Arabic: the app around the guide is right to left and says the guides are in English.
+  const ar = await phone({ lang: 'ar', dark: true });
+  await go(ar.page, '#/guides/famus-accreditation'); await ar.page.waitForSelector('.guide-body h2');
+  const arInfo = await ar.page.evaluate(() => ({ dir: document.documentElement.dir, body: document.querySelector('.guide-body').dir + '/' + document.querySelector('.guide-body').lang, note: document.querySelector('.guide-note').textContent, overflow: document.documentElement.scrollWidth > innerWidth + 1 }));
+  record('G8', 'Arabic, dark theme: app right to left, the English guide left to right, the note in Arabic, no sideways scroll', arInfo.dir === 'rtl' && arInfo.body === 'ltr/en' && !/Guides are in English/.test(arInfo.note) && !arInfo.overflow, JSON.stringify(arInfo).slice(0, 200));
+  await shot(ar.page, 'G8-guide-ar-dark');
+  await ar.ctx.close();
+}
+
 fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, errors }, null, 2));
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length} of ${results.length} passed${errors.length ? `; ${errors.length} page errors` : ''}`);

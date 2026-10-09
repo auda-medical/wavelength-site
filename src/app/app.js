@@ -1177,7 +1177,7 @@
       activeFilters(m, f, st, q) +
       '<div class="filters">' + filt('all', T('All'), ents.length) + Object.keys(used).map(function (t) { return filt(t, T((TYPES[t] || {}).short || t), used[t]); }).join('') + '</div>' +
       '<div class="seg" style="margin:0 0 6px">' + [['', T('All')], ['todo', T('Not sent')], ['waiting', T('Awaiting')], ['signed', T('Signed off')], ['none', T('No sign-off')]].map(function (o) { var n = o[0] ? ents.filter(function (e) { return stateMatch(e, o[0]); }).length : ents.length; return (o[0] === 'none' && !n && st !== 'none') ? '' : '<input type="radio" name="st" id="st' + o[0] + '" value="' + o[0] + '"' + (st === o[0] ? ' checked' : '') + '><label for="st' + o[0] + '">' + esc(o[1]) + ' · ' + n + '</label>'; }).join('') + '</div>' +
-      (list.length ? Object.keys(groups).map(function (m) { return '<p class="month">' + esc(fmt(m + '-15', { month: 'long', year: 'numeric' })) + ' · ' + groups[m].length + '</p>' + groups[m].map(entryRow).join(''); }).join('') :
+      (list.length ? Object.keys(groups).map(function (m) { return '<p class="month">' + esc(fmt(m + '-15', { month: 'long', year: 'numeric' })) + ' · ' + groups[m].length + '</p>' + groups[m].map(entryRow).join(''); }).join('') + '<p class="small muted log-guides"><a class="link" href="#/guides/' + guideFor(myPaths()[0]) + '">' + esc(T('What evidence does my pathway need?')) + '</a></p>' :
         '<div class="empty">' + I.book.replace('width="24" height="24"', 'width="48" height="48"') + '<p>' + esc(m && !ents.length ? T('No scans logged in {month}.', { month: fmt(m + '-15', { month: 'long', year: 'numeric' }) }) : ents.length ? T('No scans match.') : T('Your logbook is empty.')) + '</p>' + (m || f !== 'all' || st || q ? '<a class="btn ghost" href="#/log">' + esc(T('Clear filters')) + '</a> ' : '') + '<a class="btn teal" href="#/new">' + esc(T('Log a scan')) + '</a></div>')));
     var upd = function (k, v) { var p = route().q; if (v) p.set(k, v); else p.delete(k); history.replaceState(null, '', '#/log?' + p.toString()); viewLog(route()); };
     $$('[data-f]').forEach(function (b) { b.addEventListener('click', function () { upd('type', b.dataset.f === 'all' ? '' : b.dataset.f); }); });
@@ -2122,12 +2122,14 @@
         s.rules.map(function (rl) { return rl.min ? barRow(T(rl.label), rl.n, rl.min) : barRow(T(rl.label), rl.n, rl.max, 'max'); }).join('') + asmBars +
         (s.list.length ? '<div class="bar-row"><div class="lbl"><span>' + esc(T('Signed off')) + '</span><b>' + esc(T('{n} of {m}', { n: s.signed, m: s.list.length })) + '</b></div></div>' : '') + '</div>' +
         (s.mod.minDays && ps.win ? '<p class="window">' + esc(T('Minimum training period {days}: {state}', { days: plural(s.mod.minDays, 'day'), state: ps.win.day >= s.mod.minDays ? T('met.') : T('{n} days to go.', { n: s.mod.minDays - ps.win.day }) })) + '</p>' : '') + topics +
-        '<div class="btns" style="margin-top:10px"><a class="btn ghost sm" href="#/log?type=' + s.mod.types[0] + '">' + esc(T('See scans')) + '</a><a class="btn ghost sm" href="#/new?type=' + s.mod.types[0] + '">' + esc(T('Log one')) + '</a>' + (s.assessments.length ? '<a class="btn ghost sm" href="#/assess?p=' + pid + '&m=' + s.mod.id + '">' + esc(T('Assessment')) + '</a>' : '') + (!s.met ? '<a class="btn ghost sm" href="' + esc(learnLink(s.mod)) + '">' + esc(T('Learn')) + '</a>' : '') + '</div></div>';
+        '<div class="btns" style="margin-top:10px"><a class="btn ghost sm" href="#/log?type=' + s.mod.types[0] + '">' + esc(T('See scans')) + '</a><a class="btn ghost sm" href="#/new?type=' + s.mod.types[0] + '">' + esc(T('Log one')) + '</a>' + (s.assessments.length ? '<a class="btn ghost sm" href="#/assess?p=' + pid + '&m=' + s.mod.id + '">' + esc(T('Assessment')) + '</a>' : '') + (!s.met ? '<a class="btn ghost sm" href="' + esc(learnLink(s.mod)) + '">' + esc(T('Learn')) + '</a>' : '') + (GUIDE_FOR[pid] ? '<a class="btn ghost sm" href="#/guides/' + GUIDE_FOR[pid] + '">' + esc(T('Guide')) + '</a>' : '') + '</div></div>';
     }).join('');
     var win = ps.win ? '<div class="card"><h3>' + esc(ps.pw.windowFrom === 'firstSupervised' ? T('Training window') : T('Logbook window')) + '</h3><p class="small" style="margin:0">' + esc(T('Started {start}. Complete by {end}.', { start: fmt(ps.win.start), end: fmt(ps.win.end) })) + ' ' + (ps.win.day > ps.win.days ? '<b style="color:var(--red)">' + esc(T('Window passed.')) + '</b>' : esc(T('{days} left.', { days: plural(Math.max(0, ps.win.days - ps.win.day), 'day') }))) + '</p><div class="bar ' + (ps.win.day / ps.win.days > 0.8 ? '' : 'green') + '" style="margin-top:10px"><i style="width:' + Math.min(100, 100 * ps.win.day / ps.win.days) + '%"></i></div></div>' : '';
     mount(shell({ title: T('Progress'), action: '<a class="act" href="#/targets/' + pid + '" style="text-decoration:none">' + esc(T('Targets')) + '</a>' },
       '<nav class="pw-tabs">' + mine.map(function (p) { return '<a href="#/progress/' + p + '"' + (p === pid ? ' aria-current="page"' : '') + '>' + esc(pwName(PATHS[p])) + '</a>'; }).join('') + '<a href="#/me?edit=pathways">+ ' + esc(T('Pathway')) + '</a></nav>' +
       (pid !== 'general' ? '<div class="legend"><span>' + esc(T('Under a third')) + '</span><span class="a">' + esc(T('On the way')) + '</span><span class="g">' + esc(T('Target met')) + '</span></div>' : '') + win +
+      // 1.0.12: the guide for this pathway, and the whole library, one tap from Progress.
+      '<a class="card sv-link guide-link" href="#/guides/' + guideFor(pid) + '"><div class="row"><span class="gl-ic" aria-hidden="true">' + I.book + '</span><div class="grow"><h3>' + esc(T('Guides and accreditation')) + '</h3><p class="small muted" style="margin:0">' + esc(GUIDE_FOR[pid] ? T('What {pathway} asks for, step by step, with the official sources.', { pathway: pwName(ps.pw) }) : T('Compare pathways and find the official pages for yours.')) + '</p></div>' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</div></a>' +
       (mods || '<div class="empty"><p>' + esc(pid === 'general' ? T('Log any scan and it appears here. Tap Targets to set your own.') : T('No modules.')) + '</p><a class="btn teal" href="#/new">' + esc(T('Log a scan')) + '</a></div>') +
       '<p class="small muted" style="margin-top:18px">' + esc(ps.pw.source) + ' ' + esc(T('Targets checked {date}. Always confirm requirements with your supervisor and the current curriculum. You can adjust any target.', { date: fmt(ps.pw.checked) })) + '</p>'));
   }
@@ -2668,10 +2670,74 @@
   function viewGuideSupervision() {
     mount(shell({ title: T('Supervisor verification'), back: 'guides' }, supervisionGuideHtml()));
   }
+  // ---------- Guides and accreditation (1.0.12) ----------
+  // The website's guides (content/guides), bundled by build.js into guides.js and loaded only when Guides opens; kept
+  // offline with the app. Each shows when it was last checked against its official sources and links to them, says
+  // that it is Wavelength's guide and not an official document, and flags itself for review a year after its check.
+  // The learner's own pathway comes first. Guides are in English, like the website's.
+  var GUIDE_FOR = { rcem: 'rcem-ultrasound-sign-off', famus: 'famus-accreditation', fusic: 'fusic-accreditation' };
+  var REVIEW_DAYS = 365;
+  function guidesReady() { return window.WL_GUIDES ? Promise.resolve(window.WL_GUIDES) : loadScript('/app/guides.js?v=' + (window.WL_BUILD || '')).then(function () { return window.WL_GUIDES; }); }
+  function guideOrder(list) {
+    var mine = myPaths(), first = mine.map(function (p) { return GUIDE_FOR[p]; }).filter(Boolean), intl = mine.some(function (p) { return !GUIDE_FOR[p] && p !== 'general'; });
+    var rank = function (g) { var i = first.indexOf(g.slug); if (i >= 0) return i; if (g.slug === 'pocus-accreditation') return intl || !first.length ? -1 : 10; if (g.slug === 'ultrasound-logbook') return 11; return 20 + (g.order || 0); };
+    return list.slice().sort(function (a, b) { return rank(a) - rank(b); });
+  }
+  function guideFor(pid) { return GUIDE_FOR[pid] || 'pocus-accreditation'; }
+  function guideCard(g, lead) {
+    return '<a class="card sv-link guide-card' + (lead ? ' lead' : '') + '" href="#/guides/' + esc(g.slug) + '">' + (g.eyebrow ? '<p class="eyebrow" lang="en" dir="ltr">' + esc(g.eyebrow) + '</p>' : '') + '<h3 lang="en" dir="ltr">' + esc(g.title) + '</h3><p class="small muted" lang="en" dir="ltr">' + esc(g.summary) + '</p><p class="small guide-date">' + esc(g.reviewed ? T('Checked against official sources {date}', { date: fmt(g.reviewed) }) : T('Not dated: check each organisation\'s own page')) + '</p></a>';
+  }
   function viewGuides(r) {
     if (r.arg === 'supervisor-verification') return viewGuideSupervision();
-    mount(shell({ title: T('Guides'), back: 'progress' }, '<a class="card sv-link" href="#/guides/supervisor-verification"><h3>' + esc(T('How supervisor verification works')) + '</h3><p class="small muted">' + esc(T('Invitations, checks, approval, ending supervision and what happens to your records.')) + '</p></a>'));
+    if (r.arg) return viewGuide(r.arg, r.arg2 === 'glance');
+    mount(shell({ title: T('Guides'), back: 'progress' }, '<p class="muted" role="status">' + esc(T('Loading…')) + '</p>'));
+    guidesReady().then(function (G) {
+      if (route().name !== 'guides' || route().arg) return;
+      var list = guideOrder(G.guides), lead = list[0];
+      mount(shell({ title: T('Guides and accreditation'), back: 'progress' },
+        '<p class="small muted">' + esc(T('Wavelength\'s guides to accreditation and evidence, with links to each body\'s own documents.')) + (LANG !== 'en' ? ' ' + esc(T('Guides are in English.')) : '') + '</p>' +
+        (lead ? '<h2 class="sec">' + esc(T('For your pathway')) + '</h2>' + guideCard(lead, true) : '') +
+        '<h2 class="sec">' + esc(T('All guides')) + '</h2>' + list.slice(1).map(function (g) { return guideCard(g); }).join('') +
+        '<a class="card sv-link guide-card" href="#/guides/supervisor-verification"><p class="eyebrow">' + esc(T('Wavelength app')) + '</p><h3>' + esc(T('How supervisor verification works')) + '</h3><p class="small muted">' + esc(T('Invitations, checks, approval, ending supervision and what happens to your records.')) + '</p></a>' +
+        '<p class="small muted">' + esc(T('This copy of the guides came with the app on {date}. Official requirements can change: each guide links to the current official documents.', { date: fmt(G.built) })) + '</p>'));
+    }).catch(function (ex) { mount(shell({ title: T('Guides'), back: 'progress' }, '<div class="card"><p class="small">' + esc(ex.message) + '</p></div>')); });
   }
+  // A guide's own HTML (built from the repository's Markdown) with its links made safe for the app: other guides open
+  // in the app, the website opens outside the logbook, official sources open in a new window.
+  function guideLinks(root, G) {
+    $$('a[href]', root).forEach(function (a) {
+      var h = a.getAttribute('href'), m = h.match(/^\/guides\/([a-z0-9-]+)\/(at-a-glance\/)?(#[a-z0-9-]+)?$/);
+      if (m && G.guides.some(function (g) { return g.slug === m[1]; })) { a.setAttribute('href', '#/guides/' + m[1] + (m[2] ? '/glance' : '')); return; }
+      if (/^https?:/i.test(h) || h.charAt(0) === '/') { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener noreferrer'); if (h.charAt(0) === '/') a.setAttribute('href', NAT.on ? h : NAT.origin + h); }
+    });
+  }
+  function viewGuide(slug, glance) {
+    mount(shell({ title: T('Guide'), back: 'guides' }, '<p class="muted" role="status">' + esc(T('Loading…')) + '</p>'));
+    guidesReady().then(function (G) {
+      var here = route(); if (here.name !== 'guides' || here.arg !== slug) return;
+      var g = G.guides.find(function (x) { return x.slug === slug; });
+      if (!g) { mount(shell({ title: T('Guide'), back: 'guides' }, '<div class="card"><p class="small">' + esc(T('This guide is not in this version of the app.')) + '</p><div class="btns"><a class="btn" href="#/guides">' + esc(T('All guides')) + '</a></div></div>')); return; }
+      var age = g.reviewed ? daysBetween(g.reviewed, today()) : null;
+      var notice = '<aside class="guide-note" role="note"><p><b>' + esc(T('Wavelength\'s guide, not an official document.')) + '</b> ' + esc(T('Requirements are set by the bodies named, and can change after this copy was made. Check the current official guidance before you rely on it, and follow your supervisor and local rules.')) + '</p>' +
+        (g.reviewed ? '<p>' + esc(T('Checked against official sources {date}', { date: fmt(g.reviewed) })) + (g.updated && g.updated > g.reviewed ? ' · ' + esc(T('Updated {date}', { date: fmt(g.updated) })) : '') + '</p>' : '<p>' + esc(T('This guide is not dated against official sources. Check each organisation\'s own page.')) + '</p>') +
+        (age != null && age > REVIEW_DAYS ? '<p class="guide-due">' + esc(T('Due for review: last checked more than a year ago.')) + '</p>' : '') + (LANG !== 'en' ? '<p>' + esc(T('Guides are in English.')) + '</p>' : '') + '</aside>';
+      if (glance && g.glance) {
+        mount(shell({ title: g.short, back: 'guides/' + slug }, notice + '<article class="guide-body card glance" lang="en" dir="ltr">' + g.glance.html + '</article><div class="btns"><a class="btn" href="#/guides/' + esc(slug) + '">' + esc(T('Read the full guide')) + '</a></div>'));
+        guideLinks($('main', app), G); return;
+      }
+      var toc = (g.toc || []).length ? '<details class="card guide-toc"><summary>' + esc(T('Contents')) + '</summary><ol>' + g.toc.map(function (t) { return '<li><button type="button" class="link" data-goto="' + esc(t.id) + '">' + esc(t.label) + '</button></li>'; }).join('') + '</ol></details>' : '';
+      var src = (g.sources || []).length ? '<section class="card guide-src"><h3>' + esc(T('Official sources')) + '</h3><p class="small muted">' + esc(T('Open the current version from the organisation itself:')) + '</p><ul lang="en" dir="ltr">' + g.sources.map(function (x) { return '<li><a href="' + esc(x.url) + '">' + esc(x.label) + '</a></li>'; }).join('') + '</ul></section>' : '';
+      mount(shell({ title: g.short, back: 'guides' },
+        '<header class="guide-head" lang="en" dir="ltr">' + (g.eyebrow ? '<p class="eyebrow">' + esc(g.eyebrow) + '</p>' : '') + '<h2 class="guide-title">' + esc(g.title) + '</h2><p class="small muted">' + esc(g.summary) + '</p>' + (g.author ? '<p class="small muted">' + esc(g.author) + '</p>' : '') + '</header>' + notice +
+        (g.glance ? '<div class="btns"><a class="btn ghost sm" href="#/guides/' + esc(slug) + '/glance">' + esc(T('At a glance: one-page summary')) + '</a></div>' : '') + toc +
+        '<article class="guide-body" lang="en" dir="ltr">' + g.html + '</article>' + src +
+        '<div class="btns"><a class="btn ghost block" href="/guides/' + esc(slug) + '/">' + esc(T('Open on the Wavelength website')) + '</a></div>'));
+      var main = $('main', app);
+      guideLinks(main, G);
+      $$('[data-goto]', main).forEach(function (b) { b.onclick = function () { var t = document.getElementById(b.dataset.goto); if (t) { scrollToField(t, true); t.setAttribute('tabindex', '-1'); t.focus({ preventScroll: true }); } }; });
+    }).catch(function (ex) { mount(shell({ title: T('Guide'), back: 'guides' }, '<div class="card"><p class="small">' + esc(ex.message) + '</p></div>')); });
+  }
+
 
   // Supervisor search: results come only from current approvals whose holder opted in (worker/search.js). The ref is
   // opaque; a request creates an invitation the supervisor accepts on their dashboard.

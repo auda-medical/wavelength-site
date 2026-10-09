@@ -2189,6 +2189,22 @@ if (fs.existsSync(path.join(LEARN_DIR, 'images'))) copyDir(path.join(LEARN_DIR, 
       fs.rmSync(path.join(appDir, 'i18n', f), { force: true });
     }
   }
+  // 1.0.12: the accreditation guides inside the app, from the same Markdown as /guides/ (one source, so the app and the
+  // website cannot drift apart). Live guides only. Each carries its review dates, a hash of its source text, its
+  // contents and the official sources listed at its foot. The app loads this file only when Guides is opened, and keeps
+  // it offline with the rest of the app.
+  {
+    const crypto = require('crypto');
+    const srcOf = (g) => fs.readdirSync(GUIDES_DIR).find((f) => f.endsWith('.md') && (md.parse(fs.readFileSync(path.join(GUIDES_DIR, f), 'utf8')).meta.slug || f.replace(/\.md$/, '')) === g.slug);
+    const appGuides = liveGuides.map((g) => {
+      const file = srcOf(g), raw = file ? fs.readFileSync(path.join(GUIDES_DIR, file), 'utf8') : '';
+      const at = g.html.indexOf('<h2 id="sources">');
+      const sources = at < 0 ? [] : [...g.html.slice(at).matchAll(/<a class="text-link" href="(https?:[^"]+)"[^>]*>(.*?)<\/a>/g)].map((m) => ({ url: m[1], label: m[2].replace(/<[^>]+>/g, '') }));
+      const gl = glanceFor(g);
+      return { slug: g.slug, title: g.title, short: g.short || g.title, eyebrow: g.eyebrow || '', summary: g.summary || '', pathway: g.pathway || 'all', order: g.order, date: g.date, reviewed: g.reviewed ? String(g.reviewed) : null, updated: g.updated ? String(g.updated) : null, author: g.author || '', hash: crypto.createHash('sha256').update(raw).digest('hex').slice(0, 16), toc: g.toc, html: g.html, sources, glance: gl ? { html: gl.html, hash: gl.hash } : null };
+    });
+    fs.writeFileSync(path.join(DIST, 'app/guides.js'), `window.WL_GUIDES = ${JSON.stringify({ build: BUILD, built: new Date().toISOString().slice(0, 10), guides: appGuides })};\n`);
+  }
   const files = ['index.html', 'sw.js', 'sign/index.html', 'verify/index.html', 'assess/index.html'];
   for (const f of files) { const p = path.join(appDir, f); fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/__V__/g, BUILD)); }
 }
