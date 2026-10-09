@@ -44,8 +44,10 @@
 
 ## Test caveats
 
-- `tools/e2e-1011.mjs` N12 (mobile data with VPN, reachable) failed once in the full regression run. It passed on two
-  reruns. It is a timing flake: the check reads the pill straight after a server write. The 1.0.12 changes do not touch
-  that path.
-- `tools/e2e-1011.mjs` E6 compared the editor against the 1.0.11 layout. It is expected to differ, because the editor
-  was redesigned. The 1.0.12 editor checks are in `tools/e2e-1012.mjs` section E.
+See `test-report.md`.
+
+- `e2e-1011` N11 and N12 are timing-sensitive. A request probe showed that 1.0.11 and 1.0.12 make the same sync
+  attempts.
+- `e2e-1011` stops at E6, which drives the 1.0.11 Cover mode that 1.0.12 replaced. Its guarantees are checked by
+  `e2e-1012`.
+- `e2e-supervisor-ui` predates the 1.0.10 and 1.0.11 forms and fails on 1.0.11 too.
