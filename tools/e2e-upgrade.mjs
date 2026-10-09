@@ -111,8 +111,15 @@ const req = await A.call('/api/app/signoff/request', { entryIds: [synced], super
 const so = await S1.call('/api/app/supervise/signoff', { code: req.code, name: 'Dr Dummy One', role: 'Consultant', confirm: true, signature: SIG, decisions: { [synced]: 'confirmed' } });
 const pw = LOGBOOK.pathways.find((x) => x.modules && x.modules.length);
 const as = await S1.call('/api/app/supervise/assessment/new', { learnerId: A.id, pathway: pw.id, module: pw.modules[0].id, kind: LOGBOOK.assessmentKinds[0].id, name: 'Dr Dummy One', role: 'Consultant', confirm: true, signature: SIG, outcome: 'competent', domains: { [LOGBOOK.assessmentDomains[0].id]: LOGBOOK.assessmentScale[0] } });
-await page.evaluate(() => window.__fire('App', 'appStateChange', { isActive: true }));
-for (let end = Date.now() + 15000; Date.now() < end;) { const l = await local(page); if (l.entries.some((e) => e.id === synced && e.signoff) && l.assessments.length) break; await page.waitForTimeout(500); }
+// Ask the old bundle to sync until the sign-off and the assessment have arrived. From 1.0.11 a resume only retries
+// when the last attempt is 10 s old, so the Retry sync button in the sync details is pressed as a learner would.
+for (let end = Date.now() + 30000; Date.now() < end;) {
+  const l = await local(page); if (l.entries.some((e) => e.id === synced && e.signoff) && l.assessments.length) break;
+  await page.evaluate(() => { window.__fire('App', 'appStateChange', { isActive: true }); window.dispatchEvent(new Event('online')); });
+  const pill = await page.$('button.sync-pill');
+  if (pill) { await pill.click().catch(() => {}); const b = await page.waitForSelector('[data-syncpanel] [data-resync]:not([disabled])', { timeout: 1500 }).catch(() => null); if (b) await b.click().catch(() => {}); await page.keyboard.press('Escape'); }
+  await page.waitForTimeout(1500);
+}
 net.offline = true;
 const pending = await saveScan(page, 'Dummy scan saved offline in 1.0.8');
 await page.waitForTimeout(1500);

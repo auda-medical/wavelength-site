@@ -15,7 +15,8 @@ const problems = [];
 const errors = [];
 
 async function context(scheme) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'en-GB', colorScheme: scheme });
+  // Reduced motion (1.0.12): sections below the fold rise into view as they scroll in; a full-page still shows them all.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'en-GB', colorScheme: scheme, reducedMotion: 'reduce' });
   const page = await ctx.newPage();
   page.on('console', (m) => { if (m.type() === 'error' && !/favicon|404/.test(m.text())) errors.push(scheme + ': ' + m.text()); });
   page.on('pageerror', (e) => errors.push(scheme + ': ' + String(e)));
@@ -88,13 +89,17 @@ for (const theme of ['light', 'dark']) {
   if (!r.ok) problems.push('sync ' + JSON.stringify(r).slice(0, 200));
   await post(page, '/api/app/signoff/request', { entryIds: [entries[0].id], supervisorName: 'Dr Lee' });
   const screens = [['home', ''], ['logbook', '#/log'], ['scan', '#/entry/' + entries[1].id], ['progress', '#/progress'], ['me', '#/me'], ['settings', '#/settings'],
-    ['new', '#/new'], ['export', '#/export'], ['evidence', '#/evidence'], ['backup', '#/backup'], ['targets', '#/targets'], ['declaration', '#/declaration'], ['assess', '#/assess'], ['supervisors', '#/supervisors'], ['supervise', '#/supervise']];
+    ['new', '#/new'], ['export', '#/export'], ['evidence', '#/evidence'], ['backup', '#/backup'], ['targets', '#/targets'], ['declaration', '#/declaration'], ['assess', '#/assess'], ['supervisors', '#/supervisors'], ['supervise', '#/supervise'],
+    // 1.0.12 screens.
+    ['outstanding', '#/outstanding'], ['guides', '#/guides'], ['guide', '#/guides/rcem-ultrasound-sign-off'], ['guide-supervision', '#/guides/supervisor-verification']];
   for (const [name, hash] of screens) {
     // The scan form asks before leaving with unsaved changes; this tool only looks, so it drops them first.
     await page.evaluate(() => document.querySelectorAll('form[data-dirty]').forEach((f) => delete f.dataset.dirty)).catch(() => {});
     await page.goto(BASE + '/app/' + hash); await page.waitForSelector('nav.tabs', { timeout: 15000 });
     if (name === 'new') { await page.click('label[for=t0]'); await page.locator('input[name=supervision]').first().check({ force: true }); await page.evaluate(() => { document.getElementById('overall1').checked = true; }); }
     if (name === 'logbook') { await page.waitForSelector('.entry'); }
+    if (name === 'guides') { await page.waitForSelector('.guide-card.lead'); }
+    if (name === 'guide') { await page.waitForSelector('.guide-body h2'); }
     await shoot(page, theme, name);
   }
   // The delete-account sheet, as an example of a sheet over the page.

@@ -675,6 +675,116 @@ if (want('G')) {
   await ar.ctx.close();
 }
 
+// ---------- W: the website app (/app/ with its service worker) saves scans the way the Android app does ----------
+// Needs a second local Worker serving the built site: node --import ./test/helpers/register.mjs tools/dev-worker.mjs
+// 8792 --site (after node build.js). SITE_API=http://localhost:8792.
+if (want('W') && process.env.SITE_API) {
+  const SITE_API = process.env.SITE_API;
+  localOnly(SITE_API, 'tools/e2e-1012.mjs (W)');
+  const { chromium } = await import('playwright');
+  const wb = await chromium.launch();
+  const ctx = await wb.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-GB' });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => errors.push('web: ' + e));
+  await page.goto(SITE_API + '/app/');
+  const email = `web1012${Date.now()}@example.com`;
+  const id = await page.evaluate(async (email) => {
+    const h = { 'Content-Type': 'application/json', Accept: 'application/json' };
+    await fetch('/api/app/signup', { method: 'POST', headers: h, credentials: 'same-origin', body: JSON.stringify({ firstName: 'Web', lastName: 'User', email, password: 'Long-password-1', terms: true }) });
+    const p = await fetch('/api/app/profile', { method: 'POST', headers: h, credentials: 'same-origin', body: JSON.stringify({ declaration: true, profile: { pathways: ['rcem'], grade: 'ST4', onboarded: true } }) }).then((r) => r.json());
+    return p.account.id;
+  }, email);
+  await page.goto(SITE_API + '/app/'); await page.waitForSelector('nav.tabs');
+  const sw = await page.evaluate(() => navigator.serviceWorker.ready.then((r) => !!r.active).catch(() => false));
+  const serverRows = async () => (await fetch(SITE_API + '/__dev/entries').then((r) => r.json())).filter((r) => r.learner_id === id && !r.deleted);
+  const fillScan = async () => { await page.evaluate(() => { location.hash = '#/new'; }); await page.waitForSelector('label[for=t0]'); await page.click('label[for=t0]'); await page.waitForSelector('#rest:not([hidden])'); await page.locator('input[name=supervision]').first().check({ force: true }); };
+  // W1 two quick taps on Save: one scan, back Home, a short note, no completion sheet.
+  await fillScan();
+  await page.evaluate(() => { const b = document.querySelector('form button[type=submit]'); b.click(); b.click(); });
+  await page.waitForFunction(() => location.hash === '#/' || location.hash === '', null, { timeout: 10000 }).catch(() => {});
+  await sleep(2500);
+  const note1 = await page.evaluate(() => (document.querySelector('.toast.act') || {}).textContent || '');
+  const sheet1 = await page.evaluate(() => !!document.querySelector('.sheet-bg'));
+  const rows1 = await serverRows();
+  record('W1', 'Website: two quick Save taps make one scan, return Home with a short note, no completion sheet', rows1.length === 1 && !sheet1 && /Scan saved/.test(note1), JSON.stringify({ server: rows1.length, note: note1, sheet: sheet1, sw }));
+  record('W2', 'Website: "synced" only after the server has the scan', /synced/.test(note1) ? rows1.length === 1 : true, note1);
+  // W3 offline: saved on this device, awaiting sync; never "synced"; then synced once online.
+  await ctx.setOffline(true); await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await fillScan(); await page.click('form button[type=submit]');
+  await page.waitForFunction(() => location.hash === '#/' || location.hash === '', null, { timeout: 10000 }).catch(() => {});
+  await sleep(800);
+  const note2 = await page.evaluate(() => (document.querySelector('.toast.act') || {}).textContent || '');
+  record('W3', 'Website offline: "Saved on this device. Awaiting sync." and nothing claims it synced', /Saved on this device\. Awaiting sync\./.test(note2) && (await serverRows()).length === 1, note2);
+  // W4 an app update (a new service worker) while a scan waits: the scan survives and syncs.
+  // A real update: the site is built again (a new build id), as a deploy would, while the scan is still waiting.
+  const before = await page.evaluate(() => window.caches.keys());
+  const { execFileSync } = await import('node:child_process');
+  execFileSync(process.execPath, ['build.js'], { stdio: 'ignore' });
+  await ctx.setOffline(false);
+  await page.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r && r.update()));
+  await sleep(2500);
+  await page.reload(); await page.waitForSelector('nav.tabs'); await sleep(3000);
+  const caches = await page.evaluate(() => window.caches.keys());
+  const rows2 = await serverRows();
+  const local = await page.evaluate((id) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id); r.onsuccess = () => { const q = r.result.transaction('entries').objectStore('entries').getAll(); q.onsuccess = () => { r.result.close(); ok(q.result.length); }; }; r.onerror = () => ok(-1); }), id);
+  record('W4', 'Website update (new service worker): old cache replaced, the waiting scan kept and synced once', caches.length === 1 && before.length === 1 && caches[0] !== before[0] && rows2.length === 2 && local === 2, JSON.stringify({ before, after: caches, server: rows2.length, local }));
+  // W5 a validation error keeps what was typed.
+  await page.evaluate(() => { location.hash = '#/new'; }); await page.waitForSelector('label[for=t0]'); await page.click('label[for=t0]'); await page.waitForSelector('#rest:not([hidden])');
+  await page.fill('#refl', 'Reflection kept through a validation error');
+  await page.click('form button[type=submit]'); await sleep(600);
+  const kept = await page.evaluate(() => ({ refl: document.querySelector('#refl').value, invalid: [...document.querySelectorAll('.field.invalid')].map((f) => f.dataset.req) }));
+  record('W5', 'Website: a missing required answer is marked and everything typed is kept', kept.refl === 'Reflection kept through a validation error' && kept.invalid.includes('supervision'), JSON.stringify(kept));
+  await page.evaluate(() => { const f = document.querySelector('form[data-dirty]'); if (f) delete f.dataset.dirty; });
+  await wb.close();
+}
+
+// ---------- R: short screen recordings for the owner (synthetic data; ONLY=R) ----------
+// Not checks: each clip shows one piece of 1.0.12 moving as a learner or supervisor would see it.
+if (only.includes('R')) {
+  const keep = async (ctx, page, name) => { const v = page.video(); await ctx.close(); if (v) fs.renameSync(await v.path(), path.join(VIDS, name + '.webm')); };
+  // R1 Still to do: swipe through the cards, then the arrows.
+  {
+    const acc = await busyAccount();
+    const { ctx, page } = await phone({ acc, video: true });
+    await page.evaluate(() => { const r = document.querySelector('.reqs'); if (r) r.scrollIntoView({ block: 'center' }); }); await sleep(900);
+    for (let i = 0; i < 3; i++) { await page.evaluate(() => { const t = document.querySelector('.req-track'); t.scrollBy({ left: t.clientWidth, behavior: 'smooth' }); }); await sleep(1100); }
+    for (let i = 0; i < 2; i++) { const b = await page.$('[data-reqstep="-1"]'); if (b) await b.click(); await sleep(1000); }
+    await keep(ctx, page, 'R1-still-to-do-carousel');
+  }
+  // R2 the editor: redact, turn, label, arrow, pictogram, then use the image.
+  {
+    const { ctx, page } = await phone({ video: true });
+    const img = await testImage(page);
+    await go(page, '#/new?type=cardiac'); await sleep(1200);
+    await page.setInputFiles('#pick', img); await page.waitForSelector('.editor canvas'); await sleep(900);
+    await page.click('.editor [data-tab=redact]'); await sleep(500); await dragOn(page, [0.04, 0.04], [0.45, 0.2]); await sleep(700);
+    await page.click('.editor [data-tab=adjust]'); await sleep(500); await page.click('.editor [data-a=rotate]'); await sleep(800); await page.click('.editor [data-a=rotate]'); await sleep(800); await page.click('.editor [data-a=rotate]'); await sleep(400); await page.click('.editor [data-a=rotate]'); await sleep(800);
+    await page.click('.editor [data-tab=annotate]'); await sleep(500);
+    await page.click('.editor [data-at=label]'); await page.waitForSelector('.editor .ed-pop:not([hidden])'); await sleep(900); await page.click('.editor [data-lbl="LV"]'); await sleep(700);
+    await page.click('.editor [data-sa=done]').catch(() => {});
+    await page.click('.editor [data-col=cyan]'); await page.click('.editor [data-at=arrow]'); await dragOn(page, [0.15, 0.7], [0.45, 0.55]); await sleep(700);
+    await page.click('.editor [data-sa=done]').catch(() => {});
+    await page.click('.editor [data-at=picto]'); await sleep(700); await page.click('.editor [data-pic="heart-a4c"]'); await sleep(900);
+    await page.click('.editor [data-sa=done]').catch(() => {});
+    await page.check('.editor [data-decl]'); await sleep(500); await page.click('.editor [data-a=save]'); await sleep(1500);
+    await page.evaluate(() => { const f = document.querySelector('form[data-dirty]'); if (f) delete f.dataset.dirty; });
+    await keep(ctx, page, 'R2-media-editor');
+  }
+  // R3 a supervisor opens a trainee, taps a tile, comes back and ends supervision.
+  {
+    const { sup, learner } = await pair(6);
+    const { ctx, page } = await phone({ acc: sup, video: true });
+    await go(page, '#/supervise'); await sleep(1200);
+    await go(page, '#/supervise/' + learner.id); await page.waitForSelector('.stats a.stat'); await sleep(1200);
+    await page.click('.stats a.stat:nth-child(2)'); await sleep(1600);
+    await page.evaluate(() => history.back()); await page.waitForSelector('[data-end]'); await sleep(800);
+    await page.evaluate(() => document.querySelector('[data-end]').scrollIntoView({ block: 'center', behavior: 'smooth' })); await sleep(900);
+    await page.click('[data-end]'); await sleep(1400);
+    const go2 = await page.$('.sheet button.btn.red, .sheet [data-go]'); if (go2) await go2.click(); await sleep(2000);
+    await keep(ctx, page, 'R3-end-supervision');
+  }
+}
+
 fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, errors }, null, 2));
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length} of ${results.length} passed${errors.length ? `; ${errors.length} page errors` : ''}`);
