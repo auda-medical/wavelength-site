@@ -198,7 +198,7 @@ export async function supervisorAdd(env, l, req, ctx) {
   // 1.0.12: inviting again after supervision ended starts a new relationship. The old acceptance and claim are
   // cleared, so the supervisor must accept again (and, where required, be approved): an ended relationship is never
   // restored by the learner alone. A resend of an open invitation keeps its claim.
-  const fresh = (await lifecycleReady(env)) ? ", claimed_at = CASE WHEN supervisor_links.status = 'ended' THEN NULL ELSE supervisor_links.claimed_at END, accepted_at = CASE WHEN supervisor_links.status = 'ended' THEN NULL ELSE supervisor_links.accepted_at END, ended_reason = NULL, ended_by = NULL, via = 'email'" : ", accepted_at = CASE WHEN supervisor_links.status = 'ended' THEN NULL ELSE supervisor_links.accepted_at END";
+  const fresh = (await lifecycleReady(env)) ? ", claimed_at = CASE WHEN supervisor_links.status = 'ended' THEN NULL ELSE supervisor_links.claimed_at END, accepted_at = CASE WHEN supervisor_links.status = 'ended' THEN NULL ELSE supervisor_links.accepted_at END, ended_reason = NULL, ended_by = NULL, via = CASE WHEN supervisor_links.status = 'ended' THEN 'email' ELSE supervisor_links.via END" : ", accepted_at = CASE WHEN supervisor_links.status = 'ended' THEN NULL ELSE supervisor_links.accepted_at END";
   await env.DB.prepare(`INSERT INTO supervisor_links (learner_id, supervisor_email, supervisor_id, status) VALUES (?,?,?,'pending') ON CONFLICT (learner_id, supervisor_email) DO UPDATE SET status = 'pending', supervisor_id = excluded.supervisor_id, ended_at = NULL${fresh}, created_at = datetime('now')`)
     .bind(l.id, email, sup ? sup.id : null).run();
   // The invitation carries a single-use token (hashed in D1, 30 days). Accepting with it proves the supervisor
@@ -263,19 +263,21 @@ export async function supervisorRemove(env, l, req) {
   const reason = byLearner ? 'learner_removed' : link.status === 'pending' ? 'supervisor_declined' : 'supervisor_removed';
   const life = await lifecycleReady(env);
   const clearInvite = (await verificationReady(env)) ? ', invite_hash = NULL, invite_expires = NULL' : '';
-  const r = life
-    ? await env.DB.prepare(`UPDATE supervisor_links SET status = 'ended', ended_at = datetime('now'), ended_reason = ?, ended_by = ?${clearInvite} WHERE id = ? AND status != 'ended'`).bind(reason, byLearner ? 'learner' : 'supervisor', link.id).run()
-    : await env.DB.prepare(`UPDATE supervisor_links SET status = 'ended', ended_at = datetime('now')${clearInvite} WHERE id = ? AND status != 'ended'`).bind(link.id).run();
-  const ended = !!(r.meta && r.meta.changes);
-  let returned = 0;
-  if (link.supervisor_id && life) {
-    const ret = await returnRequestsStmts(env, link.supervisor_id, ended ? reason : (link.ended_reason || reason), link.learner_id);
+  let ended, returned = 0;
+  if (life) {
+    // One batch: the guarded update, its audit row (only if this request ended the link) and the returned requests.
+    // A repeat after a failure re-runs the whole batch; the audit row is never left behind on its own.
+    const ret = link.supervisor_id ? await returnRequestsStmts(env, link.supervisor_id, link.status === 'ended' ? (link.ended_reason || reason) : reason, link.learner_id) : { stmts: [], counts: {} };
     returned = Object.values(ret.counts).reduce((a, b) => a + b, 0);
-    const stmts = [...ret.stmts];
-    if (ended) stmts.push(auditStmt(env, { actorType: byLearner ? 'learner' : 'supervisor', actorId: l.id, action: 'link.end', subjectType: 'link', subjectId: link.id, meta: { reason, status: link.status, returned } }));
-    await env.DB.batch(stmts);
-  } else if (ended && life) {
-    await audit(env, { actorType: byLearner ? 'learner' : 'supervisor', actorId: l.id, action: 'link.end', subjectType: 'link', subjectId: link.id, meta: { reason, status: link.status } });
+    const out = await env.DB.batch([
+      env.DB.prepare(`UPDATE supervisor_links SET status = 'ended', ended_at = datetime('now'), ended_reason = ?, ended_by = ?${clearInvite} WHERE id = ? AND status != 'ended'`).bind(reason, byLearner ? 'learner' : 'supervisor', link.id),
+      auditStmt(env, { actorType: byLearner ? 'learner' : 'supervisor', actorId: l.id, action: 'link.end', subjectType: 'link', subjectId: link.id, meta: { reason, status: link.status, returned } }, { ifChanged: true }),
+      ...ret.stmts,
+    ]);
+    ended = !!(out[0] && out[0].meta && out[0].meta.changes);
+  } else {
+    const r = await env.DB.prepare(`UPDATE supervisor_links SET status = 'ended', ended_at = datetime('now')${clearInvite} WHERE id = ? AND status != 'ended'`).bind(link.id).run();
+    ended = !!(r.meta && r.meta.changes);
   }
   const row = await env.DB.prepare('SELECT status, ended_at FROM supervisor_links WHERE id = ?').bind(link.id).first();
   return json({ ok: true, ended: !!row && row.status === 'ended', already: !ended, link: { id: link.id, status: row ? row.status : 'ended', endedAt: row ? row.ended_at : null, endedBy: byLearner ? 'learner' : 'supervisor', reason }, returned });
@@ -326,6 +328,13 @@ export async function supervisorAcceptInvite(env, l, req) {
   }
   return json({ ok: true, verified: true, ...out });
 }
+// Who ended a relationship, from the reader's side. 'self' is a supervisor withdrawing from Wavelength supervision
+// (supervisor-lifecycle.js), so it is the supervisor's own act, not Wavelength's.
+function endedByWord(by, asLearner) {
+  const who = by === 'self' ? 'supervisor' : by;
+  if (who !== 'learner' && who !== 'supervisor') return 'system';
+  return who === (asLearner ? 'learner' : 'supervisor') ? 'you' : 'them';
+}
 export async function supervisorLinks(env, l) {
   const life = await lifecycleReady(env);
   const mine = await env.DB.prepare(`SELECT s.id, s.supervisor_email, s.supervisor_id, s.status, s.created_at, s.accepted_at${life ? ', s.claimed_at, s.via' : ''}, t.title, t.first_name, t.last_name, t.role FROM supervisor_links s LEFT JOIN learners t ON t.id = s.supervisor_id WHERE s.learner_id = ? AND s.status != 'ended' ORDER BY s.created_at DESC`).bind(l.id).all();
@@ -341,7 +350,7 @@ export async function supervisorLinks(env, l) {
   // The learner's own open requests addressed to each supervisor's dashboard (they come back if supervision ends).
   const pendingFor = {};
   for (const t of ['signoffs', 'assessments']) {
-    const { results = [] } = await env.DB.prepare(`SELECT supervisor_id, COUNT(*) AS n FROM ${t} WHERE learner_id = ? AND supervisor_id IS NOT NULL AND status = 'pending' GROUP BY supervisor_id`).bind(l.id).all();
+    const { results = [] } = await env.DB.prepare(`SELECT supervisor_id, COUNT(*) AS n FROM ${t} WHERE learner_id = ? AND supervisor_id IS NOT NULL AND status = 'pending' AND expires_at > ? GROUP BY supervisor_id`).bind(l.id, Date.now()).all();
     for (const x of results) pendingFor[x.supervisor_id] = (pendingFor[x.supervisor_id] || 0) + x.n;
   }
   const supervisors = [];
@@ -358,7 +367,7 @@ export async function supervisorLinks(env, l) {
   const ended = (endedRows.results || []).map((r) => {
     const asLearner = r.learner_id === l.id;
     const other = asLearner ? (r.b_first ? fullName({ title: r.b_title, first_name: r.b_first, last_name: r.b_last }) : (r.via === 'search' ? '' : r.supervisor_email)) : fullName({ title: r.a_title, first_name: r.a_first, last_name: r.a_last });
-    return { id: r.id, role: asLearner ? 'learner' : 'supervisor', name: other || '', endedAt: r.ended_at, endedBy: r.ended_by ? (r.ended_by === (asLearner ? 'learner' : 'supervisor') ? 'you' : r.ended_by === 'learner' || r.ended_by === 'supervisor' ? 'them' : 'system') : null };
+    return { id: r.id, role: asLearner ? 'learner' : 'supervisor', name: other || '', endedAt: r.ended_at, endedBy: r.ended_by ? endedByWord(r.ended_by, asLearner) : null };
   });
   return json({
     ok: true,
@@ -435,7 +444,8 @@ export async function superviseLearnerScans(env, l, url) {
   if (ms && ms.includes(':')) {
     const [pid, mid] = ms.split(':');
     const prof = profileOf(t);
-    const mod = P.modulesFor(pid, entries, prof.targets).find((m) => m.id === mid);
+    // Only a real pathway id: '__proto__' or 'constructor' must not reach the progress engine.
+    const mod = Object.hasOwn(PATHS, pid) ? (P.modulesFor(pid, entries, prof.targets) || []).find((m) => m.id === mid) : null;
     if (mod) { const st = P.moduleStats(mod, entries, prof.targets, []); const ids = new Set(st.list.map((e) => e.id)); entries = entries.filter((e) => ids.has(e.id)); module = { pathway: pid, id: mid, label: mod.label }; }
     else entries = [];
   }

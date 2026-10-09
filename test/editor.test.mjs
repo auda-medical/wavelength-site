@@ -94,6 +94,18 @@ test('stored annotation data keeps only what is needed to draw it again', () => 
   assert.equal(E.cleanAnn(new Array(100).fill({ type: 'dot', x: 0, y: 0 })).length, 60, 'at most 60 annotations');
 });
 
+test('damaged annotation data from a backup never throws and is kept within range (review finding 9)', () => {
+  const out = E.cleanAnn([null, 7, 'text', { type: 'dot' }, { type: 'dot', x: 'a', y: 0.5 },
+    { type: 'text', text: 'Big', x: 5, y: -2, size: 400 }, { type: 'picto', picto: '__proto__', x: 0.5, y: 0.5 },
+    { type: 'picto', picto: 'constructor', x: 0.5, y: 0.5 }, { type: 'dot', x: 0.5, y: 0.5, color: 'constructor', t0: -5, t1: 1e9 }]);
+  assert.equal(out.length, 2, JSON.stringify(out));
+  assert.deepEqual([out[0].x, out[0].y, out[0].size], [1, 0, 1], 'positions and size clamped');
+  assert.equal(out[1].color, 'white');
+  assert.deepEqual([out[1].t0, out[1].t1], [0, 600]);
+  assert.deepEqual(E.cleanAnn('not a list'), []);
+  assert.deepEqual(E.cleanAnn({ length: 3 }), []);
+});
+
 test('every scan type has a short, relevant label set, plus free text, and pictograms', () => {
   for (const t of LOGBOOK.types) {
     const groups = E.groupsFor(t.id);
@@ -150,4 +162,18 @@ test('drawFrame paints redactions after the picture and annotations last, in the
   assert.ok(!ops.some((o) => o[0] === 'arc'), 'the copy without annotations has none');
   assert.ok(ops.some((o) => o[0] === 'fillRect'), 'but keeps the redaction');
   assert.equal(ops2.length, 0);
+});
+
+test('a re-edit reports the change from the original photo: earlier turns are composed with the new ones (review finding 12)', () => {
+  // Composing with nothing earlier changes nothing.
+  for (const o of ORIENTS) assert.deepEqual(E.composeOrient(null, o), { r: o.r, m: o.m });
+  // Composition matches applying the same operations in one session.
+  const ops = (o) => [...(o.m ? ['fliph'] : []), ...Array(o.r).fill('rotate')];
+  for (const a of ORIENTS) for (const b of ORIENTS) {
+    const once = [...ops(a), ...ops(b)].reduce((t, op) => E.orientAfter(t, op), { r: 0, m: false });
+    assert.deepEqual(E.composeOrient(a, b), once, `${JSON.stringify(a)} then ${JSON.stringify(b)}`);
+  }
+  // Two quarter turns in two sessions are a half turn; a flip undone in a later session is no flip.
+  assert.deepEqual(E.composeOrient({ r: 1, m: false }, { r: 1, m: false }), { r: 2, m: false });
+  assert.deepEqual(E.composeOrient({ r: 0, m: true }, { r: 0, m: true }), { r: 0, m: false });
 });

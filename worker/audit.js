@@ -14,8 +14,10 @@ function cleanMeta(meta) {
   return text.length > 4000 ? '{"truncated":true}' : text;
 }
 // A prepared statement, so callers can put the audit row in the same D1 batch as the change it records.
-export function auditStmt(env, { actorType, actorId = null, action, subjectType = null, subjectId = null, requestRef = null, meta = {} }) {
-  return env.DB.prepare('INSERT INTO audit_events (at, actor_type, actor_id, action, subject_type, subject_id, request_ref, meta) VALUES (?,?,?,?,?,?,?,?)')
+// ifChanged: written only when the statement just before it in the batch changed a row (SQLite changes()), so a guarded
+// update and its audit row commit together or not at all.
+export function auditStmt(env, { actorType, actorId = null, action, subjectType = null, subjectId = null, requestRef = null, meta = {} }, { ifChanged = false } = {}) {
+  return env.DB.prepare('INSERT INTO audit_events (at, actor_type, actor_id, action, subject_type, subject_id, request_ref, meta) ' + (ifChanged ? 'SELECT ?,?,?,?,?,?,?,? WHERE changes() > 0' : 'VALUES (?,?,?,?,?,?,?,?)'))
     .bind(nowIso(), actorType, actorId == null ? null : String(actorId), action, subjectType, subjectId == null ? null : String(subjectId), requestRef, cleanMeta(meta));
 }
 export async function audit(env, e) {

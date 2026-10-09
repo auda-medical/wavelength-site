@@ -609,6 +609,7 @@
   }
   // Swipe (native scrolling with snap points), the arrows, the dots or the keyboard move it. It never moves on its
   // own. The card in view is found by IntersectionObserver (no scroll handler), and remembered per pathway.
+  var focusIO = null;
   function bindFocus() {
     $$('[data-fpw]').forEach(function (b) { b.onclick = function () { setKv('focusPw', b.dataset.fpw).then(function () { render(true); }); }; });
     var box = $('[data-reqs]'); if (!box) return;
@@ -630,7 +631,9 @@
       mark(i);
     };
     if (window.IntersectionObserver && cards.length > 1) {
-      var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && e.intersectionRatio > 0.6) mark(cards.indexOf(e.target)); }); }, { root: track, threshold: [0.6] });
+      // One observer at a time: Home is redrawn on every sync, and the old cards are gone.
+      if (focusIO) focusIO.disconnect();
+      var io = focusIO = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && e.intersectionRatio > 0.6) mark(cards.indexOf(e.target)); }); }, { root: track, threshold: [0.6] });
       cards.forEach(function (c) { io.observe(c); });
     }
     $$('[data-reqstep]', box).forEach(function (b) { b.onclick = function () { show(cur + Number(b.dataset.reqstep), true); }; });
@@ -647,7 +650,7 @@
   }
   // Every open requirement for one pathway, with a choice of order. Curriculum order is the default.
   function viewOutstanding(r) {
-    var pid = r.arg && PATHS[r.arg] ? r.arg : focusPid() || myPaths()[0];
+    var pid = r.arg && Object.prototype.hasOwnProperty.call(PATHS, r.arg) ? r.arg : focusPid() || myPaths()[0];
     var o = outstanding(pid), sort = r.q.get('sort') || 'curriculum';
     var items = o.items.slice();
     if (sort === 'most') items.sort(function (a, b) { return b.left - a.left || a.order - b.order; });
@@ -998,7 +1001,7 @@
   }
   // Logging out, or a login the server no longer accepts, never deletes this device's logbook: it stays in this
   // account's local database and syncs when the same account logs in here again.
-  function signedOut(to) { SESSION++; clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
+  function signedOut(to) { SESSION++; clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.sv = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
   // The server says this login has ended (expired, password changed, logged out from another device).
   function authExpired() {
     var acc = S.account; if (!acc) return;
@@ -1398,7 +1401,10 @@
       $$('[data-eddr]', g).forEach(function (x) { bindEd(x, function () { var i = draftImages.findIndex(function (d) { return d.id === x.dataset.eddr; }); if (i < 0) return; reEdit(draftImages[i], function (res) { res.id = uid(); draftImages[i] = res; form.dataset.dirty = '1'; drawGallery(); }); }); });
     };
     var scanType = function () { var c = form.querySelector('input[name=type]:checked'); return c ? c.value : ''; };
-    var reEdit = function (rec, done) { editImage(rec.base || rec.blob, { type: scanType(), annot: rec.annot || { ann: [] }, prov: rec.prov }).then(function (res) { if (res) done(res); }); };
+    // Re-editing starts from the unannotated base when there is one. Without it (no annotations, or a backup that lost the
+    // base file) the saved picture is the starting point and any annotations are already in its pixels, so none are
+    // offered again. The earlier turns are carried forward, so the orientation stated is the change from the original.
+    var reEdit = function (rec, done) { editImage(rec.base || rec.blob, { type: scanType(), annot: rec.base && rec.annot ? rec.annot : { ann: [] }, prov: rec.prov, prior: rec.edits || { r: 0, m: false } }).then(function (res) { if (res) done(res); }); };
     drawGallery();
     var onFiles = function (inp, clip) {
       var files = Array.prototype.slice.call(inp.files || []); inp.value = '';
@@ -1580,6 +1586,9 @@
     var change = function () { undo.push(snap()); if (undo.length > 60) undo.shift(); redo = []; };
     var size = function () { return EDT.outSize(st.crop, st.orient, 1); };
     var paint = function () { cfg.paint(cv, st); drawSel(); };
+    // While a finger drags, the picture is redrawn at most once a frame (a full 2048 px repaint per pointer event is wasted).
+    var paintRaf = 0;
+    var paintSoon = function () { if (paintRaf) return; paintRaf = requestAnimationFrame(function () { paintRaf = 0; paint(); }); };
     var tip = function (s) { $('[data-tip]', el).textContent = s; };
     // ---- state helpers ----
     var setFrame = function (crop, orient) {
@@ -1589,7 +1598,7 @@
     };
     var toastIn = function (msg) { var t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg; el.appendChild(t); setTimeout(function () { t.remove(); }, 3600); };
     var state = function () {
-      $('[data-applied]', el).textContent = orientWords(st.orient);
+      $('[data-applied]', el).textContent = orientWords(EDT.composeOrient(cfg.prior, st.orient));
       undoBtn.disabled = !undo.length; redoBtn.disabled = !redo.length; resetBtn.hidden = snap() === st0;
       var nr = st.redact.length;
       $('[data-rcount]', el).textContent = nr ? T('{n} areas redacted', { n: nr }) : '';
@@ -1658,7 +1667,7 @@
         if (a.type === 'arrow') { a.x2 = p.x / W; a.y2 = p.y / H; }
         else { var sx = drag.start.x / W, sy = drag.start.y / H; a.x = Math.min(sx, p.x / W); a.y = Math.min(sy, p.y / H); a.w = Math.abs(p.x / W - sx); a.h = Math.abs(p.y / H - sy); }
       }
-      paint();
+      paintSoon();
     });
     var endDrag = function () {
       if (!drag) return;
@@ -1706,7 +1715,7 @@
             var dist = Math.hypot(p.x - a.x * W, p.y - a.y * H), lo = a.type === 'picto' ? 0.08 : 0.02, hi = a.type === 'picto' ? 0.6 : 0.2;
             a.size = Math.max(lo, Math.min(hi, (orig.size || 0.058) * dist / Math.max(4, d0)));
           }
-          paint();
+          paintSoon();
         };
         var up = function () { h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); if (JSON.stringify(a) !== JSON.stringify(orig)) { undo.push(before); redo = []; } redraw(); };
         h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
@@ -1726,7 +1735,7 @@
     };
     // ---- the small panels for text, labels and pictograms (inside the editor, above everything in it) ----
     var closePop = function () { pop.hidden = true; pop.innerHTML = ''; var f = $('[data-at=' + (pending || 'text') + ']', el); pending = null; if (f) f.focus({ preventScroll: true }); };
-    var openPop = function (html, bind) { pop.innerHTML = '<div class="ed-popin">' + html + '</div>'; pop.hidden = false; bind(pop); var f = $('input,button', pop); if (f) setTimeout(function () { f.focus(); }, 30); };
+    var openPop = function (html, bind) { delete pop.dataset.ok; pop.innerHTML = '<div class="ed-popin">' + html + '</div>'; pop.hidden = false; bind(pop); var f = $('input,button', pop); if (f) setTimeout(function () { f.focus(); }, 30); };
     var placeText = function (text) {
       text = String(text || '').trim().slice(0, 80); if (!text) return;
       change();
@@ -1743,7 +1752,7 @@
           e.preventDefault(); var v = $('#edtx', p).value;
           // The same identifier check as the scan's own text fields.
           var hits = guard({ indication: v });
-          if (hits.length && !p.dataset.ok) { var w = $('.ed-note2', p); w.textContent = T('This looks like it includes {what}. Change it, or tap Add again if it is not an identifier.', { what: hits.join(', ') }); w.className = 'ed-err'; p.dataset.ok = '1'; return; }
+          if (hits.length && p.dataset.ok !== v) { var w = $('.ed-note2', p); w.textContent = T('This looks like it includes {what}. Change it, or tap Add again if it is not an identifier.', { what: hits.join(', ') }); w.className = 'ed-err'; p.dataset.ok = v; return; }
           placeText(v);
         });
       });
@@ -1777,6 +1786,8 @@
       if (d.a === 'cancel') return cfg.close(null);
       if (cfg.locked()) return; // the tools wait while a clip is being prepared or a photo saved
       if (d.tab) return setMode(d.tab);
+      // Undo, redo and reset can bring back a covered or cropped-out area: the declaration is asked for again.
+      if ((d.a === 'undo' && undo.length) || (d.a === 'redo' && redo.length) || d.a === 'reset') { decl.checked = false; save.disabled = true; }
       if (d.a === 'undo' && undo.length) { redo.push(snap()); st = JSON.parse(undo.pop()); sel = -1; return redraw(); }
       if (d.a === 'redo' && redo.length) { undo.push(snap()); st = JSON.parse(redo.pop()); sel = -1; return redraw(); }
       if (d.a === 'reset') { change(); st = JSON.parse(st0); sel = -1; return redraw(); }
@@ -1829,7 +1840,7 @@
       el: el, paint: paint, state: function () { return st; }, refresh: redraw,
       fail: function (msg) { var er = $('[data-err]', el); er.textContent = msg; er.hidden = false; el.classList.remove('working'); save.textContent = cfg.saveLabel; save.disabled = !decl.checked; },
       busy: function (on, label) { el.classList.toggle('working', !!on); save.disabled = !!on || !decl.checked; if (label) save.textContent = label; $('[data-err]', el).hidden = true; },
-      remove: function () { window.removeEventListener('resize', drawSel); el.remove(); cv.width = 0; cv.height = 0; }
+      remove: function () { if (paintRaf) cancelAnimationFrame(paintRaf); paintRaf = 0; window.removeEventListener('resize', drawSel); el.remove(); cv.width = 0; cv.height = 0; }
     };
   }
   // Encodes a canvas as JPEG: 2048 px at quality 0.9 keeps fine text and speckle, stepping down only past the 1.5 MB
@@ -1865,7 +1876,7 @@
         var saving = false, ed;
         var close = function (v) { ed.remove(); freeCanvas(work); resolve(v); };
         ed = mediaEditor({
-          kind: 'image', title: opts.annot ? T('Edit image') : T('Prepare image'), declText: T('I have removed or covered every patient identifier in this image.'), saveLabel: T('Use this image'), type: opts.type, state: st0,
+          kind: 'image', prior: opts.prior || null, title: opts.annot || opts.prior ? T('Edit image') : T('Prepare image'), declText: T('I have removed or covered every patient identifier in this image.'), saveLabel: T('Use this image'), type: opts.type, state: st0,
           paint: function (cv, st) { var o = EDT.outSize(st.crop, st.orient, 1); if (cv.width !== Math.round(o.w) || cv.height !== Math.round(o.h)) { cv.width = Math.round(o.w); cv.height = Math.round(o.h); } EDT.drawFrame(cv.getContext('2d'), work, st, 1, null, true); },
           time: function () { return null; }, locked: function () { return saving; },
           close: close,
@@ -1883,7 +1894,7 @@
               [outC, baseC, thumbC].forEach(freeCanvas);
               var prov = (opts.prov || []).concat([{ on: today(), crop: JSON.stringify(fin.crop) !== JSON.stringify(st0.crop), r: fin.orient.r, m: fin.orient.m, redact: fin.redact.length, ann: fin.ann.length }]).slice(-10);
               // The orientation change made here is kept with the image on this phone (turns and a mirror only).
-              close({ blob: r[0], thumb: r[1], w: w, h: h, declared: true, kind: 'image', edits: { r: fin.orient.r, m: fin.orient.m }, base: r[2] || null, annot: hasAnn ? { v: 1, ann: EDT.cleanAnn(fin.ann) } : null, prov: prov });
+              close({ blob: r[0], thumb: r[1], w: w, h: h, declared: true, kind: 'image', edits: EDT.composeOrient(opts.prior, fin.orient), base: r[2] || null, annot: hasAnn ? { v: 1, ann: EDT.cleanAnn(fin.ann) } : null, prov: prov });
             }).catch(function () { saving = false; ed.fail(T('Could not prepare the image. Try again.')); });
           }
         });
@@ -2630,6 +2641,7 @@
             var L3 = S.links || {}, still = (L3.supervisors || []).some(function (x) { return String(x.id) === String(o.linkId); }) || (L3.learners || []).some(function (x) { return String(x.linkId) === String(o.linkId); }) || (L3.invites || []).some(function (x) { return String(x.id) === String(o.linkId); });
             if (res.ended === false || (res.ended === undefined && still)) { busy(go2, false); err.textContent = T('Wavelength could not confirm the change. Supervision has not been ended. Try again.'); err.hidden = false; return; }
             NAT.haptic('success');
+            S.sv = null;
             var when = res.link && res.link.endedAt ? fmt(res.link.endedAt) : fmt(today());
             var msg = o.active ? T('Supervision ended on {date}. Wavelength has recorded the change.', { date: when }) : learner ? T('Invitation cancelled.') : T('Invitation declined.');
             var back = learner && res.returned ? '<p class="small">' + esc(T('{n} open requests came back to you. Send them to another supervisor or cancel them under Your supervisors.', { n: res.returned })) + '</p>' : '';
@@ -2823,8 +2835,10 @@
   // are never kept on this device, so offline the dashboard says so rather than showing old copies.
   var SVF = { all: 'All scans', supervised: 'Supervised scans', signed: 'Signed-off scans', unsigned: 'Not signed off' };
   function svFetch(id) {
-    if (S.sv && S.sv.learner && String(S.sv.learner.id) === String(id) && Date.now() - (S.sv._at || 0) < 15000) return Promise.resolve(S.sv);
-    return api('/api/app/supervise/learner?id=' + encodeURIComponent(id)).then(function (res) { if (res.ok) { res._at = Date.now(); S.sv = res; } else if (S.sv && String((S.sv.learner || {}).id) === String(id)) S.sv = null; return res; });
+    // A short cache for moving between a learner's tiles, tied to this login: never shown to another account.
+    var me = S.account && S.account.id;
+    if (S.sv && me && S.sv._acc === me && S.sv.learner && String(S.sv.learner.id) === String(id) && Date.now() - (S.sv._at || 0) < 15000) return Promise.resolve(S.sv);
+    return api('/api/app/supervise/learner?id=' + encodeURIComponent(id)).then(function (res) { if (res.ok) { res._at = Date.now(); res._acc = me; S.sv = res; } else if (S.sv && String((S.sv.learner || {}).id) === String(id)) S.sv = null; return res; });
   }
   function svFail(title, back, ex) {
     mount(shell({ title: title, back: back }, '<div class="card"><p class="small" role="status">' + esc(netFail(ex) ? T('You are offline. Your learners\' records are only shown while you are connected, and are not kept on this phone.') : (ex && ex.message) || T('Could not load.')) + '</p><div class="btns"><a class="btn" href="#/supervise">' + esc(T('Your learners')) + '</a></div></div>'));
@@ -2837,14 +2851,16 @@
       if (route().name !== 'supervise' || route().arg !== String(id) || route().arg2) return;
       if (!res.ok) { mount(shell({ title: T('Learner'), back: 'supervise' }, '<div class="err">' + esc(res.error || T('Could not load.')) + '</div>')); return; }
       var sm = res.summary;
+      // An older Worker sends no counts and has no scans list: the scan tiles and module rows are then not links.
+      var drill = !!res.counts;
       var cn = res.counts || { scans: sm.scans, supervised: sm.supervised, signed: sm.signed, assessments: (res.assessments || []).length, requests: (res.signoffRequests || []).length + (res.assessmentRequests || []).length };
       var paths = sm.pathways.map(function (p) {
-        return '<div class="card"><h3>' + esc(p.label) + '</h3>' + p.modules.map(function (m) { var tracked = m.total || m.supTarget || (m.assessments || []).length; return '<a class="evmod" href="#/supervise/' + esc(id) + '/scans?module=' + encodeURIComponent(p.id + ':' + m.id) + '" aria-label="' + esc(T('{label}: show the scans that count', { label: T(m.label) })) + '"><div class="row"><b class="grow">' + esc(T(m.label)) + '</b>' + (m.met ? '<span class="chip green">' + esc(T('Met')) + '</span>' : tracked ? '<span class="chip amber">' + m.percent + '%</span>' : '<span class="chip">' + m.logged + '</span>') + '</div><p class="small muted" style="margin:2px 0 0">' + esc(T('Scans {a} · Supervised {b} · Signed off {c}', { a: m.counted + (m.total ? ' / ' + m.total : ''), b: m.supervised + (m.supTarget ? ' / ' + m.supTarget : ''), c: m.signed })) + ((m.gaps || []).length ? '<br>' + esc(T('Still needed: {list}', { list: m.gaps.slice(0, 3).map(gapText).join(', ') })) : '') + '</p></a>'; }).join('') + '</div>';
+        return '<div class="card"><h3>' + esc(p.label) + '</h3>' + p.modules.map(function (m) { var tracked = m.total || m.supTarget || (m.assessments || []).length; return (drill ? '<a class="evmod" href="#/supervise/' + esc(id) + '/scans?module=' + encodeURIComponent(p.id + ':' + m.id) + '" aria-label="' + esc(T('{label}: show the scans that count', { label: T(m.label) })) + '">' : '<div class="evmod">') + '<div class="row"><b class="grow">' + esc(T(m.label)) + '</b>' + (m.met ? '<span class="chip green">' + esc(T('Met')) + '</span>' : tracked ? '<span class="chip amber">' + m.percent + '%</span>' : '<span class="chip">' + m.logged + '</span>') + '</div><p class="small muted" style="margin:2px 0 0">' + esc(T('Scans {a} · Supervised {b} · Signed off {c}', { a: m.counted + (m.total ? ' / ' + m.total : ''), b: m.supervised + (m.supTarget ? ' / ' + m.supTarget : ''), c: m.signed })) + ((m.gaps || []).length ? '<br>' + esc(T('Still needed: {list}', { list: m.gaps.slice(0, 3).map(gapText).join(', ') })) : '') + '</p>' + (drill ? '</a>' : '</div>'); }).join('') + '</div>';
       }).join('');
       var reqs = (res.signoffRequests || []).map(function (s) { return '<div class="card"><div class="row"><div class="grow"><b>' + esc(T('Sign-off request')) + '</b><p class="small muted" style="margin:0">' + esc(plural(s.count, 'scan') + ' · ' + fmt(s.at)) + '</p></div><button class="btn teal sm" data-sv-so="' + esc(s.code) + '">' + esc(T('Review and sign')) + '</button></div></div>'; }).join('') +
         (res.assessmentRequests || []).map(function (a, i) { return '<div class="card"><div class="row"><div class="grow"><b>' + esc(kindLabel(a.kind)) + '</b><p class="small muted" style="margin:0">' + esc(a.pathwayLabel + ' · ' + T(a.moduleLabel)) + '</p></div><button class="btn teal sm" data-sv-as="' + i + '">' + esc(T('Assess')) + '</button></div></div>'; }).join('');
       var recent = res.recent.slice(0, 20).map(svScanCard).join('');
-      var tile = function (n, label, href) { return '<a class="stat" href="#/supervise/' + esc(id) + '/' + href + '" aria-label="' + esc(T('{label}: {n}. Show these records.', { label: label, n: n })) + '"><b>' + n + '</b><span>' + esc(label) + '</span>' + SI.chev.replace('class="chev flip"', 'class="stat-go flip"') + '</a>'; };
+      var tile = function (n, label, href) { if (!drill && href.indexOf('scans') === 0) return '<div class="stat"><b>' + n + '</b><span>' + esc(label) + '</span></div>'; return '<a class="stat" href="#/supervise/' + esc(id) + '/' + href + '" aria-label="' + esc(T('{label}: {n}. Show these records.', { label: label, n: n })) + '"><b>' + n + '</b><span>' + esc(label) + '</span>' + SI.chev.replace('class="chev flip"', 'class="stat-go flip"') + '</a>'; };
       var linkId = (res.link && res.link.id) || (((S.links || {}).learners || []).find(function (x) { return String(x.id) === String(id); }) || {}).linkId;
       var since = (res.link && res.link.since) || (((S.links || {}).learners || []).find(function (x) { return String(x.id) === String(id); }) || {}).since;
       mount(shell({ title: res.learner.name, back: 'supervise' },
@@ -2855,7 +2871,7 @@
         '<div class="btns"><button class="btn teal block" id="newas">' + esc(T('Record an assessment')) + '</button></div>' +
         '<h2 class="sec">' + esc(T('Progress')) + '</h2>' + paths +
         ((res.assessments || []).length ? '<h2 class="sec">' + esc(T('Assessments')) + ' <a href="#/supervise/' + esc(id) + '/assessments">' + esc(T('All')) + '</a></h2>' + res.assessments.slice(0, 5).map(asmRow).join('') : '') +
-        '<h2 class="sec">' + esc(T('Recent scans')) + ' <a href="#/supervise/' + esc(id) + '/scans?f=all">' + esc(T('All scans')) + '</a></h2>' + (recent || '<p class="muted small">' + esc(T('No scans yet.')) + '</p>') +
+        '<h2 class="sec">' + esc(T('Recent scans')) + (drill ? ' <a href="#/supervise/' + esc(id) + '/scans?f=all">' + esc(T('All scans')) + '</a>' : '') + '</h2>' + (recent || '<p class="muted small">' + esc(T('No scans yet.')) + '</p>') +
         '<p class="small muted" style="margin-top:14px">' + esc(T('You see written records only. Images stay on the learner\'s phone, or reach you encrypted through the links they send.')) + '</p>' +
         (linkId ? '<h2 class="sec">' + esc(T('Supervision')) + '</h2><div class="card"><p class="small">' + esc(since ? T('You have supervised {name} through Wavelength since {date}.', { name: res.learner.name, date: fmt(since) }) : T('You supervise {name} through Wavelength.', { name: res.learner.name })) + '</p><p class="small muted">' + esc(T('Ending supervision stops your access to their records. Nothing you have signed is deleted.')) + '</p><div class="btns"><button class="btn ghost block" style="color:var(--red)" data-end>' + esc(T('End supervision')) + '</button>' + guideLink() + '</div></div>' : '')));
       $$('[data-asm]').forEach(function (el) { el.onclick = function () { var a = res.assessments.find(function (x) { return x.id === el.dataset.asm; }); if (a) asmDetail(Object.assign({}, a, { _learner: id })); }; });

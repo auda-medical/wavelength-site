@@ -23,6 +23,14 @@
     if (act === 'flipv') return { r: (6 - o.r) % 4, m: !o.m };
     return o;
   }
+  // The orientation of a picture turned by prior and then, in a later session, by o (each a mirror first, then turns):
+  // what a re-edited image reports as the change from the original photo.
+  function composeOrient(prior, o) {
+    var t = prior && (prior.r || prior.m) ? { r: ((Number(prior.r) || 0) % 4 + 4) % 4, m: !!prior.m } : { r: 0, m: false };
+    if (o.m) t = orientAfter(t, 'fliph');
+    for (var i = 0; i < o.r; i++) t = orientAfter(t, 'rotate');
+    return t;
+  }
   // Output size for a crop and orientation at scale k.
   function outSize(crop, orient, k) { var w = crop.w * k, h = crop.h * k; return orient.r % 2 ? { w: h, h: w } : { w: w, h: h }; }
   // The canvas transform that draws the cropped frame (at scale k) turned and mirrored.
@@ -270,25 +278,31 @@
   }
   // Annotation data kept with a saved photo or clip: only what is needed to draw them again. Text is clipped, numbers
   // are rounded, unknown fields are dropped (so nothing else can ride along into backups).
+  // Annotations from storage or a backup file: only known shapes and fields, every number finite and within range, so
+  // a damaged or hand-made file cannot throw or draw something absurd.
   function cleanAnn(list) {
-    var r4 = function (v) { return Math.round(Number(v) * 1e4) / 1e4; };
-    return (list || []).slice(0, 60).map(function (a) {
-      if (TYPES.indexOf(a.type) < 0) return null;
-      var o = { type: a.type, x: r4(a.x), y: r4(a.y), color: COLOURS[a.color] ? a.color : 'white' };
-      if (a.type === 'text') { o.text = String(a.text || '').slice(0, 80); o.bg = a.bg === 'box' ? 'box' : 'outline'; }
-      if (a.type === 'arrow') { o.x2 = r4(a.x2); o.y2 = r4(a.y2); }
-      if (a.type === 'circle' || a.type === 'rect') { o.w = r4(a.w); o.h = r4(a.h); }
-      if (a.type === 'picto') { if (!PICTO[a.picto]) return null; o.picto = a.picto; if (a.flip) o.flip = true; }
-      if (a.size) o.size = r4(a.size);
-      if (a.rot) o.rot = Math.round(Number(a.rot)) % 360;
-      if (a.t0 != null) o.t0 = Math.round(a.t0 * 100) / 100;
-      if (a.t1 != null) o.t1 = Math.round(a.t1 * 100) / 100;
-      return o;
-    }).filter(Boolean);
+    var num = function (v, lo, hi) { v = Number(v); return isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v * 1e4) / 1e4)) : null; };
+    var bad = false;
+    var out = (Array.isArray(list) ? list : []).slice(0, 60).map(function (a) {
+      if (!a || typeof a !== 'object' || TYPES.indexOf(a.type) < 0) return null;
+      bad = false;
+      var n = function (v, lo, hi) { var r = num(v, lo, hi); if (r === null) bad = true; return r; };
+      var o = { type: a.type, x: n(a.x, 0, 1), y: n(a.y, 0, 1), color: typeof a.color === 'string' && COLOURS.hasOwnProperty(a.color) ? a.color : 'white' };
+      if (a.type === 'text') { o.text = String(a.text == null ? '' : a.text).slice(0, 80); o.bg = a.bg === 'box' ? 'box' : 'outline'; }
+      if (a.type === 'arrow') { o.x2 = n(a.x2, 0, 1); o.y2 = n(a.y2, 0, 1); }
+      if (a.type === 'circle' || a.type === 'rect') { o.w = n(a.w, -1, 1); o.h = n(a.h, -1, 1); }
+      if (a.type === 'picto') { if (typeof a.picto !== 'string' || !PICTO.hasOwnProperty(a.picto)) return null; o.picto = a.picto; if (a.flip) o.flip = true; }
+      if (a.size != null && a.size !== 0) o.size = n(a.size, 0.01, 1);
+      if (a.rot) { var rt = num(a.rot, -3600, 3600); if (rt !== null) o.rot = Math.round(rt) % 360; }
+      if (a.t0 != null) { var t0 = num(a.t0, 0, 600); if (t0 !== null) o.t0 = Math.round(t0 * 100) / 100; }
+      if (a.t1 != null) { var t1 = num(a.t1, 0, 600); if (t1 !== null) o.t1 = Math.round(t1 * 100) / 100; }
+      return bad ? null : o;
+    });
+    return out.filter(Boolean);
   }
 
   root.WLEditor = {
-    orientAfter: orientAfter, outSize: outSize, setOrient: setOrient, toSrc: toSrc, toOut: toOut, rectToSrc: rectToSrc, clampRect: clampRect,
+    orientAfter: orientAfter, composeOrient: composeOrient, outSize: outSize, setOrient: setOrient, toSrc: toSrc, toOut: toOut, rectToSrc: rectToSrc, clampRect: clampRect,
     mapAnnotations: mapAnnotations, annAt: annAt, drawFrame: drawFrame, drawAnn: drawAnn, annBounds: annBounds, hit: hit, describe: describe, cleanAnn: cleanAnn,
     COLOURS: COLOURS, SIZES: SIZES, PICTOS: PICTOS, PICTO: PICTO, PRESETS: PRESETS, GROUP_LABEL: GROUP_LABEL, groupsFor: groupsFor, pictosFor: pictosFor
   };

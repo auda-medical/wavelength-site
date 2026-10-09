@@ -392,7 +392,7 @@ export function linkState(link, sup, enforced) {
 //   awaiting_approval                   application sent, registration verified (or not needed), decision pending
 //   approved                            active link, current Wavelength approval
 //   not_verified                        active link without approval while approval is not enforced
-//   paused                              approval held but not current (a lapse); no new verified supervision
+//   paused                              reserved (sent by no current Worker: a lapse reads as not_verified or unavailable)
 //   unavailable                         not available for supervision through Wavelength at present
 //   ended                               the relationship has ended
 export function relationshipStage(link, sup, enforced) {
@@ -402,7 +402,8 @@ export function relationshipStage(link, sup, enforced) {
   if (sup && sup.current.length) return link.status === 'active' ? 'approved' : 'awaiting_approval';
   const open = sup && sup.open && sup.open.status !== 'draft' ? sup.open : null;
   if (open) return sup.status && !sup.status.hasReg ? 'awaiting_professional_verification' : 'awaiting_approval';
-  if (sup && sup.standing === 'paused') return 'paused';
+  // A lapse is the supervisor's own business: the learner sees what linkState showed (not verified, or unavailable).
+  if (sup && sup.standing === 'paused') return enforced || link.status === 'pending' ? 'unavailable' : 'not_verified';
   if (sup && ['expired', 'withdrawn', 'revoked'].includes(sup.standing) && (enforced || link.status === 'pending')) return 'unavailable';
   if (link.status === 'pending') return 'verification_not_submitted';
   return enforced ? 'unavailable' : 'not_verified';

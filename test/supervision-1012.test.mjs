@@ -156,7 +156,9 @@ test('relationship stages keep the relationship apart from verification and neve
   assert.equal(relationshipStage(L({ status: 'pending' }), st({ open: { status: 'more_info' }, status: { hasReg: true } }), true), 'awaiting_approval');
   assert.equal(relationshipStage(L(), st({ current: [{}], standing: 'active' }), true), 'approved');
   assert.equal(relationshipStage(L(), st(), false), 'not_verified');
-  assert.equal(relationshipStage(L(), st({ standing: 'paused' }), false), 'paused');
+  // A lapse is never shown to the learner as such (review finding 4): it reads as linkState did.
+  assert.equal(relationshipStage(L(), st({ standing: 'paused' }), false), 'not_verified');
+  assert.equal(relationshipStage(L(), st({ standing: 'paused' }), true), 'unavailable');
   assert.equal(relationshipStage(L(), st({ standing: 'revoked', block: { id: 1 } }), false), 'unavailable');
   assert.equal(relationshipStage(L(), st({ standing: 'expired' }), true), 'unavailable');
   assert.equal(relationshipStage(L({ status: 'ended' }), st({ current: [{}] }), true), 'ended');
@@ -170,4 +172,52 @@ test('the learner sees each supervisor with a stage and the requests waiting wit
   assert.equal(s.stage, 'not_verified');
   assert.equal(s.pending, 1);
   assert.ok(s.acceptedAt);
+});
+
+// Review findings, October 2026.
+test('ending and its audit row commit together: a failed write changes nothing, and a retry ends it with one audit row', async () => {
+  const env = makeEnv();
+  const { learner, linkId } = await linked(env, 'i');
+  const real = env.DB.batch.bind(env.DB);
+  env.DB.batch = async () => { throw new Error('D1 unavailable'); };
+  const r = await learner.call('/api/app/supervisors/remove', { id: linkId });
+  assert.ok(r.status >= 500, 'the failure is reported, not hidden');
+  assert.equal((await env.DB.prepare('SELECT status FROM supervisor_links WHERE id = ?').bind(linkId).first()).status, 'active');
+  env.DB.batch = real;
+  const ok = await learner.call('/api/app/supervisors/remove', { id: linkId });
+  assert.deepEqual([ok.status, ok.body.ended, ok.body.already], [200, true, false]);
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE action = 'link.end'").first()).n, 1);
+  await learner.call('/api/app/supervisors/remove', { id: linkId });
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE action = 'link.end'").first()).n, 1, 'a repeat writes no second row');
+});
+
+test("a supervisor's own withdrawal reads as theirs, not Wavelength's", async () => {
+  const env = makeEnv();
+  const { learner, sup, linkId } = await linked(env, 'j');
+  await env.DB.prepare("UPDATE supervisor_links SET status = 'ended', ended_at = datetime('now'), ended_by = 'self', ended_reason = 'withdrawn' WHERE id = ?").bind(linkId).run();
+  assert.equal((await learner.call('/api/app/supervisors')).body.ended[0].endedBy, 'them');
+  assert.equal((await sup.call('/api/app/supervisors')).body.ended[0].endedBy, 'you');
+});
+
+test('inviting again keeps how an open request was made; requests past their expiry are not counted as waiting', async () => {
+  const env = makeEnv();
+  const { learner, linkId } = await linked(env, 'k');
+  await env.DB.prepare("UPDATE supervisor_links SET status = 'pending', via = 'search' WHERE id = ?").bind(linkId).run();
+  await learner.call('/api/app/supervisors/add', { email: 'sup.k@x.co' });
+  assert.equal((await env.DB.prepare('SELECT via FROM supervisor_links WHERE id = ?').bind(linkId).first()).via, 'search');
+  // Pending count: an expired dashboard request is not "waiting with them".
+  await env.DB.prepare("UPDATE supervisor_links SET status = 'active', via = 'email' WHERE id = ?").bind(linkId).run();
+  const so = await learner.call('/api/app/signoff/request', { entryIds: ['scank000001'], supervisorLink: linkId });
+  assert.equal((await learner.call('/api/app/supervisors')).body.supervisors[0].pending, 1);
+  await env.DB.prepare('UPDATE signoffs SET expires_at = ? WHERE id = ?').bind(Date.now() - 1000, so.body.code).run();
+  assert.equal((await learner.call('/api/app/supervisors')).body.supervisors[0].pending, 0);
+});
+
+test('a made-up pathway in the module filter gives an empty list, never an error', async () => {
+  const env = makeEnv();
+  const { sup, lid } = await linked(env, 'l');
+  for (const m of ['__proto__:x', 'constructor:x', 'toString:aaa', 'nope:aaa']) {
+    const r = await sup.call(`/api/app/supervise/learner/scans?id=${lid}&module=${encodeURIComponent(m)}`);
+    assert.deepEqual([r.status, r.body.total], [200, 0], m);
+  }
 });
