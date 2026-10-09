@@ -597,3 +597,62 @@ a.stat:focus-visible { outline: 2px solid var(--teal-l); outline-offset: 3px; }
 .sync-retry { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .sync-help > p:first-child { margin: 0 0 6px; }
 @media (prefers-reduced-motion: reduce) { a.stat:active, .sync-pill:not(.static):active { transform: none; } }
+
+/* ---------- 1.0.11: the scan form in three levels ----------
+   Level 1: a section (card, tinted header band, number, title) that is recognisable while scrolling.
+   Level 2: each question's label, larger and heavier than its answers, with a fine rule between questions.
+   Level 3: the answers (chips with a clear border; selected chips filled, bold and ticked) and quiet hints.
+   Presentation only: field names, values and their order are unchanged. Nothing is collapsed or sticky except the
+   Save button as before. */
+:root { --fs-head: #EEF4F4; --rule: #ECE8E0; --chip-line: #CFC9BD; --fs-n: var(--navy); --fs-n-ink: #F7F5F0; }
+html[data-theme="dark"] { --fs-head: rgba(127,196,204,.075); --rule: #1F3148; --chip-line: #3A5068; --fs-n: #7FC4CC; --fs-n-ink: #0A1526; }
+.scanform .fs { background: var(--card); border: 1px solid var(--line); border-radius: 18px; margin: 0 0 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,30,51,.05); }
+.scanform .fs-h { display: flex; gap: 12px; align-items: center; padding: 8px 14px; background: var(--fs-head); border-bottom: 1px solid var(--line); }
+.scanform .fs-n { width: 24px; height: 24px; border-radius: 50%; background: var(--fs-n); color: var(--fs-n-ink); font: 600 13px/1 var(--sans); display: grid; place-items: center; flex: none; font-variant-numeric: lining-nums; }
+.scanform .fs-t { min-width: 0; }
+.scanform .fs-h h2 { font: 600 16px/1.25 var(--sans); margin: 0; color: var(--ink); letter-spacing: .005em; }
+.scanform .fs-sub { margin: 1px 0 0; font-size: 13px; line-height: 1.35; color: var(--muted); }
+.scanform .fs-sub:empty { display: none; }
+.scanform .fs-b { padding: 2px 14px 2px; }
+.scanform .fs-b > .field, .scanform .fs-b > .two, .scanform #findings > .field { margin: 0; padding: 9px 0 11px; }
+.scanform .fs-b > * + *, .scanform #findings > .field + .field { border-top: 1px solid var(--rule); }
+.scanform .fs-b > .two > .field { margin: 0; }
+/* Level 2: the question. */
+.scanform .field > .lab, .scanform .field > label:not(.check) { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font: 600 15px/1.3 var(--sans); color: var(--ink); margin: 0 0 7px; }
+.scanform .two > .field > label { flex: 1 0 auto; }
+.scanform .req { font: 600 10.5px/1.5 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--sand); border-radius: 999px; padding: 1px 8px; }
+.scanform .lab-note { font: 400 12.5px var(--sans); color: var(--muted); }
+.scanform .field .hint { margin: -4px 0 10px; }
+/* Level 3: the answers. */
+.scanform .seg label { border: 1px solid var(--chip-line); background: var(--field); color: var(--ink); font-size: 14.5px; font-weight: 500; min-height: 40px; padding: 8px 13px; -webkit-tap-highlight-color: transparent; transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .12s ease, box-shadow .15s ease; }
+@media (hover: hover) { .scanform .seg input:not(:checked) + label:hover { border-color: color-mix(in srgb, var(--teal) 55%, var(--chip-line)); } }
+.scanform .seg label:active { transform: scale(.97); }
+.scanform .seg input:checked + label { background: var(--sel); color: var(--sel-ink); border-color: var(--sel); font-weight: 600; box-shadow: 0 1px 3px rgba(10,21,38,.18); }
+/* A tick on every selected answer, so the choice never depends on colour alone. */
+.scanform .seg input:checked + label::before { content: ''; flex: none; width: 13px; height: 13px; margin-inline-end: 7px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12.5l5 5L20 6.5' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12.5l5 5L20 6.5' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+.scanform .seg.types label { border-radius: 14px; min-height: 52px; padding: 9px 12px; }
+.scanform .seg.types { gap: 7px; }
+.scanform .seg.q4 input:checked + label { box-shadow: none; }
+/* Supervision: each level with what it means, as a full-width choice. */
+.scanform .seg.sup { flex-direction: column; align-items: stretch; gap: 6px; }
+.scanform .seg.sup label { display: grid; grid-template-columns: auto 1fr; column-gap: 0; align-items: start; border-radius: 14px; padding: 8px 13px; }
+.scanform .seg.sup label b { grid-column: 2; font-weight: 600; font-size: 15px; }
+.scanform .seg.sup label span { grid-column: 2; font-size: 13px; font-weight: 400; color: var(--muted); line-height: 1.35; margin-top: 1px; }
+.scanform .seg.sup input:checked + label span { color: inherit; opacity: .82; }
+.scanform .seg.sup input:checked + label::before { grid-row: 1; grid-column: 1; margin-top: 4px; }
+.scanform .field > .check { padding: 2px 0; }
+.scanform .gallery { margin-bottom: 4px; }
+.scanform .savebar { position: sticky; bottom: calc(var(--tab) + var(--safe-b) + 8px); margin-top: 6px; }
+.scanform .type-ok { margin: 0 0 14px; }
+/* A section holding a missing required answer shows it in its header too. */
+.scanform .fs:has(.field.invalid) { border-color: var(--red-line); }
+.scanform .fs:has(.field.invalid) .fs-h { background: var(--red-bg); border-bottom-color: var(--red-line); }
+.scanform .fs:has(.field.invalid) .fs-n { background: var(--red); color: #fff; }
+html[data-theme="dark"] .scanform .fs:has(.field.invalid) .fs-n { color: #0A1526; }
+/* The chosen application, marked for a moment before the form moves on. */
+.scanform .seg label.picked { animation: picked .52s ease-out; }
+@keyframes picked { 0% { transform: scale(1); } 35% { transform: scale(1.035); box-shadow: 0 0 0 4px color-mix(in srgb, var(--teal) 35%, transparent); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .scanform .seg label, .scanform .seg label:active { transition: none; transform: none; } .scanform .seg label.picked { animation: none; } }
+.scanform .type-ok .link { min-height: 32px; padding: 4px 2px; }

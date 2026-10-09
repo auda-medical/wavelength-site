@@ -267,7 +267,7 @@ function seed(page, id, entries, kv = {}) {
   const btn = page.locator('a.btn[href="#/new?type=aaa"]').first();
   const has = await btn.count();
   if (has) await btn.click(); else await page.evaluate(() => { location.hash = '#/new?type=aaa'; });
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(1250); // 1.0.11: the chosen application is held for a moment, then the form glides on
   const pos = await page.evaluate(() => {
     const head = document.querySelector('.top').getBoundingClientRect().bottom, row = document.getElementById('date').closest('.two').getBoundingClientRect();
     const typeOk = document.getElementById('typeok').textContent, checked = (document.querySelector('input[name=type]:checked') || {}).value;
@@ -275,7 +275,8 @@ function seed(page, id, entries, kv = {}) {
   });
   await shot(page, '12-aaa-log-one');
   record('F1', 'AAA Log one: Abdominal aorta preselected and confirmed', pos.checked === 'aaa' && /Abdominal aorta \(AAA\) selected/.test(pos.typeOk), `${has ? 'from Progress' : 'direct link'}; checked ${pos.checked}; "${pos.typeOk}"`);
-  record('F2', 'AAA Log one: the confirmation and the date row sit just below the fixed header, date briefly marked', pos.scrolled > 100 && pos.gap >= 0 && pos.gap <= 90 && pos.okVisible && pos.marked, `scrollY ${pos.scrolled}, date row ${pos.gap}px below header, confirmation visible ${pos.okVisible}, marked ${pos.marked}`);
+  // 1.0.11: the "Scan details" section header sits between the confirmation and the date row.
+  record('F2', 'AAA Log one: the confirmation and the date row sit just below the fixed header, date briefly marked', pos.scrolled > 100 && pos.gap >= 0 && pos.gap <= 140 && pos.okVisible && pos.marked, `scrollY ${pos.scrolled}, date row ${pos.gap}px below header, confirmation visible ${pos.okVisible}, marked ${pos.marked}`);
   record('F3', 'AAA Log one: no keyboard or date picker opened (no input focused)', !(pos.focusTag === 'INPUT' || pos.focusTag === 'SELECT' || pos.focusTag === 'TEXTAREA'), `focus on ${pos.focusTag} ${pos.focusType || ''}`);
   // F4: the general Log a scan still starts at the application choice.
   await page.evaluate(() => { location.hash = '#/'; }); await page.waitForTimeout(200);

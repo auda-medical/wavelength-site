@@ -300,13 +300,15 @@
   }
   function setSyncDot() {
     var st = syncState(), text = syncText(st), n = pendingList().length, now = Date.now();
-    if (st !== BAN.st) { if (st === 'synced') { if (BAN.shown) BAN.okUntil = now + 3000; BAN.shown = false; } BAN.st = st; BAN.at = now; }
-    var settle = st === 'pending' ? 3000 : st === 'syncing' ? 800 : 0, age = now - BAN.at;
-    var b = NETR.banner(st, n, { settled: age >= settle, justSynced: now < BAN.okUntil });
+    // While a retry the learner asked for runs, the warning it came from stays (with Trying…) instead of vanishing.
+    var bst = st === 'syncing' && SY.userWaiting && SY.fail ? (SY.fail === 'timeout' ? 'unreachable' : SY.fail) : st;
+    if (bst !== BAN.st) { if (bst === 'synced') { if (BAN.shown) BAN.okUntil = now + 3000; BAN.shown = false; } BAN.st = bst; BAN.at = now; }
+    var settle = bst === 'pending' ? 3000 : bst === 'syncing' ? 800 : 0, age = now - BAN.at;
+    var b = NETR.banner(bst, n, { settled: age >= settle, justSynced: now < BAN.okUntil });
     clearTimeout(BAN.timer);
     if (settle && age < settle) BAN.timer = setTimeout(setSyncDot, settle - age + 20);
-    else if (b && st === 'synced') BAN.timer = setTimeout(setSyncDot, BAN.okUntil - now + 20);
-    if (b && st !== 'synced') BAN.shown = true; // a warning was on screen: confirm briefly once everything has synced
+    else if (b && bst === 'synced') BAN.timer = setTimeout(setSyncDot, BAN.okUntil - now + 20);
+    if (b && bst !== 'synced') BAN.shown = true; // a warning was on screen: confirm briefly once everything has synced
     var cls = NETR.pill(st).cls, inner = pillInner(st);
     $$('button.sync-pill').forEach(function (a) {
       a.className = 'sync-pill p-' + cls;
@@ -315,7 +317,7 @@
       a.setAttribute('aria-label', T(NETR.pill(st).label, { n: n }) + '. ' + (text ? T('Sync status: {status}', { status: text }) : T('Sync status')) + ' ' + T('Open sync details.'));
     });
     $$('[data-syncbanner]').forEach(function (el) {
-      var html = b ? bannerHtml(b, n) : '', key = (b ? st + n + (userBusy() ? 's' : '') + (NETR.deviceOnline(deviceNet()) ? '' : 'o') : '');
+      var html = b ? bannerHtml(b, n) : '', key = (b ? bst + n + (userBusy() ? 's' : '') + (NETR.deviceOnline(deviceNet()) ? '' : 'o') : '');
       if (el.dataset.k === key) return;
       el.dataset.k = key;
       if (!b) { el.hidden = true; el.innerHTML = ''; return; }
@@ -323,7 +325,7 @@
       // Fades in only when the status itself changes, not every time a screen is drawn.
       el.classList.toggle('in', BAN.key !== key);
     });
-    BAN.key = b ? st + n + (userBusy() ? 's' : '') + (NETR.deviceOnline(deviceNet()) ? '' : 'o') : '';
+    BAN.key = b ? bst + n + (userBusy() ? 's' : '') + (NETR.deviceOnline(deviceNet()) ? '' : 'o') : '';
     $$('[data-syncpanel]').forEach(fillSyncPanel);
   }
   // Retry Sync from a banner or the details panel: start the back-off again and send entries the server refused.
@@ -597,12 +599,36 @@
   }
   // Scrolls a field into view just below the sticky header (and above the sticky Save bar), so nothing the
   // learner still has to fill in sits hidden under either.
+  // 1.0.11: a guided glide rather than a jump. One programmatic scroll at a time, eased over 260 to 460 ms depending
+  // on the distance (Android WebView's own smooth scrolling is instant on some phones). The learner's own touch,
+  // wheel or key stops it at once, and ordinary swiping is untouched: this only runs when the app moves the form on
+  // purpose (Log one, a new application, a missing required field). With reduced motion it jumps. Returns a promise
+  // that settles when the glide ends.
+  // glide.timer: a glide waiting to start (the pause after Log one). The learner's input, or any newer glide (a
+  // missing required field), cancels it, so a late "go to the date" never pulls the form away from what they are doing.
+  var glide = { id: 0, timer: 0 };
+  function stopGlide() { glide.id++; clearTimeout(glide.timer); glide.timer = 0; }
+  ['touchstart', 'wheel', 'keydown', 'pointerdown'].forEach(function (t) { window.addEventListener(t, stopGlide, { passive: true, capture: true }); });
+  function reducedMotion() { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
   function scrollToField(el, smooth) {
-    if (!el) return;
+    if (!el) return Promise.resolve();
     var top = $('.top'), head = top ? top.getBoundingClientRect().bottom : 0;
-    var y = el.getBoundingClientRect().top + window.pageYOffset - Math.max(0, head) - 14;
-    var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top: Math.max(0, y), behavior: smooth && !still ? 'smooth' : 'auto' });
+    var to = Math.max(0, Math.min(el.getBoundingClientRect().top + window.pageYOffset - Math.max(0, head) - 14, document.documentElement.scrollHeight - window.innerHeight));
+    clearTimeout(glide.timer); glide.timer = 0;
+    var from = window.pageYOffset, dist = to - from, id = ++glide.id;
+    if (!smooth || reducedMotion() || Math.abs(dist) < 4) { window.scrollTo(0, to); return Promise.resolve(); }
+    var ms = Math.max(260, Math.min(460, 180 + Math.abs(dist) * 0.25)), t0 = 0;
+    var ease = function (x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+    return new Promise(function (done) {
+      var step = function (now) {
+        if (id !== glide.id) return done();
+        if (!t0) t0 = now;
+        var k = Math.min(1, (now - t0) / ms);
+        window.scrollTo(0, Math.round(from + dist * ease(k)));
+        if (k < 1) requestAnimationFrame(step); else done();
+      };
+      requestAnimationFrame(step);
+    });
   }
   function go(h) { if (location.hash === '#/' + h) render(); else location.hash = '#/' + h; }
   // A scan form with unsaved changes asks before any navigation (header back, tabs, links, the Android back button).
@@ -1067,16 +1093,17 @@
     texts.forEach(function (t) { GUARD.forEach(function (g) { if (t && g[0].test(t) && hits.indexOf(g[1]) < 0) hits.push(g[1]); }); });
     return hits.map(function (h) { return T(h); });
   }
-  function seg(name, opts, v, cls) {
-    return '<div class="seg ' + (cls || '') + '">' + opts.map(function (o, i) {
+  // labId: the id of the question's label, so screen readers announce the answers as one labelled group.
+  function seg(name, opts, v, cls, labId) {
+    return '<div class="seg ' + (cls || '') + '"' + (labId ? ' role="radiogroup" aria-labelledby="' + labId + '"' : '') + '>' + opts.map(function (o, i) {
       var id2 = typeof o === 'string' ? o : o.id, l = typeof o === 'string' ? o : o.label, id = name.replace(/\W/g, '') + i;
       return '<input type="radio" name="' + name + '" id="' + id + '" value="' + esc(id2) + '"' + (v === id2 ? ' checked' : '') + '><label for="' + id + '">' + esc(T(l)) + '</label>';
     }).join('') + '</div>';
   }
   function fieldHtml(fd, v) {
     var n = 'f.' + fd.id, id = 'f_' + fd.id;
-    if (fd.type === 'choice') return '<div class="field"><span class="lab">' + esc(T(fd.label)) + '</span>' + seg(n, fd.options, v) + '</div>';
-    if (fd.type === 'multi') return '<div class="field"><span class="lab">' + esc(T(fd.label)) + '</span><div class="seg">' + fd.options.map(function (o, i) { return '<input type="checkbox" name="' + n + '" id="' + id + i + '" value="' + esc(o) + '"' + ((v || []).indexOf(o) >= 0 ? ' checked' : '') + '><label for="' + id + i + '">' + esc(T(o)) + '</label>'; }).join('') + '</div></div>';
+    if (fd.type === 'choice') return '<div class="field"><span class="lab" id="q-' + fd.id + '">' + esc(T(fd.label)) + '</span>' + seg(n, fd.options, v, '', 'q-' + fd.id) + '</div>';
+    if (fd.type === 'multi') return '<div class="field"><span class="lab" id="q-' + fd.id + '">' + esc(T(fd.label)) + '<span class="lab-note">' + esc(T('Choose all that apply')) + '</span></span><div class="seg multi" role="group" aria-labelledby="q-' + fd.id + '">' + fd.options.map(function (o, i) { return '<input type="checkbox" name="' + n + '" id="' + id + i + '" value="' + esc(o) + '"' + ((v || []).indexOf(o) >= 0 ? ' checked' : '') + '><label for="' + id + i + '">' + esc(T(o)) + '</label>'; }).join('') + '</div></div>';
     if (fd.type === 'number') return '<div class="field"><label for="' + id + '">' + esc(T(fd.label)) + (fd.unit ? ' (' + fd.unit + ')' : '') + '</label><input id="' + id + '" name="' + n + '" type="number" inputmode="decimal" step="any" value="' + esc(v == null ? '' : v) + '"></div>';
     return '<div class="field"><label for="' + id + '">' + esc(T(fd.label)) + '</label><input id="' + id + '" name="' + n + '" type="text" value="' + esc(v || '') + '"></div>';
   }
@@ -1131,31 +1158,43 @@
     var mine = {}; myPaths().forEach(function (pid) { PATHS[pid].modules.forEach(function (m) { m.types.forEach(function (t) { mine[t] = 1; }); }); });
     var ordered = C.types.slice().sort(function (a, b) { return (mine[b.id] || 0) - (mine[a.id] || 0); });
     var supNames = []; live().forEach(function (x) { if (x.supervisor && supNames.indexOf(x.supervisor) < 0) supNames.push(x.supervisor); });
-    var body = '<form id="ef" novalidate>' +
+    // 1.0.11: the form in clearly marked sections (presentation only: every field, value and name is unchanged).
+    // Level 1, a section with a numbered header; level 2, each question's label; level 3, its answers and hints.
+    var secN = 0;
+    var section = function (key, title, inner, sub) { secN++; return '<section class="fs" id="fs-' + key + '" aria-labelledby="fsh-' + key + '"><header class="fs-h"><span class="fs-n" aria-hidden="true">' + secN + '</span><div class="fs-t"><h2 id="fsh-' + key + '">' + esc(title) + '</h2>' + (sub ? '<p class="fs-sub" id="fss-' + key + '">' + esc(sub) + '</p>' : '') + '</div></header><div class="fs-b">' + inner + '</div></section>'; };
+    var req = '<span class="req">' + esc(T('Required')) + '</span>';
+    var supOpts = '<div class="seg col sup" role="radiogroup" aria-labelledby="lab-supervision">' + C.supervision.map(function (o, i) { return '<input type="radio" name="supervision" id="supervision' + i + '" value="' + esc(o.id) + '"' + (e.supervision === o.id ? ' checked' : '') + ' aria-describedby="suph' + i + '"><label for="supervision' + i + '"><b>' + esc(T(o.label)) + '</b>' + (o.help ? '<span id="suph' + i + '">' + esc(T(o.help)) + '</span>' : '') + '</label>'; }).join('') + '</div>';
+    var body = '<form id="ef" class="scanform" novalidate>' +
       (copyFrom ? '<div class="ok">' + esc(T('Same patient as your {type} scan. Choose the next application.', { type: T((TYPES[copyFrom.type] || {}).label || '') })) + '</div>' : '') +
-      '<div class="field" data-req="type"><span class="lab" id="lab-type">' + esc(T('Application')) + '</span><div class="seg types">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>' +
+      section('type', T('Application'), '<div class="field" data-req="type"><span class="lab" id="lab-type">' + esc(T('Which scan did you do?')) + req + '</span><div class="seg types" role="radiogroup" aria-labelledby="lab-type">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>') +
       '<div id="rest"' + (e.type ? '' : ' hidden') + '>' +
       '<p class="type-ok" id="typeok" aria-live="polite"></p>' +
-      '<div class="two"><div class="field" data-req="date"><label for="date">' + esc(T('Date')) + '</label><input id="date" name="date" type="date" max="' + today() + '" value="' + esc(e.date) + '" required></div>' +
-      '<div class="field"><label for="setting">' + esc(T('Setting')) + '</label><select id="setting" name="setting"><option value="">' + esc(T('Choose')) + '</option>' + C.settings.map(function (s) { return '<option value="' + esc(s) + '"' + (e.setting === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
-      '<div class="two"><div class="field"><label for="age">' + esc(T('Age band')) + '</label><select id="age" name="age"><option value="">' + esc(T('Not recorded')) + '</option>' + C.ageBands.map(function (s) { return '<option value="' + esc(s) + '"' + (e.age === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="field"><label for="sex">' + esc(T('Sex')) + '</label><select id="sex" name="sex"><option value="">' + esc(T('Not recorded')) + '</option>' + ['Female', 'Male'].map(function (s) { return '<option value="' + s + '"' + (e.sex === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
-      '<div class="field"><label for="ind">' + esc(T('Indication')) + '</label><input id="ind" name="indication" type="text" placeholder="' + esc(T('Clinical question, no identifiers')) + '" value="' + esc(e.indication || '') + '"></div>' +
-      '<div id="findings" class="card" style="padding:16px 14px 2px"></div>' +
-      '<div class="field"><span class="lab">' + esc(T('Overall')) + '</span>' + seg('overall', ['Normal', 'Abnormal', 'Indeterminate'], e.overall) + '</div>' +
-      '<div class="field"><span class="lab">' + esc(T('Image quality (your rating)')) + '</span>' + seg('quality', ['Good', 'Adequate', 'Limited', 'Inadequate'], e.quality, 'q4') + '</div>' +
-      '<div class="field"><label for="interp">' + esc(T('Your interpretation')) + '</label><textarea id="interp" name="interpretation" placeholder="' + esc(T('What you saw and what it means')) + '">' + esc(e.interpretation || '') + '</textarea></div>' +
-      '<div class="two"><div class="field"><label for="conf">' + esc(T('Confirmed by')) + '</label><select id="conf" name="confirmation"><option value="">' + esc(T('Not yet')) + '</option>' + C.confirmation.map(function (s) { return '<option value="' + esc(s) + '"' + (e.confirmation === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="field"><label for="conc">' + esc(T('Agreement')) + '</label><select id="conc" name="concordant"><option value="">' + esc(T('Not applicable')) + '</option>' + ['Agreed', 'Partly agreed', 'Disagreed'].map(function (s) { return '<option value="' + s + '"' + (e.concordant === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
-      '<div class="field"><label for="impact">' + esc(T('Impact on management')) + '</label><input id="impact" name="impact" type="text" placeholder="' + esc(T('For example, changed fluid plan, avoided CT')) + '" value="' + esc(e.impact || '') + '"></div>' +
-      '<div class="field" data-req="supervision"><span class="lab" id="lab-supervision">' + esc(T('Supervision')) + '</span>' + seg('supervision', C.supervision, e.supervision) + '</div>' +
-      '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" list="supl" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"><datalist id="supl">' + supNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></div>' +
-      '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>' + esc(T('No sign-off needed for this scan')) + '</span></label></div>' +
-      '<div class="field"><span class="lab">' + esc(T('Images and clips')) + '</span><p class="hint">' + esc(T('Stay on this phone only. Crop and cover identifiers before you save. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
-      '<input type="file" accept="image/*" capture="environment" id="cam" hidden><input type="file" accept="image/*" id="pick" hidden multiple><input type="file" accept="video/*" capture="environment" id="vcam" hidden><input type="file" accept="video/*" id="vpick" hidden></div>' +
-      '<div class="field"><label for="refl">' + esc(T('Reflection')) + '</label><p class="hint">' + esc(T('What you learned and what you will do differently. Counts as a reflective note.')) + '</p><textarea id="refl" name="reflection">' + esc(e.reflection || '') + '</textarea></div>' +
+      section('details', T('Scan details'),
+        '<div class="two"><div class="field" data-req="date"><label for="date">' + esc(T('Date')) + req + '</label><input id="date" name="date" type="date" max="' + today() + '" value="' + esc(e.date) + '" required></div>' +
+        '<div class="field"><label for="setting">' + esc(T('Setting')) + '</label><select id="setting" name="setting"><option value="">' + esc(T('Choose')) + '</option>' + C.settings.map(function (s) { return '<option value="' + esc(s) + '"' + (e.setting === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
+        '<div class="two"><div class="field"><label for="age">' + esc(T('Age band')) + '</label><select id="age" name="age"><option value="">' + esc(T('Not recorded')) + '</option>' + C.ageBands.map(function (s) { return '<option value="' + esc(s) + '"' + (e.age === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field"><label for="sex">' + esc(T('Sex')) + '</label><select id="sex" name="sex"><option value="">' + esc(T('Not recorded')) + '</option>' + ['Female', 'Male'].map(function (s) { return '<option value="' + s + '"' + (e.sex === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
+        '<div class="field"><label for="ind">' + esc(T('Indication')) + '</label><input id="ind" name="indication" type="text" placeholder="' + esc(T('Clinical question, no identifiers')) + '" value="' + esc(e.indication || '') + '"></div>') +
+      section('findings', T('Examination findings'), '<div id="findings"></div>', ' ') +
+      section('interp', T('Interpretation and quality'),
+        '<div class="field"><span class="lab" id="q-overall">' + esc(T('Overall')) + '</span>' + seg('overall', ['Normal', 'Abnormal', 'Indeterminate'], e.overall, '', 'q-overall') + '</div>' +
+        '<div class="field"><span class="lab" id="q-quality">' + esc(T('Image quality (your rating)')) + '</span>' + seg('quality', ['Good', 'Adequate', 'Limited', 'Inadequate'], e.quality, 'q4', 'q-quality') + '</div>' +
+        '<div class="field"><label for="interp">' + esc(T('Your interpretation')) + '</label><textarea id="interp" name="interpretation" placeholder="' + esc(T('What you saw and what it means')) + '">' + esc(e.interpretation || '') + '</textarea></div>') +
+      section('confirm', T('Confirmation and clinical impact'),
+        '<div class="two"><div class="field"><label for="conf">' + esc(T('Confirmed by')) + '</label><select id="conf" name="confirmation"><option value="">' + esc(T('Not yet')) + '</option>' + C.confirmation.map(function (s) { return '<option value="' + esc(s) + '"' + (e.confirmation === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field"><label for="conc">' + esc(T('Agreement')) + '</label><select id="conc" name="concordant"><option value="">' + esc(T('Not applicable')) + '</option>' + ['Agreed', 'Partly agreed', 'Disagreed'].map(function (s) { return '<option value="' + s + '"' + (e.concordant === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
+        '<div class="field"><label for="impact">' + esc(T('Impact on management')) + '</label><input id="impact" name="impact" type="text" placeholder="' + esc(T('For example, changed fluid plan, avoided CT')) + '" value="' + esc(e.impact || '') + '"></div>') +
+      section('supervision', T('Supervision'),
+        '<div class="field" data-req="supervision"><span class="lab" id="lab-supervision">' + esc(T('Level of supervision')) + req + '</span>' + supOpts + '</div>' +
+        '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" list="supl" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"><datalist id="supl">' + supNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></div>' +
+        '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>' + esc(T('No sign-off needed for this scan')) + '</span></label></div>') +
+      section('media', T('Images and clips'),
+        '<div class="field"><p class="hint" id="media-hint">' + esc(T('Stay on this phone only. Crop and cover identifiers before you save. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
+        '<input type="file" accept="image/*" capture="environment" id="cam" hidden><input type="file" accept="image/*" id="pick" hidden multiple><input type="file" accept="video/*" capture="environment" id="vcam" hidden><input type="file" accept="video/*" id="vpick" hidden></div>') +
+      section('reflection', T('Reflection'),
+        '<div class="field"><label for="refl">' + esc(T('Your reflection')) + '</label><p class="hint">' + esc(T('What you learned and what you will do differently. Counts as a reflective note.')) + '</p><textarea id="refl" name="reflection">' + esc(e.reflection || '') + '</textarea></div>') +
       '<div id="counts"></div>' +
-      '<div class="err" hidden></div><div class="btns" style="position:sticky;bottom:calc(var(--tab) + var(--safe-b) + 8px)"><button class="btn teal block" type="submit">' + esc(editing ? T('Save changes') : T('Save scan')) + '</button></div>' +
+      '<div class="err" hidden></div><div class="btns savebar"><button class="btn teal block" type="submit">' + esc(editing ? T('Save changes') : T('Save scan')) + '</button></div>' +
       '</div></form>';
     mount(shell({ title: editing ? T('Edit scan') : copyFrom ? T('Another scan') : T('Log a scan'), back: editing ? 'entry/' + editing.id : '', tab: 'new' }, body));
     var form = $('#ef');
@@ -1166,9 +1205,10 @@
       $('#typeok').innerHTML = '<span class="ok-ic" aria-hidden="true">' + SI.check + '</span><span>' + esc(T('{type} selected', { type: T(t.label) })) + '</span><button type="button" class="link small" data-chgtype>' + esc(T('Change')) + '</button>';
       $('[data-chgtype]', form).onclick = function () { var c = form.querySelector('input[name=type]:checked') || form.querySelector('input[name=type]'); scrollToField(c.closest('.field'), true); c.focus({ preventScroll: true }); };
       var cur = readFindings();
-      $('#findings').innerHTML = '<p class="eyebrow">' + esc(T('{type} findings', { type: T(t.label) })) + '</p>' + t.fields.map(function (fd) { return fieldHtml(fd, cur[fd.id] != null ? cur[fd.id] : (e.type === t.id ? (e.findings || {})[fd.id] : null)); }).join('');
+      $('#fss-findings').textContent = T(t.label);
+      $('#findings').innerHTML = t.fields.map(function (fd) { return fieldHtml(fd, cur[fd.id] != null ? cur[fd.id] : (e.type === t.id ? (e.findings || {})[fd.id] : null)); }).join('');
       var mods = modulesForType(t.id), ex = e.exclude || [];
-      $('#counts').innerHTML = mods.length ? '<div class="field"><span class="lab">' + esc(T('Counts towards')) + '</span><p class="hint">' + esc(T('Untick any target this scan should not count towards.')) + '</p><div class="seg">' + mods.map(function (m, i) { return '<input type="checkbox" name="count" id="cm' + i + '" value="' + m.id + '"' + (ex.indexOf(m.id) < 0 ? ' checked' : '') + '><label for="cm' + i + '">' + esc(m.label) + '</label>'; }).join('') + '</div></div>' : '';
+      $('#counts').innerHTML = mods.length ? '<section class="fs" id="fs-counts" aria-labelledby="fsh-counts"><header class="fs-h"><span class="fs-n" aria-hidden="true">' + (secN + 1) + '</span><div class="fs-t"><h2 id="fsh-counts">' + esc(T('Accreditation pathways')) + '</h2></div></header><div class="fs-b"><div class="field"><span class="lab" id="q-counts">' + esc(T('Counts towards')) + '</span><p class="hint">' + esc(T('Untick any target this scan should not count towards.')) + '</p><div class="seg multi" role="group" aria-labelledby="q-counts">' + mods.map(function (m, i) { return '<input type="checkbox" name="count" id="cm' + i + '" value="' + m.id + '"' + (ex.indexOf(m.id) < 0 ? ' checked' : '') + '><label for="cm' + i + '">' + esc(m.label) + '</label>'; }).join('') + '</div></div></div></section>' : '';
     };
     var readFindings = function () {
       var out = {}, fd = new FormData(form);
@@ -1177,13 +1217,24 @@
     };
     // After the application, the next thing to fill in is the date: bring the Date and Setting row up just below the
     // header and mark it briefly. Nothing is focused, so no keyboard or date picker opens by itself.
-    var toDate = function () {
-      // The confirmation line sits just above the date row: both end up in view below the header.
-      var row = $('#date').closest('.two'); scrollToField($('#typeok') && $('#typeok').textContent ? $('#typeok') : row, true);
-      row.classList.remove('next-up'); void row.offsetWidth; row.classList.add('next-up');
-      setTimeout(function () { row.classList.remove('next-up'); }, 1600);
+    // 1.0.11: guided, not abrupt. The chosen application is marked first, held for a moment so it can be seen, then
+    // the form glides to the confirmation and the date. A later change of state never restarts it (one timer, one
+    // glide); nothing is focused, so no keyboard or date picker opens.
+    var toDate = function (hold) {
+      clearTimeout(glide.timer);
+      var picked = form.querySelector('input[name=type]:checked + label');
+      if (picked) { picked.classList.remove('picked'); void picked.offsetWidth; picked.classList.add('picked'); }
+      glide.timer = setTimeout(function () {
+        glide.timer = 0;
+        if (!document.body.contains(form)) return;
+        var row = $('#date').closest('.two');
+        scrollToField($('#typeok') && $('#typeok').textContent ? $('#typeok') : row, true).then(function () {
+          row.classList.remove('next-up'); void row.offsetWidth; row.classList.add('next-up');
+          setTimeout(function () { row.classList.remove('next-up'); }, 1600);
+        });
+      }, reducedMotion() ? 0 : hold);
     };
-    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; setTimeout(toDate, 60); }); });
+    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; toDate(260); }); });
     form.addEventListener('input', function () { form.dataset.dirty = '1'; });
     // A required field marked as missing clears as soon as it is filled in.
     var clearInvalid = function (ev) { var fl = ev.target.closest && ev.target.closest('.field.invalid'); if (fl && fieldOk(form, fl.dataset.req)) markField(fl, ''); };
@@ -1192,7 +1243,7 @@
     // "Log one" from a pathway (#/new?type=...): the application is already chosen, so go straight on to the date,
     // after the screen has settled at the top (the router scrolls to the top after drawing).
     if (!editing && !copyFrom && e.type && TYPES[e.type]) {
-      setTimeout(function () { if (document.body.contains(form)) { toDate(); announce(T('{type} selected. Next: the date of the scan.', { type: T(TYPES[e.type].label) })); } }, 80);
+      setTimeout(function () { if (document.body.contains(form)) { toDate(420); announce(T('{type} selected. Next: the date of the scan.', { type: T(TYPES[e.type].label) })); } }, 80);
     }
     // Images and clips
     var existing = editing ? (editing.images || []).slice() : [];
