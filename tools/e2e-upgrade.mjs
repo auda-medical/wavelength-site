@@ -163,11 +163,12 @@ await page.waitForTimeout(1500);
 const trText = await page.evaluate(() => document.querySelector('#app').innerText);
 record('U8', 'Both supervisors and both trainees are still linked and shown', [S1, S2].every((s) => supText.includes(s.email) || supText.includes(s.email.split('@')[0]) || supText.includes('sup' + (s === S1 ? '1' : '2'))) && [T1, T2].every((x) => trText.includes(x === T1 ? 'trainee1' : 'trainee2')),
   'supervisors page mentions ' + [S1, S2].filter((s) => supText.includes(s.email)).length + ' emails; trainees page mentions ' + ['trainee1', 'trainee2'].filter((x) => trText.includes(x)).length);
-await page.evaluate(() => { location.hash = '#/me'; });
+// 1.0.11: the version and About are at the end of Settings (no longer repeated on Me).
+await page.evaluate(() => { location.hash = '#/settings'; });
 await page.waitForSelector('.about-foot [data-appver]');
 await page.waitForTimeout(400);
 const foot = await page.evaluate(() => document.querySelector('.about-foot [data-appver]').textContent);
-record('U9', `Me shows Version ${newVersion} (${newCode})`, foot === `Version ${newVersion} (${newCode})`, foot);
+record('U9', `Settings shows Version ${newVersion} (${newCode})`, foot === `Version ${newVersion} (${newCode})`, foot);
 await ctx.close();
 
 // ---------- A second signed-in session (another phone) sees the scan that was saved offline ----------
