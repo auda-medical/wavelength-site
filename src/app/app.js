@@ -286,8 +286,17 @@
       (b.pending ? '<p class="sb-n">' + esc(N(b.pending, '{n} scan waiting to sync.', '{n} scans waiting to sync.')) + '</p>' : '') +
       (b.hint ? '<p class="sb-hint">' + esc(T(b.hint)) + '</p>' : '') +
       (b.progress ? '<span class="sb-prog" aria-hidden="true"><i></i></span>' : '') +
-      (b.retry || b.details ? '<div class="sb-act">' + (b.retry ? '<button type="button" class="btn sm" data-sbretry' + (S.syncing ? ' disabled' : '') + '>' + esc(T('Retry sync')) + '</button>' : '') + (b.details ? '<button type="button" class="link small" data-syncpill>' + esc(T('Details')) + '</button>' : '') + '</div>' : '') +
+      (b.retry || b.details ? '<div class="sb-act">' + (b.retry ? retryButton('btn sm', 'data-sbretry') : '') + (b.details ? '<button type="button" class="link small" data-syncpill>' + esc(T('Details')) + '</button>' : '') + '</div>' : '') +
       '</div></div>';
+  }
+  // Retry sync. Disabled with "Trying…" (and aria-busy) only while an attempt the learner asked for is running; a
+  // quiet automatic retry leaves it as it is, so it does not flicker. Unavailable, with the reason beside it, while
+  // the device has no network at all (a retry could not reach anything).
+  function userBusy() { return !!(S.syncing && S.syncManual) || !!SY.userWaiting; }
+  function retryButton(cls, attr) {
+    if (userBusy()) return '<button type="button" class="' + cls + '" ' + attr + ' disabled aria-busy="true">' + esc(T('Trying…')) + '</button>';
+    if (!NETR.deviceOnline(deviceNet())) return '<button type="button" class="' + cls + '" ' + attr + ' disabled aria-describedby="rt-why">' + esc(T('Retry sync')) + '</button><span class="small muted" id="rt-why">' + esc(T('Available once this device has a network.')) + '</span>';
+    return '<button type="button" class="' + cls + '" ' + attr + '>' + esc(T('Retry sync')) + '</button>';
   }
   function setSyncDot() {
     var st = syncState(), text = syncText(st), n = pendingList().length, now = Date.now();
@@ -306,7 +315,7 @@
       a.setAttribute('aria-label', T(NETR.pill(st).label, { n: n }) + '. ' + (text ? T('Sync status: {status}', { status: text }) : T('Sync status')) + ' ' + T('Open sync details.'));
     });
     $$('[data-syncbanner]').forEach(function (el) {
-      var html = b ? bannerHtml(b, n) : '', key = (b ? st + n + (S.syncing ? 's' : '') : '');
+      var html = b ? bannerHtml(b, n) : '', key = (b ? st + n + (userBusy() ? 's' : '') + (NETR.deviceOnline(deviceNet()) ? '' : 'o') : '');
       if (el.dataset.k === key) return;
       el.dataset.k = key;
       if (!b) { el.hidden = true; el.innerHTML = ''; return; }
@@ -314,24 +323,48 @@
       // Fades in only when the status itself changes, not every time a screen is drawn.
       el.classList.toggle('in', BAN.key !== key);
     });
-    BAN.key = b ? st + n + (S.syncing ? 's' : '') : '';
+    BAN.key = b ? st + n + (userBusy() ? 's' : '') + (NETR.deviceOnline(deviceNet()) ? '' : 'o') : '';
     $$('[data-syncpanel]').forEach(fillSyncPanel);
   }
   // Retry Sync from a banner or the details panel: start the back-off again and send entries the server refused.
-  function retryNow() { SY.tries = 0; if (SY.fail === 'offline') SY.fail = ''; return sync(true); }
+  function retryNow() {
+    SY.tries = 0; if (SY.fail === 'offline') SY.fail = '';
+    // Tapped while a quiet automatic attempt is running: this one runs straight after it, and the button says so.
+    SY.userWaiting = true; setSyncDot();
+    return sync(true).then(function () { SY.userWaiting = false; setSyncDot(); }, function () { SY.userWaiting = false; setSyncDot(); });
+  }
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest ? ev.target.closest('[data-syncpill],[data-sbretry]') : null; if (!t) return;
     ev.preventDefault();
-    if (t.hasAttribute('data-sbretry')) { t.disabled = true; retryNow(); return; }
+    if (t.hasAttribute('data-sbretry')) { if (!t.disabled) retryNow(); return; }
     openSyncSheet();
   });
   function openSyncSheet() {
     if ($('.sheet [data-syncpanel]')) return;
     sheet('<h2>' + esc(T('Sync on this device')) + '</h2><div data-syncpanel></div><div class="btns"><button class="btn ghost block" type="button" data-close>' + esc(T('Close')) + '</button></div>', function (root) { fillSyncPanel($('[data-syncpanel]', root)); });
   }
+  // One timer at most. While the app is in the background (wl:pause, or the web page hidden) no timer runs, so a long
+  // disconnection does not keep waking the phone: returning to the app, a network change or Retry sync starts again.
   function scheduleRetry() {
-    clearTimeout(SY.timer);
+    clearTimeout(SY.timer); SY.timer = 0;
+    if (SY.paused) { SY.due = true; return; }
     SY.timer = setTimeout(function () { SY.timer = 0; sync(); }, NETR.retryDelay(SY.tries, Math.random(), SY.fail));
+  }
+  function pauseRetries() { SY.paused = true; if (SY.timer) { clearTimeout(SY.timer); SY.timer = 0; SY.due = true; } }
+  // Back in the app: read the network afresh, then follow the resume plan (netstate.js): retry at once only when the
+  // last attempt is not recent, and start the back-off again only after a longer time away or a network change.
+  function resumeSync(away) {
+    SY.paused = false;
+    var was = S.net;
+    return (NAT.netStatus ? NAT.netStatus() : Promise.resolve(null)).then(function (v) {
+      if (v) S.net = v;
+      if (!S.account) return;
+      var now = Date.now(), changed = !!(v && NETR.netChanged(was, v));
+      var plan = NETR.resumePlan({ away: away || 0, sinceTry: now - (SY.lastTry || 0), sinceOk: now - (SY.lastOk || 0), failing: !!SY.fail, pending: pendingList().length, netChanged: changed });
+      if (changed) setSyncDot();
+      if (plan.reset) SY.tries = 0;
+      if (plan.sync) { SY.due = false; sync(); } else if (SY.due || SY.fail || pendingList().length) { SY.due = false; scheduleRetry(); }
+    });
   }
   // The phone's network changed (Wi-Fi or mobile data back, a VPN connected, reconnected or switched off): try again
   // soon, from the start of the back-off. Changes arrive in bursts while a VPN reconnects, so wait for them to settle.
@@ -579,7 +612,13 @@
   window.addEventListener('online', function () { S.online = true; if (SY.fail === 'offline') SY.fail = ''; setSyncDot(); if (S.account) netKick(); });
   window.addEventListener('offline', function () { S.online = false; setSyncDot(); });
   // In the store apps, returning to the app arrives as wl:resume (below), which also reads the network first.
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && !NAT.on) sync(); });
+  var hiddenAt = 0;
+  document.addEventListener('visibilitychange', function () {
+    if (NAT.on) return;
+    if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); pauseRetries(); return; }
+    var away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
+    resumeSync(away);
+  });
 
   // The sync status pill in the header: icon, short label and chevron; opens the sync details for this device.
   function syncInd() { var st = syncState(); return '<button type="button" class="sync-pill p-' + NETR.pill(st).cls + '" data-syncpill>' + pillInner(st) + '</button>'; }
@@ -2932,6 +2971,7 @@
     var d = deviceNet();
     if (!d.known) return d.online ? T('Connected') : T('No network');
     if (!d.connected) return T('No network');
+    if (NETR.vpnOnly(d)) return T('VPN on, with no Wi-Fi or mobile data under it');
     var t = d.transports || [], via = t.indexOf('wifi') >= 0 ? T('Wi-Fi') : t.indexOf('cellular') >= 0 ? T('Mobile data') : t.indexOf('ethernet') >= 0 ? T('Ethernet') : T('Connected');
     return via + (d.vpn ? ' · ' + T('VPN on') : '') + (d.validated ? '' : ' · ' + T('internet access not confirmed by the phone'));
   }
@@ -2950,7 +2990,7 @@
     var starts = []; try { starts = JSON.parse(localStorage.getItem('wl-diag') || '[]'); } catch (e) { starts = []; }
     var p = NETR.pill(st), err = SY.err;
     // Redrawn only when something shown changes, so an open "Start-up details" or a focused button is kept.
-    var key = [st, n, bad.length, SY.lastTry, SY.lastOk, S.syncing, err && err.at, netWords()].join('|');
+    var key = [st, n, bad.length, SY.lastTry, SY.lastOk, userBusy(), err && err.at, netWords()].join('|');
     if (el.dataset.k === key) return;
     el.dataset.k = key;
     var help = st === 'unreachable' ? '<div class="sync-help"><b>' + esc(T('What to check')) + '</b><ul><li>' + esc(T('Open a website in your browser to check this network has internet access.')) + '</li><li>' + esc(T('A VPN, firewall or network restriction may be affecting the connection. Check your network or VPN settings, following your organisation\'s rules.')) + '</li><li>' + esc(T('Hospital guest Wi-Fi may need you to sign in on its page first.')) + '</li><li>' + esc(T('Then press Retry sync. Wavelength also retries by itself.')) + '</li></ul></div>'
@@ -2965,12 +3005,12 @@
       (err && err.kind ? '<dt>' + esc(T('Last error')) + '</dt><dd>' + esc(when(err.at)) + '</dd><dd class="wide">' + esc(T(NETR.errorText(err.kind))) + '</dd>' : '') + '</dl>' +
       (bad.length ? '<p class="small" style="margin:8px 0 4px"><b>' + esc(T('Not accepted by the server')) + '</b></p><ul class="small sync-bad">' + bad.map(function (e) { return '<li><a href="#/entry/' + esc(e.id) + '">' + esc(T((TYPES[e.type] || {}).label || e.type || '')) + (e.date ? ', ' + esc(fmt(e.date)) : '') + '</a>: ' + esc(why(e._syncError)) + '</li>'; }).join('') + '</ul>' : '') +
       help +
-      '<button class="btn sm" type="button" data-resync' + (S.syncing ? ' disabled' : '') + '>' + esc(S.syncing ? T('Synchronising…') : T('Retry sync')) + '</button>' +
+      '<div class="sync-retry">' + retryButton('btn sm', 'data-resync') + '</div>' +
       '<p class="small muted" style="margin:12px 0 0">' + esc(T('This status is for this device only. Another phone or computer shows its own, and a scan saved here reaches your other devices only after this device has synced it.')) + '</p>' +
       '<p class="small muted" style="margin:8px 0 0">' + esc(T('Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped. Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.')) + ' <a href="#/backup">' + esc(T('Back up and restore')) + '</a></p>' +
       (starts.length ? '<details class="small muted" style="margin-top:10px"><summary>' + esc(T('Start-up details')) + '</summary><ul class="sync-diag">' + starts.slice().reverse().map(function (d) { return '<li>' + esc(new Date(d.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'short' })) + ': ' + esc(d.path || '?') + ', ' + esc(T('logbook in {ms} ms', { ms: d.ui || '?' })) + ', ' + esc(T('server {result}', { result: d.me || '?' })) + (d.meMs ? ' (' + d.meMs + ' ms)' : '') + '</li>'; }).join('') + '</ul></details>' : '');
     var b = $('[data-resync]', el);
-    if (b) b.onclick = function () { b.disabled = true; b.textContent = T('Synchronising…'); retryNow(); };
+    if (b) b.onclick = function () { if (!b.disabled) retryNow(); };
   }
   // ---------- Settings: appearance, language, notifications, app lock, account ----------
   function viewSettings() {
@@ -3209,11 +3249,11 @@
   var lockBusy = false;
   window.addEventListener('wl:resume', function (e) {
     if (S.account && !lockBusy && NAT.lockOn() && e.detail && e.detail.away > LOCK_AFTER) showLock();
-    // Back in the app: read the network afresh (it may have changed while away) and try again from the start of
-    // the back-off, so a learner who has just fixed their connection is not left waiting minutes.
-    SY.tries = 0;
-    (NAT.netStatus ? NAT.netStatus() : Promise.resolve(null)).then(function (v) { if (v) S.net = v; sync(); });
+    // Back in the app: read the network afresh (it may have changed while away). A learner who has just fixed their
+    // connection is not left waiting, and a quick trip to the camera does not start a burst of requests.
+    resumeSync(e.detail && e.detail.away);
   });
+  window.addEventListener('wl:pause', pauseRetries);
   // The lock setting was read late (slow secure storage at start): lock now.
   window.addEventListener('wl:lock', function () { if (S.account && NAT.lockOn()) showLock(); });
   // On start the lock covers the screen before the logbook is drawn behind it.

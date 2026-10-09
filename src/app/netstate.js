@@ -11,12 +11,25 @@
 (function (root) {
   'use strict';
 
-  // dev: { known, connected, validated, vpn, transports } from the phone, or { known: false, online } otherwise.
+  // dev: { known, connected, validated, vpn, transports, underlying } from the phone, or { known: false, online }
+  // otherwise. underlying (Android, 1.0.11): whether a real network (Wi-Fi, mobile data, Ethernet) exists under the
+  // phone's networks, read separately from the default network: true, false, or null when Android could not say.
+  // A VPN app can keep its virtual network "connected" with nothing under it (Flight mode on, Wi-Fi off, mobile data
+  // off, NordVPN still showing Connected). That is no usable network: Offline, not "Can't sync". Flight mode itself is
+  // never read: Wi-Fi switched back on in Flight mode is a real network.
   function deviceOnline(dev) {
     if (!dev) return true;
-    if (dev.known) return !!dev.connected;
+    if (dev.known) {
+      if (!dev.connected) return false;
+      // Only a definite "nothing underneath" counts. Unknown (an older app build, or Android refused to say) keeps
+      // the conservative answer: the device may have a network, so the server is reported as unreachable.
+      if (dev.vpn && dev.underlying === false) return false;
+      return true;
+    }
     return dev.online !== false;
   }
+  // The VPN is up but has no network under it.
+  function vpnOnly(dev) { return !!(dev && dev.known && dev.connected && dev.vpn && dev.underlying === false); }
 
   // What a failed sync means. ex is the error the request threw (native.js marks network and timeout failures) or
   // an Error carrying the server's HTTP status (status) and whether the answer was readable JSON (nojson).
@@ -86,23 +99,38 @@
   }
 
   // Wait before the next automatic retry after `tries` failures in a row, with ±20% jitter (rnd in [0, 1)).
-  // Leaving aeroplane mode takes a phone a few seconds, so the first gaps are short, and never more than 2 minutes
-  // apart: a retry that fails at once costs next to nothing. A network-change event from the phone (Wi-Fi back, a
-  // VPN reconnecting) starts the sequence again, so the cap is only a safety net if such an event is ever missed.
-  // A refusal (the server answered and would not take the batch) cannot be fixed by the network, so its gaps grow
-  // to 5 minutes instead.
-  var RETRY = [2e3, 5e3, 10e3, 20e3, 30e3, 60e3, 120e3], RETRY_FAILED = RETRY.concat([300e3]);
+  // Leaving aeroplane mode takes a phone a few seconds, so the first gaps are short, then 2 minutes apart. After about
+  // 20 minutes of failures in a row (IDLE_AFTER tries) the gap grows to 5 minutes, so a phone left on a network that
+  // blocks Wavelength all day does not wake every 2 minutes. Recovery never depends on that timer alone: a network
+  // change from the phone (Wi-Fi back, a VPN reconnecting), returning to the app and Retry sync all start the sequence
+  // again. There is no limit on the number of tries: a saved scan is always retried. A refusal (the server answered
+  // and would not take the batch) cannot be fixed by the network, so its gaps grow to 5 minutes sooner.
+  var RETRY = [2e3, 5e3, 10e3, 20e3, 30e3, 60e3, 120e3], RETRY_FAILED = RETRY.concat([300e3]), IDLE_AFTER = 16, IDLE = 300e3;
   function retryDelay(tries, rnd, kind) {
     var list = kind === 'failed' ? RETRY_FAILED : RETRY;
-    var base = list[Math.min(Math.max(tries - 1, 0), list.length - 1)];
+    var base = tries >= IDLE_AFTER ? IDLE : list[Math.min(Math.max(tries - 1, 0), list.length - 1)];
     return Math.round(base * (0.8 + (rnd == null ? Math.random() : rnd) * 0.4));
+  }
+
+  // Returning to the app (Android resume, or the web page shown again). Ordinary trips away (the camera, the share
+  // sheet, a quick look at another app) must not become a burst of requests, and must not throw away the back-off.
+  // s: { away (ms in the background), sinceTry (ms since the last attempt started), failing, pending, netChanged,
+  // sinceOk (ms since the last success) }. Returns { sync, reset }.
+  var RESUME_GAP = 10e3, RESUME_RESET = 60e3, RESUME_PULL = 30e3;
+  function resumePlan(s) {
+    var trouble = !!(s.failing || s.pending);
+    // Start the back-off again only when something may really have changed: a new network, or a longer time away.
+    var reset = trouble && (!!s.netChanged || s.away >= RESUME_RESET);
+    var sync = trouble ? (reset || s.sinceTry >= RESUME_GAP) : s.sinceOk >= RESUME_PULL;
+    return { sync: !!sync, reset: !!reset };
   }
 
   // Did the phone's network change in a way worth retrying for? (A new network, VPN up or down, a network that
   // now has validated internet.) Signal-strength noise does not count.
   function netChanged(a, b) {
     if (!a || !b) return !!b;
-    return a.connected !== b.connected || a.validated !== b.validated || a.vpn !== b.vpn || String(a.transports || '') !== String(b.transports || '') || a.id !== b.id;
+    return a.connected !== b.connected || a.validated !== b.validated || a.vpn !== b.vpn || String(a.transports || '') !== String(b.transports || '') || a.id !== b.id ||
+      (a.underlying !== b.underlying && !(a.underlying == null && b.underlying == null)) || String(a.underlyingTransports || '') !== String(b.underlyingTransports || '');
   }
 
   // The last error, in words, for the sync details panel. Never includes server text that could carry data.
@@ -117,7 +145,7 @@
     }[kind] || '';
   }
 
-  var api = { deviceOnline: deviceOnline, classify: classify, state: state, pill: pill, banner: banner, retryDelay: retryDelay, netChanged: netChanged, errorText: errorText, RETRY: RETRY };
+  var api = { deviceOnline: deviceOnline, vpnOnly: vpnOnly, resumePlan: resumePlan, IDLE_AFTER: IDLE_AFTER, classify: classify, state: state, pill: pill, banner: banner, retryDelay: retryDelay, netChanged: netChanged, errorText: errorText, RETRY: RETRY };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.WLNet = api;
 })(typeof window !== 'undefined' ? window : this);

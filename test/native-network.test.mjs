@@ -28,7 +28,18 @@ function fakePlugin(status) {
 test('Android: netStatus reports connected, validated, VPN and transports', async () => {
   const plug = fakePlugin({ connected: true, validated: false, vpn: true, transports: ['wifi', 'vpn'], id: '42' });
   const { N } = load({ net: plug });
-  assert.deepEqual(await N.netStatus(), { known: true, connected: true, validated: false, vpn: true, transports: ['vpn', 'wifi'], id: '42' });
+  assert.deepEqual(await N.netStatus(), { known: true, connected: true, validated: false, vpn: true, transports: ['vpn', 'wifi'], id: '42', underlying: null, underlyingTransports: [] });
+});
+
+test('Android (1.0.11): the network under a VPN is passed on, and only a definite answer counts', async () => {
+  const alone = fakePlugin({ connected: true, validated: false, vpn: true, transports: ['vpn'], id: '9', underlying: false, underlyingTransports: [] });
+  assert.deepEqual(await load({ net: alone }).N.netStatus(), { known: true, connected: true, validated: false, vpn: true, transports: ['vpn'], id: '9', underlying: false, underlyingTransports: [] });
+  const wifi = fakePlugin({ connected: true, validated: true, vpn: true, transports: ['wifi', 'vpn'], id: '9', underlying: true, underlyingTransports: ['wifi'] });
+  assert.equal((await load({ net: wifi }).N.netStatus()).underlying, true);
+  const odd = fakePlugin({ connected: true, vpn: true, transports: ['vpn'], id: '9', underlying: 'no', underlyingTransports: ['x'] });
+  const v = await load({ net: odd }).N.netStatus();
+  assert.equal(v.underlying, null, 'anything but true or false is unknown');
+  assert.deepEqual(v.underlyingTransports, []);
 });
 
 test('Android: a network change (VPN reconnect, Wi-Fi back) reaches the logbook as wl:net', () => {
@@ -60,6 +71,11 @@ test('the Android plugin is registered, read-only and needs only ACCESS_NETWORK_
   assert.match(plug, /registerDefaultNetworkCallback/);
   assert.match(plug, /NET_CAPABILITY_VALIDATED/);
   assert.match(plug, /TRANSPORT_VPN/);
+  // 1.0.11: a passive listener for networks that are not VPNs, so a VPN with nothing under it is not "connected".
+  assert.match(plug, /registerNetworkCallback\(req, underCallback\)/);
+  assert.match(plug, /NET_CAPABILITY_NOT_VPN/);
+  assert.match(plug, /"underlying"/);
+  assert.doesNotMatch(plug, /AIRPLANE|airplane|isAirplaneMode/, 'Flight mode is never read: Wi-Fi can be on in Flight mode');
   // Nothing that changes routing, binds the process to a network or touches VPN settings.
   assert.doesNotMatch(plug, /bindProcessToNetwork|setProcessDefaultNetwork|requestNetwork|VpnService|startActivity|Settings\./);
   const m = readFileSync(new URL('../mobile/android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8');

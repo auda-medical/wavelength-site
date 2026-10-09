@@ -190,7 +190,11 @@
   var NET_OK = !!(Net && PLATFORM === 'android');
   function shape(s) {
     if (!s || typeof s.connected !== 'boolean') return null;
-    return { known: true, connected: s.connected, validated: !!s.validated, vpn: !!s.vpn, transports: Array.isArray(s.transports) ? s.transports.slice().sort() : [], id: s.id == null ? '' : String(s.id) };
+    // underlying (1.0.11 plugin): is there a real network (Wi-Fi, mobile data, Ethernet) under the phone's networks?
+    // true or false only when Android said so; null when it did not (an older app build, or the listener failed).
+    var under = typeof s.underlying === 'boolean' ? s.underlying : null;
+    return { known: true, connected: s.connected, validated: !!s.validated, vpn: !!s.vpn, transports: Array.isArray(s.transports) ? s.transports.slice().sort() : [], id: s.id == null ? '' : String(s.id),
+      underlying: under, underlyingTransports: under !== null && Array.isArray(s.underlyingTransports) ? s.underlyingTransports.slice().sort() : [] };
   }
   function netStatus() {
     if (!NET_OK) return Promise.resolve(null);

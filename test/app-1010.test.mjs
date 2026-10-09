@@ -16,14 +16,17 @@ test('a failed sync is classified with the phone\'s network, never assumed offli
   assert.match(body, /SY\.fail = ''; SY\.ran = true; SY\.lastOk = Date\.now\(\)/);
 });
 
-test('a network change or a return to the app restarts the back-off and retries', () => {
+test('a network change or a return to the app retries (1.0.11: a return follows the resume plan)', () => {
   assert.match(APP, /window\.addEventListener\('wl:net', function \(e\) \{ onNet\(e\.detail\); \}\)/);
   const on = slice('  function onNet(v) {', '  window.addEventListener(\'wl:net\'');
   assert.match(on, /NETR\.netChanged\(was, v\)/);
   assert.match(on, /SY\.tries = 0/);
   const resume = slice("  window.addEventListener('wl:resume'", '  // The lock setting was read late');
-  assert.match(resume, /SY\.tries = 0/);
-  assert.match(resume, /NAT\.netStatus/);
+  assert.match(resume, /resumeSync\(e\.detail && e\.detail\.away\)/);
+  const rs = slice('  function resumeSync(away) {', "  // The phone's network changed");
+  assert.match(rs, /NAT\.netStatus/);
+  assert.match(rs, /NETR\.resumePlan\(/);
+  assert.match(rs, /if \(plan\.reset\) SY\.tries = 0;/);
   // A flapping network cannot make a retry storm.
   assert.match(APP, /now - \(SY\.netResetAt \|\| 0\) > 60e3/);
   assert.match(APP, /\(SY\.netSyncAt \|\| 0\) \+ 10e3 - now/);
