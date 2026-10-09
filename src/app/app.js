@@ -2705,7 +2705,10 @@
   // Escape closes the open sheet even before focus has moved into it (the sheet takes focus just after it opens).
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !e.defaultPrevented && document.querySelector('.sheet-bg') && !document.querySelector('.editor')) { e.preventDefault(); closeSheet(); } });
   function closeSheet(keepOpener) {
-    var had = $$('.sheet-bg'); had.forEach(function (s) { s.remove(); });
+    // 1.0.11: a closing sheet fades and slides away (160 ms). It stops being a sheet at once (renamed, inert), so
+    // nothing that checks for an open sheet sees it, and a new sheet can open straight away.
+    var had = $$('.sheet-bg'), still = reducedMotion();
+    had.forEach(function (s) { if (still || keepOpener) { s.remove(); return; } s.className = 'sheet-gone'; s.setAttribute('aria-hidden', 'true'); s.inert = true; setTimeout(function () { s.remove(); }, 170); });
     if (keepOpener || !had.length) return;
     var o = sheetOpener; sheetOpener = null;
     if (o && o.isConnected && o.focus) try { o.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }

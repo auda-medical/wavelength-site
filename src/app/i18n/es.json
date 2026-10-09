@@ -1,6 +1,7 @@
 {
 "_meta": {
-"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py."
+"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* El residente fijó su propio objetivo para este módulo, distinto de la cifra del programa.",
 "12": "12",
@@ -1958,5 +1959,64 @@
 "{n} scans waiting to sync.": {
 "one": "{n} ecografía pendiente de sincronizar.",
 "other": "{n} ecografías pendientes de sincronizar."
+},
+"Accreditation pathways": "Vías de acreditación",
+"Available once this device has a network.": "Disponible cuando este dispositivo tenga red.",
+"Choose all that apply": "Elija todas las que correspondan",
+"Clips can be up to {m} seconds: nothing outside the selection is saved.": "Los clips pueden durar hasta {m} segundos: no se guarda nada fuera de la selección.",
+"Confirmation and clinical impact": "Confirmación e impacto clínico",
+"Connection details": "Detalles de la conexión",
+"Could not prepare the image. Try again.": "No se pudo preparar la imagen. Inténtelo de nuevo.",
+"Cover identifiers": "Tapar identificadores",
+"Editing tools": "Herramientas de edición",
+"Examination findings": "Hallazgos de la exploración",
+"Flip H": "Voltear H",
+"Flip V": "Voltear V",
+"Flip horizontally": "Voltear horizontalmente",
+"Flip vertically": "Voltear verticalmente",
+"Flipped horizontally": "Volteado horizontalmente",
+"Flipped horizontally, then rotated 90° anticlockwise": "Volteado horizontalmente y luego girado 90° en sentido antihorario",
+"Flipped horizontally, then rotated 90° clockwise": "Volteado horizontalmente y luego girado 90° en sentido horario",
+"Flipped vertically": "Volteado verticalmente",
+"Interpretation and quality": "Interpretación y calidad",
+"Keeps {a} s to {b} s ({n} s) of a {t} s clip.": "Conserva de {a} s a {b} s ({n} s) de un clip de {t} s.",
+"Keeps {n} s from {a} s. This phone could not read the clip's full length.": "Conserva {n} s desde {a} s. Este teléfono no pudo leer la duración total del clip.",
+"Level of supervision": "Nivel de supervisión",
+"Nothing waiting to sync.": "Nada pendiente de sincronizar.",
+"Pause": "Pausa",
+"Play the selection": "Reproducir la selección",
+"Position in the clip": "Posición en el clip",
+"Recent sync attempts": "Intentos de sincronización recientes",
+"Required": "Obligatorio",
+"Reset": "Restablecer",
+"Rotate 90° clockwise": "Girar 90° en sentido horario",
+"Rotated 180°": "Girado 180°",
+"Rotated 90° anticlockwise": "Girado 90° en sentido antihorario",
+"Rotated 90° clockwise": "Girado 90° en sentido horario",
+"Scan details": "Datos de la exploración",
+"Selected": "Selección",
+"This device has no network connection. Your scans are saved on this device but haven't yet synced to Wavelength.": "Este dispositivo no tiene conexión de red. Sus exploraciones están guardadas en este dispositivo, pero aún no se han sincronizado con Wavelength.",
+"Trim the top strip": "Recortar la franja superior",
+"Trying…": "Intentando…",
+"Turn off aeroplane mode, or connect to Wi-Fi or mobile data. Your VPN can stay on.": "Desactive el modo avión o conéctese a una red Wi-Fi o a datos móviles. Su VPN puede seguir activada.",
+"VPN on, with no Wi-Fi or mobile data under it": "VPN activada, sin Wi-Fi ni datos móviles debajo",
+"Wavelength server unreachable": "Servidor de Wavelength inaccesible",
+"Wavelength syncs by itself when a connection returns.": "Wavelength se sincroniza solo cuando vuelve la conexión.",
+"Which scan did you do?": "¿Qué exploración realizó?",
+"Your VPN shows as connected, but this device has no Wi-Fi, mobile data or other network under it, so nothing can reach Wavelength.": "Su VPN aparece como conectada, pero este dispositivo no tiene Wi-Fi, datos móviles ni otra red debajo, así que nada puede llegar a Wavelength.",
+"Your original stays where it is on your phone. Wavelength keeps only this edited copy.": "El original se queda donde está en su teléfono. Wavelength solo guarda esta copia editada.",
+"Your reflection": "Su reflexión",
+"{label}: {n}. Show these records.": "{label}: {n}. Mostrar estos registros.",
+"{n} scans saved on this device, awaiting sync.": {
+"one": "{n} exploración guardada en este dispositivo, pendiente de sincronizar.",
+"other": "{n} exploraciones guardadas en este dispositivo, pendientes de sincronizar."
+},
+"{n} scans saved on this device, not yet synced.": {
+"one": "{n} exploración guardada en este dispositivo, aún sin sincronizar.",
+"other": "{n} exploraciones guardadas en este dispositivo, aún sin sincronizar."
+},
+"{n} suggestions": {
+"one": "{n} sugerencia",
+"other": "{n} sugerencias"
 }
 }

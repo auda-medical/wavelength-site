@@ -1,6 +1,7 @@
 {
 "_meta": {
-"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py."
+"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* L'apprenant a fixé son propre objectif pour ce module, différent du chiffre du programme.",
 "12": "12",
@@ -1958,5 +1959,64 @@
 "{n} scans waiting to sync.": {
 "one": "{n} examen en attente de synchronisation.",
 "other": "{n} examens en attente de synchronisation."
+},
+"Accreditation pathways": "Parcours d'accréditation",
+"Available once this device has a network.": "Disponible dès que cet appareil a un réseau.",
+"Choose all that apply": "Choisissez toutes les réponses applicables",
+"Clips can be up to {m} seconds: nothing outside the selection is saved.": "Les clips durent au plus {m} secondes : rien en dehors de la sélection n'est enregistré.",
+"Confirmation and clinical impact": "Confirmation et impact clinique",
+"Connection details": "Détails de la connexion",
+"Could not prepare the image. Try again.": "Impossible de préparer l'image. Réessayez.",
+"Cover identifiers": "Masquer les identifiants",
+"Editing tools": "Outils de modification",
+"Examination findings": "Résultats de l'examen",
+"Flip H": "Miroir H",
+"Flip V": "Miroir V",
+"Flip horizontally": "Retourner horizontalement",
+"Flip vertically": "Retourner verticalement",
+"Flipped horizontally": "Retourné horizontalement",
+"Flipped horizontally, then rotated 90° anticlockwise": "Retourné horizontalement, puis pivoté de 90° dans le sens antihoraire",
+"Flipped horizontally, then rotated 90° clockwise": "Retourné horizontalement, puis pivoté de 90° dans le sens horaire",
+"Flipped vertically": "Retourné verticalement",
+"Interpretation and quality": "Interprétation et qualité",
+"Keeps {a} s to {b} s ({n} s) of a {t} s clip.": "Conserve de {a} s à {b} s ({n} s) d'un clip de {t} s.",
+"Keeps {n} s from {a} s. This phone could not read the clip's full length.": "Conserve {n} s à partir de {a} s. Ce téléphone n'a pas pu lire la durée totale du clip.",
+"Level of supervision": "Niveau de supervision",
+"Nothing waiting to sync.": "Rien en attente de synchronisation.",
+"Pause": "Pause",
+"Play the selection": "Lire la sélection",
+"Position in the clip": "Position dans le clip",
+"Recent sync attempts": "Tentatives de synchronisation récentes",
+"Required": "Obligatoire",
+"Reset": "Réinitialiser",
+"Rotate 90° clockwise": "Pivoter de 90° dans le sens horaire",
+"Rotated 180°": "Pivoté de 180°",
+"Rotated 90° anticlockwise": "Pivoté de 90° dans le sens antihoraire",
+"Rotated 90° clockwise": "Pivoté de 90° dans le sens horaire",
+"Scan details": "Détails de l'examen",
+"Selected": "Sélection",
+"This device has no network connection. Your scans are saved on this device but haven't yet synced to Wavelength.": "Cet appareil n'a aucune connexion réseau. Vos examens sont enregistrés sur cet appareil mais ne sont pas encore synchronisés avec Wavelength.",
+"Trim the top strip": "Rogner la bande du haut",
+"Trying…": "Tentative…",
+"Turn off aeroplane mode, or connect to Wi-Fi or mobile data. Your VPN can stay on.": "Désactivez le mode avion, ou connectez-vous au Wi-Fi ou aux données mobiles. Votre VPN peut rester activé.",
+"VPN on, with no Wi-Fi or mobile data under it": "VPN activé, sans Wi-Fi ni données mobiles en dessous",
+"Wavelength server unreachable": "Serveur Wavelength injoignable",
+"Wavelength syncs by itself when a connection returns.": "Wavelength se synchronise de lui-même dès que la connexion revient.",
+"Which scan did you do?": "Quel examen avez-vous réalisé ?",
+"Your VPN shows as connected, but this device has no Wi-Fi, mobile data or other network under it, so nothing can reach Wavelength.": "Votre VPN apparaît connecté, mais cet appareil n'a ni Wi-Fi, ni données mobiles, ni autre réseau en dessous : rien ne peut joindre Wavelength.",
+"Your original stays where it is on your phone. Wavelength keeps only this edited copy.": "L'original reste où il est sur votre téléphone. Wavelength ne garde que cette copie modifiée.",
+"Your reflection": "Votre réflexion",
+"{label}: {n}. Show these records.": "{label} : {n}. Afficher ces enregistrements.",
+"{n} scans saved on this device, awaiting sync.": {
+"one": "{n} examen enregistré sur cet appareil, en attente de synchronisation.",
+"other": "{n} examens enregistrés sur cet appareil, en attente de synchronisation."
+},
+"{n} scans saved on this device, not yet synced.": {
+"one": "{n} examen enregistré sur cet appareil, pas encore synchronisé.",
+"other": "{n} examens enregistrés sur cet appareil, pas encore synchronisés."
+},
+"{n} suggestions": {
+"one": "{n} suggestion",
+"other": "{n} suggestions"
 }
 }

@@ -28,8 +28,14 @@ lb.destinations.forEach((d) => { add(d.label); d.steps.forEach(add); });
 {
   const s = fs.readFileSync('src/app/netstate.js', 'utf8');
   for (const m of s.matchAll(/(?:label|title|body|hint): '((?:[^'\\]|\\.)*)'/g)) if (!/\{n\} scans? (is|are) saved/.test(m[1])) add(m[1].replace(/\\'/g, "'"));
+  // 1.0.11: one-line notes, the details panel's lead and steps, and the waiting lines as [one, other] plural pairs.
+  for (const m of s.matchAll(/(?:note|lead): '((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/steps: \[([^\]]*)\]/g)) for (const v of m[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/\['(\{n\} [^']*)', '(\{n\} [^']*)'\]/g)) plurals.set(m[2], m[1]);
   for (const m of s.matchAll(/^\s+(?:offline|unreachable|timeout|failed|auth|update): '((?:[^'\\]|\\.)*)',?$/gm)) add(m[1].replace(/\\'/g, "'"));
 }
+// Orientation phrases in the photo and clip editors (orientWords in app.js, picked from a list).
+['Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise', 'Flipped horizontally', 'Flipped horizontally, then rotated 90° clockwise', 'Flipped vertically', 'Flipped horizontally, then rotated 90° anticlockwise'].forEach(add);
 // Label maps in app.js passed to T() through a variable (supervisor standing, lapse reasons, wizard steps, signers).
 {
   const s = fs.readFileSync('src/app/app.js', 'utf8');

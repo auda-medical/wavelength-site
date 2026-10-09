@@ -1,6 +1,7 @@
 {
 "_meta": {
-"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py."
+"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* 学员为此模块设定了自己的目标，与课程大纲数值不同。",
 "12": "12",
@@ -1933,5 +1934,61 @@
 },
 "{n} scans waiting to sync.": {
 "other": "{n} 项扫描等待同步。"
+},
+"Accreditation pathways": "认证路径",
+"Available once this device has a network.": "此设备有网络后即可使用。",
+"Choose all that apply": "选择所有适用项",
+"Clips can be up to {m} seconds: nothing outside the selection is saved.": "动态片段最长 {m} 秒：选区以外的内容不会保存。",
+"Confirmation and clinical impact": "确认与临床影响",
+"Connection details": "连接详情",
+"Could not prepare the image. Try again.": "无法处理该图像。请重试。",
+"Cover identifiers": "遮盖身份信息",
+"Editing tools": "编辑工具",
+"Examination findings": "检查所见",
+"Flip H": "水平翻转",
+"Flip V": "垂直翻转",
+"Flip horizontally": "水平翻转",
+"Flip vertically": "垂直翻转",
+"Flipped horizontally": "已水平翻转",
+"Flipped horizontally, then rotated 90° anticlockwise": "已水平翻转，然后逆时针旋转 90°",
+"Flipped horizontally, then rotated 90° clockwise": "已水平翻转，然后顺时针旋转 90°",
+"Flipped vertically": "已垂直翻转",
+"Interpretation and quality": "解读与质量",
+"Keeps {a} s to {b} s ({n} s) of a {t} s clip.": "保留 {t} 秒片段中的 {a} 秒至 {b} 秒（{n} 秒）。",
+"Keeps {n} s from {a} s. This phone could not read the clip's full length.": "从 {a} 秒起保留 {n} 秒。此手机无法读取该片段的完整时长。",
+"Level of supervision": "督导级别",
+"Nothing waiting to sync.": "没有等待同步的内容。",
+"Pause": "暂停",
+"Play the selection": "播放所选部分",
+"Position in the clip": "片段中的位置",
+"Recent sync attempts": "最近的同步尝试",
+"Required": "必填",
+"Reset": "重置",
+"Rotate 90° clockwise": "顺时针旋转 90°",
+"Rotated 180°": "已旋转 180°",
+"Rotated 90° anticlockwise": "已逆时针旋转 90°",
+"Rotated 90° clockwise": "已顺时针旋转 90°",
+"Scan details": "扫查信息",
+"Selected": "已选",
+"This device has no network connection. Your scans are saved on this device but haven't yet synced to Wavelength.": "此设备没有网络连接。您的扫查已保存在此设备上，但尚未同步到 Wavelength。",
+"Trim the top strip": "裁掉顶部条带",
+"Trying…": "正在尝试…",
+"Turn off aeroplane mode, or connect to Wi-Fi or mobile data. Your VPN can stay on.": "请关闭飞行模式，或连接 Wi-Fi 或移动数据。VPN 可以保持开启。",
+"VPN on, with no Wi-Fi or mobile data under it": "VPN 已开启，但底层没有 Wi-Fi 或移动数据",
+"Wavelength server unreachable": "无法访问 Wavelength 服务器",
+"Wavelength syncs by itself when a connection returns.": "连接恢复后，Wavelength 会自动同步。",
+"Which scan did you do?": "您做了哪种扫查？",
+"Your VPN shows as connected, but this device has no Wi-Fi, mobile data or other network under it, so nothing can reach Wavelength.": "您的 VPN 显示已连接，但此设备底层没有 Wi-Fi、移动数据或其他网络，因此无法连接到 Wavelength。",
+"Your original stays where it is on your phone. Wavelength keeps only this edited copy.": "原始文件仍保留在您手机中原来的位置。Wavelength 只保存这份编辑后的副本。",
+"Your reflection": "您的反思",
+"{label}: {n}. Show these records.": "{label}：{n}。查看这些记录。",
+"{n} scans saved on this device, awaiting sync.": {
+"other": "{n} 项扫查已保存在此设备上，等待同步。"
+},
+"{n} scans saved on this device, not yet synced.": {
+"other": "{n} 项扫查已保存在此设备上，尚未同步。"
+},
+"{n} suggestions": {
+"other": "{n} 条建议"
 }
 }

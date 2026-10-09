@@ -1,6 +1,7 @@
 {
 "_meta": {
-"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py."
+"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Lo specializzando ha fissato un proprio obiettivo per questo modulo, diverso dal valore del curriculum.",
 "12": "12",
@@ -1958,5 +1959,64 @@
 "{n} scans waiting to sync.": {
 "one": "{n} ecografia in attesa di sincronizzazione.",
 "other": "{n} ecografie in attesa di sincronizzazione."
+},
+"Accreditation pathways": "Percorsi di accreditamento",
+"Available once this device has a network.": "Disponibile quando questo dispositivo ha una rete.",
+"Choose all that apply": "Scegli tutte le risposte pertinenti",
+"Clips can be up to {m} seconds: nothing outside the selection is saved.": "I clip possono durare al massimo {m} secondi: nulla al di fuori della selezione viene salvato.",
+"Confirmation and clinical impact": "Conferma e impatto clinico",
+"Connection details": "Dettagli della connessione",
+"Could not prepare the image. Try again.": "Impossibile preparare l'immagine. Riprova.",
+"Cover identifiers": "Copri gli identificativi",
+"Editing tools": "Strumenti di modifica",
+"Examination findings": "Reperti dell'esame",
+"Flip H": "Rifletti O",
+"Flip V": "Rifletti V",
+"Flip horizontally": "Rifletti orizzontalmente",
+"Flip vertically": "Rifletti verticalmente",
+"Flipped horizontally": "Riflesso orizzontalmente",
+"Flipped horizontally, then rotated 90° anticlockwise": "Riflesso orizzontalmente, poi ruotato di 90° in senso antiorario",
+"Flipped horizontally, then rotated 90° clockwise": "Riflesso orizzontalmente, poi ruotato di 90° in senso orario",
+"Flipped vertically": "Riflesso verticalmente",
+"Interpretation and quality": "Interpretazione e qualità",
+"Keeps {a} s to {b} s ({n} s) of a {t} s clip.": "Conserva da {a} s a {b} s ({n} s) di un clip di {t} s.",
+"Keeps {n} s from {a} s. This phone could not read the clip's full length.": "Conserva {n} s a partire da {a} s. Questo telefono non è riuscito a leggere la durata totale del clip.",
+"Level of supervision": "Livello di supervisione",
+"Nothing waiting to sync.": "Niente in attesa di sincronizzazione.",
+"Pause": "Pausa",
+"Play the selection": "Riproduci la selezione",
+"Position in the clip": "Posizione nel clip",
+"Recent sync attempts": "Tentativi di sincronizzazione recenti",
+"Required": "Obbligatorio",
+"Reset": "Ripristina",
+"Rotate 90° clockwise": "Ruota di 90° in senso orario",
+"Rotated 180°": "Ruotato di 180°",
+"Rotated 90° anticlockwise": "Ruotato di 90° in senso antiorario",
+"Rotated 90° clockwise": "Ruotato di 90° in senso orario",
+"Scan details": "Dettagli dell'esame",
+"Selected": "Selezione",
+"This device has no network connection. Your scans are saved on this device but haven't yet synced to Wavelength.": "Questo dispositivo non ha connessione di rete. I tuoi esami sono salvati su questo dispositivo ma non sono ancora sincronizzati con Wavelength.",
+"Trim the top strip": "Taglia la striscia in alto",
+"Trying…": "Tentativo in corso…",
+"Turn off aeroplane mode, or connect to Wi-Fi or mobile data. Your VPN can stay on.": "Disattiva la modalità aereo oppure connettiti al Wi-Fi o ai dati mobili. La VPN può restare attiva.",
+"VPN on, with no Wi-Fi or mobile data under it": "VPN attiva, senza Wi-Fi né dati mobili sottostanti",
+"Wavelength server unreachable": "Server Wavelength non raggiungibile",
+"Wavelength syncs by itself when a connection returns.": "Wavelength si sincronizza da solo quando la connessione torna disponibile.",
+"Which scan did you do?": "Quale esame hai eseguito?",
+"Your VPN shows as connected, but this device has no Wi-Fi, mobile data or other network under it, so nothing can reach Wavelength.": "La VPN risulta connessa, ma sotto non c'è né Wi-Fi né dati mobili né altra rete su questo dispositivo, quindi nulla può raggiungere Wavelength.",
+"Your original stays where it is on your phone. Wavelength keeps only this edited copy.": "L'originale resta dov'è sul telefono. Wavelength conserva solo questa copia modificata.",
+"Your reflection": "La tua riflessione",
+"{label}: {n}. Show these records.": "{label}: {n}. Mostra questi record.",
+"{n} scans saved on this device, awaiting sync.": {
+"one": "{n} esame salvato su questo dispositivo, in attesa di sincronizzazione.",
+"other": "{n} esami salvati su questo dispositivo, in attesa di sincronizzazione."
+},
+"{n} scans saved on this device, not yet synced.": {
+"one": "{n} esame salvato su questo dispositivo, non ancora sincronizzato.",
+"other": "{n} esami salvati su questo dispositivo, non ancora sincronizzati."
+},
+"{n} suggestions": {
+"one": "{n} suggerimento",
+"other": "{n} suggerimenti"
 }
 }

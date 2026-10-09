@@ -1,6 +1,7 @@
 {
 "_meta": {
-"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py."
+"note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Die lernende Person hat für dieses Modul ein eigenes Ziel gesetzt, das von der Curriculumvorgabe abweicht.",
 "12": "12",
@@ -1958,5 +1959,64 @@
 "{n} scans waiting to sync.": {
 "one": "{n} Untersuchung wartet auf Synchronisierung.",
 "other": "{n} Untersuchungen warten auf Synchronisierung."
+},
+"Accreditation pathways": "Akkreditierungswege",
+"Available once this device has a network.": "Verfügbar, sobald dieses Gerät ein Netz hat.",
+"Choose all that apply": "Alles Zutreffende wählen",
+"Clips can be up to {m} seconds: nothing outside the selection is saved.": "Clips dürfen höchstens {m} Sekunden lang sein: Nichts außerhalb der Auswahl wird gespeichert.",
+"Confirmation and clinical impact": "Bestätigung und klinische Auswirkung",
+"Connection details": "Verbindungsdetails",
+"Could not prepare the image. Try again.": "Das Bild konnte nicht vorbereitet werden. Versuchen Sie es erneut.",
+"Cover identifiers": "Identifizierende Angaben abdecken",
+"Editing tools": "Bearbeitungswerkzeuge",
+"Examination findings": "Untersuchungsbefunde",
+"Flip H": "Spiegeln H",
+"Flip V": "Spiegeln V",
+"Flip horizontally": "Horizontal spiegeln",
+"Flip vertically": "Vertikal spiegeln",
+"Flipped horizontally": "Horizontal gespiegelt",
+"Flipped horizontally, then rotated 90° anticlockwise": "Horizontal gespiegelt, dann um 90° gegen den Uhrzeigersinn gedreht",
+"Flipped horizontally, then rotated 90° clockwise": "Horizontal gespiegelt, dann um 90° im Uhrzeigersinn gedreht",
+"Flipped vertically": "Vertikal gespiegelt",
+"Interpretation and quality": "Interpretation und Qualität",
+"Keeps {a} s to {b} s ({n} s) of a {t} s clip.": "Behält {a} s bis {b} s ({n} s) eines {t}-s-Clips.",
+"Keeps {n} s from {a} s. This phone could not read the clip's full length.": "Behält {n} s ab {a} s. Dieses Telefon konnte die Gesamtlänge des Clips nicht lesen.",
+"Level of supervision": "Grad der Supervision",
+"Nothing waiting to sync.": "Nichts wartet auf die Synchronisierung.",
+"Pause": "Pause",
+"Play the selection": "Auswahl abspielen",
+"Position in the clip": "Position im Clip",
+"Recent sync attempts": "Letzte Synchronisierungsversuche",
+"Required": "Pflichtfeld",
+"Reset": "Zurücksetzen",
+"Rotate 90° clockwise": "Um 90° im Uhrzeigersinn drehen",
+"Rotated 180°": "Um 180° gedreht",
+"Rotated 90° anticlockwise": "Um 90° gegen den Uhrzeigersinn gedreht",
+"Rotated 90° clockwise": "Um 90° im Uhrzeigersinn gedreht",
+"Scan details": "Angaben zur Untersuchung",
+"Selected": "Auswahl",
+"This device has no network connection. Your scans are saved on this device but haven't yet synced to Wavelength.": "Dieses Gerät hat keine Netzverbindung. Ihre Untersuchungen sind auf diesem Gerät gespeichert, aber noch nicht mit Wavelength synchronisiert.",
+"Trim the top strip": "Oberen Streifen abschneiden",
+"Trying…": "Wird versucht…",
+"Turn off aeroplane mode, or connect to Wi-Fi or mobile data. Your VPN can stay on.": "Schalten Sie den Flugmodus aus oder verbinden Sie sich mit WLAN oder mobilen Daten. Ihr VPN kann eingeschaltet bleiben.",
+"VPN on, with no Wi-Fi or mobile data under it": "VPN an, ohne WLAN oder mobile Daten darunter",
+"Wavelength server unreachable": "Wavelength-Server nicht erreichbar",
+"Wavelength syncs by itself when a connection returns.": "Wavelength synchronisiert von selbst, sobald wieder eine Verbindung besteht.",
+"Which scan did you do?": "Welche Untersuchung haben Sie gemacht?",
+"Your VPN shows as connected, but this device has no Wi-Fi, mobile data or other network under it, so nothing can reach Wavelength.": "Ihr VPN wird als verbunden angezeigt, aber unter ihm hat dieses Gerät weder WLAN noch mobile Daten oder ein anderes Netz, daher kann nichts Wavelength erreichen.",
+"Your original stays where it is on your phone. Wavelength keeps only this edited copy.": "Ihr Original bleibt, wo es auf Ihrem Telefon ist. Wavelength behält nur diese bearbeitete Kopie.",
+"Your reflection": "Ihre Reflexion",
+"{label}: {n}. Show these records.": "{label}: {n}. Diese Einträge anzeigen.",
+"{n} scans saved on this device, awaiting sync.": {
+"one": "{n} Untersuchung auf diesem Gerät gespeichert, wartet auf Synchronisierung.",
+"other": "{n} Untersuchungen auf diesem Gerät gespeichert, warten auf Synchronisierung."
+},
+"{n} scans saved on this device, not yet synced.": {
+"one": "{n} Untersuchung auf diesem Gerät gespeichert, noch nicht synchronisiert.",
+"other": "{n} Untersuchungen auf diesem Gerät gespeichert, noch nicht synchronisiert."
+},
+"{n} suggestions": {
+"one": "{n} Vorschlag",
+"other": "{n} Vorschläge"
 }
 }
