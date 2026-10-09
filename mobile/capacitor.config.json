@@ -7,8 +7,7 @@
   },
   "ios": {
     "contentInset": "never",
-    "backgroundColor": "#0A1526",
-    "scheme": "Wavelength"
+    "backgroundColor": "#0A1526"
   },
   "android": {
     "backgroundColor": "#0A1526",

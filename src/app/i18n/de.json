@@ -2314,5 +2314,8 @@
 "Wavelength's guide, not an official document.": "Leitfaden von Wavelength, kein offizielles Dokument.",
 "Wavelength's guides to accreditation and evidence, with links to each body's own documents.": "Die Leitfäden von Wavelength zu Akkreditierung und Nachweisen, mit Links zu den Dokumenten der jeweiligen Stelle.",
 "What evidence does my pathway need?": "Welche Nachweise braucht mein Pfad?",
-"What {pathway} asks for, step by step, with the official sources.": "Was {pathway} verlangt, Schritt für Schritt, mit den offiziellen Quellen."
+"What {pathway} asks for, step by step, with the official sources.": "Was {pathway} verlangt, Schritt für Schritt, mit den offiziellen Quellen.",
+"If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "Wenn Sie ein VPN nutzen, prüfen Sie, ob es verbunden ist. Ein VPN, eine Firewall oder eine Netzwerkbeschränkung kann die Verbindung beeinträchtigen: Halten Sie sich an die Regeln Ihrer Organisation.",
+"VPN status not available on this phone": "VPN-Status auf diesem Telefon nicht verfügbar",
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Ihr Gerät scheint verbunden zu sein, aber Wavelength erreicht seinen Server nicht. Ihre Untersuchungen bleiben auf diesem Gerät gespeichert. Dieses Telefon teilt Apps nicht mit, ob ein VPN aktiv ist."
 }

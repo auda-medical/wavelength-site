@@ -3842,7 +3842,8 @@
     if (!d.connected) return T('No network');
     if (NETR.vpnOnly(d)) return T('VPN on, with no Wi-Fi or mobile data under it');
     var t = d.transports || [], via = t.indexOf('wifi') >= 0 ? T('Wi-Fi') : t.indexOf('cellular') >= 0 ? T('Mobile data') : t.indexOf('ethernet') >= 0 ? T('Ethernet') : T('Connected');
-    return via + (d.vpn ? ' · ' + T('VPN on') : '') + (d.validated ? '' : ' · ' + T('internet access not confirmed by the phone'));
+    // iPhone (1.0.12): iOS does not tell apps whether a VPN is on, so say so rather than imply there is none.
+    return via + (d.vpn ? ' · ' + T('VPN on') : d.vpnKnown === false ? ' · ' + T('VPN status not available on this phone') : '') + (d.validated ? '' : ' · ' + T('internet access not confirmed by the phone'));
   }
   function serverWords(st) {
     if (S.syncing) return T('Checking…');

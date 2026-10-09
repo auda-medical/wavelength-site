@@ -2438,5 +2438,8 @@
 "Wavelength's guide, not an official document.": "دليل من Wavelength، وليس وثيقة رسمية.",
 "Wavelength's guides to accreditation and evidence, with links to each body's own documents.": "أدلة Wavelength حول الاعتماد والأدلة، مع روابط إلى وثائق كل جهة.",
 "What evidence does my pathway need?": "ما الأدلة التي يحتاجها مساري؟",
-"What {pathway} asks for, step by step, with the official sources.": "ما يطلبه {pathway}، خطوة بخطوة، مع المصادر الرسمية."
+"What {pathway} asks for, step by step, with the official sources.": "ما يطلبه {pathway}، خطوة بخطوة، مع المصادر الرسمية.",
+"If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "إذا كنت تستخدم VPN، فتحقق من أنه متصل. قد يؤثر VPN أو جدار حماية أو قيد على الشبكة في الاتصال: اتبع قواعد مؤسستك.",
+"VPN status not available on this phone": "حالة VPN غير متاحة على هذا الهاتف",
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "يبدو أن جهازك متصل، لكن Wavelength لا يستطيع الوصول إلى خادمه. تبقى فحوصاتك محفوظة على هذا الجهاز. لا يخبر هذا الهاتف التطبيقات بما إذا كان VPN مفعّلًا."
 }

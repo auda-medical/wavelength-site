@@ -186,14 +186,17 @@
   // (internet, validated by Android, VPN, Wi-Fi or mobile data) and fires on every change, VPN ones included.
   // Read-only: it never changes the phone's network, VPN or routing. Where the plugin is missing (iPhone, website,
   // an older build) netStatus() answers null and the app falls back to navigator.onLine.
+  // 1.0.12: iPhone has its own WLNetwork plugin (WLNetworkPlugin.swift, NWPathMonitor). iOS gives apps no supported
+  // way to see a VPN or the network under it, so that plugin sends vpn and underlying as null, and the app says it
+  // cannot tell instead of guessing. An iPhone build without the plugin (1.0.11 and earlier) gets null as before.
   var Net = plugin('WLNetwork');
-  var NET_OK = !!(Net && PLATFORM === 'android');
+  var NET_OK = !!(Net && (PLATFORM === 'android' || PLATFORM === 'ios'));
   function shape(s) {
     if (!s || typeof s.connected !== 'boolean') return null;
     // underlying (1.0.11 plugin): is there a real network (Wi-Fi, mobile data, Ethernet) under the phone's networks?
     // true or false only when Android said so; null when it did not (an older app build, or the listener failed).
     var under = typeof s.underlying === 'boolean' ? s.underlying : null;
-    return { known: true, connected: s.connected, validated: !!s.validated, vpn: !!s.vpn, transports: Array.isArray(s.transports) ? s.transports.slice().sort() : [], id: s.id == null ? '' : String(s.id),
+    return { known: true, connected: s.connected, validated: !!s.validated, vpn: !!s.vpn, vpnKnown: typeof s.vpn === 'boolean', transports: Array.isArray(s.transports) ? s.transports.slice().sort() : [], id: s.id == null ? '' : String(s.id),
       underlying: under, underlyingTransports: under !== null && Array.isArray(s.underlyingTransports) ? s.underlyingTransports.slice().sort() : [] };
   }
   function netStatus() {

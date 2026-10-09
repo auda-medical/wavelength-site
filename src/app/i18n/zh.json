@@ -2283,5 +2283,8 @@
 "Wavelength's guide, not an official document.": "这是 Wavelength 的指南，并非官方文件。",
 "Wavelength's guides to accreditation and evidence, with links to each body's own documents.": "Wavelength 关于认证和证据的指南，附各机构自己文件的链接。",
 "What evidence does my pathway need?": "我的路径需要哪些证据？",
-"What {pathway} asks for, step by step, with the official sources.": "{pathway} 的要求，逐步说明，并附官方来源。"
+"What {pathway} asks for, step by step, with the official sources.": "{pathway} 的要求，逐步说明，并附官方来源。",
+"If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "如果您使用 VPN，请检查它是否已连接。VPN、防火墙或网络限制可能影响连接：请遵守您所在机构的规定。",
+"VPN status not available on this phone": "此手机无法提供 VPN 状态",
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "您的设备似乎已连接，但 Wavelength 无法连接到其服务器。您的扫查仍保存在此设备上。此手机不会告诉应用是否开启了 VPN。"
 }
