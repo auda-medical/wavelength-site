@@ -563,14 +563,101 @@
     var bits = s.gaps.map(gapText);
     return T('Still needed: {list}', { list: bits.slice(0, 2).join(', ') + (bits.length > 2 ? ' …' : '') });
   }
-  // The module most worth working on next: unmet, closest to done first so learners finish things.
-  function focusNext() {
-    var best = null;
-    myPaths().forEach(function (pid) {
-      if (pid === 'general') return;
-      pathwayStats(pid).stats.forEach(function (s) { if (!s.met && (s.total || s.gaps.length) && (!best || s.frac > best.s.frac)) best = { pid: pid, s: s }; });
+  // 1.0.12: outstanding requirements, replacing "Focus next". 1.0.11 picked the unmet module with the highest share
+  // done, keeping the first on a tie. Every RCEM module needs a DOPS judged competent, so until one was signed every
+  // module scored 0 and the first in the curriculum (AAA) was always shown. Now every open requirement of the chosen
+  // pathway is listed, in the pathway's own (curriculum) order, with nothing ranked by clinical importance, and the
+  // carousel reopens where the learner last left it. Uses the one progress engine, so counts match Progress.
+  function outstanding(pid) {
+    var ps = pathwayStats(pid), items = [];
+    ps.stats.forEach(function (s, i) {
+      if (s.met || !(s.gaps || []).length) return;
+      items.push({ pid: pid, s: s, order: i, left: s.gaps.reduce(function (a, g) { return a + g.n; }, 0) });
     });
-    return best;
+    // A minimum training period still running (FUSIC) is a requirement too, though no scan meets it.
+    var win = ps.win, waits = win ? ps.stats.filter(function (s) { return s.mod.minDays && win.day < s.mod.minDays; }) : [];
+    return { pw: ps.pw, items: items, tracked: ps.stats.some(function (s) { return s.total || s.sup || s.assessments.length || s.rules.length || s.mod.reflections; }), metAll: !items.length && ps.stats.length > 0, waits: waits, win: win };
+  }
+  // Pathways with something to track: 'general' only once the learner has set a target of their own.
+  function focusPaths() { return myPaths().filter(function (p) { return p !== 'general' || ENG.modulesFor('general', live(), profile().targets).some(function (m) { var t = (profile().targets || {})[m.id]; return t && t.total; }); }); }
+  function focusPid() { var mine = focusPaths(), want = S.kv.focusPw; return mine.indexOf(want) >= 0 ? want : mine[0] || null; }
+  function reqCard(it, n, of) {
+    var s = it.s, pw = PATHS[it.pid], label = T(s.mod.label);
+    var bars = (s.total ? barRow(T('Scans'), s.counted, s.total) : '') + (s.sup ? barRow(T('Directly supervised'), s.supervised, s.sup) : '') + s.assessments.filter(function (a) { return a.n < a.min; }).map(function (a) { return barRow(T(a.label), a.n, a.min); }).join('');
+    var asm = s.gaps.some(function (g) { return g.k === 'assessment'; });
+    return '<article class="req" role="group" aria-roledescription="' + esc(T('requirement')) + '" aria-label="' + esc(T('{n} of {m}: {label}', { n: n, m: of, label: label })) + '"' + (of > 1 ? ' data-req-i="' + (n - 1) + '"' : '') + ' data-mod="' + esc(s.mod.id) + '">' +
+      '<p class="eyebrow">' + esc(pwName(pw)) + (of > 1 ? ' · ' + esc(T('{n} of {m}', { n: n, m: of })) : '') + '</p><h3>' + esc(label) + '</h3>' +
+      '<p class="small req-need">' + esc(T('Still needed: {list}', { list: s.gaps.map(gapText).join(', ') })) + '</p>' + (bars ? '<div class="mini">' + bars + '</div>' : '') +
+      '<p class="small muted req-why">' + esc(s.ownTarget ? T('Shown because it is still open against the targets you set for this module.') : T('Shown because it is still open on your {pathway} pathway.', { pathway: pwName(pw) })) + '</p>' +
+      '<div class="btns"><a class="btn teal sm" href="#/new?type=' + esc(s.mod.types[0]) + '">' + esc(T('Log one')) + '</a>' + (asm ? '<a class="btn ghost sm" href="#/assess?p=' + it.pid + '&m=' + s.mod.id + '">' + esc(T('Request assessment')) + '</a>' : '') + '<a class="btn ghost sm" href="#/progress/' + it.pid + '">' + esc(T('Details')) + '</a></div></article>';
+  }
+  function reqDone(o, pid) {
+    if (!o.tracked) return '<div class="card"><h3>' + esc(pwName(PATHS[pid])) + '</h3><p class="small muted">' + esc(T('This pathway has no fixed targets. Set your own under Progress, Targets, and what is still open appears here.')) + '</p><div class="btns"><a class="btn ghost sm" href="#/targets/' + pid + '">' + esc(T('Set targets')) + '</a></div></div>';
+    return '<div class="card req-done"><h3>' + esc(T('Every tracked requirement is met')) + '</h3><p class="small">' + esc(T('All the targets Wavelength tracks for {pathway} are met in your logbook.', { pathway: pwName(PATHS[pid]) })) + (o.waits.length ? ' ' + esc(T('Minimum training period: {n} days to go.', { n: Math.max.apply(null, o.waits.map(function (s) { return s.mod.minDays; })) - o.win.day })) : '') + '</p><p class="small muted">' + esc(T('Your programme decides whether you are signed off. Check its current requirements with your supervisor.')) + '</p><div class="btns"><a class="btn teal sm" href="#/export">' + esc(T('Export your evidence')) + '</a></div></div>';
+  }
+  function focusHtmlFor() {
+    var pid = focusPid(); if (!pid) return '';
+    var o = outstanding(pid), mine = focusPaths();
+    var pick = mine.length > 1 ? '<div class="pw-pick" role="tablist" aria-label="' + esc(T('Pathway')) + '">' + mine.map(function (p) { return '<button type="button" role="tab" data-fpw="' + p + '" aria-selected="' + (p === pid) + '">' + esc(pwName(PATHS[p])) + '</button>'; }).join('') + '</div>' : '';
+    var head = '<h2 class="sec">' + esc(T('Still to do')) + (o.items.length ? ' <a href="#/outstanding/' + pid + '">' + esc(T('View all ({n})', { n: o.items.length })) + '</a>' : '') + '</h2>' + pick;
+    if (!o.items.length) return head + reqDone(o, pid);
+    var n = o.items.length;
+    return head + '<section class="reqs" aria-roledescription="' + esc(T('carousel')) + '" aria-label="' + esc(T('Outstanding requirements for {pathway}', { pathway: pwName(PATHS[pid]) })) + '" data-reqs="' + pid + '">' +
+      '<div class="req-track" tabindex="0">' + o.items.map(function (it, i) { return reqCard(it, i + 1, n); }).join('') + '</div>' +
+      (n > 1 ? '<div class="req-nav"><button type="button" class="req-btn" data-reqstep="-1" aria-label="' + esc(T('Previous requirement')) + '">' + SI.chev.replace('class="chev flip"', 'class="chev"').replace('class="chev"', 'class="chev back"') + '</button><div class="req-dots">' + o.items.map(function (it, i) { return '<button type="button" data-reqdot="' + i + '" aria-label="' + esc(T('Requirement {n} of {m}: {label}', { n: i + 1, m: n, label: T(it.s.mod.label) })) + '"></button>'; }).join('') + '</div><button type="button" class="req-btn" data-reqstep="1" aria-label="' + esc(T('Next requirement')) + '">' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</button></div>' : '') +
+      '<p class="small muted req-order">' + esc(T('In the order of your pathway\'s curriculum, opening where you left off. Nothing here is ranked by clinical importance.')) + '</p></section>';
+  }
+  // Swipe (native scrolling with snap points), the arrows, the dots or the keyboard move it. It never moves on its
+  // own. The card in view is found by IntersectionObserver (no scroll handler), and remembered per pathway.
+  function bindFocus() {
+    $$('[data-fpw]').forEach(function (b) { b.onclick = function () { setKv('focusPw', b.dataset.fpw).then(function () { render(true); }); }; });
+    var box = $('[data-reqs]'); if (!box) return;
+    var pid = box.dataset.reqs, track = $('.req-track', box), cards = $$('.req', track), dots = $$('[data-reqdot]', box), cur = 0;
+    var mark = function (i) {
+      cur = i;
+      dots.forEach(function (d, j) { d.setAttribute('aria-current', j === i ? 'true' : 'false'); });
+      cards.forEach(function (c, j) { c.setAttribute('aria-hidden', j === i ? 'false' : 'true'); c.inert = j !== i && cards.length > 1; });
+      var at = Object.assign({}, S.kv.focusAt || {}); if (cards[i] && at[pid] !== cards[i].dataset.mod) { at[pid] = cards[i].dataset.mod; setKv('focusAt', at); }
+    };
+    var show = function (i, smooth) {
+      i = Math.max(0, Math.min(cards.length - 1, i));
+      var c = cards[i]; if (!c) return;
+      // Only the track scrolls (never the page): the distance from the card's leading edge to the track's, which
+      // works the same way in right-to-left layouts.
+      var tr = track.getBoundingClientRect(), cr = c.getBoundingClientRect(), rtl = getComputedStyle(track).direction === 'rtl';
+      var dx = rtl ? cr.right - tr.right : cr.left - tr.left;
+      if (Math.abs(dx) > 1) track.scrollBy({ left: dx, behavior: smooth && !reducedMotion() ? 'smooth' : 'auto' });
+      mark(i);
+    };
+    if (window.IntersectionObserver && cards.length > 1) {
+      var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && e.intersectionRatio > 0.6) mark(cards.indexOf(e.target)); }); }, { root: track, threshold: [0.6] });
+      cards.forEach(function (c) { io.observe(c); });
+    }
+    $$('[data-reqstep]', box).forEach(function (b) { b.onclick = function () { show(cur + Number(b.dataset.reqstep), true); }; });
+    dots.forEach(function (d) { d.onclick = function () { show(Number(d.dataset.reqdot), true); }; });
+    track.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); var dir = (e.key === 'ArrowRight' ? 1 : -1) * (getComputedStyle(track).direction === 'rtl' ? -1 : 1); show(cur + dir, true); } });
+    // Where it opens: the card the learner last looked at, if still open; otherwise the open requirement they most
+    // recently logged a scan for; otherwise the first in curriculum order.
+    var start = cards.findIndex(function (c) { return c.dataset.mod === (S.kv.focusAt || {})[pid]; });
+    if (start < 0) {
+      var latest = live().slice().sort(sortEntries)[0];
+      if (latest) start = cards.findIndex(function (c) { var m = PATHS[pid].modules.find(function (x) { return x.id === c.dataset.mod; }); return m && m.types.indexOf(latest.type) >= 0; });
+    }
+    show(start < 0 ? 0 : start, false);
+  }
+  // Every open requirement for one pathway, with a choice of order. Curriculum order is the default.
+  function viewOutstanding(r) {
+    var pid = r.arg && PATHS[r.arg] ? r.arg : focusPid() || myPaths()[0];
+    var o = outstanding(pid), sort = r.q.get('sort') || 'curriculum';
+    var items = o.items.slice();
+    if (sort === 'most') items.sort(function (a, b) { return b.left - a.left || a.order - b.order; });
+    if (sort === 'least') items.sort(function (a, b) { return a.left - b.left || a.order - b.order; });
+    var opts = [['curriculum', T('Curriculum order')], ['least', T('Fewest still needed')], ['most', T('Most still needed')]];
+    mount(shell({ title: T('Still to do'), back: '' },
+      '<p class="small muted">' + esc(T('{n} open requirements on your {pathway} pathway, from your logbook and the targets in force.', { n: o.items.length, pathway: pwName(PATHS[pid]) })) + '</p>' +
+      (o.items.length ? '<div class="seg" role="radiogroup" aria-label="' + esc(T('Order')) + '" style="margin:0 0 10px">' + opts.map(function (x) { return '<input type="radio" name="osort" id="os' + x[0] + '" value="' + x[0] + '"' + (x[0] === sort ? ' checked' : '') + '><label for="os' + x[0] + '">' + esc(x[1]) + '</label>'; }).join('') + '</div>' + items.map(function (it) { return '<div class="card">' + reqCard(it, 0, 1) + '</div>'; }).join('') : reqDone(o, pid)) +
+      '<p class="small muted" style="margin-top:14px">' + esc(T('"Fewest" and "Most" count every scan, supervised scan, reflection, rule and assessment still needed. Neither is a clinical priority.')) + '</p>'));
+    $$('input[name=osort]').forEach(function (i) { i.onchange = function () { history.replaceState(null, '', '#/outstanding/' + pid + '?sort=' + i.value); viewOutstanding(route()); }; });
   }
   function learnLink(mod) { var t = TYPES[mod.types[0]]; return t && t.learn ? t.learn : '/learn/'; }
 
@@ -684,7 +771,7 @@
       return (authViews[r.name] || viewWelcome)(r);
     }
     if (!S.account.declarationAt || !(profile().onboarded)) return viewOnboard(r);
-    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute, guides: viewGuides };
+    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute, guides: viewGuides, outstanding: viewOutstanding };
     (views[r.name] || viewHome)(r);
     setSyncDot();
     // A new screen fades in once (CSS, 180 ms, none with reduced motion). A redraw of the same screen does not.
@@ -955,12 +1042,7 @@
     var nw = news(), nq = nw.some(function (n) { return n.status === 'query'; });
     var newsCard = nw.length ? '<div class="card" style="border-color:var(--green-line);background:var(--green-bg)"><div class="row"><span style="color:var(--green)">' + I.pen + '</span><div class="grow"><h3>' + esc(T('New sign-off')) + '</h3><p class="small" style="margin:0">' + esc(newsText(nw)) + '</p></div></div><div class="btns"><a class="btn sm" href="#/log' + (nq ? '?s=todo' : '?s=signed') + '">' + esc(T('See scans')) + '</a><button class="btn ghost sm" type="button" id="nwx">' + esc(T('Dismiss')) + '</button></div></div>' : '';
     var sup = newsCard + emailCard() + superviseCard();
-    var focus = focusNext(), focusHtml = '';
-    if (focus) {
-      var fs = focus.s;
-      focusHtml = '<h2 class="sec">' + esc(T('Focus next')) + '</h2><div class="card focus"><p class="eyebrow">' + esc(PATHS[focus.pid].label) + '</p><h3>' + esc(T(fs.mod.label)) + '</h3><p class="small" style="margin:2px 0 10px">' + esc(needText(fs)) + '</p>' + (fs.total ? barRow(T('Scans'), fs.counted, fs.total) : '') +
-        '<div class="btns"><a class="btn teal sm" href="#/new?type=' + fs.mod.types[0] + '">' + esc(T('Log one')) + '</a><a class="btn ghost sm" href="' + esc(learnLink(fs.mod)) + '">' + esc(T('Learn: Pearls and Academy')) + '</a>' + (fs.gaps.some(function (g) { return g.k === 'assessment'; }) ? '<a class="btn ghost sm" href="#/assess?p=' + focus.pid + '&m=' + fs.mod.id + '">' + esc(T('Request assessment')) + '</a>' : '') + '</div></div>';
-    }
+    var focusHtml = focusHtmlFor();
     var paths = myPaths().map(function (pid) {
       var ps = pathwayStats(pid);
       var rows = ps.stats.filter(function (s) { return s.total || s.list.length; }).sort(function (a, b) { return b.list.length - a.list.length; }).slice(0, 4);
@@ -976,6 +1058,7 @@
       academyCard() +
       (course ? '<h2 class="sec">' + esc(T('Next course')) + '</h2><a class="card teal" href="/courses/' + esc(course.slug) + '/" style="display:block;text-decoration:none"><p class="eyebrow" style="color:var(--teal-l)">' + esc(fmt(course.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })) + '</p><h3>' + esc(course.title) + '</h3><p class="muted" style="color:#cfe3e6">' + esc([course.venue, course.city].filter(Boolean).join(', ')) + '</p><span class="btn light sm">' + esc(T('See the course')) + '</span></a>' : '')));
     var nx = $('#nwx'); if (nx) nx.onclick = function () { setKv('news', []).then(function () { render(true); }); };
+    bindFocus();
     loadThumbs();
   }
   // The four Home counts and where each opens. Own logbook only (supervised learners' scans are never in S.entries).

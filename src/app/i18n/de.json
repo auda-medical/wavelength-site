@@ -2172,5 +2172,30 @@
 "{n} requests": {
 "one": "{n} Anfrage",
 "other": "{n} Anfragen"
-}
+},
+"\"Fewest\" and \"Most\" count every scan, supervised scan, reflection, rule and assessment still needed. Neither is a clinical priority.": "„Am wenigsten“ und „Am meisten“ zählen jede noch fehlende Untersuchung, supervidierte Untersuchung, Reflexion, Regel und Beurteilung. Keines davon ist eine klinische Priorität.",
+"All the targets Wavelength tracks for {pathway} are met in your logbook.": "Alle Ziele, die Wavelength für {pathway} verfolgt, sind in Ihrem Logbuch erfüllt.",
+"Curriculum order": "Reihenfolge des Curriculums",
+"Every tracked requirement is met": "Alle verfolgten Anforderungen sind erfüllt",
+"Export your evidence": "Nachweise exportieren",
+"Fewest still needed": "Am wenigsten offen",
+"In the order of your pathway's curriculum, opening where you left off. Nothing here is ranked by clinical importance.": "In der Reihenfolge des Curriculums Ihres Pfads, geöffnet dort, wo Sie aufgehört haben. Nichts hier ist nach klinischer Bedeutung geordnet.",
+"Minimum training period: {n} days to go.": "Mindestausbildungszeit: noch {n} Tage.",
+"Most still needed": "Am meisten offen",
+"Next requirement": "Nächste Anforderung",
+"Order": "Reihenfolge",
+"Outstanding requirements for {pathway}": "Offene Anforderungen für {pathway}",
+"Previous requirement": "Vorherige Anforderung",
+"Requirement {n} of {m}: {label}": "Anforderung {n} von {m}: {label}",
+"Set targets": "Ziele festlegen",
+"Shown because it is still open against the targets you set for this module.": "Angezeigt, weil es gemessen an den Zielen, die Sie für dieses Modul festgelegt haben, noch offen ist.",
+"Shown because it is still open on your {pathway} pathway.": "Angezeigt, weil es in Ihrem {pathway}-Pfad noch offen ist.",
+"Still to do": "Noch zu tun",
+"This pathway has no fixed targets. Set your own under Progress, Targets, and what is still open appears here.": "Dieser Pfad hat keine festen Ziele. Legen Sie unter Fortschritt, Ziele eigene fest, dann erscheint hier, was noch offen ist.",
+"View all ({n})": "Alle anzeigen ({n})",
+"Your programme decides whether you are signed off. Check its current requirements with your supervisor.": "Ihr Programm entscheidet, ob Sie freigegeben werden. Prüfen Sie dessen aktuelle Anforderungen mit Ihrem Supervisor.",
+"carousel": "Karussell",
+"requirement": "Anforderung",
+"{n} of {m}: {label}": "{n} von {m}: {label}",
+"{n} open requirements on your {pathway} pathway, from your logbook and the targets in force.": "{n} offene Anforderungen in Ihrem {pathway}-Pfad, nach Ihrem Logbuch und den geltenden Zielen."
 }

@@ -719,3 +719,32 @@ a.evmod:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 .sv-waiting { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 10px; padding: 10px; border-radius: 12px; background: rgba(127,196,204,.14); color: var(--cream); font-weight: 600; font-size: 14px; text-decoration: none; min-height: 44px; }
 .sv-waiting .chev { width: 14px; height: 14px; }
 .btns .link { align-self: center; }
+
+/* 1.0.12: outstanding requirements carousel (Home). Native horizontal scrolling with snap points; no autoplay. */
+.pw-pick { display: flex; gap: 8px; margin: -2px 0 10px; overflow-x: auto; scrollbar-width: none; }
+.pw-pick::-webkit-scrollbar { display: none; }
+.pw-pick button { flex: none; font: 600 13px var(--sans); padding: 8px 14px; min-height: 36px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.pw-pick button[aria-selected="true"] { background: var(--sel); color: var(--sel-ink); border-color: var(--sel); }
+.reqs { margin: 0 0 6px; }
+.req-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 2px 2px 4px; margin: 0 -2px; border-radius: 18px; }
+.req-track::-webkit-scrollbar { display: none; }
+.req-track:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.req { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 16px 14px; box-shadow: 0 1px 2px rgba(15,30,51,.05), 0 6px 18px -12px rgba(15,30,51,.25); }
+.req h3 { margin: 0 0 4px; }
+.req-need { margin: 0 0 10px; font-weight: 500; }
+.req-why { margin: 10px 0 0; }
+.req .btns { margin-top: 12px; }
+.card > .req { border: 0; box-shadow: none; padding: 0; }
+.req-nav { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; }
+.req-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.req-btn .chev { width: 16px; height: 16px; }
+.req-btn .chev.back { transform: scaleX(-1); }
+[dir="rtl"] .req-btn .chev { transform: scaleX(-1); }
+[dir="rtl"] .req-btn .chev.back { transform: none; }
+.req-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 220px; }
+.req-dots button { width: 24px; height: 24px; border: 0; background: none; padding: 0; display: grid; place-items: center; cursor: pointer; }
+.req-dots button::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: background-color .18s ease, transform .18s ease; }
+.req-dots button[aria-current="true"]::after { background: var(--link); transform: scale(1.25); }
+.req-order { text-align: center; margin: 6px 0 0; }
+.req-done { border-color: var(--green-line); }
+@media (prefers-reduced-motion: reduce) { .req-dots button::after { transition: none; } }

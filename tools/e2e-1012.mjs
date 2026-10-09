@@ -38,6 +38,7 @@ const shot = async (page, name, opt = {}) => { await new Promise((r) => setTimeo
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const WIFI = { ...DEVICE.wifi, underlying: true, underlyingTransports: ['wifi'] };
 const NONE = { ...DEVICE.none, underlying: false, underlyingTransports: [] };
+const LB = JSON.parse(fs.readFileSync('data/logbook.json', 'utf8'));
 const H = { 'Content-Type': 'application/json', Accept: 'application/json', Origin: 'https://localhost', 'X-Wavelength-Client': 'app' };
 
 async function account(first = 'Test', last = 'Clinician', pathways = ['rcem']) {
@@ -185,6 +186,68 @@ if (want('D')) {
   record('D6', 'Offline: says records are only shown while connected (not kept on the phone)', /only shown while you are connected/.test(await text(page, 'main')), await text(page, 'main'));
   reset(); await setNet(page, WIFI);
   await ctx.close();
+}
+
+// ---------- H: outstanding requirements carousel ----------
+const scansOf = (acc, type, n, extra = {}) => Array.from({ length: n }, (_, i) => ({ id: `h1012${type}${acc.id}x${i}x${Math.floor(Math.random() * 1e6)}`, type, date: new Date(Date.now() - (n - i) * 864e5).toISOString().slice(0, 10), supervision: 'direct', reflection: 'A reflection longer than twenty characters about this scan.', createdAt: Date.now() - (n - i), updatedAt: 0, ...extra }));
+const carousel = (page) => page.evaluate(() => {
+  const box = document.querySelector('[data-reqs]');
+  const cards = [...document.querySelectorAll('.req-track .req')];
+  const cur = cards.findIndex((c) => c.getAttribute('aria-hidden') === 'false');
+  return { pid: box && box.dataset.reqs, n: cards.length, mods: cards.map((c) => c.dataset.mod), cur, curMod: cur >= 0 ? cards[cur].dataset.mod : null, dots: document.querySelectorAll('[data-reqdot]').length, viewAll: (document.querySelector('h2.sec a[href^="#/outstanding/"]') || {}).textContent || '', done: !!document.querySelector('.req-done'), scrollX: (document.querySelector('.req-track') || {}).scrollLeft };
+});
+if (want('H')) {
+  // H1 a new RCEM learner: every RCEM module is open, in curriculum order; no autoplay.
+  {
+    const { ctx, page } = await phone();
+    const c = await carousel(page);
+    record('H1', 'New RCEM learner: all six modules listed in curriculum order, with dots and View all', c.n === 6 && c.dots === 6 && /View all \(6\)/.test(c.viewAll) && c.mods[0] === 'rcem-aaa', JSON.stringify(c));
+    await shot(page, 'H1-carousel-new');
+    await sleep(6000);
+    const c2 = await carousel(page);
+    record('H2', 'It never moves on its own (6 s, same card, same scroll position)', c2.cur === c.cur && c2.scrollX === c.scrollX, `${c.cur}/${c.scrollX} -> ${c2.cur}/${c2.scrollX}`);
+    await page.click('[data-reqstep="1"]'); await sleep(700);
+    const c3 = await carousel(page);
+    await page.goto('https://localhost/#/'); await page.waitForSelector('[data-reqs]'); await sleep(600);
+    const c4 = await carousel(page);
+    record('H3', 'Next moves one card; after a reload it opens where the learner left it', c3.cur === 1 && c4.curMod === c3.curMod, `${c3.curMod} then ${c4.curMod}`);
+    await ctx.close();
+  }
+  // H4 activity on eFAST: the carousel opens at eFAST, not AAA; a completed AAA module is left out.
+  {
+    const acc = await account();
+    await call(acc, 'sync', { entries: scansOf(acc, 'aaa', 25) });
+    await call(acc, 'assessment/inperson', { pathway: 'rcem', module: 'rcem-aaa', kind: 'dops', outcome: 'competent', domains: { [LB.assessmentDomains[0].id]: LB.assessmentScale[0] }, name: 'Dr A', role: 'Consultant', confirm: true, signature: 'data:image/png;base64,iVBORw0KGgo=' });
+    await call(acc, 'sync', { entries: scansOf(acc, 'efast', 3).map((e) => ({ ...e, date: new Date().toISOString().slice(0, 10) })) });
+    const { ctx, page } = await phone({ acc });
+    const c = await carousel(page);
+    const asm = await call(acc, 'assessments');
+    const aaaDone = (asm.assessments || []).some((a) => a.module === 'rcem-aaa' && a.status === 'signed');
+    const pageY = await page.evaluate(() => window.scrollY);
+    record('H4', 'Opens at the requirement most recently logged (eFAST), not the first in the list, without scrolling the page', c.curMod === 'rcem-efast' && pageY === 0, JSON.stringify({ cur: c.curMod, mods: c.mods, pageY }));
+    record('H5', 'A completed module (AAA: 25 scans, 5 reflections, DOPS competent) is not listed', aaaDone ? !c.mods.includes('rcem-aaa') && c.n === 5 : false, `assessment signed: ${aaaDone}; ${c.mods.join(', ')}`);
+    await shot(page, 'H4-carousel-efast');
+    await go(page, '#/outstanding/rcem'); await page.waitForSelector('input[name=osort]');
+    const order = await page.$$eval('main .req', (r) => r.map((x) => x.dataset.mod));
+    await page.click('label[for=osleast]'); await sleep(300);
+    const least = await page.$$eval('main .req', (r) => r.map((x) => x.dataset.mod));
+    record('H6', 'View all: every open requirement, curriculum order by default, other orders on request', order.length === c.n && order.join() === c.mods.join() && least[0] !== undefined && least.join() !== '' , `${order.join(',')} | least first: ${least.join(',')}`);
+    await shot(page, 'H6-view-all', { fullPage: true });
+    await ctx.close();
+  }
+  // H7 pathway switching, and a pathway whose own targets are all met.
+  {
+    const acc = await account('Fay', 'Famus', ['famus', 'general']);
+    await fetch(API + '/api/app/profile', { method: 'POST', headers: { ...H, Authorization: 'Bearer ' + acc.token }, body: JSON.stringify({ profile: { pathways: ['famus', 'general'], grade: 'ST4', onboarded: true, targets: { 'gen-lung': { total: 2 } } } }) });
+    await call(acc, 'sync', { entries: scansOf(acc, 'lung', 2) });
+    const { ctx, page } = await phone({ acc });
+    const a = await carousel(page);
+    await page.click('[data-fpw="general"]'); await sleep(500);
+    const b = await carousel(page);
+    record('H7', 'Pathway picker switches the list; a pathway with every target met says so', a.pid === 'famus' && a.n === 5 && b.done, `famus ${a.n} cards; general done ${b.done}`);
+    await shot(page, 'H7-all-met');
+    await ctx.close();
+  }
 }
 
 fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, errors }, null, 2));

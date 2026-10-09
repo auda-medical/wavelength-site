@@ -2172,5 +2172,30 @@
 "{n} requests": {
 "one": "{n} solicitud",
 "other": "{n} solicitudes"
-}
+},
+"\"Fewest\" and \"Most\" count every scan, supervised scan, reflection, rule and assessment still needed. Neither is a clinical priority.": "«Menos» y «Más» cuentan cada exploración, exploración supervisada, reflexión, regla y evaluación que aún faltan. Ninguno es una prioridad clínica.",
+"All the targets Wavelength tracks for {pathway} are met in your logbook.": "Todos los objetivos que Wavelength sigue para {pathway} están cumplidos en su registro.",
+"Curriculum order": "Orden del programa",
+"Every tracked requirement is met": "Todos los requisitos seguidos están cumplidos",
+"Export your evidence": "Exportar sus pruebas",
+"Fewest still needed": "Menos pendientes",
+"In the order of your pathway's curriculum, opening where you left off. Nothing here is ranked by clinical importance.": "En el orden del programa de su itinerario, abriéndose donde lo dejó. Nada aquí está ordenado por importancia clínica.",
+"Minimum training period: {n} days to go.": "Periodo mínimo de formación: faltan {n} días.",
+"Most still needed": "Más pendientes",
+"Next requirement": "Requisito siguiente",
+"Order": "Orden",
+"Outstanding requirements for {pathway}": "Requisitos pendientes de {pathway}",
+"Previous requirement": "Requisito anterior",
+"Requirement {n} of {m}: {label}": "Requisito {n} de {m}: {label}",
+"Set targets": "Fijar objetivos",
+"Shown because it is still open against the targets you set for this module.": "Se muestra porque sigue abierto según los objetivos que fijó para este módulo.",
+"Shown because it is still open on your {pathway} pathway.": "Se muestra porque sigue abierto en su itinerario {pathway}.",
+"Still to do": "Pendiente",
+"This pathway has no fixed targets. Set your own under Progress, Targets, and what is still open appears here.": "Este itinerario no tiene objetivos fijos. Fije los suyos en Progreso, Objetivos, y lo pendiente aparecerá aquí.",
+"View all ({n})": "Ver todo ({n})",
+"Your programme decides whether you are signed off. Check its current requirements with your supervisor.": "Su programa decide si queda aprobado. Compruebe sus requisitos actuales con su supervisor.",
+"carousel": "carrusel",
+"requirement": "requisito",
+"{n} of {m}: {label}": "{n} de {m}: {label}",
+"{n} open requirements on your {pathway} pathway, from your logbook and the targets in force.": "{n} requisitos abiertos en su itinerario {pathway}, según su registro y los objetivos vigentes."
 }
