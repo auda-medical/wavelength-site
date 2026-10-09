@@ -28,12 +28,12 @@ function fakePlugin(status) {
 test('Android: netStatus reports connected, validated, VPN and transports', async () => {
   const plug = fakePlugin({ connected: true, validated: false, vpn: true, transports: ['wifi', 'vpn'], id: '42' });
   const { N } = load({ net: plug });
-  assert.deepEqual(await N.netStatus(), { known: true, connected: true, validated: false, vpn: true, transports: ['vpn', 'wifi'], id: '42', underlying: null, underlyingTransports: [] });
+  assert.deepEqual(await N.netStatus(), { known: true, connected: true, validated: false, vpn: true, vpnKnown: true, transports: ['vpn', 'wifi'], id: '42', underlying: null, underlyingTransports: [] });
 });
 
 test('Android (1.0.11): the network under a VPN is passed on, and only a definite answer counts', async () => {
   const alone = fakePlugin({ connected: true, validated: false, vpn: true, transports: ['vpn'], id: '9', underlying: false, underlyingTransports: [] });
-  assert.deepEqual(await load({ net: alone }).N.netStatus(), { known: true, connected: true, validated: false, vpn: true, transports: ['vpn'], id: '9', underlying: false, underlyingTransports: [] });
+  assert.deepEqual(await load({ net: alone }).N.netStatus(), { known: true, connected: true, validated: false, vpn: true, vpnKnown: true, transports: ['vpn'], id: '9', underlying: false, underlyingTransports: [] });
   const wifi = fakePlugin({ connected: true, validated: true, vpn: true, transports: ['wifi', 'vpn'], id: '9', underlying: true, underlyingTransports: ['wifi'] });
   assert.equal((await load({ net: wifi }).N.netStatus()).underlying, true);
   const odd = fakePlugin({ connected: true, vpn: true, transports: ['vpn'], id: '9', underlying: 'no', underlyingTransports: ['x'] });
@@ -55,8 +55,11 @@ test('Android: a network change (VPN reconnect, Wi-Fi back) reaches the logbook 
   assert.equal(events.length, 1);
 });
 
-test('no plugin (iPhone, website, older build) or a failing plugin: netStatus is null, app uses navigator.onLine', async () => {
-  assert.equal(await load({ platform: 'ios', net: fakePlugin({ connected: true }) }).N.netStatus(), null);
+test('no plugin (website, older build) or a failing plugin: netStatus is null, app uses navigator.onLine', async () => {
+  // 1.0.12: iPhone has its own plugin (test/ios-1012.test.mjs). An iPhone build without it answers UNIMPLEMENTED.
+  const ios = await load({ platform: 'ios', net: fakePlugin({ connected: true, vpn: null }) }).N.netStatus();
+  assert.deepEqual([ios.known, ios.vpnKnown], [true, false]);
+  assert.equal(await load({ platform: 'ios', net: { getStatus: () => Promise.reject(new Error('UNIMPLEMENTED')), addListener: () => Promise.reject(new Error('UNIMPLEMENTED')) } }).N.netStatus(), null);
   assert.equal(await load({ platform: null }).N.netStatus(), null);
   const broken = { getStatus: () => Promise.reject(new Error('UNIMPLEMENTED')), addListener: () => Promise.reject(new Error('UNIMPLEMENTED')) };
   assert.equal(await load({ net: broken }).N.netStatus(), null);
