@@ -123,6 +123,6 @@ test('after an offline start, the first good sync loads the account details and 
   const ok = APP.slice(APP.indexOf("SY.fail = ''; SY.ran = true; SY.lastOk = Date.now();"), APP.indexOf("return setKv('lastSyncOk'"));
   assert.match(ok, /if \(!S\.me\) loadMe\(\)/);
   assert.match(ok, /if \(!S\.links\) loadLinks\(\)/);
-  const sv = APP.slice(APP.indexOf('function viewSupervisors()'), APP.indexOf('function viewSupervisors()') + 4000);
+  const sv = APP.slice(APP.indexOf('function viewSupervisors('), APP.indexOf('function viewSupervisors(') + 5000);
   assert.match(sv, /!S\.links \? /, 'no "No supervisors linked yet" before the links have loaded');
 });

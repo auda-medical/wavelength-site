@@ -99,9 +99,9 @@ export const NO_NETWORK_EVENTS = `(() => {
 export async function harness({ api = 'http://localhost:8787', errors = [] } = {}) {
   localOnly(api, 'The native harness');
   const browser = await chromium.launch();
-  async function newApp(width = 390, height = 844, { init = [] } = {}) {
+  async function newApp(width = 390, height = 844, { init = [], video = null } = {}) {
     // An Android 14 WebView user agent, as the app sees on a current phone (native.js reads the Android version).
-    const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, isMobile: width < 600, hasTouch: true, locale: 'en-GB', serviceWorkers: 'block', userAgent: ANDROID_UA });
+    const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, isMobile: width < 600, hasTouch: true, locale: 'en-GB', serviceWorkers: 'block', userAgent: ANDROID_UA, ...(video ? { recordVideo: video } : {}) });
     for (const s of init) await ctx.addInitScript(s);
     await ctx.addInitScript(BRIDGE);
     // The bundle, served as Capacitor serves it from the phone. Paths without a file fall back to index.html.
