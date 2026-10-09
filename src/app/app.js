@@ -342,7 +342,7 @@
     openSyncSheet();
   });
   function openSyncSheet() {
-    if ($('.sheet [data-syncpanel]')) return;
+    if ($('.sheet-bg .sheet [data-syncpanel]')) return;
     sheet('<h2>' + esc(T('Sync on this device')) + '</h2><div data-syncpanel></div><div class="btns"><button class="btn ghost block" type="button" data-close>' + esc(T('Close')) + '</button></div>', function (root) { fillSyncPanel($('[data-syncpanel]', root)); });
   }
   // One timer at most. While the app is in the background (wl:pause, or the web page hidden) no timer runs, so a long
@@ -392,7 +392,7 @@
     if (!S.account) return Promise.resolve();
     if (updateLevel() === 'required') { SY.fail = 'update'; setSyncDot(); return Promise.resolve(); }
     if (SY.fail === 'update') SY.fail = '';
-    if (S.syncing) { S.again = S.again || S.syncP.then(function () { S.again = null; return sync(manual); }); return S.again; }
+    if (S.syncing) { if (manual) S.againManual = true; S.again = S.again || S.syncP.then(function () { var m = S.againManual; S.again = null; S.againManual = false; return sync(m); }); return S.again; }
     clearTimeout(SY.timer); SY.timer = 0;
     S.syncing = true; S.syncManual = !!manual; setSyncDot();
     S.syncP = doSync(manual);
@@ -479,7 +479,10 @@
       S.syncing = false; S.syncManual = false;
       if (!S.account || gen !== SESSION) return;
       // The server answered although the phone last said "no network": that reading is stale, so read it again.
-      if (!SY.fail && S.net && S.net.known && !S.net.connected && NAT.netStatus) NAT.netStatus().then(function (v) { if (v) { S.net = v; setSyncDot(); } });
+      // Likewise a VPN reported with nothing under it: the server answered, so there is a network. Until the phone says
+      // otherwise the reading is treated as unknown (never Offline while syncs are succeeding).
+      if (!SY.fail && S.net && NETR.vpnOnly(S.net)) S.net = Object.assign({}, S.net, { underlying: null });
+      if (!SY.fail && S.net && S.net.known && (!S.net.connected || S.net.underlying === null) && NAT.netStatus) NAT.netStatus().then(function (v) { if (v) { S.net = NETR.vpnOnly(v) ? Object.assign({}, v, { underlying: null }) : v; setSyncDot(); } });
       var left = S.entries.some(function (e) { return e._dirty && !e._syncError; });
       if (SY.fail === 'auth') { /* signed out: nothing to retry until the learner signs in */ }
       else if (SY.fail || left) { SY.tries++; scheduleRetry(); } else SY.tries = 0;
@@ -851,7 +854,7 @@
     return openDb(acc.id).then(function (db) { S.db = db; return Promise.all([all('entries'), all('kv')]); }).then(function (r) {
       S.entries = r[0] || []; S.kv = {}; (r[1] || []).forEach(function (x) { S.kv[x.k] = x.v; });
       S.assessments = S.kv.assessments || [];
-      clearTimeout(SY.timer); SY = { lastOk: S.kv.lastSyncOk || 0, fail: '', tries: 0, timer: 0, ran: false };
+      clearTimeout(SY.timer); clearTimeout(SY.netTimer); SY = { lastOk: S.kv.lastSyncOk || 0, fail: '', tries: 0, timer: 0, ran: false, paused: !!SY.paused };
       var was = authNote(); if (was && was.id === acc.id) authNote(null);
       var next = new URLSearchParams(location.search).get('next');
       if (next && /^\/elearning\//.test(next)) { location.href = next; return; }
@@ -1123,7 +1126,12 @@
     if (!fl) return;
     var id = 'err-' + fl.dataset.req, p = $('#' + id, fl);
     fl.classList.toggle('invalid', !!msg);
-    $$('input,select,textarea', fl).forEach(function (c) { if (msg) { c.setAttribute('aria-invalid', 'true'); c.setAttribute('aria-describedby', id); } else { c.removeAttribute('aria-invalid'); c.removeAttribute('aria-describedby'); } });
+    // The error joins any description the control already has (the supervision levels' explanations), and leaves it.
+    $$('input,select,textarea', fl).forEach(function (c) {
+      var ds = (c.getAttribute('aria-describedby') || '').split(/\s+/).filter(function (x) { return x && x !== id; });
+      if (msg) { c.setAttribute('aria-invalid', 'true'); ds.unshift(id); } else c.removeAttribute('aria-invalid');
+      if (ds.length) c.setAttribute('aria-describedby', ds.join(' ')); else c.removeAttribute('aria-describedby');
+    });
     if (!msg) { if (p) p.remove(); ['tabindex', 'role', 'aria-describedby', 'aria-labelledby'].forEach(function (a) { fl.removeAttribute(a); }); return; }
     if (!p) { p = document.createElement('p'); p.className = 'ferr'; p.id = id; fl.appendChild(p); }
     p.innerHTML = '<span aria-hidden="true">' + SI.alert + '</span>' + esc(msg);
@@ -1462,7 +1470,7 @@
         var max = 2200, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
         var work = document.createElement('canvas'); work.width = Math.round(img.naturalWidth * sc); work.height = Math.round(img.naturalHeight * sc);
         work.getContext('2d').drawImage(img, 0, 0, work.width, work.height);
-        var first = work, orient = { r: 0, m: false }, undo = [];
+        var first = work, orient = { r: 0, m: false }, undo = [], saving = false;
         var el = editorFrame(T('Prepare image'), T('I have removed or covered every patient identifier in this image.'), T('Use this image'), {});
         var cv = $('canvas', el), applyBtn = $('[data-a=apply]', el), undoBtn = $('[data-a=undo]', el), resetBtn = $('[data-a=reset]', el);
         var state = function () {
@@ -1472,7 +1480,9 @@
         };
         var draw = function () { cv.width = work.width; cv.height = work.height; cv.getContext('2d').drawImage(work, 0, 0); picker.clear(); state(); };
         // Each change keeps the canvas before it (up to 12 steps) and the orientation that went with it.
-        var commit = function (c, act) { undo.push({ c: work, o: orient }); if (undo.length > 12) undo.shift(); work = c; orient = orientAfter(orient, act); draw(); };
+        // Undo keeps up to 12 steps, within about 60 megapixels in all, so a large photo cannot exhaust a phone's memory.
+        var px = function () { return undo.reduce(function (n, u) { return n + u.c.width * u.c.height; }, 0); };
+        var commit = function (c, act) { undo.push({ c: work, o: orient }); while (undo.length > 12 || (undo.length > 1 && px() > 60e6)) undo.shift(); work = c; orient = orientAfter(orient, act); draw(); };
         var canvasOf = function (w, h) { var c = document.createElement('canvas'); c.width = Math.round(w); c.height = Math.round(h); return c; };
         var crop = function (x, y, w, h) { if (w < 20 || h < 20) return; var c = canvasOf(w, h); c.getContext('2d').drawImage(work, x, y, w, h, 0, 0, c.width, c.height); commit(c, 'crop'); };
         var orientOp = function (act) {
@@ -1483,6 +1493,7 @@
           g.drawImage(work, 0, 0); commit(c, act); NAT.haptic();
         };
         var picker = bindSelect(el, cv, function (mode, sel) {
+          if (saving) { picker.clear(); return; }
           if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { var c = canvasOf(work.width, work.height), g = c.getContext('2d'); g.drawImage(work, 0, 0); g.fillStyle = '#000'; g.fillRect(sel.x, sel.y, sel.w, sel.h); commit(c, 'cover'); }
         }, function (sel) { applyBtn.hidden = !(picker && picker.mode() === 'crop' && sel && sel.w >= 20 && sel.h >= 20); });
         bindModes(el, picker, { crop: T('Drag to choose the area to keep, then tap Apply crop.'), cover: T('Drag over any name, number, date or label to black it out.') });
@@ -1492,22 +1503,26 @@
         el.addEventListener('click', function (ev) {
           var a = ev.target.closest('[data-a]'); if (!a || a.disabled) return;
           var act = a.dataset.a;
-          if (act === 'cancel') close(null);
+          if (act === 'cancel') return close(null);
+          if (saving) return;
           if (act === 'undo' && undo.length) { var u = undo.pop(); work = u.c; orient = u.o; draw(); }
           if (act === 'reset' && undo.length) { undo = []; work = first; orient = { r: 0, m: false }; draw(); }
           if (act === 'apply') { var s = picker.get(); if (s) crop(s.x, s.y, s.w, s.h); }
           if (act === 'trim') { var h = Math.round(work.height * 0.12); crop(0, h, work.width, work.height - h); }
           if (act === 'rotate' || act === 'fliph' || act === 'flipv') orientOp(act);
           if (act === 'save') {
-            save.disabled = true;
+            // The picture as it is now is what is saved: the tools are locked until saving ends, so an Undo during
+            // encoding can never save an uncovered image under the ticked declaration.
+            save.disabled = true; saving = true; el.classList.add('working');
+            var fin = work, fo = orient;
             // 2048 px at quality 0.9 keeps fine text and speckle; step quality down only past the 1.5 MB share limit.
-            var out = function (maxSide, q) { return new Promise(function (ok) { var s = Math.min(1, maxSide / Math.max(work.width, work.height)); var c = canvasOf(work.width * s, work.height * s); var g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.drawImage(work, 0, 0, c.width, c.height); c.toBlob(function (b) { ok({ b: b, w: c.width, h: c.height }); }, 'image/jpeg', q); }); };
+            var out = function (maxSide, q) { return new Promise(function (ok) { var s = Math.min(1, maxSide / Math.max(fin.width, fin.height)); var c = canvasOf(fin.width * s, fin.height * s); var g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.drawImage(fin, 0, 0, c.width, c.height); c.toBlob(function (b) { ok({ b: b, w: c.width, h: c.height }); }, 'image/jpeg', q); }); };
             var best = function () { var qs = [0.9, 0.85, 0.8, 0.72]; var tryQ = function (i) { return out(2048, qs[i]).then(function (r) { return r.b && r.b.size > IMG_LIMIT && i < qs.length - 1 ? tryQ(i + 1) : r; }); }; return tryQ(0); };
             Promise.all([best(), out(360, 0.72)]).then(function (r) {
               if (!r[0].b || !r[1].b) throw new Error('encode');
               // The orientation change made here is kept with the image on this phone (no identifiers: turns and a mirror).
-              close({ blob: r[0].b, thumb: r[1].b, w: r[0].w, h: r[0].h, declared: true, kind: 'image', edits: { r: orient.r, m: orient.m } });
-            }).catch(function () { save.disabled = !decl.checked; var er = $('[data-err]', el); er.textContent = T('Could not prepare the image. Try again.'); er.hidden = false; });
+              close({ blob: r[0].b, thumb: r[1].b, w: r[0].w, h: r[0].h, declared: true, kind: 'image', edits: { r: fo.r, m: fo.m } });
+            }).catch(function () { saving = false; el.classList.remove('working'); save.disabled = !decl.checked; var er = $('[data-err]', el); er.textContent = T('Could not prepare the image. Try again.'); er.hidden = false; });
           }
         });
         draw();
@@ -1534,7 +1549,12 @@
     var d = vid.duration;
     if (isFinite(d) && d > 0) return Promise.resolve(d);
     return new Promise(function (ok) {
-      var done = false, finish = function () { if (done) return; done = true; vid.removeEventListener('durationchange', check); clearTimeout(t); var v = vid.duration; vid.currentTime = 0; ok(isFinite(v) && v > 0 ? v : 0); };
+      var done = false, finish = function () {
+        if (done) return; done = true; vid.removeEventListener('durationchange', check); clearTimeout(t);
+        var v = vid.duration, back = function () { clearTimeout(t2); vid.removeEventListener('seeked', back); ok(isFinite(v) && v > 0 ? v : 0); }, t2 = setTimeout(back, 3000);
+        // Back to the start, and wait until the first frame is there, so the first preview is not blank.
+        vid.addEventListener('seeked', back); vid.currentTime = 0;
+      };
       var check = function () { if (isFinite(vid.duration) && vid.duration > 0) finish(); };
       var t = setTimeout(finish, 4000);
       vid.addEventListener('durationchange', check);
@@ -1607,9 +1627,10 @@
           $('[data-sum]', el).textContent = (known ? T('Keeps {a} s to {b} s ({n} s) of a {t} s clip.', { a: f1(startAt), b: f1(end), n: f1(end - startAt), t: f1(total) }) : T('Keeps {n} s from {a} s. This phone could not read the clip\'s full length.', { a: f1(startAt), n: f1(len) })) + (known && total > CLIP_MAX + 0.05 ? ' ' + T('Clips can be up to {m} seconds: nothing outside the selection is saved.', { m: CLIP_MAX }) : '');
         };
         var keep = function () { history.push({ crop: Object.assign({}, crop), covers: covers.slice(), orient: orient }); if (history.length > 20) history.shift(); };
-        var picker = bindSelect(el, cv, function (mode, sel) { if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { keep(); covers.push(rectToSrc(sel)); paint(); picker.clear(); state(); } }, function (sel) { applyBtn.hidden = !(picker && picker.mode() === 'crop' && sel && sel.w >= 20 && sel.h >= 20); });
+        var picker = bindSelect(el, cv, function (mode, sel) { if (busyRec) { picker.clear(); return; } if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { keep(); covers.push(rectToSrc(sel)); paint(); picker.clear(); state(); } }, function (sel) { applyBtn.hidden = !(picker && picker.mode() === 'crop' && sel && sel.w >= 20 && sel.h >= 20); });
         bindModes(el, picker, { crop: T('Drag to choose the area to keep, then tap Apply crop.'), cover: T('Drag over any name, number, date or label. The cover stays on every frame.') });
-        var seek = function (t) { return new Promise(function (ok) { var target = Math.min(Math.max(0, t), Math.max(0, total - 0.05)); if (Math.abs(vid.currentTime - target) < 0.01) return ok(); var done = function () { vid.removeEventListener('seeked', done); ok(); }; vid.addEventListener('seeked', done); vid.currentTime = target; }); };
+        // Seeks and waits for the frame (at most 3 s, so a clip that never answers cannot hang the editor).
+        var seek = function (t) { return new Promise(function (ok) { var target = Math.min(Math.max(0, t), Math.max(0, total - 0.05)); if (!vid.seeking && vid.readyState >= 2 && Math.abs(vid.currentTime - target) < 0.01) return ok(); var tm, done = function () { clearTimeout(tm); vid.removeEventListener('seeked', done); ok(); }; tm = setTimeout(done, 3000); vid.addEventListener('seeked', done); vid.currentTime = target; }); };
         var showPos = function () { scrub.value = vid.currentTime; $('[data-pos]', el).textContent = f1(vid.currentTime); };
         var stopPlay = function () { if (!playing) return; playing = false; vid.pause(); cancelAnimationFrame(raf); playBtn.innerHTML = ET.play; playBtn.setAttribute('aria-label', T('Play the selection')); };
         var playLoop = function () { paint(); showPos(); if (vid.currentTime >= startAt + len - 0.02 || vid.ended) { stopPlay(); return; } raf = requestAnimationFrame(playLoop); };
@@ -1650,12 +1671,14 @@
           var out = document.createElement('canvas'); out.width = Math.round(o.w / 2) * 2; out.height = Math.round(o.h / 2) * 2;
           var og = out.getContext('2d');
           save.disabled = true; save.textContent = T('Preparing clip… {p}%', { p: 0 }); el.classList.add('working');
-          var stopAt = Math.min(total, startAt + len), aborted = false, rec = null, chunks = [], rafR = 0, lastT = -1, stallAt = 0;
+          var stopAt = Math.min(total, startAt + len), aborted = false, rec = null, stream = null, chunks = [], rafR = 0, lastT = -1, stallAt = 0;
+          var release = function () { if (stream) stream.getTracks().forEach(function (tr) { tr.stop(); }); stream = null; };
           busyRec = { abort: function () { aborted = true; cancelAnimationFrame(rafR); try { vid.pause(); if (rec && rec.state !== 'inactive') rec.stop(); } catch (e) { /* already stopped */ } } };
           seek(startAt).then(function () {
             frame(og, k);
             var thumbP = new Promise(function (ok) { var s = Math.min(1, 360 / Math.max(out.width, out.height)); var c = document.createElement('canvas'); c.width = Math.round(out.width * s); c.height = Math.round(out.height * s); c.getContext('2d').drawImage(out, 0, 0, c.width, c.height); c.toBlob(ok, 'image/jpeg', 0.72); });
-            rec = new MediaRecorder(out.captureStream(30), { mimeType: mime, videoBitsPerSecond: 4000000 });
+            stream = out.captureStream(30);
+            rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4000000 });
             rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
             var done = new Promise(function (ok, no) {
               rec.onstop = function () {
@@ -1679,14 +1702,18 @@
               rafR = requestAnimationFrame(tick);
             };
             rec.start(250);
-            return vid.play().then(function () { rafR = requestAnimationFrame(tick); return Promise.all([done, thumbP]); });
+            return vid.play().then(function () { rafR = requestAnimationFrame(tick); return Promise.all([done, thumbP]); }, function () {
+              if (busyRec) busyRec.abort();
+              throw new Error(T('Could not prepare the clip.'));
+            });
           }).then(function (r) {
-            busyRec = null;
+            busyRec = null; release();
             // The length actually recorded, from the clip's own clock (not the slider), so what is stored is true.
             var got = Math.max(0, Math.min(stopAt, vid.currentTime) - startAt);
+            if (got < 0.5) { chunks = []; fail(T('Could not prepare the clip.')); seek(startAt).then(paint); return; }
             close({ blob: r[0], thumb: r[1], w: out.width, h: out.height, kind: 'clip', dur: Math.round(got * 10) / 10, declared: true, edits: { r: orient.r, m: orient.m } });
           }, function (ex) {
-            busyRec = null; chunks = [];
+            busyRec = null; chunks = []; release();
             if (ex && ex.message === 'cancelled' && !el.isConnected) return;
             // Nothing is kept from a failed or stopped preparation: the clip is not added to the scan.
             fail(ex && ex.message && ex.message !== 'cancelled' ? ex.message : T('Could not prepare the clip.'));
@@ -2708,7 +2735,7 @@
     // 1.0.11: a closing sheet fades and slides away (160 ms). It stops being a sheet at once (renamed, inert), so
     // nothing that checks for an open sheet sees it, and a new sheet can open straight away.
     var had = $$('.sheet-bg'), still = reducedMotion();
-    had.forEach(function (s) { if (still || keepOpener) { s.remove(); return; } s.className = 'sheet-gone'; s.setAttribute('aria-hidden', 'true'); s.inert = true; setTimeout(function () { s.remove(); }, 170); });
+    had.forEach(function (s) { if (still || keepOpener) { s.remove(); return; } s.className = 'sheet-gone'; s.setAttribute('aria-hidden', 'true'); s.inert = true; var d = s.firstChild; if (d) { d.className = 'sheet-was'; $$('[id]', s).forEach(function (x) { x.removeAttribute('id'); }); } setTimeout(function () { s.remove(); }, 170); });
     if (keepOpener || !had.length) return;
     var o = sheetOpener; sheetOpener = null;
     if (o && o.isConnected && o.focus) try { o.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }

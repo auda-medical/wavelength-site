@@ -66,20 +66,34 @@ public class NetworkPlugin extends Plugin {
             @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) { setUnder(network, caps); }
             @Override public void onLost(Network network) { setUnder(network, null); }
         };
-        try {
-            cm.registerDefaultNetworkCallback(callback);
-        } catch (RuntimeException e) {
-            callback = null; // too many callbacks registered, or no permission: getStatus still works
-        }
+        // The networks under any VPN are listened for first, and the list starts from what exists now, so the first
+        // report of a VPN never says "nothing underneath" just because the listener has not been told yet.
         try {
             NetworkRequest req = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
                 .build();
+            seedUnder();
             cm.registerNetworkCallback(req, underCallback);
             synchronized (this) { underKnown = true; }
         } catch (RuntimeException e) {
             underCallback = null; // "underlying" stays unknown (null): the logbook keeps its conservative status
+        }
+        try {
+            cm.registerDefaultNetworkCallback(callback);
+        } catch (RuntimeException e) {
+            callback = null; // too many callbacks registered, or no permission: getStatus still works
+        }
+    }
+
+    // The non-VPN networks with internet that exist when the plugin starts (read only).
+    @SuppressWarnings("deprecation")
+    private synchronized void seedUnder() {
+        for (Network x : cm.getAllNetworks()) {
+            NetworkCapabilities c = cm.getNetworkCapabilities(x);
+            if (c == null || c.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue;
+            if (!c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) continue;
+            under.put(x, transportsOf(c));
         }
     }
 

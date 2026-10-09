@@ -16,13 +16,14 @@ const port = Number(process.argv[2]) || 8787;
 //   --var NAME=V    override a wrangler.jsonc var, e.g. --var SUPERVISOR_SEARCH=true (repeatable)
 const args = process.argv.slice(3), extra = {};
 for (let i = 0; i < args.length; i++) if (args[i] === '--var' && args[i + 1]) { const [k, ...v] = args[++i].split('='); extra[k] = v.join('='); }
-if (args.includes('--site')) {
+const SITE = args.includes('--site');
+if (SITE) {
   const DIST = path.resolve('dist');
   const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.pdf': 'application/pdf', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.txt': 'text/plain' };
   extra.ASSETS = { fetch: async (req) => {
     const u = new URL(req.url || req);
-    let f = path.join(DIST, decodeURIComponent(u.pathname));
-    if (!f.startsWith(DIST)) return new Response('', { status: 403 });
+    let f; try { f = path.join(DIST, decodeURIComponent(u.pathname)); } catch { return new Response('', { status: 400 }); }
+    if (f !== DIST && !f.startsWith(DIST + path.sep)) return new Response('', { status: 403 });
     if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, 'index.html');
     else if (!path.extname(f) && fs.existsSync(f + '/index.html')) f = f + '/index.html';
     if (!fs.existsSync(f)) return new Response(fs.existsSync(path.join(DIST, '404.html')) ? fs.readFileSync(path.join(DIST, '404.html')) : 'Not found', { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
@@ -45,6 +46,9 @@ http.createServer(async (req, res) => {
     if (await peek(req, res, url)) return;
     const chunks = []; for await (const c of req) chunks.push(c);
     const headers = new Headers(); for (const [k, v] of Object.entries(req.headers)) if (k !== 'host' && v != null) headers.set(k, Array.isArray(v) ? v.join(', ') : v);
+    // --site: the browser is on http://localhost:<port>, which the Worker sees as the real site (as Wrangler's
+    // --local-upstream does), so its same-origin checks pass. Nothing else is rewritten.
+    if (SITE) for (const k of ['origin', 'referer']) { const v = headers.get(k); if (v && /^http:\/\/(localhost|127\.0\.0\.1):\d+/.test(v)) headers.set(k, v.replace(/^http:\/\/(localhost|127\.0\.0\.1):\d+/, ORIGIN)); }
     const init = { method: req.method, headers };
     if (!['GET', 'HEAD'].includes(req.method)) init.body = Buffer.concat(chunks);
     const out = await worker.fetch(new Request(ORIGIN + url.pathname + url.search, init), env, ctx);
