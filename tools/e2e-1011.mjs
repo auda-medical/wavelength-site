@@ -384,7 +384,7 @@ async function sampleCanvas(page, sel) {
   return page.evaluate(([sel, Q]) => { const c = document.querySelector(sel); const g = c.getContext('2d'); const o = {}; for (const [k, [x, y]] of Object.entries(Q)) o[k] = [...g.getImageData(Math.floor(c.width * x), Math.floor(c.height * y), 1, 1).data].slice(0, 3); return o; }, [sel, QUAD]);
 }
 if (want('E')) {
-  const { ctx, page } = await phone();
+  const { ctx, page, acc } = await phone();
   const img = await testImage(page);
   await go(page, '#/new?type=aaa'); await sleep(1500);
   const openEditor = async () => { await page.setInputFiles('#pick', img); await page.waitForSelector('.editor canvas'); await sleep(400); };
@@ -441,12 +441,14 @@ if (want('E')) {
   const late = await page.evaluate(() => ({ st: parseFloat(document.querySelector('.editor [data-st]').textContent), en: parseFloat(document.querySelector('.editor [data-en]').textContent), ln: parseFloat(document.querySelector('.editor [data-ln]').textContent), total: parseFloat(document.querySelector('.editor [data-total]').textContent) }));
   record('E12', 'Start moved to the end: end never passes the clip, length = end − start, at least 1 s', late.en <= late.total + 0.05 && Math.abs(late.en - late.st - late.ln) < 0.11 && late.ln >= 1, JSON.stringify(late));
   // Play/pause.
-  await page.evaluate(() => { const s = document.querySelector('.editor [data-start]'); s.value = 0; s.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(500);
+  await page.evaluate(() => { const s = document.querySelector('.editor [data-start]'); s.value = 0; s.dispatchEvent(new Event('input', { bubbles: true })); const l = document.querySelector('.editor [data-len]'); l.value = 5; l.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(600);
   await page.click('.editor [data-a=play]'); await sleep(1200);
-  const playing = await page.evaluate(() => { const v = document.querySelector('.editor video'); return { paused: v.paused, t: v.currentTime, label: document.querySelector('.editor [data-a=play]').getAttribute('aria-label') }; });
+  const playing = await page.evaluate(() => ({ t: parseFloat(document.querySelector('.editor [data-pos]').textContent), label: document.querySelector('.editor [data-a=play]').getAttribute('aria-label') }));
   await page.click('.editor [data-a=play]'); await sleep(200);
-  const paused = await page.evaluate(() => document.querySelector('.editor video').paused);
-  record('E13', 'Play previews the selection and Pause stops it', !playing.paused && playing.t > 0.5 && /Pause/.test(playing.label) && paused, JSON.stringify({ playing, paused }));
+  const p1 = await page.evaluate(() => ({ t: parseFloat(document.querySelector('.editor [data-pos]').textContent), label: document.querySelector('.editor [data-a=play]').getAttribute('aria-label') }));
+  await sleep(600);
+  const p2 = await page.evaluate(() => parseFloat(document.querySelector('.editor [data-pos]').textContent));
+  record('E13', 'Play previews the selection (position advances, button says Pause) and Pause stops it', playing.t > 0.5 && /Pause/.test(playing.label) && /Play/.test(p1.label) && p2 === p1.t, JSON.stringify({ playing, paused: p1, after: p2 }));
   // Flip horizontally on the clip, then save: the exported first frame is mirrored like the preview.
   await page.click('.editor [data-a=fliph]'); await sleep(300);
   const pv = await sampleCanvas(page, '.editor canvas');
@@ -457,24 +459,55 @@ if (want('E')) {
   for (let i = 0; i < 30; i++) { const t = await page.evaluate(() => { const b = document.querySelector('.editor [data-a=save]'); return b ? b.textContent : 'closed'; }); prog.push(t); if (t === 'closed') break; await sleep(250); }
   await page.waitForSelector('.editor', { state: 'detached', timeout: 20000 }).catch(() => {});
   record('E14', 'Preparing a clip shows progress and the editor closes when done', prog.some((t) => /Preparing clip/.test(t)) && prog[prog.length - 1] === 'closed', prog.filter((t, i) => i === 0 || t !== prog[i - 1]).join(' > '));
-  const exp = await page.evaluate((Q) => new Promise((ok) => {
-    const d = window.__lastClip; if (!d) return ok(null);
-    const v = document.createElement('video'); v.muted = true; v.src = URL.createObjectURL(d.blob);
-    v.onloadeddata = () => { v.currentTime = 0.2; };
-    v.onseeked = () => { const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; const g = c.getContext('2d'); g.drawImage(v, 0, 0); const o = {}; for (const [k, [x, y]] of Object.entries(Q)) o[k] = [...g.getImageData(Math.floor(c.width * x), Math.floor(c.height * y), 1, 1).data].slice(0, 3); ok({ o, dur: d.dur, flips: d.edits }); };
-    v.onerror = () => ok({ error: true });
-  }), QUAD).catch((e) => ({ error: String(e) }));
+  // Save the scan, then read the clip back from the phone's storage and look at its frames.
+  await page.evaluate(() => { const i = document.querySelector('input[name=supervision]'); i.checked = true; i.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.click('form button[type=submit]'); await page.waitForFunction(() => location.hash === '#/', null, { timeout: 10000 }).catch(() => {}); await sleep(500);
+  const exp = await page.evaluate(([Q, id]) => new Promise((ok) => {
+    const r = indexedDB.open('wavelength-' + id);
+    r.onsuccess = () => { const q = r.result.transaction('images').objectStore('images').getAll(); q.onsuccess = () => { r.result.close(); const d = q.result.find((x) => x.kind === 'clip'); if (!d) return ok(null);
+      const v = document.createElement('video'); v.muted = true; v.src = URL.createObjectURL(d.blob);
+      v.onloadeddata = () => { v.currentTime = 0.2; };
+      v.onseeked = () => { const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; const g = c.getContext('2d'); g.drawImage(v, 0, 0); const o = {}; for (const [k, [x, y]] of Object.entries(Q)) o[k] = [...g.getImageData(Math.floor(c.width * x), Math.floor(c.height * y), 1, 1).data].slice(0, 3); ok({ o, dur: d.dur, edits: d.edits }); };
+      v.onerror = () => ok({ error: true }); }; };
+  }), [QUAD, acc.id]).catch((e) => ({ error: String(e) }));
   record('E15', 'Exported clip frames match the edited preview (mirrored: green top-left, red top-right)', exp && exp.o && name(exp.o.tl) === name(pv.tl) && name(exp.o.tr) === name(pv.tr) && name(exp.o.tl) === 'green', JSON.stringify(exp && exp.o ? { preview: { tl: name(pv.tl), tr: name(pv.tr) }, exported: { tl: name(exp.o.tl), tr: name(exp.o.tr) }, dur: exp.dur, edits: exp.edits } : exp));
   record('E16', 'Stored clip duration is the length actually recorded (about 2 s), not the slider value of a longer clip', exp && exp.dur > 1.5 && exp.dur <= 2.6, String(exp && exp.dur));
-  // Failure: the recorder fails part-way. Nothing is added to the scan, the editor stays open with an error.
+  // Masking through every frame: cover the top-left quarter, rotate a quarter turn, keep 2 s. The cover must be in
+  // the top-right quarter (where the rotation puts it) of every exported frame, and nothing else may be black.
+  await go(page, '#/new?type=aaa'); await sleep(1500);
+  await page.setInputFiles('#vpick', clip); await page.waitForSelector('.editor canvas'); await sleep(2000);
+  await page.click('.editor [data-m=cover]');
+  const cb = await page.evaluate(() => { const r = document.querySelector('.editor canvas').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+  await page.mouse.move(cb.x + 2, cb.y + 2); await page.mouse.down(); await page.mouse.move(cb.x + cb.w * 0.5 - 2, cb.y + cb.h * 0.5 - 2, { steps: 5 }); await page.mouse.up(); await sleep(200);
+  await page.click('.editor [data-a=rotate]'); await sleep(200);
+  await page.evaluate(() => { const l = document.querySelector('.editor [data-len]'); l.value = 2; l.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(300);
+  await page.check('.editor [data-decl]', { force: true });
+  await page.click('.editor [data-a=save]'); await page.waitForSelector('.editor', { state: 'detached', timeout: 20000 }).catch(() => {});
+  await page.evaluate(() => { const i = document.querySelector('input[name=supervision]'); i.checked = true; i.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.click('form button[type=submit]'); await page.waitForFunction(() => location.hash === '#/', null, { timeout: 10000 }).catch(() => {}); await sleep(500);
+  const frames = await page.evaluate(([Q, id]) => new Promise((ok) => {
+    const r = indexedDB.open('wavelength-' + id);
+    r.onsuccess = () => { const q = r.result.transaction('images').objectStore('images').getAll(); q.onsuccess = () => { r.result.close(); const clips = q.result.filter((x) => x.kind === 'clip').sort((a, b) => b.created - a.created); const d = clips[0]; if (!d) return ok(null);
+      const v = document.createElement('video'); v.muted = true; v.src = URL.createObjectURL(d.blob); const times = [0.1, 0.7, 1.3, 1.8], out = [];
+      const grab = () => { const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; const g = c.getContext('2d'); g.drawImage(v, 0, 0); const o = {}; for (const [k, [x, y]] of Object.entries(Q)) o[k] = [...g.getImageData(Math.floor(c.width * x), Math.floor(c.height * y), 1, 1).data].slice(0, 3); out.push(o); if (out.length < times.length) v.currentTime = times[out.length]; else ok({ out, w: v.videoWidth, h: v.videoHeight }); };
+      v.onloadeddata = () => { v.currentTime = times[0]; }; v.onseeked = grab; v.onerror = () => ok({ error: true }); }; };
+  }), [QUAD, acc.id]);
+  const okFrames = frames && frames.out && frames.out.every((o) => name(o.tr) === 'black' && name(o.tl) !== 'black' && name(o.bl) !== 'black' && name(o.br) !== 'black');
+  record('E19', 'A cover drawn before rotating stays over the same picture area in every exported frame (4 frames checked)', okFrames && frames.w < frames.h, JSON.stringify(frames && frames.out ? { size: [frames.w, frames.h], frames: frames.out.map((o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, name(v)]))) } : frames));
+  // Failure: the recorder fails part-way (simulated by making the phone's recorder report an error). Nothing is added
+  // to the scan, the editor stays open with an error.
+  await go(page, '#/new?type=aaa'); await sleep(1500);
   await page.setInputFiles('#vpick', clip); await page.waitForSelector('.editor canvas'); await sleep(2000);
   const galBefore = await page.evaluate(() => document.querySelectorAll('#gal img').length);
-  await page.evaluate(() => { window.__failClip = true; });
+  await page.evaluate(() => { const s = MediaRecorder.prototype.start; MediaRecorder.prototype.start = function (t) { s.call(this, t); setTimeout(() => this.onerror && this.onerror(new Event('error')), 400); }; });
   await page.check('.editor [data-decl]', { force: true });
   await page.click('.editor [data-a=save]'); await sleep(4000);
   const fail = await page.evaluate(() => ({ open: !!document.querySelector('.editor'), btn: (document.querySelector('.editor [data-a=save]') || {}).textContent, gal: document.querySelectorAll('#gal img').length, err: (document.querySelector('.editor [data-err]') || {}).textContent || '' }));
   record('E17', 'A clip that fails to prepare is not added: editor stays open, error shown, Use this clip available again', fail.open && fail.gal === galBefore && /Use this clip/.test(fail.btn || '') && fail.err.length > 5, JSON.stringify(fail));
-  await page.evaluate(() => { window.__failClip = false; const c = document.querySelector('.editor [data-a=cancel]'); c && c.click(); });
+  await page.evaluate(() => { const c = document.querySelector('.editor [data-a=cancel]'); c && c.click(); });
+  const tmp = await page.evaluate(() => document.querySelectorAll('.editor').length);
+  const gal = await page.evaluate(() => document.querySelectorAll('#gal img').length);
+  record('E18', 'After cancelling, the editor is gone and nothing was added to the scan', tmp === 0 && gal === galBefore, `editors ${tmp}, gallery ${gal} (was ${galBefore})`);
   await ctx.close();
 }
 

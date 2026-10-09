@@ -173,7 +173,7 @@ for (const theme of ['light', 'dark']) {
   await page.setInputFiles('#vpick', vidFile); await sleep(2500);
   await shot(page, T('14-clip-editor'));
   // Slide the start to the end of the source clip, as a learner exploring the controls would.
-  await page.evaluate(() => { const s = document.querySelector('.editor [data-start], .editor input[type=range]'); if (s) { s.value = s.max; s.dispatchEvent(new Event('input', { bubbles: true })); } }); await sleep(1200);
+  await page.evaluate(() => { const s = document.querySelector('.editor [data-start]') || document.querySelector('.editor input[type=range]'); if (s) { s.value = s.max; s.dispatchEvent(new Event('input', { bubbles: true })); } }); await sleep(1200);
   await shot(page, T('15-clip-editor-start-moved'));
   await page.evaluate(() => { const c = document.querySelector('.editor [data-a=cancel]'); c && c.click(); }); await sleep(300);
   await ctx.close();

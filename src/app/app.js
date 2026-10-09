@@ -1318,7 +1318,7 @@
         if (draftImages.length && navigator.storage && navigator.storage.persist) navigator.storage.persist();
         fingerprints(out.images, draftImages, editing && editing.media).then(function (media) {
           if (media.length) out.media = media; else delete out.media;
-          var jobs = draftImages.map(function (x) { return put('images', { id: x.id, entryId: out.id, blob: x.blob, thumb: x.thumb, w: x.w, h: x.h, kind: x.kind || 'image', dur: x.dur, sha256: x.sha256, created: Date.now() }); })
+          var jobs = draftImages.map(function (x) { return put('images', { id: x.id, entryId: out.id, blob: x.blob, thumb: x.thumb, w: x.w, h: x.h, kind: x.kind || 'image', dur: x.dur, sha256: x.sha256, edits: x.edits, created: Date.now() }); })
             .concat(removed.map(function (id) { return del('images', id); }));
           return Promise.all(jobs);
         }).then(function () { return saveLocal(out); }).then(function () {
@@ -1370,17 +1370,86 @@
       return (images || []).map(function (im, i) { return hs[i] ? { id: im.id, sha256: hs[i], kind: im.kind === 'clip' ? 'clip' : 'image' } : null; }).filter(Boolean);
     });
   }
-  // ---------- Image editor: crop, cover identifiers, rotate. Re-encoding strips hidden photo data. ----------
-  function editorFrame(title, extraTools, declText, saveLabel) {
-    var el = document.createElement('div'); el.className = 'editor';
-    el.innerHTML = '<div class="bar-top"><button class="tool" data-a="cancel">' + esc(T('Cancel')) + '</button><b style="flex:1;text-align:center">' + esc(title) + '</b><button class="tool" data-a="undo">' + esc(T('Undo')) + '</button></div>' +
+  // ---------- Image and clip editors (1.0.11) ----------
+  // Crop, cover identifiers, trim the top strip, rotate, flip horizontally and flip vertically. The preview is the
+  // image or frame exactly as it will be saved: every change is drawn into the pixels (never an overlay), in the
+  // order the learner made it, and the editor says which orientation changes are in force, because orientation is
+  // clinically significant. Rotating and flipping by quarter turns move pixels without resampling, and the photo is
+  // encoded to JPEG once, on Use this image, so repeated edits do not lose quality. Re-encoding drops hidden photo
+  // data. Nothing is written to the phone's storage until the scan is saved, and the original photo or video stays
+  // where it was on the phone: Wavelength keeps only the edited copy.
+  var ET = {
+    crop: ic('<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>', 20),
+    cover: ic('<rect x="3" y="5" width="18" height="14" rx="2"/><rect x="6" y="8" width="8" height="4" fill="currentColor" stroke="none"/>', 20),
+    trim: ic('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18" stroke-dasharray="2 2"/><path d="M12 13v5M9.5 15.5 12 13l2.5 2.5"/>', 20),
+    rotate: ic('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>', 20),
+    fliph: ic('<path d="M12 3v18" stroke-dasharray="2 2"/><path d="M9 7 3 17h6zM15 7l6 10h-6z"/>', 20),
+    flipv: ic('<path d="M3 12h18" stroke-dasharray="2 2"/><path d="M7 9 17 3v6zM7 15l10 6v-6z"/>', 20),
+    play: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>',
+    pause: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>'
+  };
+  // Orientation as quarter turns clockwise (r) after an optional left-right mirror (m), relative to the original.
+  // A flip or rotation is composed onto it in the order made, so the words always describe what the preview shows.
+  function orientAfter(o, act) {
+    if (act === 'rotate') return { r: (o.r + 1) % 4, m: o.m };
+    if (act === 'fliph') return { r: (4 - o.r) % 4, m: !o.m };
+    if (act === 'flipv') return { r: (6 - o.r) % 4, m: !o.m };
+    return o;
+  }
+  function orientWords(o) {
+    if (!o.m) return ['', 'Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise'][o.r] ? T(['', 'Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise'][o.r]) : '';
+    return T(['Flipped horizontally', 'Flipped horizontally, then rotated 90° clockwise', 'Flipped vertically', 'Flipped horizontally, then rotated 90° anticlockwise'][o.r]);
+  }
+  function editorFrame(title, declText, saveLabel, opts) {
+    var tool = function (k, label, full, mode) { return '<button type="button" class="tool et" ' + (mode ? 'data-m="' + k + '" aria-pressed="' + (k === 'crop') + '"' : 'data-a="' + k + '"') + ' aria-label="' + esc(full || label) + '">' + ET[k] + '<span>' + esc(label) + '</span></button>'; };
+    // Notes such as "Scan saved" go first: nothing may sit over the declaration or the editing tools.
+    $$('.toast').forEach(function (t) { t.remove(); });
+    var el = document.createElement('div'); el.className = 'editor'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', title);
+    el.innerHTML = '<div class="bar-top"><button type="button" class="tool" data-a="cancel">' + esc(T('Cancel')) + '</button><b class="ed-title">' + esc(title) + '</b><button type="button" class="tool" data-a="undo" disabled>' + esc(T('Undo')) + '</button></div>' +
       '<div class="stage"><canvas></canvas><div class="sel" hidden></div></div>' +
+      (opts.media || '') +
+      '<div class="bar-bot">' +
       '<p class="tip" data-tip>' + esc(T('Drag to choose the area to keep, then tap Apply crop. Most machines show patient details along the top: Trim top removes that strip.')) + '</p>' +
-      '<div class="bar-bot"><button class="tool" data-m="crop" aria-pressed="true">' + esc(T('Crop')) + '</button><button class="tool" data-m="cover" aria-pressed="false">' + esc(T('Cover')) + '</button><button class="tool" data-a="trim">' + esc(T('Trim top')) + '</button>' + extraTools + '<button class="tool" data-a="apply">' + esc(T('Apply crop')) + '</button>' +
-      '<label class="check" style="width:100%;color:#fff;padding:8px 4px 4px;font-size:14px"><input type="checkbox" data-decl><span>' + esc(declText) + '</span></label>' +
-      '<button class="btn teal block" data-a="save" disabled>' + esc(saveLabel) + '</button></div>';
+      '<div class="ed-tools" role="toolbar" aria-label="' + esc(T('Editing tools')) + '">' + tool('crop', T('Crop'), '', true) + tool('cover', T('Cover'), T('Cover identifiers'), true) + tool('trim', T('Trim top'), T('Trim the top strip')) + tool('rotate', T('Rotate'), T('Rotate 90° clockwise')) + tool('fliph', T('Flip H'), T('Flip horizontally')) + tool('flipv', T('Flip V'), T('Flip vertically')) + '</div>' +
+      '<div class="ed-row"><p class="ed-applied" data-applied aria-live="polite"></p><button type="button" class="tool" data-a="reset" hidden>' + esc(T('Reset')) + '</button><button type="button" class="tool apply" data-a="apply" hidden>' + esc(T('Apply crop')) + '</button></div>' +
+      '<p class="ed-err" data-err role="alert" hidden></p>' +
+      '<label class="check ed-decl"><input type="checkbox" data-decl><span>' + esc(declText) + '</span></label>' +
+      '<button type="button" class="btn teal block" data-a="save" disabled>' + esc(saveLabel) + '</button>' +
+      '<p class="ed-note">' + esc(T('Your original stays where it is on your phone. Wavelength keeps only this edited copy.')) + '</p></div>';
     document.body.appendChild(el);
+    // Escape and the Android back button cancel, as the Cancel button does.
+    el.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); var c = $('[data-a=cancel]', el); if (c) c.click(); } });
+    setTimeout(function () { var f = $('[data-a=cancel]', el); if (f && el.isConnected) f.focus({ preventScroll: true }); }, 30);
     return el;
+  }
+  // Shared by both editors: drag a box on the preview (crop or cover mode), shown as a selection.
+  function bindSelect(el, cv, onDone, onChange) {
+    var box = $('.sel', el), stage = $('.stage', el), start = null, sel = null, mode = 'crop';
+    var at = function (ev) { var r = cv.getBoundingClientRect(); return { x: Math.max(0, Math.min(cv.width, (ev.clientX - r.left) * cv.width / r.width)), y: Math.max(0, Math.min(cv.height, (ev.clientY - r.top) * cv.height / r.height)) }; };
+    var show = function () {
+      if (!sel) { box.hidden = true; return; }
+      var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / cv.width;
+      box.hidden = false; box.className = 'sel' + (mode === 'cover' ? ' box' : '');
+      box.style.left = (r.left - sr.left + sel.x * k) + 'px'; box.style.top = (r.top - sr.top + sel.y * k) + 'px'; box.style.width = sel.w * k + 'px'; box.style.height = sel.h * k + 'px';
+    };
+    cv.addEventListener('pointerdown', function (ev) { ev.preventDefault(); try { cv.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ } start = at(ev); sel = { x: start.x, y: start.y, w: 0, h: 0 }; show(); });
+    cv.addEventListener('pointermove', function (ev) { if (!start) return; var p = at(ev); sel = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) }; show(); onChange(sel); });
+    cv.addEventListener('pointerup', function () { if (!start) return; start = null; onDone(mode, sel); });
+    return {
+      get: function () { return sel; },
+      clear: function () { sel = null; show(); onChange(null); },
+      mode: function (m) { if (m) { mode = m; sel = null; show(); onChange(null); } return mode; },
+      redraw: show
+    };
+  }
+  function bindModes(el, picker, tips) {
+    $$('[data-m]', el).forEach(function (b) {
+      b.onclick = function () {
+        picker.mode(b.dataset.m);
+        $$('[data-m]', el).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        $('[data-tip]', el).textContent = tips[b.dataset.m];
+      };
+    });
   }
   function editImage(file) {
     return new Promise(function (resolve) {
@@ -1388,46 +1457,57 @@
       img.onerror = function () { URL.revokeObjectURL(url); toast(T('That file is not an image this phone can open.')); resolve(null); };
       img.onload = function () {
         URL.revokeObjectURL(url);
+        // The browser applies the photo's own orientation tag when it decodes it, so the preview starts the way the
+        // phone's gallery shows the photo.
         var max = 2200, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
         var work = document.createElement('canvas'); work.width = Math.round(img.naturalWidth * sc); work.height = Math.round(img.naturalHeight * sc);
         work.getContext('2d').drawImage(img, 0, 0, work.width, work.height);
-        var undo = [], mode = 'crop', sel = null, start = null;
-        var el = editorFrame(T('Prepare image'), '<button class="tool" data-a="rotate">' + esc(T('Rotate')) + '</button>', T('I have removed or covered every patient identifier in this image.'), T('Use this image'));
-        var cv = $('canvas', el), box = $('.sel', el), stage = $('.stage', el);
-        var draw = function () { cv.width = work.width; cv.height = work.height; cv.getContext('2d').drawImage(work, 0, 0); sel = null; box.hidden = true; };
-        var snap = function () { var c = document.createElement('canvas'); c.width = work.width; c.height = work.height; c.getContext('2d').drawImage(work, 0, 0); undo.push(c); if (undo.length > 8) undo.shift(); };
-        var replace = function (c) { work = c; draw(); };
-        var crop = function (x, y, w, h) { if (w < 20 || h < 20) return; snap(); var c = document.createElement('canvas'); c.width = Math.round(w); c.height = Math.round(h); c.getContext('2d').drawImage(work, x, y, w, h, 0, 0, w, h); replace(c); };
-        var toWork = function (ev) { var r = cv.getBoundingClientRect(); return { x: Math.max(0, Math.min(work.width, (ev.clientX - r.left) * work.width / r.width)), y: Math.max(0, Math.min(work.height, (ev.clientY - r.top) * work.height / r.height)) }; };
-        var showSel = function () {
-          if (!sel) { box.hidden = true; return; }
-          var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / work.width;
-          box.hidden = false; box.className = 'sel' + (mode === 'cover' ? ' box' : '');
-          box.style.left = (r.left - sr.left + sel.x * k) + 'px'; box.style.top = (r.top - sr.top + sel.y * k) + 'px'; box.style.width = sel.w * k + 'px'; box.style.height = sel.h * k + 'px';
+        var first = work, orient = { r: 0, m: false }, undo = [];
+        var el = editorFrame(T('Prepare image'), T('I have removed or covered every patient identifier in this image.'), T('Use this image'), {});
+        var cv = $('canvas', el), applyBtn = $('[data-a=apply]', el), undoBtn = $('[data-a=undo]', el), resetBtn = $('[data-a=reset]', el);
+        var state = function () {
+          var w = orientWords(orient);
+          $('[data-applied]', el).textContent = w;
+          undoBtn.disabled = !undo.length; resetBtn.hidden = !undo.length;
         };
-        cv.addEventListener('pointerdown', function (ev) { ev.preventDefault(); cv.setPointerCapture(ev.pointerId); start = toWork(ev); sel = { x: start.x, y: start.y, w: 0, h: 0 }; showSel(); });
-        cv.addEventListener('pointermove', function (ev) { if (!start) return; var p = toWork(ev); sel = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) }; showSel(); });
-        cv.addEventListener('pointerup', function () {
-          start = null;
-          if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { snap(); var g = work.getContext('2d'); g.fillStyle = '#000'; g.fillRect(sel.x, sel.y, sel.w, sel.h); draw(); }
-        });
+        var draw = function () { cv.width = work.width; cv.height = work.height; cv.getContext('2d').drawImage(work, 0, 0); picker.clear(); state(); };
+        // Each change keeps the canvas before it (up to 12 steps) and the orientation that went with it.
+        var commit = function (c, act) { undo.push({ c: work, o: orient }); if (undo.length > 12) undo.shift(); work = c; orient = orientAfter(orient, act); draw(); };
+        var canvasOf = function (w, h) { var c = document.createElement('canvas'); c.width = Math.round(w); c.height = Math.round(h); return c; };
+        var crop = function (x, y, w, h) { if (w < 20 || h < 20) return; var c = canvasOf(w, h); c.getContext('2d').drawImage(work, x, y, w, h, 0, 0, c.width, c.height); commit(c, 'crop'); };
+        var orientOp = function (act) {
+          var c = act === 'rotate' ? canvasOf(work.height, work.width) : canvasOf(work.width, work.height), g = c.getContext('2d');
+          if (act === 'rotate') { g.translate(c.width, 0); g.rotate(Math.PI / 2); }
+          if (act === 'fliph') { g.translate(c.width, 0); g.scale(-1, 1); }
+          if (act === 'flipv') { g.translate(0, c.height); g.scale(1, -1); }
+          g.drawImage(work, 0, 0); commit(c, act); NAT.haptic();
+        };
+        var picker = bindSelect(el, cv, function (mode, sel) {
+          if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { var c = canvasOf(work.width, work.height), g = c.getContext('2d'); g.drawImage(work, 0, 0); g.fillStyle = '#000'; g.fillRect(sel.x, sel.y, sel.w, sel.h); commit(c, 'cover'); }
+        }, function (sel) { applyBtn.hidden = !(picker && picker.mode() === 'crop' && sel && sel.w >= 20 && sel.h >= 20); });
+        bindModes(el, picker, { crop: T('Drag to choose the area to keep, then tap Apply crop.'), cover: T('Drag over any name, number, date or label to black it out.') });
         var decl = $('[data-decl]', el), save = $('[data-a=save]', el);
         decl.addEventListener('change', function () { save.disabled = !decl.checked; });
-        $$('[data-m]', el).forEach(function (b) { b.onclick = function () { mode = b.dataset.m; $$('[data-m]', el).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); $('[data-a=apply]', el).hidden = mode !== 'crop'; $('[data-tip]', el).textContent = mode === 'crop' ? T('Drag to choose the area to keep, then tap Apply crop.') : T('Drag over any name, number, date or label to black it out.'); sel = null; showSel(); }; });
         var close = function (v) { el.remove(); resolve(v); };
         el.addEventListener('click', function (ev) {
-          var a = ev.target.closest('[data-a]'); if (!a) return;
+          var a = ev.target.closest('[data-a]'); if (!a || a.disabled) return;
           var act = a.dataset.a;
           if (act === 'cancel') close(null);
-          if (act === 'undo' && undo.length) replace(undo.pop());
-          if (act === 'apply' && sel) crop(sel.x, sel.y, sel.w, sel.h);
+          if (act === 'undo' && undo.length) { var u = undo.pop(); work = u.c; orient = u.o; draw(); }
+          if (act === 'reset' && undo.length) { undo = []; work = first; orient = { r: 0, m: false }; draw(); }
+          if (act === 'apply') { var s = picker.get(); if (s) crop(s.x, s.y, s.w, s.h); }
           if (act === 'trim') { var h = Math.round(work.height * 0.12); crop(0, h, work.width, work.height - h); }
-          if (act === 'rotate') { snap(); var c = document.createElement('canvas'); c.width = work.height; c.height = work.width; var g = c.getContext('2d'); g.translate(c.width, 0); g.rotate(Math.PI / 2); g.drawImage(work, 0, 0); replace(c); }
+          if (act === 'rotate' || act === 'fliph' || act === 'flipv') orientOp(act);
           if (act === 'save') {
+            save.disabled = true;
             // 2048 px at quality 0.9 keeps fine text and speckle; step quality down only past the 1.5 MB share limit.
+            var out = function (maxSide, q) { return new Promise(function (ok) { var s = Math.min(1, maxSide / Math.max(work.width, work.height)); var c = canvasOf(work.width * s, work.height * s); var g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.drawImage(work, 0, 0, c.width, c.height); c.toBlob(function (b) { ok({ b: b, w: c.width, h: c.height }); }, 'image/jpeg', q); }); };
             var best = function () { var qs = [0.9, 0.85, 0.8, 0.72]; var tryQ = function (i) { return out(2048, qs[i]).then(function (r) { return r.b && r.b.size > IMG_LIMIT && i < qs.length - 1 ? tryQ(i + 1) : r; }); }; return tryQ(0); };
-            var out = function (maxSide, q) { return new Promise(function (ok) { var s = Math.min(1, maxSide / Math.max(work.width, work.height)); var c = document.createElement('canvas'); c.width = Math.round(work.width * s); c.height = Math.round(work.height * s); var g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.drawImage(work, 0, 0, c.width, c.height); c.toBlob(function (b) { ok({ b: b, w: c.width, h: c.height }); }, 'image/jpeg', q); }); };
-            Promise.all([best(), out(360, 0.72)]).then(function (r) { close({ blob: r[0].b, thumb: r[1].b, w: r[0].w, h: r[0].h, declared: true, kind: 'image' }); });
+            Promise.all([best(), out(360, 0.72)]).then(function (r) {
+              if (!r[0].b || !r[1].b) throw new Error('encode');
+              // The orientation change made here is kept with the image on this phone (no identifiers: turns and a mirror).
+              close({ blob: r[0].b, thumb: r[1].b, w: r[0].w, h: r[0].h, declared: true, kind: 'image', edits: { r: orient.r, m: orient.m } });
+            }).catch(function () { save.disabled = !decl.checked; var er = $('[data-err]', el); er.textContent = T('Could not prepare the image. Try again.'); er.hidden = false; });
           }
         });
         draw();
@@ -1436,8 +1516,11 @@
     });
   }
 
-  // ---------- Clip editor: choose up to 10 seconds, crop, cover identifiers. The clip is re-recorded from a canvas,
-  // which drops sound and every piece of hidden file data, and burns the covers into every frame. ----------
+  // ---------- Clip editor: choose up to 10 seconds, play it back, crop, cover, trim the top, rotate and flip ----------
+  // The clip is re-recorded from a canvas, which drops sound and every piece of hidden file data. One drawing
+  // function makes both the preview and every recorded frame, so what is saved is what was shown: covers, crop,
+  // rotation and flips are burnt into every frame, in the right place after each change.
+  var CLIP_MAX = 10, CLIP_MIN = 1;
   function clipMime() {
     if (!window.MediaRecorder) return null;
     var list = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
@@ -1445,78 +1528,173 @@
     return null;
   }
   function clipSupported() { var c = document.createElement('canvas'); return !!(clipMime() && c.captureStream); }
+  // Many recorded clips (MediaRecorder WebM files among them) carry no duration, so the player reports Infinity.
+  // Seeking far past the end makes the browser find the real length. Resolves with seconds, or 0 if it cannot tell.
+  function clipDuration(vid) {
+    var d = vid.duration;
+    if (isFinite(d) && d > 0) return Promise.resolve(d);
+    return new Promise(function (ok) {
+      var done = false, finish = function () { if (done) return; done = true; vid.removeEventListener('durationchange', check); clearTimeout(t); var v = vid.duration; vid.currentTime = 0; ok(isFinite(v) && v > 0 ? v : 0); };
+      var check = function () { if (isFinite(vid.duration) && vid.duration > 0) finish(); };
+      var t = setTimeout(finish, 4000);
+      vid.addEventListener('durationchange', check);
+      try { vid.currentTime = 1e7; } catch (e) { finish(); }
+    });
+  }
   function editClip(file) {
     return new Promise(function (resolve) {
       if (file.size > 200 * 1048576) { toast(T('That clip is too large. Choose a shorter one.')); resolve(null); return; }
       var url = URL.createObjectURL(file), vid = document.createElement('video');
       vid.muted = true; vid.playsInline = true; vid.preload = 'auto'; vid.src = url; vid.setAttribute('playsinline', '');
-      vid.onerror = function () { URL.revokeObjectURL(url); toast(T('That file is not a clip this phone can open.')); resolve(null); };
+      var opened = false;
+      vid.onerror = function () { if (opened) return; URL.revokeObjectURL(url); toast(T('That file is not a clip this phone can open.')); resolve(null); };
       vid.onloadedmetadata = function () {
-        var W = vid.videoWidth, H = vid.videoHeight, dur = vid.duration || 0;
+        var W = vid.videoWidth, H = vid.videoHeight;
         if (!W || !H) { vid.onerror(); return; }
-        var crop = { x: 0, y: 0, w: W, h: H }, covers = [], mode = 'crop', sel = null, start = null, history = [];
-        var startAt = 0, len = Math.min(10, dur || 10);
-        var el = editorFrame(T('Prepare clip'), '', T('I have removed or covered every patient identifier in this clip, in every frame.'), T('Use this clip'));
-        $('.bar-bot', el).insertAdjacentHTML('afterbegin', '<div class="trim" style="width:100%;color:#fff;font-size:13px"><label>' + esc(T('Start')) + ' <span data-st>0.0</span> s<input type="range" data-start min="0" max="' + Math.max(0, dur - 1).toFixed(1) + '" step="0.1" value="0"></label><label>' + esc(T('Length')) + ' <span data-ln>' + len.toFixed(1) + '</span> s<input type="range" data-len min="1" max="' + Math.min(10, dur || 10).toFixed(1) + '" step="0.1" value="' + len.toFixed(1) + '"></label></div>');
-        var cv = $('canvas', el), box = $('.sel', el), stage = $('.stage', el);
-        var paint = function () {
-          cv.width = crop.w; cv.height = crop.h; var g = cv.getContext('2d');
-          g.drawImage(vid, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
-          g.fillStyle = '#000'; covers.forEach(function (c) { g.fillRect(c.x - crop.x, c.y - crop.y, c.w, c.h); });
-          sel = null; box.hidden = true;
+        opened = true;
+        clipDuration(vid).then(function (dur) { open(W, H, dur); });
+      };
+      function open(W, H, dur) {
+        // dur 0: the phone could not tell the length. The selection still stops at the end of the clip.
+        var known = dur > 0, total = known ? dur : CLIP_MAX;
+        var crop = { x: 0, y: 0, w: W, h: H }, covers = [], orient = { r: 0, m: false }, history = [];
+        var startAt = 0, len = Math.min(CLIP_MAX, total), playing = false, raf = 0, busyRec = null;
+        var f1 = function (n) { return (Math.round(n * 10) / 10).toFixed(1); };
+        var media = '<div class="clipbar">' +
+          '<div class="cb-row"><button type="button" class="tool play" data-a="play" aria-label="' + esc(T('Play the selection')) + '">' + ET.play + '</button>' +
+          '<input type="range" data-scrub min="0" max="' + f1(total) + '" step="0.05" value="0" aria-label="' + esc(T('Position in the clip')) + '"><span class="cb-pos"><span data-pos>0.0</span> / <span data-total>' + (known ? f1(total) : '?') + '</span> s</span></div>' +
+          '<div class="cb-sel"><label>' + esc(T('Start')) + ' <b><span data-st>0.0</span> s</b><input type="range" data-start min="0" max="' + f1(Math.max(0, total - CLIP_MIN)) + '" step="0.1" value="0"></label>' +
+          '<label>' + esc(T('Length')) + ' <b><span data-ln>' + f1(len) + '</span> s</b><input type="range" data-len min="' + CLIP_MIN + '" max="' + f1(Math.min(CLIP_MAX, total)) + '" step="0.1" value="' + f1(len) + '"></label></div>' +
+          '<p class="cb-ends">' + esc(T('Selected')) + ' <b><span data-st2>0.0</span> – <span data-en>' + f1(len) + '</span> s</b></p>' +
+          '<p class="cb-sum" data-sum></p></div>';
+        var el = editorFrame(T('Prepare clip'), T('I have removed or covered every patient identifier in this clip, in every frame.'), T('Use this clip'), { media: media });
+        el.classList.add('clip');
+        var cv = $('canvas', el), g = cv.getContext('2d'), save = $('[data-a=save]', el), decl = $('[data-decl]', el), applyBtn = $('[data-a=apply]', el), undoBtn = $('[data-a=undo]', el), resetBtn = $('[data-a=reset]', el);
+        var sIn = $('[data-start]', el), lIn = $('[data-len]', el), scrub = $('[data-scrub]', el), playBtn = $('[data-a=play]', el);
+        // Output size and the drawing transform for the current crop and orientation. (u, v): a point of the cropped
+        // frame before turning; the canvas shows it turned and mirrored.
+        var outSize = function (k) { var w = crop.w * k, h = crop.h * k; return orient.r % 2 ? { w: h, h: w } : { w: w, h: h }; };
+        var setOrient = function (ctx, k) {
+          var w = crop.w * k, h = crop.h * k;
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          if (orient.r === 1) ctx.setTransform(0, 1, -1, 0, h, 0);
+          if (orient.r === 2) ctx.setTransform(-1, 0, 0, -1, w, h);
+          if (orient.r === 3) ctx.setTransform(0, -1, 1, 0, 0, w);
+          if (orient.m) { ctx.translate(w, 0); ctx.scale(-1, 1); }
         };
-        var seek = function (t) { return new Promise(function (ok) { var done = function () { vid.removeEventListener('seeked', done); ok(); }; vid.addEventListener('seeked', done); vid.currentTime = Math.min(Math.max(0, t), Math.max(0, dur - 0.05)); }); };
-        var toSrc = function (ev) { var r = cv.getBoundingClientRect(); return { x: crop.x + Math.max(0, Math.min(crop.w, (ev.clientX - r.left) * crop.w / r.width)), y: crop.y + Math.max(0, Math.min(crop.h, (ev.clientY - r.top) * crop.h / r.height)) }; };
-        var showSel = function () {
-          if (!sel) { box.hidden = true; return; }
-          var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / crop.w;
-          box.hidden = false; box.className = 'sel' + (mode === 'cover' ? ' box' : '');
-          box.style.left = (r.left - sr.left + (sel.x - crop.x) * k) + 'px'; box.style.top = (r.top - sr.top + (sel.y - crop.y) * k) + 'px'; box.style.width = sel.w * k + 'px'; box.style.height = sel.h * k + 'px';
+        // The one drawing function: the frame, cropped, covered, turned and mirrored.
+        var frame = function (ctx, k) {
+          ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+          setOrient(ctx, k);
+          ctx.drawImage(vid, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w * k, crop.h * k);
+          covers.forEach(function (c) { ctx.fillRect((c.x - crop.x) * k, (c.y - crop.y) * k, c.w * k, c.h * k); });
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
         };
-        var keep = function () { history.push({ crop: Object.assign({}, crop), covers: covers.slice() }); };
-        cv.addEventListener('pointerdown', function (ev) { ev.preventDefault(); cv.setPointerCapture(ev.pointerId); start = toSrc(ev); sel = { x: start.x, y: start.y, w: 0, h: 0 }; showSel(); });
-        cv.addEventListener('pointermove', function (ev) { if (!start) return; var p = toSrc(ev); sel = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) }; showSel(); });
-        cv.addEventListener('pointerup', function () { start = null; if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { keep(); covers.push(sel); paint(); } });
-        $$('[data-m]', el).forEach(function (b) { b.onclick = function () { mode = b.dataset.m; $$('[data-m]', el).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); $('[data-a=apply]', el).hidden = mode !== 'crop'; $('[data-tip]', el).textContent = mode === 'crop' ? T('Drag to choose the area to keep, then tap Apply crop.') : T('Drag over any name, number, date or label. The cover stays on every frame.'); sel = null; showSel(); }; });
-        var sIn = $('[data-start]', el), lIn = $('[data-len]', el);
-        sIn.oninput = function () { startAt = Number(sIn.value); $('[data-st]', el).textContent = startAt.toFixed(1); var mx = Math.min(10, Math.max(1, dur - startAt)); lIn.max = mx.toFixed(1); if (len > mx) { len = mx; lIn.value = mx; $('[data-ln]', el).textContent = mx.toFixed(1); } seek(startAt).then(paint); };
-        lIn.oninput = function () { len = Number(lIn.value); $('[data-ln]', el).textContent = len.toFixed(1); };
-        var decl = $('[data-decl]', el), save = $('[data-a=save]', el);
-        decl.addEventListener('change', function () { save.disabled = !decl.checked; });
-        var close = function (v) { vid.pause(); URL.revokeObjectURL(url); el.remove(); resolve(v); };
+        var paint = function () { var o = outSize(1); if (cv.width !== Math.round(o.w) || cv.height !== Math.round(o.h)) { cv.width = Math.round(o.w); cv.height = Math.round(o.h); } frame(g, 1); };
+        // A point on the preview back to the original frame (inverse of the transform above).
+        var toSrc = function (p) {
+          var u = p.x, v = p.y, w = crop.w, h = crop.h, x, y;
+          if (orient.r === 0) { x = u; y = v; } else if (orient.r === 1) { x = v; y = h - u; } else if (orient.r === 2) { x = w - u; y = h - v; } else { x = w - v; y = u; }
+          if (orient.m) x = w - x;
+          return { x: crop.x + Math.max(0, Math.min(w, x)), y: crop.y + Math.max(0, Math.min(h, y)) };
+        };
+        var rectToSrc = function (s) { var a = toSrc({ x: s.x, y: s.y }), b = toSrc({ x: s.x + s.w, y: s.y + s.h }); return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) }; };
+        var state = function () {
+          $('[data-applied]', el).textContent = orientWords(orient);
+          undoBtn.disabled = !history.length; resetBtn.hidden = !history.length;
+          var end = Math.min(total, startAt + len);
+          $('[data-st2]', el).textContent = f1(startAt); $('[data-en]', el).textContent = f1(end);
+          $('[data-sum]', el).textContent = (known ? T('Keeps {a} s to {b} s ({n} s) of a {t} s clip.', { a: f1(startAt), b: f1(end), n: f1(end - startAt), t: f1(total) }) : T('Keeps {n} s from {a} s. This phone could not read the clip\'s full length.', { a: f1(startAt), n: f1(len) })) + (known && total > CLIP_MAX + 0.05 ? ' ' + T('Clips can be up to {m} seconds: nothing outside the selection is saved.', { m: CLIP_MAX }) : '');
+        };
+        var keep = function () { history.push({ crop: Object.assign({}, crop), covers: covers.slice(), orient: orient }); if (history.length > 20) history.shift(); };
+        var picker = bindSelect(el, cv, function (mode, sel) { if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { keep(); covers.push(rectToSrc(sel)); paint(); picker.clear(); state(); } }, function (sel) { applyBtn.hidden = !(picker && picker.mode() === 'crop' && sel && sel.w >= 20 && sel.h >= 20); });
+        bindModes(el, picker, { crop: T('Drag to choose the area to keep, then tap Apply crop.'), cover: T('Drag over any name, number, date or label. The cover stays on every frame.') });
+        var seek = function (t) { return new Promise(function (ok) { var target = Math.min(Math.max(0, t), Math.max(0, total - 0.05)); if (Math.abs(vid.currentTime - target) < 0.01) return ok(); var done = function () { vid.removeEventListener('seeked', done); ok(); }; vid.addEventListener('seeked', done); vid.currentTime = target; }); };
+        var showPos = function () { scrub.value = vid.currentTime; $('[data-pos]', el).textContent = f1(vid.currentTime); };
+        var stopPlay = function () { if (!playing) return; playing = false; vid.pause(); cancelAnimationFrame(raf); playBtn.innerHTML = ET.play; playBtn.setAttribute('aria-label', T('Play the selection')); };
+        var playLoop = function () { paint(); showPos(); if (vid.currentTime >= startAt + len - 0.02 || vid.ended) { stopPlay(); return; } raf = requestAnimationFrame(playLoop); };
+        var startPlay = function () {
+          var from = vid.currentTime >= startAt && vid.currentTime < startAt + len - 0.1 ? vid.currentTime : startAt;
+          seek(from).then(function () { playing = true; playBtn.innerHTML = ET.pause; playBtn.setAttribute('aria-label', T('Pause')); return vid.play(); }).then(function () { raf = requestAnimationFrame(playLoop); }, function () { stopPlay(); });
+        };
+        sIn.oninput = function () {
+          stopPlay(); startAt = Number(sIn.value); $('[data-st]', el).textContent = f1(startAt);
+          var mx = Math.max(CLIP_MIN, Math.min(CLIP_MAX, total - startAt)); lIn.max = f1(mx);
+          if (len > mx) { len = mx; lIn.value = f1(mx); $('[data-ln]', el).textContent = f1(mx); }
+          seek(startAt).then(function () { paint(); showPos(); state(); });
+        };
+        lIn.oninput = function () { stopPlay(); len = Math.min(Number(lIn.value), Math.max(CLIP_MIN, total - startAt)); $('[data-ln]', el).textContent = f1(len); seek(Math.min(total, startAt + len) - 0.05).then(function () { paint(); showPos(); state(); }); };
+        scrub.oninput = function () { stopPlay(); seek(Number(scrub.value)).then(function () { paint(); showPos(); }); };
+        decl.addEventListener('change', function () { save.disabled = !decl.checked || !!busyRec; });
+        var close = function (v) { stopPlay(); if (busyRec) busyRec.abort(); vid.removeAttribute('src'); vid.load(); URL.revokeObjectURL(url); el.remove(); resolve(v); };
+        var fail = function (msg) { var er = $('[data-err]', el); er.textContent = msg; er.hidden = false; save.textContent = T('Use this clip'); save.disabled = !decl.checked; el.classList.remove('working'); };
         el.addEventListener('click', function (ev) {
-          var a = ev.target.closest('[data-a]'); if (!a) return;
+          var a = ev.target.closest('[data-a]'); if (!a || a.disabled) return;
           var act = a.dataset.a;
-          if (act === 'cancel') close(null);
-          if (act === 'undo' && history.length) { var h = history.pop(); crop = h.crop; covers = h.covers; paint(); }
-          if (act === 'apply' && sel && sel.w > 20 && sel.h > 20) { keep(); crop = { x: sel.x, y: sel.y, w: sel.w, h: sel.h }; paint(); }
-          if (act === 'trim') { keep(); var cut = Math.round(crop.h * 0.12); crop = { x: crop.x, y: crop.y + cut, w: crop.w, h: crop.h - cut }; paint(); }
-          if (act === 'save') {
-            save.disabled = true; save.textContent = T('Preparing clip… 0%');
-            record().then(close).catch(function (ex) { save.disabled = false; save.textContent = T('Use this clip'); toast(ex.message || T('Could not prepare the clip.'), 4000); });
-          }
+          if (act === 'cancel') return close(null);
+          if (busyRec) return; // the other tools wait while the clip is being prepared
+          if (act === 'play') return playing ? stopPlay() : startPlay();
+          if (act === 'undo' && history.length) { var h = history.pop(); crop = h.crop; covers = h.covers; orient = h.orient; }
+          if (act === 'reset' && history.length) { var h0 = history[0]; history = []; crop = h0.crop; covers = h0.covers; orient = h0.orient; }
+          if (act === 'apply') { var s = picker.get(); if (s && s.w >= 20 && s.h >= 20) { keep(); crop = rectToSrc(s); } }
+          if (act === 'trim') { var o = outSize(1), cut = o.h * 0.12; keep(); crop = rectToSrc({ x: 0, y: cut, w: o.w, h: o.h - cut }); }
+          if (act === 'rotate' || act === 'fliph' || act === 'flipv') { keep(); orient = orientAfter(orient, act); NAT.haptic(); }
+          if (act === 'save') { $('[data-err]', el).hidden = true; record(); return; }
+          paint(); picker.clear(); state();
         });
         function record() {
+          stopPlay();
           var mime = clipMime();
-          var sc = Math.min(1, 1280 / Math.max(crop.w, crop.h));
-          var out = document.createElement('canvas'); out.width = Math.round(crop.w * sc / 2) * 2; out.height = Math.round(crop.h * sc / 2) * 2;
-          var g = out.getContext('2d');
-          var frame = function () { g.drawImage(vid, crop.x, crop.y, crop.w, crop.h, 0, 0, out.width, out.height); g.fillStyle = '#000'; covers.forEach(function (c) { g.fillRect((c.x - crop.x) * sc, (c.y - crop.y) * sc, c.w * sc, c.h * sc); }); };
-          return seek(startAt).then(function () {
-            frame();
+          if (!mime) return fail(T('This phone cannot prepare clips. Save a still image instead.'));
+          var k = Math.min(1, 1280 / Math.max(crop.w, crop.h)), o = outSize(k);
+          var out = document.createElement('canvas'); out.width = Math.round(o.w / 2) * 2; out.height = Math.round(o.h / 2) * 2;
+          var og = out.getContext('2d');
+          save.disabled = true; save.textContent = T('Preparing clip… {p}%', { p: 0 }); el.classList.add('working');
+          var stopAt = Math.min(total, startAt + len), aborted = false, rec = null, chunks = [], rafR = 0, lastT = -1, stallAt = 0;
+          busyRec = { abort: function () { aborted = true; cancelAnimationFrame(rafR); try { vid.pause(); if (rec && rec.state !== 'inactive') rec.stop(); } catch (e) { /* already stopped */ } } };
+          seek(startAt).then(function () {
+            frame(og, k);
             var thumbP = new Promise(function (ok) { var s = Math.min(1, 360 / Math.max(out.width, out.height)); var c = document.createElement('canvas'); c.width = Math.round(out.width * s); c.height = Math.round(out.height * s); c.getContext('2d').drawImage(out, 0, 0, c.width, c.height); c.toBlob(ok, 'image/jpeg', 0.72); });
-            var stream = out.captureStream(30), chunks = [];
-            var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4000000 });
+            rec = new MediaRecorder(out.captureStream(30), { mimeType: mime, videoBitsPerSecond: 4000000 });
             rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-            var stopAt = startAt + len, raf = 0;
-            var tick = function () { frame(); save.textContent = T('Preparing clip… {p}%', { p: Math.min(99, Math.round(100 * (vid.currentTime - startAt) / len)) }); if (vid.currentTime >= stopAt || vid.ended) { vid.pause(); rec.stop(); return; } raf = requestAnimationFrame(tick); };
-            var done = new Promise(function (ok, no) { rec.onstop = function () { cancelAnimationFrame(raf); var blob = new Blob(chunks, { type: mime.split(';')[0] }); if (blob.size > 12 * 1048576) no(new Error(T('The clip came out larger than 12 MB. Choose a shorter length or crop tighter.'))); else ok(blob); }; rec.onerror = function () { no(new Error(T('Could not prepare the clip.'))); }; });
+            var done = new Promise(function (ok, no) {
+              rec.onstop = function () {
+                cancelAnimationFrame(rafR);
+                if (aborted) return no(new Error('cancelled'));
+                var blob = new Blob(chunks, { type: mime.split(';')[0] });
+                if (!blob.size) no(new Error(T('Could not prepare the clip.')));
+                else if (blob.size > 12 * 1048576) no(new Error(T('The clip came out larger than 12 MB. Choose a shorter length or crop tighter.')));
+                else ok(blob);
+              };
+              rec.onerror = function () { aborted = true; cancelAnimationFrame(rafR); try { vid.pause(); if (rec.state !== 'inactive') rec.stop(); } catch (e) { /* already stopped */ } no(new Error(T('Could not prepare the clip.'))); };
+            });
+            var tick = function (now) {
+              if (aborted) return;
+              frame(og, k);
+              var t = vid.currentTime;
+              save.textContent = T('Preparing clip… {p}%', { p: Math.max(0, Math.min(99, Math.round(100 * (t - startAt) / Math.max(0.1, stopAt - startAt)))) });
+              // A clip that stops advancing for 8 seconds (a decoding problem) fails rather than hanging.
+              if (t !== lastT) { lastT = t; stallAt = now; } else if (stallAt && now - stallAt > 8000) { aborted = true; vid.pause(); rec.stop(); return; }
+              if (t >= stopAt - 0.01 || vid.ended) { vid.pause(); rec.stop(); return; }
+              rafR = requestAnimationFrame(tick);
+            };
             rec.start(250);
-            return vid.play().then(function () { tick(); return Promise.all([done, thumbP]); });
-          }).then(function (r) { return { blob: r[0], thumb: r[1], w: out.width, h: out.height, kind: 'clip', dur: Math.round(len * 10) / 10, declared: true }; });
+            return vid.play().then(function () { rafR = requestAnimationFrame(tick); return Promise.all([done, thumbP]); });
+          }).then(function (r) {
+            busyRec = null;
+            // The length actually recorded, from the clip's own clock (not the slider), so what is stored is true.
+            var got = Math.max(0, Math.min(stopAt, vid.currentTime) - startAt);
+            close({ blob: r[0], thumb: r[1], w: out.width, h: out.height, kind: 'clip', dur: Math.round(got * 10) / 10, declared: true, edits: { r: orient.r, m: orient.m } });
+          }, function (ex) {
+            busyRec = null; chunks = [];
+            if (ex && ex.message === 'cancelled' && !el.isConnected) return;
+            // Nothing is kept from a failed or stopped preparation: the clip is not added to the scan.
+            fail(ex && ex.message && ex.message !== 'cancelled' ? ex.message : T('Could not prepare the clip.'));
+            seek(startAt).then(paint);
+          });
         }
-        seek(0).then(paint);
-      };
+        seek(0).then(function () { paint(); showPos(); state(); });
+      }
     });
   }
 
@@ -3304,6 +3482,9 @@
   // Android back: close an open sheet, then follow the header's back link, then return to Home, then leave the app.
   window.addEventListener('wl:back', function (e) {
     if (document.querySelector('.app-lock')) return;
+    // An open photo or clip editor: back cancels it (nothing is added), as its Cancel button does.
+    var ed = document.querySelector('.editor [data-a=cancel]');
+    if (ed) { e.preventDefault(); ed.click(); return; }
     if (document.querySelector('.sheet-bg')) { e.preventDefault(); closeSheet(); return; }
     var b = document.querySelector('header.top a.back');
     if (b) { e.preventDefault(); location.hash = b.getAttribute('href'); return; }

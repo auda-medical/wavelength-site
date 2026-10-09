@@ -656,3 +656,41 @@ html[data-theme="dark"] .scanform .fs:has(.field.invalid) .fs-n { color: #0A1526
 @keyframes picked { 0% { transform: scale(1); } 35% { transform: scale(1.035); box-shadow: 0 0 0 4px color-mix(in srgb, var(--teal) 35%, transparent); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .scanform .seg label, .scanform .seg label:active { transition: none; transform: none; } .scanform .seg label.picked { animation: none; } }
 .scanform .type-ok .link { min-height: 32px; padding: 4px 2px; }
+
+/* ---------- 1.0.11: photo and clip editors ----------
+   The picture takes the space left over; tools sit in one row of six (two rows of three on a narrow phone), each an
+   icon with a short label and a full spoken name. The orientation in force is stated beside Reset and Apply crop. */
+.editor .bar-top { gap: 8px; }
+.editor .ed-title { flex: 1; text-align: center; font-weight: 600; }
+.editor .tool[disabled] { opacity: .4; cursor: default; }
+.editor .stage { min-height: 140px; }
+.editor .bar-bot { display: grid; gap: 8px; padding: 8px 12px calc(var(--safe-b) + 10px); justify-content: stretch; flex-wrap: nowrap; }
+.editor .tip { padding: 0 4px; }
+.editor .ed-tools { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.editor .tool.et { display: grid; justify-items: center; align-content: center; gap: 3px; min-height: 54px; padding: 6px 2px; border-radius: 12px; font-size: 11.5px; font-weight: 600; line-height: 1.15; text-align: center; -webkit-tap-highlight-color: transparent; transition: background-color .15s ease, border-color .15s ease, transform .12s ease; }
+.editor .tool.et svg { width: 20px; height: 20px; }
+.editor .tool.et span { overflow-wrap: anywhere; }
+.editor .tool:active:not([disabled]) { transform: scale(.96); }
+.editor .tool:focus-visible { outline: 2px solid var(--teal-l); outline-offset: 2px; }
+@media (max-width: 359px) { .editor .ed-tools { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.editor .ed-row { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.editor .ed-applied { flex: 1; min-width: 0; margin: 0; font-size: 13px; font-weight: 600; color: var(--teal-l); }
+.editor .tool.apply { background: var(--teal); border-color: var(--teal); }
+.editor .ed-err { margin: 0; padding: 8px 12px; border-radius: 10px; background: rgba(238,138,127,.16); color: #F6B1A8; font-size: 13.5px; }
+.editor .ed-decl { color: #fff; font-size: 14px; padding: 2px 2px 0; }
+.editor .ed-note { margin: 0; font-size: 12px; color: #9DABBA; text-align: center; }
+/* Clip: play and scrub, then start and length, then what will be kept. */
+.editor .clipbar { padding: 6px 12px 0; color: #fff; display: grid; gap: 6px; }
+.editor .cb-row { display: flex; align-items: center; gap: 10px; }
+.editor .tool.play { width: 46px; height: 46px; flex: none; border-radius: 50%; padding: 0; display: grid; place-items: center; background: var(--teal); border-color: var(--teal); }
+.editor .cb-row input[type=range] { flex: 1; min-width: 0; accent-color: var(--teal-l); height: 28px; }
+.editor .cb-pos { flex: none; font-size: 12.5px; color: #B9C4D0; font-variant-numeric: tabular-nums; }
+.editor .cb-sel { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; font-size: 13px; color: #B9C4D0; }
+.editor .cb-sel b { color: #fff; font-variant-numeric: tabular-nums; }
+.editor .cb-sel input[type=range] { width: 100%; accent-color: var(--teal-l); height: 28px; display: block; }
+.editor .cb-sum { margin: 0; font-size: 12.5px; color: #B9C4D0; }
+.editor.working .ed-tools, .editor.working .clipbar, .editor.working [data-a=undo], .editor.working .ed-row .tool { opacity: .45; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .editor .tool.et, .editor .tool:active:not([disabled]) { transition: none; transform: none; } }
+.editor .cb-ends { margin: 0; font-size: 13px; color: #B9C4D0; }
+.editor .cb-ends b { color: #fff; font-variant-numeric: tabular-nums; }
+.editor { z-index: 80; } /* above notes (toasts, 70): nothing covers the declaration or the tools */
