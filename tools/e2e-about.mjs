@@ -1,5 +1,6 @@
 // About Wavelength in the store app, without a phone: the real bundle over the stand-in native bridge
-// (tools/native-harness.mjs) and a local Worker. Dummy account only. Checks the footer on Me and Settings, that the
+// (tools/native-harness.mjs) and a local Worker. Dummy account only. Checks the footer in Settings (1.0.11: its only
+// place; Me no longer repeats it), that the
 // version and build come from the installed app's metadata, the About sheet, the open-source licences, offline use,
 // keyboard and screen-reader basics, and Arabic.
 //
@@ -39,12 +40,12 @@ const go = async (page, hash) => { await page.evaluate((x) => { location.hash = 
 // ---------- Footer, metadata, About sheet ----------
 {
   const { ctx, page } = await phone();
-  await go(page, '#/me');
-  const me = await footer(page);
-  record('A1', 'Me shows Wavelength, version and build, copyright and an About link', me === 'Wavelength / Version 1.0.9 (15) / © 2026 Auda Medical Ltd / About Wavelength', me);
+  await page.evaluate(() => { location.hash = '#/me'; }); await page.waitForSelector('a.gear'); await page.waitForTimeout(300);
+  const me = await page.evaluate(() => ({ about: document.querySelectorAll('[data-about]').length, gear: !!document.querySelector('a.gear[href="#/settings"]') }));
+  record('A1', '1.0.11: Me has no About entry of its own; its Settings gear leads to the one entry', me.about === 0 && me.gear, JSON.stringify(me));
   await go(page, '#/settings');
   const set = await footer(page);
-  record('A2', 'Settings shows the same footer', set === me, set);
+  record('A2', 'Settings shows Wavelength, version and build, copyright and the one About link', set === 'Wavelength / Version 1.0.9 (15) / © 2026 Auda Medical Ltd / About Wavelength' && (await page.evaluate(() => document.querySelectorAll('[data-about]').length)) === 1, set);
 
   await page.click('[data-about]');
   await page.waitForSelector('.sheet .about-facts');
@@ -91,12 +92,12 @@ const go = async (page, hash) => { await page.evaluate((x) => { location.hash = 
 // ---------- Version from the installed app's metadata, and the fallback ----------
 {
   const { ctx, page } = await phone({ init: ['window.__appInfo = { name: "Wavelength", id: "uk.co.thewavelength.app", version: "9.8.7", build: "654" };'] });
-  await go(page, '#/me');
+  await go(page, '#/settings');
   const f = await footer(page);
   record('A11', 'Version and build are read from the installed app metadata, not fixed in the code', f.includes('Version 9.8.7 (654)'), f);
   await ctx.close();
   const b = await phone({ init: ['window.__appInfoFail = true;'] });
-  await go(b.page, '#/me');
+  await go(b.page, '#/settings');
   const g = await footer(b.page);
   const built = await b.page.evaluate(() => `Version ${window.WL_NATIVE.version} (${window.WL_NATIVE.versionCode})`);
   record('A12', 'If the metadata cannot be read, the version the bundle was built with is shown', g.includes(built), g + ' (bundle built as ' + built + ')');
@@ -109,7 +110,7 @@ const go = async (page, hash) => { await page.evaluate((x) => { location.hash = 
   net.offline = true;
   await page.goto('https://localhost/');
   await page.waitForSelector('nav.tabs', { timeout: 15000 });
-  await go(page, '#/me');
+  await go(page, '#/settings');
   await page.click('[data-about]');
   await page.waitForSelector('.sheet .about-facts');
   await page.click('.about-links [data-lic]');
@@ -123,7 +124,7 @@ const go = async (page, hash) => { await page.evaluate((x) => { location.hash = 
 // ---------- Arabic ----------
 {
   const { ctx, page } = await phone({ lang: 'ar' });
-  await go(page, '#/me');
+  await go(page, '#/settings');
   const f = await footer(page);
   await page.click('[data-about]');
   await page.waitForSelector('.sheet .about-facts');

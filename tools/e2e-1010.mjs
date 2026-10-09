@@ -95,7 +95,7 @@ function seed(page, id, entries, kv = {}) {
   await saveScan(page);
   await page.waitForTimeout(1200);
   const p = await pill(page), b = await bannerText(page);
-  record('C1', 'Offline: red Offline pill and red "You\'re offline" banner with the waiting count', /Offline/.test(p.text) && /p-bad/.test(p.cls) && /You're offline/.test(b) && /1 scan waiting to sync/.test(b) && /saved on this device/.test(b), `pill "${p.text}" ${p.cls}; banner "${b.slice(0, 160)}"`);
+  record('C1', 'Offline: red Offline pill and red "You\'re offline" banner with the waiting count (1.0.11 short form)', /Offline/.test(p.text) && /p-bad/.test(p.cls) && /You're offline/.test(b) && /1 scan saved on this device, awaiting sync/.test(b), `pill "${p.text}" ${p.cls}; banner "${b.slice(0, 160)}"`);
   await shot(page, '02-offline-banner');
   // C2: Wi-Fi comes back while aeroplane mode stays on. The network-change event syncs at once, even after a
   // run of failures has stretched the back-off.
@@ -119,8 +119,12 @@ function seed(page, id, entries, kv = {}) {
   await saveScan(page);
   await page.waitForTimeout(1500);
   const p = await pill(page), b = await bannerText(page);
-  record('C4', 'VPN up, server blocked: amber "Can\'t sync" pill and amber "Can\'t connect to Wavelength" banner, not "offline"', /Can't sync/.test(p.text) && /p-warn/.test(p.cls) && /Can't connect to Wavelength/.test(b) && /appears connected/.test(b) && /VPN, firewall or network restriction/.test(b) && !/You're offline/.test(b), `pill "${p.text}"; banner "${b.slice(0, 200)}"`);
-  record('C4b', 'The banner never tells the learner to switch the VPN off', !/disable|turn off/i.test(b), b.slice(0, 120));
+  // 1.0.11: the banner is short; the VPN and firewall guidance is one tap away in Connection details.
+  await page.click('[data-syncbanner] [data-syncpill]'); await page.waitForSelector('.sheet [data-syncpanel] .sync-help');
+  const det = await page.evaluate(() => document.querySelector('.sheet [data-syncpanel]').textContent);
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  record('C4', 'VPN up, server blocked: amber "Can\'t sync" pill, short amber "Can\'t connect to Wavelength" banner, guidance in details', /Can't sync/.test(p.text) && /p-warn/.test(p.cls) && /Can't connect to Wavelength/.test(b) && /1 scan saved on this device, awaiting sync/.test(b) && !/VPN/.test(b) && /appears connected/.test(det) && /VPN, firewall or network restriction/.test(det) && !/You're offline/.test(b), `pill "${p.text}"; banner "${b.slice(0, 200)}"`);
+  record('C4b', 'Neither the banner nor the details tell the learner to switch the VPN off', !/disable|turn off (your|the) VPN/i.test(b + det), b.slice(0, 120));
   await shot(page, '04-cant-connect-banner');
   // C5: manual Retry sync from the banner once the route works again.
   net.blocked = false;

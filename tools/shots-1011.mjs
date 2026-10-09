@@ -42,7 +42,8 @@ function seed(page, id, entries, kv = {}) {
 }
 async function phone(theme, acc) {
   reset();
-  const init = [`window.__netdev = ${JSON.stringify(DEVICE.wifi)};`, `localStorage.setItem('wl-theme', ${JSON.stringify(theme)});`];
+  // The simulated network survives reloads (an init script runs on every navigation): setNet() keeps it in storage.
+  const init = [`window.__netdev = JSON.parse(localStorage.getItem('__netdev') || 'null') || ${JSON.stringify(DEVICE.wifi)};`, `localStorage.setItem('wl-theme', ${JSON.stringify(theme)});`];
   const { ctx, page } = await newApp(390, 844, { init });
   await page.goto('https://localhost/');
   await page.evaluate((tok) => { localStorage.setItem('__secure', JSON.stringify({ 'wavelength.session': tok })); }, acc.token);
@@ -51,6 +52,7 @@ async function phone(theme, acc) {
   await sleep(800);
   return { ctx, page };
 }
+const setNet = (page, dev) => page.evaluate((d) => { localStorage.setItem('__netdev', JSON.stringify(d)); window.__netdev = d; }, dev);
 const reload = async (page) => { await page.goto('https://localhost/'); await page.waitForSelector('nav.tabs', { timeout: 15000 }); };
 const shot = (page, name, opt = {}) => page.screenshot({ path: path.join(OUT, name + '.png'), ...opt });
 
@@ -109,13 +111,13 @@ for (const theme of ['light', 'dark']) {
   const signed = { signoff: { status: 'confirmed', code: 'SO-TEST-0001', name: 'Dr Synthetic', method: 'link' } };
   const ents = [mk(acc, 1, today, signed), mk(acc, 2, month + '-01'), mk(acc, 3, prev, signed), mk(acc, 4, prev), mk(acc, 5, prev)];
   await seed(page, acc.id, ents, { assessments: [{ id: 'as1', status: 'signed', kind: 'formative', outcome: 'competent', assessed_on: today, pathway: 'rcem', module: 'rcem-aaa' }] });
-  reset(); await page.evaluate(() => { window.__netdev = { connected: true, validated: true, vpn: false, transports: ['wifi'], id: '1' }; });
+  reset(); await setNet(page, DEVICE.wifi);
   await reload(page); await sleep(1500);
   await shot(page, T('01-home'));
   await shot(page, T('02-pill-synced'), { clip: { x: 0, y: 0, width: 390, height: 90 } });
   // Server unreachable (a VPN or filter drops the traffic) with one scan waiting.
   await seed(page, acc.id, [mk(acc, 6, today, { _dirty: true, _new: true, updatedAt: 0 })]);
-  net.blocked = true; await page.evaluate(() => { window.__netdev = { connected: true, validated: true, vpn: true, transports: ['vpn', 'wifi'], id: '2' }; });
+  net.blocked = true; await setNet(page, { connected: true, validated: true, vpn: true, transports: ['vpn', 'wifi'], id: '2', underlying: true, underlyingTransports: ['wifi'] });
   await reload(page); await sleep(4500);
   await shot(page, T('03-warning-unreachable-1-waiting'));
   await shot(page, T('03b-pill-cant-sync'), { clip: { x: 0, y: 0, width: 390, height: 90 } });
@@ -130,10 +132,13 @@ for (const theme of ['light', 'dark']) {
   // VPN interface left up with nothing under it (Flight mode, Wi-Fi off, NordVPN still "connected").
   await seed(page, acc.id, [mk(acc, 7, today, { _dirty: true, _new: true, updatedAt: 0 })]);
   net.blocked = false; net.offline = true;
-  await page.evaluate(() => { window.__netdev = { connected: true, validated: false, vpn: true, transports: ['vpn'], id: '2', underlying: false, underlyingTransports: [] }; });
+  await setNet(page, { connected: true, validated: false, vpn: true, transports: ['vpn'], id: '2', underlying: false, underlyingTransports: [] });
   await reload(page); await sleep(4500);
   await shot(page, T('05-vpn-without-network-1-waiting'));
-  reset(); await setDevice(page, DEVICE.wifi); await sleep(3000);
+  await page.click('button.sync-pill'); await sleep(500);
+  await shot(page, T('05b-vpn-without-network-details'));
+  await page.keyboard.press('Escape'); await sleep(200);
+  reset(); await setNet(page, DEVICE.wifi); await setDevice(page, DEVICE.wifi); await sleep(3000);
 
   // The cardiac scan form, filled with synthetic answers.
   await page.evaluate(() => { location.hash = '#/new?type=cardiac'; }); await sleep(1600);

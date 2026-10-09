@@ -86,15 +86,33 @@
   function pill(st) { return PILL[st] || PILL['']; }
 
   // Banner below the header, or null for none. tone: red, amber, teal, green.
+  // 1.0.11: short. A title and one line about scans waiting, with Retry sync and Connection details; everything else
+  // (what the device says about its network, the server, VPN and firewall advice, the last attempts) lives in the
+  // sync details panel. With nothing waiting, a single quiet line (compact) instead of a large warning. The words
+  // never say or imply that a scan saved on this device has been backed up or synced.
+  // wait: [one, other] plural keys for the waiting line ({n}); app.js picks the form with N().
+  var WAIT = ['{n} scan saved on this device, awaiting sync.', '{n} scans saved on this device, awaiting sync.'];
   function banner(st, n, opts) {
     opts = opts || {};
-    if (st === 'offline') return { tone: 'red', icon: 'offline', title: 'You\'re offline', body: 'Your scans are saved on this device but haven\'t yet synced to Wavelength. They\'ll sync automatically when a connection becomes available.', pending: n };
-    if (st === 'unreachable') return { tone: 'amber', icon: 'alert', title: 'Can\'t connect to Wavelength', body: 'Your device appears connected, but Wavelength can\'t reach its server. Your scans remain saved on this device.', hint: 'A VPN, firewall or network restriction may be affecting the connection. Check your network or VPN settings.', pending: n, retry: true, details: true };
-    if (st === 'failed') return { tone: 'red', icon: 'alert', title: 'Sync failed', body: 'Wavelength could not sync some changes. They remain saved on this device.', pending: n, retry: true, details: true };
+    if (st === 'offline') return n ? { tone: 'red', icon: 'offline', title: 'You\'re offline', wait: WAIT, details: true }
+      : { tone: 'red', icon: 'offline', title: 'You\'re offline', note: 'Nothing waiting to sync.', compact: true, details: true };
+    if (st === 'unreachable') return n ? { tone: 'amber', icon: 'alert', title: 'Can\'t connect to Wavelength', wait: WAIT, retry: true, details: true }
+      : { tone: 'amber', icon: 'alert', title: 'Wavelength server unreachable', note: 'Nothing waiting to sync.', compact: true, details: true };
+    if (st === 'failed') return { tone: 'red', icon: 'alert', title: 'Sync failed', wait: n ? ['{n} scan saved on this device, not yet synced.', '{n} scans saved on this device, not yet synced.'] : null, retry: true, details: true };
     if (st === 'auth') return { tone: 'red', icon: 'lock', title: 'Sign in to sync', body: 'Sign in again to continue synchronising. Your local entries are safe.' };
-    if (st === 'pending' && n && opts.settled) return { tone: 'amber', icon: 'clock', title: 'Scans awaiting sync', body: n === 1 ? '{n} scan is saved on this device. Wavelength will retry automatically.' : '{n} scans are saved on this device. Wavelength will retry automatically.', pending: 0 };
+    if (st === 'pending' && n && opts.settled) return { tone: 'amber', icon: 'clock', title: 'Scans awaiting sync', wait: ['{n} scan is saved on this device. Wavelength will retry automatically.', '{n} scans are saved on this device. Wavelength will retry automatically.'] };
     if (st === 'syncing' && n && opts.settled) return { tone: 'teal', icon: 'sync', title: 'Synchronising your scans…', progress: true };
     if (st === 'synced' && opts.justSynced) return { tone: 'green', icon: 'check', title: 'All changes synced.', brief: true };
+    return null;
+  }
+
+  // The full explanation for the sync details panel: what the status means and what to check. kind: the state, with
+  // 'vpnonly' for a VPN that shows as connected with no network under it. Returns { lead, steps }.
+  function explain(st, dev) {
+    if (st === 'offline' && vpnOnly(dev)) return { lead: 'Your VPN shows as connected, but this device has no Wi-Fi, mobile data or other network under it, so nothing can reach Wavelength.', steps: ['Turn off aeroplane mode, or connect to Wi-Fi or mobile data. Your VPN can stay on.', 'Wavelength syncs by itself when a connection returns.'] };
+    if (st === 'offline') return { lead: 'This device has no network connection. Your scans are saved on this device but haven\'t yet synced to Wavelength.', steps: ['Turn off aeroplane mode or connect to Wi-Fi or mobile data. Wavelength syncs by itself when a connection returns.'] };
+    if (st === 'unreachable') return { lead: 'Your device appears connected, but Wavelength can\'t reach its server. Your scans remain saved on this device.', steps: ['Open a website in your browser to check this network has internet access.', 'A VPN, firewall or network restriction may be affecting the connection. Check your network or VPN settings, following your organisation\'s rules.', 'Hospital guest Wi-Fi may need you to sign in on its page first.', 'Then press Retry sync. Wavelength also retries by itself.'] };
+    if (st === 'failed') return { lead: 'Wavelength could not sync some changes. They remain saved on this device.', steps: ['Wavelength will try again. If this keeps happening, contact hello@thewavelength.co.uk.'] };
     return null;
   }
 
@@ -145,7 +163,7 @@
     }[kind] || '';
   }
 
-  var api = { deviceOnline: deviceOnline, vpnOnly: vpnOnly, resumePlan: resumePlan, IDLE_AFTER: IDLE_AFTER, classify: classify, state: state, pill: pill, banner: banner, retryDelay: retryDelay, netChanged: netChanged, errorText: errorText, RETRY: RETRY };
+  var api = { explain: explain, deviceOnline: deviceOnline, vpnOnly: vpnOnly, resumePlan: resumePlan, IDLE_AFTER: IDLE_AFTER, classify: classify, state: state, pill: pill, banner: banner, retryDelay: retryDelay, netChanged: netChanged, errorText: errorText, RETRY: RETRY };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.WLNet = api;
 })(typeof window !== 'undefined' ? window : this);

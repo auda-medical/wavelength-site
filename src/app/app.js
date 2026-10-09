@@ -280,13 +280,13 @@
   // flashes a warning; "All changes synced." shows briefly after a warning, then goes, leaving the pill.
   var BAN = { st: null, at: 0, shown: false, okUntil: 0, timer: 0 };
   function bannerHtml(b, n) {
-    var body = b.icon === 'clock' ? N(n, '{n} scan is saved on this device. Wavelength will retry automatically.', '{n} scans are saved on this device. Wavelength will retry automatically.') : b.body ? T(b.body) : '';
+    var line = b.wait ? N(n, b.wait[0], b.wait[1]) : b.body ? T(b.body) : b.note ? T(b.note) : '';
+    var det = b.details ? '<button type="button" class="link small" data-syncpill>' + esc(T('Connection details')) + '</button>' : '';
+    if (b.compact) return '<div class="sb sb-' + b.tone + ' sb-compact"><span class="sb-ic" aria-hidden="true">' + SI[b.icon] + '</span><p class="sb-tx"><b>' + esc(T(b.title)) + '</b> ' + esc(line) + '</p>' + det + '</div>';
     return '<div class="sb sb-' + b.tone + '"><span class="sb-ic" aria-hidden="true">' + SI[b.icon] + '</span><div class="sb-tx"><b>' + esc(T(b.title)) + '</b>' +
-      (body ? '<p>' + esc(body) + '</p>' : '') +
-      (b.pending ? '<p class="sb-n">' + esc(N(b.pending, '{n} scan waiting to sync.', '{n} scans waiting to sync.')) + '</p>' : '') +
-      (b.hint ? '<p class="sb-hint">' + esc(T(b.hint)) + '</p>' : '') +
+      (line ? '<p>' + esc(line) + '</p>' : '') +
       (b.progress ? '<span class="sb-prog" aria-hidden="true"><i></i></span>' : '') +
-      (b.retry || b.details ? '<div class="sb-act">' + (b.retry ? retryButton('btn sm', 'data-sbretry') : '') + (b.details ? '<button type="button" class="link small" data-syncpill>' + esc(T('Details')) + '</button>' : '') + '</div>' : '') +
+      (b.retry || b.details ? '<div class="sb-act">' + (b.retry ? retryButton('btn sm', 'data-sbretry') : '') + det + '</div>' : '') +
       '</div></div>';
   }
   // Retry sync. Disabled with "Trying…" (and aria-busy) only while an attempt the learner asked for is running; a
@@ -440,6 +440,17 @@
       return Promise.all(jobs).then(function () { return conflicts; });
     });
   }
+  // The last 12 sync attempts on this device, for the details panel: time, result kind, how long it took and the kind
+  // of network (Wi-Fi, mobile data, VPN). No entry content, server text, addresses or account details. Capped, so it
+  // never grows.
+  var LOG_MAX = 12;
+  function attemptLog() { try { var a = JSON.parse(localStorage.getItem('wl-synclog') || '[]'); return Array.isArray(a) ? a.slice(-LOG_MAX) : []; } catch (e) { return []; } }
+  function logAttempt(ok, kind) {
+    var d = deviceNet(), t = d.known ? (d.transports || []).filter(function (x) { return x !== 'vpn'; }) : [];
+    var net = !d.known ? '' : !d.connected ? 'none' : (t[0] || (NETR.vpnOnly(d) ? 'none' : '')) + (d.vpn ? '+vpn' : '');
+    var a = attemptLog(); a.push({ at: Date.now(), ok: !!ok, kind: kind || '', ms: SY.lastTry ? Date.now() - SY.lastTry : 0, net: net });
+    try { localStorage.setItem('wl-synclog', JSON.stringify(a.slice(-LOG_MAX))); } catch (e) { /* storage blocked */ }
+  }
   function doSync(manual) {
     var dirty = S.entries.filter(function (e) { return e._dirty && (manual || !e._syncError); });
     var conflicts = 0, gen = SESSION;
@@ -448,7 +459,7 @@
     return push.then(function () { return pullAll(0, gen); }).then(function () {
       return api('/api/app/signoffs').then(function (r) { stale(gen); if (r.ok) return setPending(r.signoffs); });
     }).then(function () { return loadAssessments(gen); }).then(function () {
-      SY.fail = ''; SY.ran = true; SY.lastOk = Date.now(); SY.err = null;
+      SY.fail = ''; SY.ran = true; SY.lastOk = Date.now(); SY.err = null; logAttempt(true, '');
       // Started offline: the account details and supervisor links could not load then, so fetch them now.
       if (!S.me) loadMe();
       if (!S.links) loadLinks();
@@ -461,6 +472,7 @@
       SY.ran = true;
       SY.fail = !S.account ? '' : NETR.classify(ex, deviceNet());
       SY.err = SY.fail ? { kind: SY.fail, at: Date.now(), status: (ex && ex.status) || 0, vpn: !!(S.net && S.net.vpn) } : null;
+      if (SY.fail) logAttempt(false, SY.fail);
     }).then(function () {
       S.syncing = false; S.syncManual = false;
       if (!S.account || gen !== SESSION) return;
@@ -907,7 +919,7 @@
     var hero = '<header class="top" style="padding-bottom:4px"><a class="brand-link" href="/">' + MARK(34, 'rgba(247,245,240,.5)') + '<h1 style="font:600 13px var(--sans);letter-spacing:.38em">WAVELENGTH</h1></a>' + syncInd() + '</header>' +
       '<section class="hero"><p class="hi">' + esc(hi) + '</p><p class="sub">' + esc(ents.length ? T('{scans} in your logbook.', { scans: plural(ents.length, 'scan') }) : T('Log your first scan to start tracking your targets.')) + '</p>' +
       // Each count opens the records it counts: the same filters, so the numbers match (homeCounts).
-      '<div class="stats">' + homeCounts(ents, month).map(function (c) { return '<a class="stat" href="#/' + c.href + '"><b>' + c.n + '</b><span>' + esc(c.label) + '</span></a>'; }).join('') + '</div></section>';
+      '<div class="stats">' + homeCounts(ents, month).map(function (c) { return '<a class="stat" href="#/' + c.href + '" aria-label="' + esc(T('{label}: {n}. Show these records.', { label: c.label, n: c.n })) + '"><b>' + c.n + '</b><span>' + esc(c.label) + '</span>' + SI.chev.replace('class="chev flip"', 'class="stat-go flip"') + '</a>'; }).join('') + '</div></section>';
     var quick = '<div class="card" style="margin-top:16px;padding:10px"><div class="quick">' +
       [['new', I.plus, T('Log a scan')], ['signoff', I.pen, T('Sign-off')], ['assess', I.star, T('Assessment')], ['export', I.file, T('Export')]].map(function (q) { return '<a href="#/' + q[0] + '"><span>' + q[1] + '</span>' + esc(q[2]) + '</a>'; }).join('') + '</div></div>';
     var install = canInstall() ? '<div style="margin:0 0 12px">' + installButton() + '</div>' : '';
@@ -2461,6 +2473,8 @@
     setTimeout(function () { if (first && first.tagName === 'INPUT' && first.type !== 'checkbox' && first.type !== 'radio') first.focus(); else if (bg.isConnected && !dlg.contains(document.activeElement)) dlg.focus(); }, 50);
     if (bind) bind(bg);
   }
+  // Escape closes the open sheet even before focus has moved into it (the sheet takes focus just after it opens).
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !e.defaultPrevented && document.querySelector('.sheet-bg') && !document.querySelector('.editor')) { e.preventDefault(); closeSheet(); } });
   function closeSheet(keepOpener) {
     var had = $$('.sheet-bg'); had.forEach(function (s) { s.remove(); });
     if (keepOpener || !had.length) return;
@@ -2955,9 +2969,8 @@
       '<h2 class="sec">' + esc(T('Pathways')) + '</h2><form id="pf" class="card">' + pathwayPicker(p.pathways || []) + '<div class="btns"><button class="btn sm">' + esc(T('Save pathways')) + '</button></div></form>' +
       '<h2 class="sec">' + esc(T('Certificates')) + ' <a href="/elearning/account/">' + esc(T('All')) + '</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="' + esc(T('Share certificate')) + '">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">' + esc(T('Pass a free Academy module to earn a verifiable CPD certificate.')) + '</p><a class="btn sm" href="/elearning/">' + esc(T('Browse modules')) + '</a></div>') +
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div>' + orgField('m4', T('Organisation'), acc.organisation, acc.organisationId) + '<div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
-      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up and restore')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
-      aboutFooter()));
-    bindAbout();
+      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up and restore')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>'));
+    // 1.0.11: About Wavelength lives in Settings only (the gear, top right), not twice.
     if (editPw) $('#pf').scrollIntoView();
     $$('[data-sharecert]').forEach(function (b) { b.onclick = function () { shareCertificate(b.dataset.sharecert, b.dataset.title); }; });
     $('#pf').addEventListener('submit', function (e) { e.preventDefault(); var ps = $$('input[name=p]:checked', this).map(function (i) { return i.value; }); if (!ps.length) { toast(T('Keep at least one pathway.')); return; } saveProfile({ pathways: ps }).then(function () { toast(T('Pathways saved.')); }).catch(function (ex) { toast(ex.message); }); });
@@ -2993,9 +3006,9 @@
     var key = [st, n, bad.length, SY.lastTry, SY.lastOk, userBusy(), err && err.at, netWords()].join('|');
     if (el.dataset.k === key) return;
     el.dataset.k = key;
-    var help = st === 'unreachable' ? '<div class="sync-help"><b>' + esc(T('What to check')) + '</b><ul><li>' + esc(T('Open a website in your browser to check this network has internet access.')) + '</li><li>' + esc(T('A VPN, firewall or network restriction may be affecting the connection. Check your network or VPN settings, following your organisation\'s rules.')) + '</li><li>' + esc(T('Hospital guest Wi-Fi may need you to sign in on its page first.')) + '</li><li>' + esc(T('Then press Retry sync. Wavelength also retries by itself.')) + '</li></ul></div>'
-      : st === 'offline' ? '<div class="sync-help"><p>' + esc(T('Turn off aeroplane mode or connect to Wi-Fi or mobile data. Wavelength syncs by itself when a connection returns.')) + '</p></div>'
-      : st === 'failed' && !bad.length ? '<div class="sync-help"><p>' + esc(T('Wavelength will try again. If this keeps happening, contact hello@thewavelength.co.uk.')) + '</p></div>' : '';
+    var ex = NETR.explain(st, deviceNet());
+    var help = ex && !(st === 'failed' && bad.length) ? '<div class="sync-help"><p>' + esc(T(ex.lead)) + '</p>' + (ex.steps.length > 1 ? '<b>' + esc(T('What to check')) + '</b><ul>' + ex.steps.map(function (x) { return '<li>' + esc(T(x)) + '</li>'; }).join('') + '</ul>' : '<p>' + esc(T(ex.steps[0])) + '</p>') + '</div>' : '';
+    var log = attemptLog();
     el.innerHTML = '<p class="sync-now"><span class="sync-pill static p-' + p.cls + '"><span class="sp-ic" aria-hidden="true">' + SI[p.icon] + '</span><span class="sp-tx">' + esc(T(p.label, { n: n })) + '</span></span><span role="status">' + esc(syncText(st) || T('Checking…')) + '</span></p>' +
       '<dl class="sync-facts"><dt>' + esc(T('Network on this device')) + '</dt><dd>' + esc(netWords()) + '</dd>' +
       '<dt>' + esc(T('Wavelength server')) + '</dt><dd>' + esc(serverWords(st)) + '</dd>' +
@@ -3008,6 +3021,7 @@
       '<div class="sync-retry">' + retryButton('btn sm', 'data-resync') + '</div>' +
       '<p class="small muted" style="margin:12px 0 0">' + esc(T('This status is for this device only. Another phone or computer shows its own, and a scan saved here reaches your other devices only after this device has synced it.')) + '</p>' +
       '<p class="small muted" style="margin:8px 0 0">' + esc(T('Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped. Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.')) + ' <a href="#/backup">' + esc(T('Back up and restore')) + '</a></p>' +
+      (log.length ? '<details class="small muted sync-log" style="margin-top:10px"><summary>' + esc(T('Recent sync attempts')) + '</summary><ul class="sync-diag">' + log.slice().reverse().map(function (a) { return '<li>' + esc(new Date(a.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'medium' })) + ': ' + esc(a.ok ? T('Synced') : T(NETR.pill(a.kind === 'timeout' ? 'unreachable' : a.kind).label, { n: '' })) + (a.ms ? ' (' + a.ms + ' ms)' : '') + (a.net ? ', ' + esc(a.net) : '') + '</li>'; }).join('') + '</ul></details>' : '') +
       (starts.length ? '<details class="small muted" style="margin-top:10px"><summary>' + esc(T('Start-up details')) + '</summary><ul class="sync-diag">' + starts.slice().reverse().map(function (d) { return '<li>' + esc(new Date(d.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'short' })) + ': ' + esc(d.path || '?') + ', ' + esc(T('logbook in {ms} ms', { ms: d.ui || '?' })) + ', ' + esc(T('server {result}', { result: d.me || '?' })) + (d.meMs ? ' (' + d.meMs + ' ms)' : '') + '</li>'; }).join('') + '</ul></details>' : '');
     var b = $('[data-resync]', el);
     if (b) b.onclick = function () { if (!b.disabled) retryNow(); };
@@ -3059,7 +3073,7 @@
       });
     };
   }
-  // ---------- About Wavelength: footer on Me and Settings, About sheet, open-source licences ----------
+  // ---------- About Wavelength: footer at the end of Settings (its one entry), About sheet, open-source licences ----------
   // Version and build come from the installed app's metadata (WLNative.appInfo), never from this file. Everything here
   // is bundled and works offline; only the website, privacy and terms links need a connection.
   var COPYRIGHT = '© 2026 Auda Medical Ltd';

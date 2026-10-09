@@ -78,16 +78,35 @@ test('pill: colour, icon and label say the same thing, and the waiting label car
   assert.deepEqual(W.pill('auth'), { cls: 'bad', icon: 'lock', label: 'Sign in' });
 });
 
-test('banners: red offline, amber server unreachable with VPN guidance, retry and details', () => {
+test('banners (1.0.11): short. Title, one line about waiting scans, Retry and Connection details', () => {
   const off = W.banner('offline', 2);
-  assert.equal(off.tone, 'red'); assert.equal(off.title, 'You\'re offline'); assert.equal(off.pending, 2);
-  assert.match(off.body, /saved on this device but haven't yet synced/);
+  assert.equal(off.tone, 'red'); assert.equal(off.title, 'You\'re offline'); assert.ok(off.details);
+  assert.deepEqual(off.wait, ['{n} scan saved on this device, awaiting sync.', '{n} scans saved on this device, awaiting sync.']);
   const un = W.banner('unreachable', 1);
   assert.equal(un.tone, 'amber'); assert.equal(un.title, 'Can\'t connect to Wavelength');
-  assert.match(un.body, /appears connected/);
-  assert.match(un.hint, /VPN, firewall or network restriction may be affecting/);
-  assert.doesNotMatch(un.hint + un.body, /disable|turn off your VPN/i, 'never insists the VPN is switched off');
   assert.ok(un.retry && un.details);
+  assert.equal(un.hint, undefined, 'VPN and firewall advice stays in the details panel');
+  assert.equal(un.body, undefined);
+  for (const b of [off, un, W.banner('failed', 1)]) assert.doesNotMatch(JSON.stringify(b), /backed up|synced to Wavelength|safe in the cloud/i, 'never implies a local scan is backed up or synced');
+});
+
+test('banners (1.0.11): nothing waiting gives a quiet one-line note, not a large warning', () => {
+  const un = W.banner('unreachable', 0);
+  assert.ok(un.compact); assert.equal(un.retry, undefined); assert.ok(un.details);
+  assert.equal(un.note, 'Nothing waiting to sync.');
+  const off = W.banner('offline', 0);
+  assert.ok(off.compact); assert.equal(off.tone, 'red');
+});
+
+test('details panel explanations keep the full guidance, never insisting the VPN is switched off', () => {
+  const un = W.explain('unreachable', phone());
+  assert.match(un.lead, /appears connected/);
+  assert.ok(un.steps.some((x) => /VPN, firewall or network restriction may be affecting/.test(x)));
+  const alone = W.explain('offline', phone({ vpn: true, transports: ['vpn'], underlying: false }));
+  assert.match(alone.lead, /VPN shows as connected, but this device has no Wi-Fi, mobile data/);
+  assert.ok(alone.steps.some((x) => /Your VPN can stay on/.test(x)));
+  for (const k of ['offline', 'unreachable', 'failed']) assert.doesNotMatch(JSON.stringify(W.explain(k, phone())), /disable|turn off (your|the) VPN/i);
+  assert.equal(W.explain('synced', phone()), null);
 });
 
 test('banners: pending and syncing wait to settle; "All changes synced." only briefly after a warning', () => {

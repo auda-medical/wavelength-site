@@ -570,3 +570,30 @@ details > summary { cursor: pointer; }
   .btn:active:not([disabled]), a.card:active, a.entry:active, .quick a:active, a.stat:active { transform: none; }
   .next-up { box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 45%, transparent); }
 }
+
+/* ---------- 1.0.11: affordances for the Home counts and the sync pill, short connection warnings ---------- */
+/* Home counts: a raised surface (fine top highlight, soft shadow, clearer border) and a small arrow, so each reads as
+   something to tap. Pressed: sinks a little and loses the shadow. No bevels, no large shadows. */
+a.stat { position: relative; padding: 11px 8px 12px; background: linear-gradient(180deg, rgba(247,245,240,.11), rgba(247,245,240,.05)); border-color: rgba(247,245,240,.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 6px 14px -8px rgba(0,0,0,.6); transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .12s ease; }
+a.stat .stat-go { position: absolute; top: 9px; inset-inline-end: 8px; width: 9px; height: 9px; color: var(--teal-l); opacity: .75; }
+a.stat:hover { background: linear-gradient(180deg, rgba(247,245,240,.15), rgba(247,245,240,.07)); border-color: rgba(127,196,204,.45); }
+a.stat:active { transform: translateY(1px) scale(.985); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 2px 6px -4px rgba(0,0,0,.6); background: rgba(127,196,204,.16); }
+a.stat:focus-visible { outline: 2px solid var(--teal-l); outline-offset: 3px; }
+/* Sync pill: the same family of surface, a firmer border and a fuller hit area. */
+.sync-pill:not(.static) { min-height: 34px; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 4px 10px -6px rgba(0,0,0,.55); }
+.sync-pill:not(.static):active { transform: translateY(1px) scale(.97); box-shadow: none; }
+.sync-pill:not(.static) .chev { opacity: .85; }
+/* Short warnings. Compact: one line, for a status with nothing waiting. */
+.sb-compact { align-items: center; padding: 8px 12px; gap: 10px; font-size: 13.5px; }
+.sb-compact .sb-ic { width: 24px; height: 24px; margin: 0; }
+.sb-compact .sb-ic svg { width: 14px; height: 14px; }
+.sb-compact .sb-tx { margin: 0; }
+.sb-compact .sb-tx { flex: 1; min-width: 0; color: var(--muted); }
+.sb-compact .sb-tx b { display: block; font-size: 14px; margin: 0; }
+.sb-compact .link { flex: none; white-space: nowrap; min-height: 32px; }
+.sb .sb-act .btn[disabled][aria-busy=true] { opacity: .75; }
+.sb-act .small.muted, .sync-retry .small.muted { flex-basis: 100%; }
+.sync-retry { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.sync-help > p:first-child { margin: 0 0 6px; }
+@media (prefers-reduced-motion: reduce) { a.stat:active, .sync-pill:not(.static):active { transform: none; } }
