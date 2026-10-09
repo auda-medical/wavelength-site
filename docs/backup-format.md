@@ -57,6 +57,21 @@ A stored (uncompressed) ZIP, written and read as a stream:
 
 Manifest versions 1 and 2 are the older unencrypted `.zip` backups, which 1.0.9 still restores after a warning.
 
+### Optional fields added in 1.0.12 (manifest version still 3)
+
+Readers before 1.0.12 ignore unknown fields and unknown files, so a 1.0.12 backup restores in 1.0.9 to 1.0.11 (the
+photo or clip as saved, with any annotations already in its pixels). 1.0.12 restores older backups unchanged.
+
+- `annot`: `{ v: 1, ann: [...], burnt }`, the annotation layer of a photo or clip, as drawn by `src/app/editor.js`.
+  Each annotation is `{ type, x, y, color, ... }` in fractions of the picture (text up to 80 characters, at most 60
+  annotations). Readers must clean it again on the way in (`WLEditor.cleanAnn`). `burnt: true` (clips) means the
+  annotations are only in the pixels and cannot be edited again.
+- `base`: `images/<id>-base.jpg`, for a photo with annotations: the same photo with its redactions and without its
+  annotations, so the annotations can be changed after a restore. It comes before the photo's own file. It is never an
+  unredacted original: redactions are in its pixels.
+- `prov`: up to 10 editing sessions `{ on, crop, r, m, redact, ann }` (date, whether cropped, orientation, counts).
+  No text, coordinates or identifiers.
+
 ## Reading a backup on a computer
 
 ```

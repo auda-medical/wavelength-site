@@ -831,7 +831,7 @@
   function viewWelcome() {
     var f = function (icon, t, d) { return '<div class="feature"><span class="fi">' + icon + '</span><div><b>' + esc(t) + '</b><span>' + esc(d) + '</span></div></div>'; };
     authFrame(T('Your ultrasound logbook.'), T('Log every scan, watch your accreditation targets fill up, and get signed off and assessed. Built by consultant ultrasound supervisors.'),
-      '<div class="features">' + f(I.globe, T('Pathways from around the world'), T('The verified UK pathways, RCEM, FAMUS and FUSIC, plus editable trackers for international pathways and frameworks. One scan can count towards several trackers when it meets their criteria.')) + f(I.camera, T('Photos and clips stay on your phone'), T('Crop and cover identifiers before you save. If you share images with a supervisor, they are encrypted on your phone first and Wavelength never receives the key.')) + f(I.pen, T('Sign-off and assessments in seconds'), T('Your supervisor signs on your phone, from a link or from their own dashboard, with a code anyone can verify.')) + f(I.file, T('Your portfolio, tailored to your accrediting body'), T('Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body\'s portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.')) + '</div>' +
+      '<div class="features">' + f(I.globe, T('Pathways from around the world'), T('The verified UK pathways, RCEM, FAMUS and FUSIC, plus editable trackers for international pathways and frameworks. One scan can count towards several trackers when it meets their criteria.')) + f(I.camera, T('Photos and clips stay on your phone'), T('Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first and Wavelength never receives the key.')) + f(I.pen, T('Sign-off and assessments in seconds'), T('Your supervisor signs on your phone, from a link or from their own dashboard, with a code anyone can verify.')) + f(I.file, T('Your portfolio, tailored to your accrediting body'), T('Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body\'s portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.')) + '</div>' +
       '<a class="btn teal block" href="#/signup">' + esc(T('Create your free account')) + '</a><div class="btns" style="justify-content:center"><a class="link" href="#/login">' + esc(T('I already have an account')) + '</a></div>' +
       '<div style="margin-top:22px">' + installButton() + '</div>');
     $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); });
@@ -1316,7 +1316,7 @@
         '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" list="supl" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"><datalist id="supl">' + supNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></div>' +
         '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>' + esc(T('No sign-off needed for this scan')) + '</span></label></div>') +
       section('media', T('Images and clips'),
-        '<div class="field"><p class="hint" id="media-hint">' + esc(T('Stay on this phone only. Crop and cover identifiers before you save. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
+        '<div class="field"><p class="hint" id="media-hint">' + esc(T('Stay on this phone only. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
         '<input type="file" accept="image/*" capture="environment" id="cam" hidden><input type="file" accept="image/*" id="pick" hidden multiple><input type="file" accept="video/*" capture="environment" id="vcam" hidden><input type="file" accept="video/*" id="vpick" hidden></div>') +
       section('reflection', T('Reflection'),
         '<div class="field"><label for="refl">' + esc(T('Your reflection')) + '</label><p class="hint">' + esc(T('What you learned and what you will do differently. Counts as a reflective note.')) + '</p><textarea id="refl" name="reflection">' + esc(e.reflection || '') + '</textarea></div>') +
@@ -1378,26 +1378,34 @@
     var count = function () { return existing.length - removed.length + draftImages.length; };
     var drawGallery = function () {
       var g = $('#gal');
-      var items = existing.filter(function (x) { return removed.indexOf(x.id) < 0; }).map(function (x) { return '<button type="button" data-old="' + x.id + '"><img alt="' + esc(T('Scan image')) + '" data-img="' + x.id + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : '') + '<span class="x" data-rm="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; })
-        .concat(draftImages.map(function (x) { return '<button type="button"><img alt="' + esc(T('Scan image')) + '" src="' + URL.createObjectURL(x.thumb) + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : '') + '<span class="x" data-rmd="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; }));
+      // 1.0.12: a photo can be opened again to change its annotations, crop, orientation or add redactions. It
+      // opens from its redacted copy, so redactions already made stay; clips cannot be edited after preparing.
+      var edBtn = function (attr, id) { return '<span class="ed" ' + attr + '="' + id + '" role="button" tabindex="0" aria-label="' + esc(T('Edit image')) + '">' + ET.annotate + '</span>'; };
+      var items = existing.filter(function (x) { return removed.indexOf(x.id) < 0; }).map(function (x) { return '<button type="button" data-old="' + x.id + '"><img alt="' + esc(T('Scan image')) + '" data-img="' + x.id + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : edBtn('data-edold', x.id)) + '<span class="x" data-rm="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; })
+        .concat(draftImages.map(function (x) { return '<button type="button"><img alt="' + esc(T('Scan image')) + '" src="' + URL.createObjectURL(x.thumb) + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : edBtn('data-eddr', x.id)) + '<span class="x" data-rmd="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; }));
       g.innerHTML = items.join('') + '<button type="button" class="add" id="addcam">' + I.camera + esc(T('Take photo')) + '</button><button type="button" class="add" id="addpick">' + I.file + esc(T('Choose')) + '</button><button type="button" class="add" id="addclip">' + I.video + esc(T('Clip')) + '</button>';
       $$('[data-img]', g).forEach(function (im) { getOne('images', im.dataset.img).then(function (rec) { if (rec) im.src = imgUrl(rec, true); }); });
       $('#addcam').onclick = function () { $('#cam').click(); };
       $('#addpick').onclick = function () { $('#pick').click(); };
       $('#addclip').onclick = function () {
         if (!clipSupported()) { toast(T('This phone cannot prepare clips. Save a still image instead.'), 4000); return; }
-        sheet('<h2>' + esc(T('Add a clip')) + '</h2><p class="muted small">' + esc(T('Record the ultrasound screen for up to 10 seconds, or choose a clip from your phone. You then crop it and cover any identifiers. Sound is removed.')) + '</p><div class="btns"><button class="btn teal block" data-v="vcam">' + esc(T('Record a clip')) + '</button><button class="btn ghost block" data-v="vpick">' + esc(T('Choose a clip')) + '</button></div>', function (root) { $$('[data-v]', root).forEach(function (b) { b.onclick = function () { closeSheet(); $('#' + b.dataset.v).click(); }; }); });
+        sheet('<h2>' + esc(T('Add a clip')) + '</h2><p class="muted small">' + esc(T('Record the ultrasound screen for up to 10 seconds, or choose a clip from your phone. You then crop it, redact any identifiers and annotate it if you wish. Sound is removed.')) + '</p><div class="btns"><button class="btn teal block" data-v="vcam">' + esc(T('Record a clip')) + '</button><button class="btn ghost block" data-v="vpick">' + esc(T('Choose a clip')) + '</button></div>', function (root) { $$('[data-v]', root).forEach(function (b) { b.onclick = function () { closeSheet(); $('#' + b.dataset.v).click(); }; }); });
       };
       $$('[data-rm]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); removed.push(x.dataset.rm); form.dataset.dirty = '1'; drawGallery(); }; });
       $$('[data-rmd]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); draftImages = draftImages.filter(function (d) { return d.id !== x.dataset.rmd; }); drawGallery(); }; });
+      var bindEd = function (x, go2) { x.onclick = function (ev) { ev.stopPropagation(); go2(); }; x.onkeydown = function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); go2(); } }; };
+      $$('[data-edold]', g).forEach(function (x) { bindEd(x, function () { var id = x.dataset.edold; getOne('images', id).then(function (rec) { if (!rec) return; reEdit(rec, function (res) { res.id = uid(); draftImages.push(res); removed.push(id); form.dataset.dirty = '1'; drawGallery(); }); }); }); });
+      $$('[data-eddr]', g).forEach(function (x) { bindEd(x, function () { var i = draftImages.findIndex(function (d) { return d.id === x.dataset.eddr; }); if (i < 0) return; reEdit(draftImages[i], function (res) { res.id = uid(); draftImages[i] = res; form.dataset.dirty = '1'; drawGallery(); }); }); });
     };
+    var scanType = function () { var c = form.querySelector('input[name=type]:checked'); return c ? c.value : ''; };
+    var reEdit = function (rec, done) { editImage(rec.base || rec.blob, { type: scanType(), annot: rec.annot || { ann: [] }, prov: rec.prov }).then(function (res) { if (res) done(res); }); };
     drawGallery();
     var onFiles = function (inp, clip) {
       var files = Array.prototype.slice.call(inp.files || []); inp.value = '';
       var nextFile = function () {
         var f = files.shift(); if (!f) return;
         if (count() >= 12) { toast(T('Up to 12 images or clips per scan.')); return; }
-        (clip ? editClip(f) : editImage(f)).then(function (res) { if (res) { res.id = uid(); draftImages.push(res); form.dataset.dirty = '1'; drawGallery(); } nextFile(); });
+        (clip ? editClip(f, { type: scanType() }) : editImage(f, { type: scanType() })).then(function (res) { if (res) { res.id = uid(); draftImages.push(res); form.dataset.dirty = '1'; drawGallery(); } nextFile(); });
       };
       nextFile();
     };
@@ -1445,7 +1453,7 @@
         if (draftImages.length && navigator.storage && navigator.storage.persist) navigator.storage.persist();
         fingerprints(out.images, draftImages, editing && editing.media).then(function (media) {
           if (media.length) out.media = media; else delete out.media;
-          var jobs = draftImages.map(function (x) { return put('images', { id: x.id, entryId: out.id, blob: x.blob, thumb: x.thumb, w: x.w, h: x.h, kind: x.kind || 'image', dur: x.dur, sha256: x.sha256, edits: x.edits, created: Date.now() }); })
+          var jobs = draftImages.map(function (x) { var rec = { id: x.id, entryId: out.id, blob: x.blob, thumb: x.thumb, w: x.w, h: x.h, kind: x.kind || 'image', dur: x.dur, sha256: x.sha256, edits: x.edits, created: Date.now() }; if (x.base) rec.base = x.base; if (x.annot) rec.annot = x.annot; if (x.prov) rec.prov = x.prov; return put('images', rec); })
             .concat(removed.map(function (id) { return del('images', id); }));
           return Promise.all(jobs);
         }).then(function () { return saveLocal(out); }).then(function () {
@@ -1497,163 +1505,399 @@
       return (images || []).map(function (im, i) { return hs[i] ? { id: im.id, sha256: hs[i], kind: im.kind === 'clip' ? 'clip' : 'image' } : null; }).filter(Boolean);
     });
   }
-  // ---------- Image and clip editors (1.0.11) ----------
-  // Crop, cover identifiers, trim the top strip, rotate, flip horizontally and flip vertically. The preview is the
-  // image or frame exactly as it will be saved: every change is drawn into the pixels (never an overlay), in the
-  // order the learner made it, and the editor says which orientation changes are in force, because orientation is
-  // clinically significant. Rotating and flipping by quarter turns move pixels without resampling, and the photo is
-  // encoded to JPEG once, on Use this image, so repeated edits do not lose quality. Re-encoding drops hidden photo
-  // data. Nothing is written to the phone's storage until the scan is saved, and the original photo or video stays
-  // where it was on the phone: Wavelength keeps only the edited copy.
+  // ---------- Media editor (1.0.12): Annotate | Adjust | Redact, for photos and clips ----------
+  // The model, drawing and geometry live in editor.js (window.WLEditor), shared by both editors and tested in Node.
+  // Every change is held as state (crop, orientation, redactions, annotations) and drawn by one function into the
+  // preview, the saved photo and every recorded clip frame, so what is saved is what was shown. Redaction is a solid
+  // black or grey fill in the pixels, placed in source coordinates so it stays on the identifier through any crop,
+  // turn or flip; a label, crop or turn is never taken to have removed an identifier, and the declaration stays
+  // mandatory. Annotations are drawn over the redacted picture and kept as data, so a photo's annotations can be
+  // changed later from a copy that is already redacted: no unredacted original is ever stored. The original file
+  // stays where it was on the phone. Nothing measures anything: there are no calibrated distance or area tools.
+  var EDT = window.WLEditor;
   var ET = {
     crop: ic('<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>', 20),
-    cover: ic('<rect x="3" y="5" width="18" height="14" rx="2"/><rect x="6" y="8" width="8" height="4" fill="currentColor" stroke="none"/>', 20),
+    redact: ic('<rect x="3" y="5" width="18" height="14" rx="2"/><rect x="6" y="8" width="8" height="4" fill="currentColor" stroke="none"/>', 20),
+    annotate: ic('<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M14 8l3 3"/>', 20),
     trim: ic('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18" stroke-dasharray="2 2"/><path d="M12 13v5M9.5 15.5 12 13l2.5 2.5"/>', 20),
     rotate: ic('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>', 20),
     fliph: ic('<path d="M12 3v18" stroke-dasharray="2 2"/><path d="M9 7 3 17h6zM15 7l6 10h-6z"/>', 20),
     flipv: ic('<path d="M3 12h18" stroke-dasharray="2 2"/><path d="M7 9 17 3v6zM7 15l10 6v-6z"/>', 20),
+    text: ic('<path d="M5 6V4h14v2M12 4v16M9 20h6"/>', 20),
+    label: ic('<path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9-9-9z"/><circle cx="7.5" cy="7.5" r="1.5"/>', 20),
+    arrow: ic('<path d="M5 19 19 5M10 5h9v9"/>', 20),
+    dot: '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>',
+    circle: ic('<circle cx="12" cy="12" r="8"/>', 20),
+    box: ic('<rect x="4" y="6" width="16" height="12" rx="1"/>', 20),
+    picto: ic('<circle cx="12" cy="5" r="2"/><path d="M8 10h8l-1 5h-2l-1 6-1-6H9z"/>', 20),
     play: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>',
     pause: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>'
   };
-  // Orientation as quarter turns clockwise (r) after an optional left-right mirror (m), relative to the original.
-  // A flip or rotation is composed onto it in the order made, so the words always describe what the preview shows.
-  function orientAfter(o, act) {
-    if (act === 'rotate') return { r: (o.r + 1) % 4, m: o.m };
-    if (act === 'fliph') return { r: (4 - o.r) % 4, m: !o.m };
-    if (act === 'flipv') return { r: (6 - o.r) % 4, m: !o.m };
-    return o;
-  }
+  var orientAfter = EDT.orientAfter;
   function orientWords(o) {
     if (!o.m) return ['', 'Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise'][o.r] ? T(['', 'Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise'][o.r]) : '';
     return T(['Flipped horizontally', 'Flipped horizontally, then rotated 90° clockwise', 'Flipped vertically', 'Flipped horizontally, then rotated 90° anticlockwise'][o.r]);
   }
-  function editorFrame(title, declText, saveLabel, opts) {
-    var tool = function (k, label, full, mode) { return '<button type="button" class="tool et" ' + (mode ? 'data-m="' + k + '" aria-pressed="' + (k === 'crop') + '"' : 'data-a="' + k + '"') + ' aria-label="' + esc(full || label) + '">' + ET[k] + '<span>' + esc(label) + '</span></button>'; };
-    // Notes such as "Scan saved" go first: nothing may sit over the declaration or the editing tools.
-    $$('.toast').forEach(function (t) { t.remove(); });
-    var el = document.createElement('div'); el.className = 'editor'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', title);
-    el.innerHTML = '<div class="bar-top"><button type="button" class="tool" data-a="cancel">' + esc(T('Cancel')) + '</button><b class="ed-title">' + esc(title) + '</b><button type="button" class="tool" data-a="undo" disabled>' + esc(T('Undo')) + '</button></div>' +
-      '<div class="stage"><canvas></canvas><div class="sel" hidden></div></div>' +
-      (opts.media || '') +
+  var COLOUR_NAMES = { white: 'White', yellow: 'Yellow', cyan: 'Cyan', red: 'Red' };
+  var EDP = { mode: 'adjust', color: 'yellow', size: 'm', bg: 'outline', redact: 'black' }; // colour, size and fill are remembered while the app is open
+  // cfg: kind ('image' | 'clip'), title, declText, saveLabel, media (clip controls), type (scan type), w and h (source
+  // size), state (initial crop, orient, redact, ann), source() (what to draw), time() (clip seconds into the kept
+  // selection, or null), locked() (true while a clip is being prepared), onState(), save(state, el), close(value).
+  function mediaEditor(cfg) {
+    $$('.toast').forEach(function (t) { t.remove(); }); // nothing may sit over the declaration or the tools
+    var st = JSON.parse(JSON.stringify(cfg.state)), st0 = JSON.stringify(st), undo = [], redo = [], sel = -1, tool = '', pending = null;
+    var clip = cfg.kind === 'clip';
+    var tb = function (k, label, full, attrs) { return '<button type="button" class="tool et" ' + attrs + ' aria-label="' + esc(full || label) + '">' + ET[k] + '<span>' + esc(label) + '</span></button>'; };
+    var el = document.createElement('div'); el.className = 'editor' + (clip ? ' clip' : ''); el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', cfg.title);
+    el.innerHTML = '<div class="bar-top"><button type="button" class="tool" data-a="cancel">' + esc(T('Cancel')) + '</button><b class="ed-title">' + esc(cfg.title) + '</b><button type="button" class="tool" data-a="undo" disabled>' + esc(T('Undo')) + '</button><button type="button" class="tool" data-a="redo" disabled>' + esc(T('Redo')) + '</button></div>' +
+      '<div class="stage"><canvas tabindex="0" aria-label="' + esc(T('Picture being edited')) + '"></canvas><div class="sel" hidden></div><div class="ann-sel" hidden><span class="h" data-h="a"></span><span class="h" data-h="b"></span></div></div>' +
+      (cfg.media || '') +
       '<div class="bar-bot">' +
-      '<p class="tip" data-tip>' + esc(T('Drag to choose the area to keep, then tap Apply crop. Most machines show patient details along the top: Trim top removes that strip.')) + '</p>' +
-      '<div class="ed-tools" role="toolbar" aria-label="' + esc(T('Editing tools')) + '">' + tool('crop', T('Crop'), '', true) + tool('cover', T('Cover'), T('Cover identifiers'), true) + tool('trim', T('Trim top'), T('Trim the top strip')) + tool('rotate', T('Rotate'), T('Rotate 90° clockwise')) + tool('fliph', T('Flip H'), T('Flip horizontally')) + tool('flipv', T('Flip V'), T('Flip vertically')) + '</div>' +
-      '<div class="ed-row"><p class="ed-applied" data-applied aria-live="polite"></p><button type="button" class="tool" data-a="reset" hidden>' + esc(T('Reset')) + '</button><button type="button" class="tool apply" data-a="apply" hidden>' + esc(T('Apply crop')) + '</button></div>' +
+      '<div class="ed-modes" role="tablist" aria-label="' + esc(T('Editing mode')) + '">' +
+        '<button type="button" role="tab" class="ed-mode" data-tab="annotate" aria-selected="false">' + ET.annotate + '<span>' + esc(T('Annotate')) + '</span></button>' +
+        '<button type="button" role="tab" class="ed-mode" data-tab="adjust" data-m="crop" aria-selected="false" aria-label="' + esc(T('Adjust: crop, trim, rotate and flip')) + '">' + ET.crop + '<span>' + esc(T('Adjust')) + '</span></button>' +
+        '<button type="button" role="tab" class="ed-mode" data-tab="redact" data-m="cover" aria-selected="false" aria-label="' + esc(T('Redact: cover patient identifiers')) + '">' + ET.redact + '<span>' + esc(T('Redact')) + '</span></button></div>' +
+      '<p class="tip" data-tip aria-live="polite"></p>' +
+      '<div class="ed-panel" data-panel="adjust" hidden><div class="ed-tools" role="toolbar" aria-label="' + esc(T('Adjust tools')) + '">' + tb('trim', T('Trim top'), T('Trim the top strip'), 'data-a="trim"') + tb('rotate', T('Rotate'), T('Rotate 90° clockwise'), 'data-a="rotate"') + tb('fliph', T('Flip H'), T('Flip horizontally'), 'data-a="fliph"') + tb('flipv', T('Flip V'), T('Flip vertically'), 'data-a="flipv"') + '</div>' +
+        '<div class="ed-row"><p class="ed-applied" data-applied aria-live="polite"></p><button type="button" class="tool" data-a="reset" hidden>' + esc(T('Reset')) + '</button><button type="button" class="tool apply" data-a="apply" hidden>' + esc(T('Apply crop')) + '</button></div></div>' +
+      '<div class="ed-panel" data-panel="redact" hidden><div class="ed-row"><span class="ed-lab">' + esc(T('Fill')) + '</span><div class="ed-seg" role="radiogroup" aria-label="' + esc(T('Redaction colour')) + '"><button type="button" role="radio" data-rc="black">' + esc(T('Black')) + '</button><button type="button" role="radio" data-rc="grey">' + esc(T('Grey')) + '</button></div><p class="ed-applied" data-rcount aria-live="polite"></p></div>' +
+        '<p class="ed-note2">' + esc(T('Redaction is solid and is saved in the picture itself. Blurring is not offered, because it can leave identifiers readable.')) + '</p></div>' +
+      '<div class="ed-panel" data-panel="annotate" hidden><div class="ed-tools ann-tools" role="toolbar" aria-label="' + esc(T('Annotation tools')) + '">' + tb('text', T('Text'), T('Add your own text'), 'data-at="text"') + tb('label', T('Label'), T('Add a clinical label'), 'data-at="label"') + tb('arrow', T('Arrow'), T('Draw an arrow'), 'data-at="arrow"') + tb('dot', T('Dot'), T('Place a pointer dot'), 'data-at="dot"') + tb('circle', T('Circle'), T('Draw a circle'), 'data-at="circle"') + tb('box', T('Box'), T('Draw a box'), 'data-at="rect"') + tb('picto', T('Pictogram'), T('Add a pictogram'), 'data-at="picto"') + '</div>' +
+        '<div class="ed-row ed-opts"><div class="ed-swatches" role="radiogroup" aria-label="' + esc(T('Colour')) + '">' + Object.keys(EDT.COLOURS).map(function (c) { return '<button type="button" role="radio" class="sw" data-col="' + c + '" style="--sw:' + EDT.COLOURS[c] + '" aria-label="' + esc(T(COLOUR_NAMES[c])) + '"></button>'; }).join('') + '</div><div class="ed-seg" role="radiogroup" aria-label="' + esc(T('Size')) + '">' + [['s', 'S', 'Small'], ['m', 'M', 'Medium'], ['l', 'L', 'Large']].map(function (z) { return '<button type="button" role="radio" data-sz="' + z[0] + '" aria-label="' + esc(T(z[2])) + '">' + z[1] + '</button>'; }).join('') + '</div></div>' +
+        '<div class="ed-selbar" hidden><p class="ed-applied" data-selname aria-live="polite"></p><div class="ed-selacts"><button type="button" class="tool" data-sa="edit">' + esc(T('Edit text')) + '</button><button type="button" class="tool" data-sa="bg">' + esc(T('Background')) + '</button><button type="button" class="tool" data-sa="turn">' + esc(T('Turn')) + '</button><button type="button" class="tool" data-sa="flip">' + esc(T('Mirror')) + '</button><button type="button" class="tool" data-sa="del">' + esc(T('Delete')) + '</button><button type="button" class="tool apply" data-sa="done">' + esc(T('Done')) + '</button></div>' +
+        (clip ? '<div class="ed-seg ed-when" role="radiogroup" aria-label="' + esc(T('When it shows')) + '"><button type="button" role="radio" data-when="all">' + esc(T('Whole clip')) + '</button><button type="button" role="radio" data-when="from">' + esc(T('From here')) + '</button><button type="button" role="radio" data-when="until">' + esc(T('Until here')) + '</button></div><p class="ed-note2" data-whentext></p>' : '') + '</div>' +
+        '<div class="ann-list" data-annlist></div></div>' +
       '<p class="ed-err" data-err role="alert" hidden></p>' +
-      '<label class="check ed-decl"><input type="checkbox" data-decl><span>' + esc(declText) + '</span></label>' +
-      '<button type="button" class="btn teal block" data-a="save" disabled>' + esc(saveLabel) + '</button>' +
-      '<p class="ed-note">' + esc(T('Your original stays where it is on your phone. Wavelength keeps only this edited copy.')) + '</p></div>';
+      '<label class="check ed-decl"><input type="checkbox" data-decl><span>' + esc(cfg.declText) + '</span></label>' +
+      '<button type="button" class="btn teal block" data-a="save" disabled>' + esc(cfg.saveLabel) + '</button>' +
+      '<p class="ed-note">' + esc(T('Your original stays where it is on your phone. Wavelength keeps only this edited copy.')) + '</p></div>' +
+      '<div class="ed-pop" hidden role="dialog" aria-modal="true"></div>';
     document.body.appendChild(el);
-    // Escape and the Android back button cancel, as the Cancel button does.
-    el.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); var c = $('[data-a=cancel]', el); if (c) c.click(); } });
-    setTimeout(function () { var f = $('[data-a=cancel]', el); if (f && el.isConnected) f.focus({ preventScroll: true }); }, 30);
-    return el;
-  }
-  // Shared by both editors: drag a box on the preview (crop or cover mode), shown as a selection.
-  function bindSelect(el, cv, onDone, onChange) {
-    var box = $('.sel', el), stage = $('.stage', el), start = null, sel = null, mode = 'crop';
+    var cv = $('canvas', el), stage = $('.stage', el), box = $('.sel', el), asel = $('.ann-sel', el), pop = $('.ed-pop', el);
+    var undoBtn = $('[data-a=undo]', el), redoBtn = $('[data-a=redo]', el), resetBtn = $('[data-a=reset]', el), applyBtn = $('[data-a=apply]', el), save = $('[data-a=save]', el), decl = $('[data-decl]', el);
+    var mctx = document.createElement('canvas').getContext('2d'); // for measuring text
+    var snap = function () { return JSON.stringify(st); };
+    var change = function () { undo.push(snap()); if (undo.length > 60) undo.shift(); redo = []; };
+    var size = function () { return EDT.outSize(st.crop, st.orient, 1); };
+    var paint = function () { cfg.paint(cv, st); drawSel(); };
+    var tip = function (s) { $('[data-tip]', el).textContent = s; };
+    // ---- state helpers ----
+    var setFrame = function (crop, orient) {
+      var r = EDT.mapAnnotations(st.ann, { crop: st.crop, orient: st.orient }, { crop: crop, orient: orient });
+      st.crop = crop; st.orient = orient; st.ann = r.ann; sel = -1;
+      if (r.dropped) toastIn(T('{n} annotations were outside the new crop and were removed. Undo brings them back.', { n: r.dropped }));
+    };
+    var toastIn = function (msg) { var t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg; el.appendChild(t); setTimeout(function () { t.remove(); }, 3600); };
+    var state = function () {
+      $('[data-applied]', el).textContent = orientWords(st.orient);
+      undoBtn.disabled = !undo.length; redoBtn.disabled = !redo.length; resetBtn.hidden = snap() === st0;
+      var nr = st.redact.length;
+      $('[data-rcount]', el).textContent = nr ? T('{n} areas redacted', { n: nr }) : '';
+      $$('[data-rc]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.rc === EDP.redact)); });
+      $$('[data-col]', el).forEach(function (b) { var a = st.ann[sel]; b.setAttribute('aria-checked', String(b.dataset.col === (a ? a.color : EDP.color))); });
+      $$('[data-sz]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.sz === EDP.size)); });
+      $$('[data-at]', el).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.at === tool)); });
+      var a = st.ann[sel], sb = $('.ed-selbar', el);
+      sb.hidden = !a;
+      if (a) {
+        $('[data-selname]', el).textContent = T('Selected: {what}', { what: EDT.describe(a, T) });
+        $('[data-sa=edit]', el).hidden = a.type !== 'text'; $('[data-sa=bg]', el).hidden = a.type !== 'text';
+        $('[data-sa=turn]', el).hidden = ['text', 'picto', 'rect'].indexOf(a.type) < 0; $('[data-sa=flip]', el).hidden = a.type !== 'picto';
+        if (clip) {
+          var w = a.t0 == null && a.t1 == null ? 'all' : a.t0 != null && a.t1 == null ? 'from' : a.t1 != null && a.t0 == null ? 'until' : 'range';
+          $$('[data-when]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.when === w)); });
+          $('[data-whentext]', el).textContent = a.t0 == null && a.t1 == null ? T('Shows for the whole clip.') : a.t1 == null ? T('Shows from {a} s to the end of the kept clip.', { a: (a.t0 || 0).toFixed(1) }) : T('Shows from {a} s to {b} s of the kept clip.', { a: (a.t0 || 0).toFixed(1), b: a.t1.toFixed(1) });
+        }
+      }
+      $('[data-annlist]', el).innerHTML = st.ann.length ? '<span class="ed-lab">' + esc(T('On the picture')) + '</span>' + st.ann.map(function (x, i) { return '<button type="button" class="chipb" data-pick="' + i + '" aria-pressed="' + (i === sel) + '">' + esc(EDT.describe(x, T)) + '</button>'; }).join('') : '';
+      if (cfg.onState) cfg.onState(st);
+    };
+    var redraw = function () { paint(); state(); };
+    // ---- modes ----
+    var TIPS = { adjust: T('Drag to choose the area to keep, then tap Apply crop. Most machines show patient details along the top: Trim top removes that strip.'), redact: clip ? T('Drag over any name, number, date or label. The redaction stays on every frame.') : T('Drag over any name, number, date or label to cover it.'), annotate: T('Choose a tool, then tap or drag on the picture. Tap an annotation to move, change or delete it.') };
+    var setMode = function (m) {
+      EDP.mode = m; tool = ''; sel = -1; pending = null; box.hidden = true; applyBtn.hidden = true; el.dataset.mode = m;
+      $$('[data-tab]', el).forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === m)); b.setAttribute('aria-pressed', String(b.dataset.tab === m)); });
+      $$('[data-panel]', el).forEach(function (p) { p.hidden = p.dataset.panel !== m; });
+      tip(TIPS[m]); redraw();
+    };
+    // ---- pointer: crop and redaction boxes, drawing and moving annotations ----
     var at = function (ev) { var r = cv.getBoundingClientRect(); return { x: Math.max(0, Math.min(cv.width, (ev.clientX - r.left) * cv.width / r.width)), y: Math.max(0, Math.min(cv.height, (ev.clientY - r.top) * cv.height / r.height)) }; };
-    var show = function () {
-      if (!sel) { box.hidden = true; return; }
+    var showBox = function (s) {
+      if (!s) { box.hidden = true; return; }
       var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / cv.width;
-      box.hidden = false; box.className = 'sel' + (mode === 'cover' ? ' box' : '');
-      box.style.left = (r.left - sr.left + sel.x * k) + 'px'; box.style.top = (r.top - sr.top + sel.y * k) + 'px'; box.style.width = sel.w * k + 'px'; box.style.height = sel.h * k + 'px';
+      box.hidden = false; box.className = 'sel' + (EDP.mode === 'redact' ? ' box' + (EDP.redact === 'grey' ? ' grey' : '') : '');
+      box.style.left = (r.left - sr.left + s.x * k) + 'px'; box.style.top = (r.top - sr.top + s.y * k) + 'px'; box.style.width = s.w * k + 'px'; box.style.height = s.h * k + 'px';
     };
-    cv.addEventListener('pointerdown', function (ev) { ev.preventDefault(); try { cv.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ } start = at(ev); sel = { x: start.x, y: start.y, w: 0, h: 0 }; show(); });
-    cv.addEventListener('pointermove', function (ev) { if (!start) return; var p = at(ev); sel = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) }; show(); onChange(sel); });
-    cv.addEventListener('pointerup', function () { if (!start) return; start = null; onDone(mode, sel); });
-    return {
-      get: function () { return sel; },
-      clear: function () { sel = null; show(); onChange(null); },
-      mode: function (m) { if (m) { mode = m; sel = null; show(); onChange(null); } return mode; },
-      redraw: show
-    };
-  }
-  function bindModes(el, picker, tips) {
-    $$('[data-m]', el).forEach(function (b) {
-      b.onclick = function () {
-        picker.mode(b.dataset.m);
-        $$('[data-m]', el).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-        $('[data-tip]', el).textContent = tips[b.dataset.m];
-      };
+    var k0 = function () { return cv.width / size().w; }; // preview pixels per output pixel
+    var drag = null, cropSel = null;
+    cv.addEventListener('pointerdown', function (ev) {
+      if (cfg.locked()) return;
+      ev.preventDefault(); try { cv.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ }
+      var p = at(ev), W = cv.width, H = cv.height;
+      if (EDP.mode === 'adjust' || EDP.mode === 'redact') { cropSel = null; drag = { kind: 'box', start: p, s: { x: p.x, y: p.y, w: 0, h: 0 } }; showBox(drag.s); applyBtn.hidden = true; return; }
+      var t = cfg.time(), i = EDT.hit(mctx, st.ann, W, H, p.x, p.y, t);
+      if (i >= 0 && (!tool || tool === 'text' || tool === 'label' || tool === 'picto')) { sel = i; drag = { kind: 'move', start: p, orig: JSON.stringify(st.ann[i]), before: snap() }; redraw(); return; }
+      var nx = p.x / W, ny = p.y / H;
+      if (tool === 'dot') { change(); st.ann.push(newAnn({ type: 'dot', x: nx, y: ny })); sel = st.ann.length - 1; redraw(); return; }
+      if (tool === 'arrow' || tool === 'circle' || tool === 'rect') { drag = { kind: 'draw', start: p, before: snap() }; st.ann.push(newAnn(tool === 'arrow' ? { type: 'arrow', x: nx, y: ny, x2: nx, y2: ny } : { type: tool, x: nx, y: ny, w: 0, h: 0 })); sel = st.ann.length - 1; redraw(); return; }
+      if (sel >= 0) { sel = -1; redraw(); }
     });
+    cv.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      var p = at(ev), W = cv.width, H = cv.height;
+      if (drag.kind === 'box') { var s0 = drag.start; drag.s = { x: Math.min(s0.x, p.x), y: Math.min(s0.y, p.y), w: Math.abs(p.x - s0.x), h: Math.abs(p.y - s0.y) }; showBox(drag.s); if (EDP.mode === 'adjust') applyBtn.hidden = !(drag.s.w >= 20 && drag.s.h >= 20); return; }
+      var a = st.ann[sel]; if (!a) return;
+      var dx = (p.x - drag.start.x) / W, dy = (p.y - drag.start.y) / H, o = JSON.parse(drag.orig || '{}');
+      if (drag.kind === 'move') {
+        var cl = function (v) { return Math.max(0, Math.min(1, v)); };
+        a.x = cl(o.x + dx); a.y = cl(o.y + dy);
+        if (a.type === 'arrow') { a.x2 = cl(o.x2 + dx); a.y2 = cl(o.y2 + dy); }
+        if (a.type === 'circle' || a.type === 'rect') { a.x = Math.max(0, Math.min(1 - a.w, o.x + dx)); a.y = Math.max(0, Math.min(1 - a.h, o.y + dy)); }
+      } else if (drag.kind === 'draw') {
+        if (a.type === 'arrow') { a.x2 = p.x / W; a.y2 = p.y / H; }
+        else { var sx = drag.start.x / W, sy = drag.start.y / H; a.x = Math.min(sx, p.x / W); a.y = Math.min(sy, p.y / H); a.w = Math.abs(p.x / W - sx); a.h = Math.abs(p.y / H - sy); }
+      }
+      paint();
+    });
+    var endDrag = function () {
+      if (!drag) return;
+      var d = drag; drag = null;
+      if (d.kind === 'box') {
+        var s = d.s;
+        if (EDP.mode === 'redact' && s && s.w > 4 && s.h > 4) { change(); var k = k0(); st.redact.push(Object.assign(EDT.rectToSrc({ x: s.x / k, y: s.y / k, w: s.w / k, h: s.h / k }, st.crop, st.orient), { c: EDP.redact })); box.hidden = true; NAT.haptic(); redraw(); }
+        else if (EDP.mode === 'redact') box.hidden = true;
+        else { cropSel = s && s.w >= 20 && s.h >= 20 ? s : null; applyBtn.hidden = !cropSel; if (!cropSel) box.hidden = true; }
+        return;
+      }
+      var a = st.ann[sel];
+      if (d.kind === 'draw') {
+        var small = !a || (a.type === 'arrow' ? Math.hypot((a.x2 - a.x) * cv.width, (a.y2 - a.y) * cv.height) < 12 : a.w * cv.width < 10 || a.h * cv.height < 10);
+        if (small) { st.ann.pop(); sel = -1; } else { undo.push(d.before); redo = []; }
+      } else if (d.kind === 'move' && a && JSON.stringify(a) !== d.orig) { undo.push(d.before); redo = []; }
+      redraw();
+    };
+    cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+    // Handles on the selected annotation: resize (or move an arrow's ends).
+    var drawSel = function () {
+      var a = st.ann[sel];
+      if (!a || EDP.mode !== 'annotate' || !EDT.annAt(a, cfg.time())) { asel.hidden = true; return; }
+      var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / cv.width, b = EDT.annBounds(mctx, a, cv.width, cv.height);
+      asel.hidden = false;
+      asel.style.left = (r.left - sr.left + b.x * k) + 'px'; asel.style.top = (r.top - sr.top + b.y * k) + 'px'; asel.style.width = b.w * k + 'px'; asel.style.height = b.h * k + 'px';
+      var ha = $('[data-h=a]', asel), hb = $('[data-h=b]', asel);
+      if (a.type === 'arrow') {
+        ha.hidden = false; hb.hidden = false;
+        ha.style.left = (a.x * cv.width - b.x) * k + 'px'; ha.style.top = (a.y * cv.height - b.y) * k + 'px';
+        hb.style.left = (a.x2 * cv.width - b.x) * k + 'px'; hb.style.top = (a.y2 * cv.height - b.y) * k + 'px';
+      } else { ha.hidden = true; hb.hidden = false; hb.style.left = b.w * k + 'px'; hb.style.top = b.h * k + 'px'; }
+    };
+    $$('.h', asel).forEach(function (h) {
+      h.addEventListener('pointerdown', function (ev) {
+        ev.preventDefault(); ev.stopPropagation(); try { h.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ }
+        var a = st.ann[sel]; if (!a) return;
+        var before = snap(), orig = JSON.parse(JSON.stringify(a)), which = h.dataset.h, p0 = at(ev), d0 = Math.hypot(p0.x - a.x * cv.width, p0.y - a.y * cv.height);
+        var move = function (e2) {
+          var p = at(e2), W = cv.width, H = cv.height, m = Math.min(W, H);
+          if (a.type === 'arrow') { if (which === 'a') { a.x = p.x / W; a.y = p.y / H; } else { a.x2 = p.x / W; a.y2 = p.y / H; } }
+          else if (a.type === 'circle' || a.type === 'rect') { a.w = Math.max(0.02, p.x / W - a.x); a.h = Math.max(0.02, p.y / H - a.y); }
+          else {
+            // Text, dots and pictograms keep their centre; the handle scales them from where the drag began.
+            var dist = Math.hypot(p.x - a.x * W, p.y - a.y * H), lo = a.type === 'picto' ? 0.08 : 0.02, hi = a.type === 'picto' ? 0.6 : 0.2;
+            a.size = Math.max(lo, Math.min(hi, (orig.size || 0.058) * dist / Math.max(4, d0)));
+          }
+          paint();
+        };
+        var up = function () { h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); if (JSON.stringify(a) !== JSON.stringify(orig)) { undo.push(before); redo = []; } redraw(); };
+        h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+      });
+    });
+    // Keyboard: arrows move the selected annotation, Delete removes it, Escape lets go of it.
+    cv.addEventListener('keydown', function (e) {
+      var a = st.ann[sel]; if (!a || cfg.locked()) return;
+      var step = e.shiftKey ? 0.05 : 0.01, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+      if (d) { e.preventDefault(); change(); a.x = Math.max(0, Math.min(1, a.x + d[0])); a.y = Math.max(0, Math.min(1, a.y + d[1])); if (a.type === 'arrow') { a.x2 += d[0]; a.y2 += d[1]; } redraw(); }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); change(); st.ann.splice(sel, 1); sel = -1; redraw(); }
+    });
+    var newAnn = function (o) {
+      var a = Object.assign({ color: EDP.color, size: o.type === 'picto' ? 0.24 : EDT.SIZES[EDP.size] }, o);
+      if (a.type === 'text') a.bg = a.bg || EDP.bg;
+      return a;
+    };
+    // ---- the small panels for text, labels and pictograms (inside the editor, above everything in it) ----
+    var closePop = function () { pop.hidden = true; pop.innerHTML = ''; var f = $('[data-at=' + (pending || 'text') + ']', el); pending = null; if (f) f.focus({ preventScroll: true }); };
+    var openPop = function (html, bind) { pop.innerHTML = '<div class="ed-popin">' + html + '</div>'; pop.hidden = false; bind(pop); var f = $('input,button', pop); if (f) setTimeout(function () { f.focus(); }, 30); };
+    var placeText = function (text) {
+      text = String(text || '').trim().slice(0, 80); if (!text) return;
+      change();
+      var a = st.ann[sel];
+      if (pending === 'edit' && a && a.type === 'text') a.text = text;
+      else { st.ann.push(newAnn({ type: 'text', text: text, x: 0.5, y: 0.5 })); sel = st.ann.length - 1; }
+      closePop(); redraw();
+      tip(T('Drag the label where you want it. The corner handle changes its size.'));
+    };
+    var textPop = function (initial) {
+      openPop('<form data-tf><label class="ed-lab" for="edtx">' + esc(T('Your text')) + '</label><input id="edtx" type="text" maxlength="80" autocomplete="off" value="' + esc(initial || '') + '"><p class="ed-note2">' + esc(T('Never type a patient name, number or date of birth.')) + '</p><div class="ed-popbtns"><button type="button" class="tool" data-x>' + esc(T('Cancel')) + '</button><button class="tool apply">' + esc(initial ? T('Change') : T('Add')) + '</button></div></form>', function (p) {
+        $('[data-x]', p).onclick = closePop;
+        $('[data-tf]', p).addEventListener('submit', function (e) {
+          e.preventDefault(); var v = $('#edtx', p).value;
+          // The same identifier check as the scan's own text fields.
+          var hits = guard({ indication: v });
+          if (hits.length && !p.dataset.ok) { var w = $('.ed-note2', p); w.textContent = T('This looks like it includes {what}. Change it, or tap Add again if it is not an identifier.', { what: hits.join(', ') }); w.className = 'ed-err'; p.dataset.ok = '1'; return; }
+          placeText(v);
+        });
+      });
+    };
+    var labelPop = function () {
+      var groups = EDT.groupsFor(cfg.type), all = Object.keys(EDT.PRESETS).filter(function (g) { return groups.indexOf(g) < 0; });
+      var chips = function (g) { return '<p class="ed-lab">' + esc(T(EDT.GROUP_LABEL[g])) + '</p><div class="ed-chips">' + EDT.PRESETS[g].map(function (x) { return '<button type="button" class="chipb" data-lbl="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>'; };
+      openPop('<form data-tf><label class="ed-lab" for="edtx">' + esc(T('Type your own')) + '</label><div class="ed-inrow"><input id="edtx" type="text" maxlength="80" autocomplete="off"><button class="tool apply">' + esc(T('Add')) + '</button></div></form>' + groups.map(chips).join('') +
+        '<details class="ed-more"><summary>' + esc(T('Other label sets')) + '</summary>' + all.map(chips).join('') + '</details><p class="ed-note2">' + esc(T('Labels are added as text you can move, resize and change.')) + '</p><div class="ed-popbtns"><button type="button" class="tool" data-x>' + esc(T('Cancel')) + '</button></div>', function (p) {
+        $('[data-x]', p).onclick = closePop;
+        $('[data-tf]', p).addEventListener('submit', function (e) { e.preventDefault(); var v = $('#edtx', p).value; var hits = guard({ indication: v }); if (hits.length) { toastIn(T('This looks like it includes {what}.', { what: hits.join(', ') })); return; } placeText(v); });
+        $$('[data-lbl]', p).forEach(function (b) { b.onclick = function () { placeText(b.dataset.lbl); }; });
+      });
+    };
+    var pictoPop = function () {
+      var ids = EDT.pictosFor(cfg.type);
+      openPop('<p class="ed-lab">' + esc(T('Pictograms')) + '</p><div class="ed-pictos">' + ids.map(function (id) { return '<button type="button" class="pic" data-pic="' + id + '"><canvas width="96" height="96" aria-hidden="true"></canvas><span>' + esc(T(EDT.PICTO[id].label)) + '</span></button>'; }).join('') + '</div><p class="ed-note2">' + esc(T('A pictogram is a marker you add. It does not record how the scan was actually done: place it to match your scan, and check left and right.')) + '</p><div class="ed-popbtns"><button type="button" class="tool" data-x>' + esc(T('Cancel')) + '</button></div>', function (p) {
+        $('[data-x]', p).onclick = closePop;
+        $$('[data-pic]', p).forEach(function (b) {
+          var c = $('canvas', b), g = c.getContext('2d'); EDT.drawAnn(g, { type: 'picto', picto: b.dataset.pic, x: 0.5, y: 0.5, size: 1, color: 'white' }, 96, 96);
+          b.onclick = function () { change(); st.ann.push(newAnn({ type: 'picto', picto: b.dataset.pic, x: 0.8, y: 0.2 })); sel = st.ann.length - 1; closePop(); redraw(); tip(T('Drag the pictogram where you want it. The corner handle changes its size.')); };
+        });
+      });
+    };
+    pop.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePop(); } });
+    // ---- buttons ----
+    decl.addEventListener('change', function () { save.disabled = !decl.checked || cfg.locked(); });
+    el.addEventListener('click', function (ev) {
+      var t = ev.target.closest('button'); if (!t || t.disabled || pop.contains(t)) return;
+      var d = t.dataset;
+      if (d.a === 'cancel') return cfg.close(null);
+      if (cfg.locked()) return; // the tools wait while a clip is being prepared or a photo saved
+      if (d.tab) return setMode(d.tab);
+      if (d.a === 'undo' && undo.length) { redo.push(snap()); st = JSON.parse(undo.pop()); sel = -1; return redraw(); }
+      if (d.a === 'redo' && redo.length) { undo.push(snap()); st = JSON.parse(redo.pop()); sel = -1; return redraw(); }
+      if (d.a === 'reset') { change(); st = JSON.parse(st0); sel = -1; return redraw(); }
+      if (d.a === 'apply' && drag === null) { var s = cropSel; cropSel = null; if (s) { change(); var k = k0(); setFrame(EDT.rectToSrc({ x: s.x / k, y: s.y / k, w: s.w / k, h: s.h / k }, st.crop, st.orient), st.orient); box.hidden = true; applyBtn.hidden = true; } return redraw(); }
+      if (d.a === 'trim') { var o = size(), cut = o.h * 0.12; change(); setFrame(EDT.rectToSrc({ x: 0, y: cut, w: o.w, h: o.h - cut }, st.crop, st.orient), st.orient); return redraw(); }
+      if (d.a === 'rotate' || d.a === 'fliph' || d.a === 'flipv') { change(); setFrame(st.crop, orientAfter(st.orient, d.a)); NAT.haptic(); return redraw(); }
+      if (d.a === 'save') return cfg.save(st, el);
+      if (d.rc) { EDP.redact = d.rc; return state(); }
+      if (d.at) {
+        tool = tool === d.at ? '' : d.at; sel = -1;
+        if (d.at === 'text') { tool = ''; pending = 'text'; textPop(''); }
+        else if (d.at === 'label') { tool = ''; pending = 'label'; labelPop(); }
+        else if (d.at === 'picto') { tool = ''; pending = 'picto'; pictoPop(); }
+        else tip(tool === 'arrow' ? T('Drag from the tail to the point of the arrow.') : tool === 'dot' ? T('Tap where the dot should go.') : tool ? T('Drag to draw it.') : TIPS.annotate);
+        return redraw();
+      }
+      if (d.col) { EDP.color = d.col; var a0 = st.ann[sel]; if (a0) { change(); a0.color = d.col; } return redraw(); }
+      if (d.sz) { EDP.size = d.sz; var a1 = st.ann[sel]; if (a1 && a1.type !== 'picto' && a1.type !== 'circle' && a1.type !== 'rect' && a1.type !== 'arrow') { change(); a1.size = EDT.SIZES[d.sz]; } return redraw(); }
+      if (d.pick != null) { sel = Number(d.pick); return redraw(); }
+      var a = st.ann[sel];
+      if (d.sa && a) {
+        if (d.sa === 'done') { sel = -1; return redraw(); }
+        if (d.sa === 'del') { change(); st.ann.splice(sel, 1); sel = -1; return redraw(); }
+        if (d.sa === 'edit') { pending = 'edit'; return textPop(a.text); }
+        if (d.sa === 'bg') { change(); a.bg = a.bg === 'box' ? 'outline' : 'box'; EDP.bg = a.bg; return redraw(); }
+        if (d.sa === 'turn') { change(); a.rot = ((a.rot || 0) + 15) % 360; return redraw(); }
+        if (d.sa === 'flip') { change(); a.flip = !a.flip; return redraw(); }
+      }
+      if (d.when && a) {
+        var now = cfg.time() || 0; change();
+        if (d.when === 'all') { delete a.t0; delete a.t1; }
+        if (d.when === 'from') { a.t0 = now; if (a.t1 != null && a.t1 <= now) delete a.t1; }
+        if (d.when === 'until') { a.t1 = now; if (a.t0 != null && a.t0 >= now) delete a.t0; }
+        return redraw();
+      }
+    });
+    // Escape and the Android back button: close a panel, let go of a selection, then cancel.
+    el.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      e.preventDefault(); e.stopPropagation();
+      if (!pop.hidden) return closePop();
+      if (sel >= 0) { sel = -1; return redraw(); }
+      var c = $('[data-a=cancel]', el); if (c) c.click();
+    });
+    window.addEventListener('resize', drawSel);
+    setTimeout(function () { var f = $('[data-a=cancel]', el); if (f && el.isConnected) f.focus({ preventScroll: true }); }, 30);
+    if (document.fonts && document.fonts.load) document.fonts.load('600 40px "DM Sans"').then(function () { if (el.isConnected) paint(); }, function () {});
+    setMode('adjust');
+    return {
+      el: el, paint: paint, state: function () { return st; }, refresh: redraw,
+      fail: function (msg) { var er = $('[data-err]', el); er.textContent = msg; er.hidden = false; el.classList.remove('working'); save.textContent = cfg.saveLabel; save.disabled = !decl.checked; },
+      busy: function (on, label) { el.classList.toggle('working', !!on); save.disabled = !!on || !decl.checked; if (label) save.textContent = label; $('[data-err]', el).hidden = true; },
+      remove: function () { window.removeEventListener('resize', drawSel); el.remove(); cv.width = 0; cv.height = 0; }
+    };
   }
-  function editImage(file) {
+  // Encodes a canvas as JPEG: 2048 px at quality 0.9 keeps fine text and speckle, stepping down only past the 1.5 MB
+  // limit for encrypted sharing.
+  function canvasOf(w, h) { var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
+  function jpegOf(c, q) { return new Promise(function (ok) { c.toBlob(function (b) { ok(b); }, 'image/jpeg', q); }); }
+  function renderOut(source, st, maxSide, withAnn) {
+    var o = EDT.outSize(st.crop, st.orient, 1), k = Math.min(1, maxSide / Math.max(o.w, o.h)), c = canvasOf(o.w * k, o.h * k);
+    EDT.drawFrame(c.getContext('2d'), source, st, k, null, withAnn);
+    return c;
+  }
+  function encodeBest(c) { var qs = [0.9, 0.85, 0.8, 0.72]; var tryQ = function (i) { return jpegOf(c, qs[i]).then(function (b) { return b && b.size > IMG_LIMIT && i < qs.length - 1 ? tryQ(i + 1) : b; }); }; return tryQ(0); }
+  function freeCanvas(c) { if (c) { c.width = 0; c.height = 0; } }
+
+  // ---------- Photo editor ----------
+  // file: a new photo; opts.annot and opts.type: re-editing a saved photo from its redacted copy (opts.file is that
+  // copy) with its annotations, and the scan type for the label sets.
+  function editImage(file, opts) {
+    opts = opts || {};
     return new Promise(function (resolve) {
       var url = URL.createObjectURL(file), img = new Image();
       img.onerror = function () { URL.revokeObjectURL(url); toast(T('That file is not an image this phone can open.')); resolve(null); };
       img.onload = function () {
         URL.revokeObjectURL(url);
         // The browser applies the photo's own orientation tag when it decodes it, so the preview starts the way the
-        // phone's gallery shows the photo.
+        // phone's gallery shows the photo. Up to 2200 px: the working copy, in memory only.
         var max = 2200, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-        var work = document.createElement('canvas'); work.width = Math.round(img.naturalWidth * sc); work.height = Math.round(img.naturalHeight * sc);
+        var work = canvasOf(img.naturalWidth * sc, img.naturalHeight * sc);
         work.getContext('2d').drawImage(img, 0, 0, work.width, work.height);
-        var first = work, orient = { r: 0, m: false }, undo = [], saving = false;
-        var el = editorFrame(T('Prepare image'), T('I have removed or covered every patient identifier in this image.'), T('Use this image'), {});
-        var cv = $('canvas', el), applyBtn = $('[data-a=apply]', el), undoBtn = $('[data-a=undo]', el), resetBtn = $('[data-a=reset]', el);
-        var state = function () {
-          var w = orientWords(orient);
-          $('[data-applied]', el).textContent = w;
-          undoBtn.disabled = !undo.length; resetBtn.hidden = !undo.length;
-        };
-        var draw = function () { cv.width = work.width; cv.height = work.height; cv.getContext('2d').drawImage(work, 0, 0); picker.clear(); state(); };
-        // Each change keeps the canvas before it (up to 12 steps) and the orientation that went with it.
-        // Undo keeps up to 12 steps, within about 60 megapixels in all, so a large photo cannot exhaust a phone's memory.
-        var px = function () { return undo.reduce(function (n, u) { return n + u.c.width * u.c.height; }, 0); };
-        var commit = function (c, act) { undo.push({ c: work, o: orient }); while (undo.length > 12 || (undo.length > 1 && px() > 60e6)) undo.shift(); work = c; orient = orientAfter(orient, act); draw(); };
-        var canvasOf = function (w, h) { var c = document.createElement('canvas'); c.width = Math.round(w); c.height = Math.round(h); return c; };
-        var crop = function (x, y, w, h) { if (w < 20 || h < 20) return; var c = canvasOf(w, h); c.getContext('2d').drawImage(work, x, y, w, h, 0, 0, c.width, c.height); commit(c, 'crop'); };
-        var orientOp = function (act) {
-          var c = act === 'rotate' ? canvasOf(work.height, work.width) : canvasOf(work.width, work.height), g = c.getContext('2d');
-          if (act === 'rotate') { g.translate(c.width, 0); g.rotate(Math.PI / 2); }
-          if (act === 'fliph') { g.translate(c.width, 0); g.scale(-1, 1); }
-          if (act === 'flipv') { g.translate(0, c.height); g.scale(1, -1); }
-          g.drawImage(work, 0, 0); commit(c, act); NAT.haptic();
-        };
-        var picker = bindSelect(el, cv, function (mode, sel) {
-          if (saving) { picker.clear(); return; }
-          if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { var c = canvasOf(work.width, work.height), g = c.getContext('2d'); g.drawImage(work, 0, 0); g.fillStyle = '#000'; g.fillRect(sel.x, sel.y, sel.w, sel.h); commit(c, 'cover'); }
-        }, function (sel) { applyBtn.hidden = !(picker && picker.mode() === 'crop' && sel && sel.w >= 20 && sel.h >= 20); });
-        bindModes(el, picker, { crop: T('Drag to choose the area to keep, then tap Apply crop.'), cover: T('Drag over any name, number, date or label to black it out.') });
-        var decl = $('[data-decl]', el), save = $('[data-a=save]', el);
-        decl.addEventListener('change', function () { save.disabled = !decl.checked; });
-        var close = function (v) { el.remove(); resolve(v); };
-        el.addEventListener('click', function (ev) {
-          var a = ev.target.closest('[data-a]'); if (!a || a.disabled) return;
-          var act = a.dataset.a;
-          if (act === 'cancel') return close(null);
-          if (saving) return;
-          if (act === 'undo' && undo.length) { var u = undo.pop(); work = u.c; orient = u.o; draw(); }
-          if (act === 'reset' && undo.length) { undo = []; work = first; orient = { r: 0, m: false }; draw(); }
-          if (act === 'apply') { var s = picker.get(); if (s) crop(s.x, s.y, s.w, s.h); }
-          if (act === 'trim') { var h = Math.round(work.height * 0.12); crop(0, h, work.width, work.height - h); }
-          if (act === 'rotate' || act === 'fliph' || act === 'flipv') orientOp(act);
-          if (act === 'save') {
+        // Let go of the decoded original (its error handler first: clearing src would otherwise fire it).
+        img.onerror = null; img.onload = null; img.removeAttribute('src');
+        var st0 = { crop: { x: 0, y: 0, w: work.width, h: work.height }, orient: { r: 0, m: false }, redact: [], ann: EDT.cleanAnn((opts.annot || {}).ann) };
+        var saving = false, ed;
+        var close = function (v) { ed.remove(); freeCanvas(work); resolve(v); };
+        ed = mediaEditor({
+          kind: 'image', title: opts.annot ? T('Edit image') : T('Prepare image'), declText: T('I have removed or covered every patient identifier in this image.'), saveLabel: T('Use this image'), type: opts.type, state: st0,
+          paint: function (cv, st) { var o = EDT.outSize(st.crop, st.orient, 1); if (cv.width !== Math.round(o.w) || cv.height !== Math.round(o.h)) { cv.width = Math.round(o.w); cv.height = Math.round(o.h); } EDT.drawFrame(cv.getContext('2d'), work, st, 1, null, true); },
+          time: function () { return null; }, locked: function () { return saving; },
+          close: close,
+          save: function (st) {
             // The picture as it is now is what is saved: the tools are locked until saving ends, so an Undo during
-            // encoding can never save an uncovered image under the ticked declaration.
-            save.disabled = true; saving = true; el.classList.add('working');
-            var fin = work, fo = orient;
-            // 2048 px at quality 0.9 keeps fine text and speckle; step quality down only past the 1.5 MB share limit.
-            var out = function (maxSide, q) { return new Promise(function (ok) { var s = Math.min(1, maxSide / Math.max(fin.width, fin.height)); var c = canvasOf(fin.width * s, fin.height * s); var g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.drawImage(fin, 0, 0, c.width, c.height); c.toBlob(function (b) { ok({ b: b, w: c.width, h: c.height }); }, 'image/jpeg', q); }); };
-            var best = function () { var qs = [0.9, 0.85, 0.8, 0.72]; var tryQ = function (i) { return out(2048, qs[i]).then(function (r) { return r.b && r.b.size > IMG_LIMIT && i < qs.length - 1 ? tryQ(i + 1) : r; }); }; return tryQ(0); };
-            Promise.all([best(), out(360, 0.72)]).then(function (r) {
-              if (!r[0].b || !r[1].b) throw new Error('encode');
-              // The orientation change made here is kept with the image on this phone (no identifiers: turns and a mirror).
-              close({ blob: r[0].b, thumb: r[1].b, w: r[0].w, h: r[0].h, declared: true, kind: 'image', edits: { r: fo.r, m: fo.m } });
-            }).catch(function () { saving = false; el.classList.remove('working'); save.disabled = !decl.checked; var er = $('[data-err]', el); er.textContent = T('Could not prepare the image. Try again.'); er.hidden = false; });
+            // encoding can never save an unredacted image under the ticked declaration.
+            saving = true; ed.busy(true, T('Saving…'));
+            var fin = JSON.parse(JSON.stringify(st)), hasAnn = fin.ann.length > 0;
+            var outC = renderOut(work, fin, 2048, true), baseC = hasAnn ? renderOut(work, fin, 2048, false) : null;
+            var thumbC = canvasOf(outC.width * Math.min(1, 360 / Math.max(outC.width, outC.height)), outC.height * Math.min(1, 360 / Math.max(outC.width, outC.height)));
+            thumbC.getContext('2d').drawImage(outC, 0, 0, thumbC.width, thumbC.height);
+            Promise.all([encodeBest(outC), jpegOf(thumbC, 0.72), baseC ? jpegOf(baseC, 0.9) : null]).then(function (r) {
+              if (!r[0] || !r[1] || (baseC && !r[2])) throw new Error('encode');
+              var w = outC.width, h = outC.height;
+              [outC, baseC, thumbC].forEach(freeCanvas);
+              var prov = (opts.prov || []).concat([{ on: today(), crop: JSON.stringify(fin.crop) !== JSON.stringify(st0.crop), r: fin.orient.r, m: fin.orient.m, redact: fin.redact.length, ann: fin.ann.length }]).slice(-10);
+              // The orientation change made here is kept with the image on this phone (turns and a mirror only).
+              close({ blob: r[0], thumb: r[1], w: w, h: h, declared: true, kind: 'image', edits: { r: fin.orient.r, m: fin.orient.m }, base: r[2] || null, annot: hasAnn ? { v: 1, ann: EDT.cleanAnn(fin.ann) } : null, prov: prov });
+            }).catch(function () { saving = false; ed.fail(T('Could not prepare the image. Try again.')); });
           }
         });
-        draw();
       };
       img.src = url;
     });
   }
 
-  // ---------- Clip editor: choose up to 10 seconds, play it back, crop, cover, trim the top, rotate and flip ----------
-  // The clip is re-recorded from a canvas, which drops sound and every piece of hidden file data. One drawing
-  // function makes both the preview and every recorded frame, so what is saved is what was shown: covers, crop,
-  // rotation and flips are burnt into every frame, in the right place after each change.
+  // ---------- Clip editor: choose up to 10 seconds, play it back, adjust, redact and annotate ----------
+  // The clip is re-recorded from a canvas, which drops sound and every piece of hidden file data. The same drawing
+  // function makes the preview and every recorded frame, so redactions and annotations are burnt into every frame
+  // they apply to, in the right place after each change. Annotations can show for the whole clip or from or until a
+  // moment; they do not follow anatomy as it moves (no tracking). A saved clip keeps its annotations as data for the
+  // record, but they cannot be changed later: there is no unannotated copy of a clip.
   var CLIP_MAX = 10, CLIP_MIN = 1;
   function clipMime() {
     if (!window.MediaRecorder) return null;
@@ -1680,7 +1924,8 @@
       try { vid.currentTime = 1e7; } catch (e) { finish(); }
     });
   }
-  function editClip(file) {
+  function editClip(file, opts) {
+    opts = opts || {};
     return new Promise(function (resolve) {
       if (file.size > 200 * 1048576) { toast(T('That clip is too large. Choose a shorter one.')); resolve(null); return; }
       var url = URL.createObjectURL(file), vid = document.createElement('video');
@@ -1696,8 +1941,7 @@
       function open(W, H, dur) {
         // dur 0: the phone could not tell the length. The selection still stops at the end of the clip.
         var known = dur > 0, total = known ? dur : CLIP_MAX;
-        var crop = { x: 0, y: 0, w: W, h: H }, covers = [], orient = { r: 0, m: false }, history = [];
-        var startAt = 0, len = Math.min(CLIP_MAX, total), playing = false, raf = 0, busyRec = null;
+        var startAt = 0, len = Math.min(CLIP_MAX, total), playing = false, raf = 0, busyRec = null, ed, el;
         var f1 = function (n) { return (Math.round(n * 10) / 10).toFixed(1); };
         var media = '<div class="clipbar">' +
           '<div class="cb-row"><button type="button" class="tool play" data-a="play" aria-label="' + esc(T('Play the selection')) + '">' + ET.play + '</button>' +
@@ -1706,96 +1950,58 @@
           '<label>' + esc(T('Length')) + ' <b><span data-ln>' + f1(len) + '</span> s</b><input type="range" data-len min="' + CLIP_MIN + '" max="' + f1(Math.min(CLIP_MAX, total)) + '" step="0.1" value="' + f1(len) + '"></label></div>' +
           '<p class="cb-ends">' + esc(T('Selected')) + ' <b><span data-st2>0.0</span> – <span data-en>' + f1(len) + '</span> s</b></p>' +
           '<p class="cb-sum" data-sum></p></div>';
-        var el = editorFrame(T('Prepare clip'), T('I have removed or covered every patient identifier in this clip, in every frame.'), T('Use this clip'), { media: media });
-        el.classList.add('clip');
-        var cv = $('canvas', el), g = cv.getContext('2d'), save = $('[data-a=save]', el), decl = $('[data-decl]', el), applyBtn = $('[data-a=apply]', el), undoBtn = $('[data-a=undo]', el), resetBtn = $('[data-a=reset]', el);
-        var sIn = $('[data-start]', el), lIn = $('[data-len]', el), scrub = $('[data-scrub]', el), playBtn = $('[data-a=play]', el);
-        // Output size and the drawing transform for the current crop and orientation. (u, v): a point of the cropped
-        // frame before turning; the canvas shows it turned and mirrored.
-        var outSize = function (k) { var w = crop.w * k, h = crop.h * k; return orient.r % 2 ? { w: h, h: w } : { w: w, h: h }; };
-        var setOrient = function (ctx, k) {
-          var w = crop.w * k, h = crop.h * k;
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          if (orient.r === 1) ctx.setTransform(0, 1, -1, 0, h, 0);
-          if (orient.r === 2) ctx.setTransform(-1, 0, 0, -1, w, h);
-          if (orient.r === 3) ctx.setTransform(0, -1, 1, 0, 0, w);
-          if (orient.m) { ctx.translate(w, 0); ctx.scale(-1, 1); }
-        };
-        // The one drawing function: the frame, cropped, covered, turned and mirrored.
-        var frame = function (ctx, k) {
-          ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-          setOrient(ctx, k);
-          ctx.drawImage(vid, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w * k, crop.h * k);
-          covers.forEach(function (c) { ctx.fillRect((c.x - crop.x) * k, (c.y - crop.y) * k, c.w * k, c.h * k); });
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-        };
-        var paint = function () { var o = outSize(1); if (cv.width !== Math.round(o.w) || cv.height !== Math.round(o.h)) { cv.width = Math.round(o.w); cv.height = Math.round(o.h); } frame(g, 1); };
-        // A point on the preview back to the original frame (inverse of the transform above).
-        var toSrc = function (p) {
-          var u = p.x, v = p.y, w = crop.w, h = crop.h, x, y;
-          if (orient.r === 0) { x = u; y = v; } else if (orient.r === 1) { x = v; y = h - u; } else if (orient.r === 2) { x = w - u; y = h - v; } else { x = w - v; y = u; }
-          if (orient.m) x = w - x;
-          return { x: crop.x + Math.max(0, Math.min(w, x)), y: crop.y + Math.max(0, Math.min(h, y)) };
-        };
-        var rectToSrc = function (s) { var a = toSrc({ x: s.x, y: s.y }), b = toSrc({ x: s.x + s.w, y: s.y + s.h }); return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) }; };
-        var state = function () {
-          $('[data-applied]', el).textContent = orientWords(orient);
-          undoBtn.disabled = !history.length; resetBtn.hidden = !history.length;
+        var st0 = { crop: { x: 0, y: 0, w: W, h: H }, orient: { r: 0, m: false }, redact: [], ann: [] };
+        // Seconds into the kept selection: annotation times are stored this way, so they match the saved clip.
+        var rel = function () { return Math.max(0, vid.currentTime - startAt); };
+        var summary = function () {
           var end = Math.min(total, startAt + len);
           $('[data-st2]', el).textContent = f1(startAt); $('[data-en]', el).textContent = f1(end);
           $('[data-sum]', el).textContent = (known ? T('Keeps {a} s to {b} s ({n} s) of a {t} s clip.', { a: f1(startAt), b: f1(end), n: f1(end - startAt), t: f1(total) }) : T('Keeps {n} s from {a} s. This phone could not read the clip\'s full length.', { a: f1(startAt), n: f1(len) })) + (known && total > CLIP_MAX + 0.05 ? ' ' + T('Clips can be up to {m} seconds: nothing outside the selection is saved.', { m: CLIP_MAX }) : '');
         };
-        var keep = function () { history.push({ crop: Object.assign({}, crop), covers: covers.slice(), orient: orient }); if (history.length > 20) history.shift(); };
-        var picker = bindSelect(el, cv, function (mode, sel) { if (busyRec) { picker.clear(); return; } if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { keep(); covers.push(rectToSrc(sel)); paint(); picker.clear(); state(); } }, function (sel) { applyBtn.hidden = !(picker && picker.mode() === 'crop' && sel && sel.w >= 20 && sel.h >= 20); });
-        bindModes(el, picker, { crop: T('Drag to choose the area to keep, then tap Apply crop.'), cover: T('Drag over any name, number, date or label. The cover stays on every frame.') });
+        var close = function (v) { stopPlay(); if (busyRec) busyRec.abort(); vid.removeAttribute('src'); vid.load(); URL.revokeObjectURL(url); ed.remove(); resolve(v); };
+        ed = mediaEditor({
+          kind: 'clip', title: T('Prepare clip'), declText: T('I have removed or covered every patient identifier in this clip, in every frame.'), saveLabel: T('Use this clip'), media: media, type: opts.type, state: st0,
+          paint: function (cv, st) { var o = EDT.outSize(st.crop, st.orient, 1); if (cv.width !== Math.round(o.w) || cv.height !== Math.round(o.h)) { cv.width = Math.round(o.w); cv.height = Math.round(o.h); } EDT.drawFrame(cv.getContext('2d'), vid, st, 1, rel(), true); },
+          time: rel, locked: function () { return !!busyRec; },
+          onState: function () { if (el) summary(); },
+          close: function (v) { close(v); },
+          save: function (st) { record(JSON.parse(JSON.stringify(st))); }
+        });
+        el = ed.el;
+        var scrub = $('[data-scrub]', el), sIn = $('[data-start]', el), lIn = $('[data-len]', el), playBtn = $('[data-a=play]', el);
         // Seeks and waits for the frame (at most 3 s, so a clip that never answers cannot hang the editor).
         var seek = function (t) { return new Promise(function (ok) { var target = Math.min(Math.max(0, t), Math.max(0, total - 0.05)); if (!vid.seeking && vid.readyState >= 2 && Math.abs(vid.currentTime - target) < 0.01) return ok(); var tm, done = function () { clearTimeout(tm); vid.removeEventListener('seeked', done); ok(); }; tm = setTimeout(done, 3000); vid.addEventListener('seeked', done); vid.currentTime = target; }); };
         var showPos = function () { scrub.value = vid.currentTime; $('[data-pos]', el).textContent = f1(vid.currentTime); };
         var stopPlay = function () { if (!playing) return; playing = false; vid.pause(); cancelAnimationFrame(raf); playBtn.innerHTML = ET.play; playBtn.setAttribute('aria-label', T('Play the selection')); };
-        var playLoop = function () { paint(); showPos(); if (vid.currentTime >= startAt + len - 0.02 || vid.ended) { stopPlay(); return; } raf = requestAnimationFrame(playLoop); };
+        var playLoop = function () { ed.paint(); showPos(); if (vid.currentTime >= startAt + len - 0.02 || vid.ended) { stopPlay(); ed.refresh(); return; } raf = requestAnimationFrame(playLoop); };
         var startPlay = function () {
           var from = vid.currentTime >= startAt && vid.currentTime < startAt + len - 0.1 ? vid.currentTime : startAt;
           seek(from).then(function () { playing = true; playBtn.innerHTML = ET.pause; playBtn.setAttribute('aria-label', T('Pause')); return vid.play(); }).then(function () { raf = requestAnimationFrame(playLoop); }, function () { stopPlay(); });
         };
+        playBtn.addEventListener('click', function (e) { e.stopPropagation(); if (busyRec) return; if (playing) { stopPlay(); ed.refresh(); } else startPlay(); });
         sIn.oninput = function () {
           stopPlay(); startAt = Number(sIn.value); $('[data-st]', el).textContent = f1(startAt);
           var mx = Math.max(CLIP_MIN, Math.min(CLIP_MAX, total - startAt)); lIn.max = f1(mx);
           if (len > mx) { len = mx; lIn.value = f1(mx); $('[data-ln]', el).textContent = f1(mx); }
-          seek(startAt).then(function () { paint(); showPos(); state(); });
+          seek(startAt).then(function () { ed.refresh(); showPos(); });
         };
-        lIn.oninput = function () { stopPlay(); len = Math.min(Number(lIn.value), Math.max(CLIP_MIN, total - startAt)); $('[data-ln]', el).textContent = f1(len); seek(Math.min(total, startAt + len) - 0.05).then(function () { paint(); showPos(); state(); }); };
-        scrub.oninput = function () { stopPlay(); seek(Number(scrub.value)).then(function () { paint(); showPos(); }); };
-        decl.addEventListener('change', function () { save.disabled = !decl.checked || !!busyRec; });
-        var close = function (v) { stopPlay(); if (busyRec) busyRec.abort(); vid.removeAttribute('src'); vid.load(); URL.revokeObjectURL(url); el.remove(); resolve(v); };
-        var fail = function (msg) { var er = $('[data-err]', el); er.textContent = msg; er.hidden = false; save.textContent = T('Use this clip'); save.disabled = !decl.checked; el.classList.remove('working'); };
-        el.addEventListener('click', function (ev) {
-          var a = ev.target.closest('[data-a]'); if (!a || a.disabled) return;
-          var act = a.dataset.a;
-          if (act === 'cancel') return close(null);
-          if (busyRec) return; // the other tools wait while the clip is being prepared
-          if (act === 'play') return playing ? stopPlay() : startPlay();
-          if (act === 'undo' && history.length) { var h = history.pop(); crop = h.crop; covers = h.covers; orient = h.orient; }
-          if (act === 'reset' && history.length) { var h0 = history[0]; history = []; crop = h0.crop; covers = h0.covers; orient = h0.orient; }
-          if (act === 'apply') { var s = picker.get(); if (s && s.w >= 20 && s.h >= 20) { keep(); crop = rectToSrc(s); } }
-          if (act === 'trim') { var o = outSize(1), cut = o.h * 0.12; keep(); crop = rectToSrc({ x: 0, y: cut, w: o.w, h: o.h - cut }); }
-          if (act === 'rotate' || act === 'fliph' || act === 'flipv') { keep(); orient = orientAfter(orient, act); NAT.haptic(); }
-          if (act === 'save') { $('[data-err]', el).hidden = true; record(); return; }
-          paint(); picker.clear(); state();
-        });
-        function record() {
+        lIn.oninput = function () { stopPlay(); len = Math.min(Number(lIn.value), Math.max(CLIP_MIN, total - startAt)); $('[data-ln]', el).textContent = f1(len); seek(Math.min(total, startAt + len) - 0.05).then(function () { ed.refresh(); showPos(); }); };
+        scrub.oninput = function () { stopPlay(); seek(Number(scrub.value)).then(function () { ed.refresh(); showPos(); }); };
+        function record(st) {
           stopPlay();
           var mime = clipMime();
-          if (!mime) return fail(T('This phone cannot prepare clips. Save a still image instead.'));
-          var k = Math.min(1, 1280 / Math.max(crop.w, crop.h)), o = outSize(k);
-          var out = document.createElement('canvas'); out.width = Math.round(o.w / 2) * 2; out.height = Math.round(o.h / 2) * 2;
+          if (!mime) return ed.fail(T('This phone cannot prepare clips. Save a still image instead.'));
+          var o1 = EDT.outSize(st.crop, st.orient, 1), k = Math.min(1, 1280 / Math.max(o1.w, o1.h)), o = EDT.outSize(st.crop, st.orient, k);
+          var out = canvasOf(Math.round(o.w / 2) * 2, Math.round(o.h / 2) * 2);
           var og = out.getContext('2d');
-          save.disabled = true; save.textContent = T('Preparing clip… {p}%', { p: 0 }); el.classList.add('working');
+          ed.busy(true, T('Preparing clip… {p}%', { p: 0 }));
+          var save = $('[data-a=save]', el);
           var stopAt = Math.min(total, startAt + len), aborted = false, rec = null, stream = null, chunks = [], rafR = 0, lastT = -1, stallAt = 0;
           var release = function () { if (stream) stream.getTracks().forEach(function (tr) { tr.stop(); }); stream = null; };
           busyRec = { abort: function () { aborted = true; cancelAnimationFrame(rafR); try { vid.pause(); if (rec && rec.state !== 'inactive') rec.stop(); } catch (e) { /* already stopped */ } } };
           seek(startAt).then(function () {
-            frame(og, k);
-            var thumbP = new Promise(function (ok) { var s = Math.min(1, 360 / Math.max(out.width, out.height)); var c = document.createElement('canvas'); c.width = Math.round(out.width * s); c.height = Math.round(out.height * s); c.getContext('2d').drawImage(out, 0, 0, c.width, c.height); c.toBlob(ok, 'image/jpeg', 0.72); });
+            EDT.drawFrame(og, vid, st, k, 0, true);
+            var thumbP = new Promise(function (ok) { var s = Math.min(1, 360 / Math.max(out.width, out.height)); var c = canvasOf(out.width * s, out.height * s); c.getContext('2d').drawImage(out, 0, 0, c.width, c.height); c.toBlob(ok, 'image/jpeg', 0.72); });
             stream = out.captureStream(30);
             rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4000000 });
             rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
@@ -1812,7 +2018,7 @@
             });
             var tick = function (now) {
               if (aborted) return;
-              frame(og, k);
+              EDT.drawFrame(og, vid, st, k, Math.max(0, vid.currentTime - startAt), true);
               var t = vid.currentTime;
               save.textContent = T('Preparing clip… {p}%', { p: Math.max(0, Math.min(99, Math.round(100 * (t - startAt) / Math.max(0.1, stopAt - startAt)))) });
               // A clip that stops advancing for 8 seconds (a decoding problem) fails rather than hanging.
@@ -1829,17 +2035,19 @@
             busyRec = null; release();
             // The length actually recorded, from the clip's own clock (not the slider), so what is stored is true.
             var got = Math.max(0, Math.min(stopAt, vid.currentTime) - startAt);
-            if (got < 0.5) { chunks = []; fail(T('Could not prepare the clip.')); seek(startAt).then(paint); return; }
-            close({ blob: r[0], thumb: r[1], w: out.width, h: out.height, kind: 'clip', dur: Math.round(got * 10) / 10, declared: true, edits: { r: orient.r, m: orient.m } });
+            if (got < 0.5) { chunks = []; ed.fail(T('Could not prepare the clip.')); seek(startAt).then(ed.refresh); return; }
+            var w = out.width, h = out.height; freeCanvas(out);
+            var ann = EDT.cleanAnn(st.ann);
+            close({ blob: r[0], thumb: r[1], w: w, h: h, kind: 'clip', dur: Math.round(got * 10) / 10, declared: true, edits: { r: st.orient.r, m: st.orient.m }, annot: ann.length ? { v: 1, ann: ann, burnt: true } : null, prov: [{ on: today(), crop: JSON.stringify(st.crop) !== JSON.stringify(st0.crop), r: st.orient.r, m: st.orient.m, redact: st.redact.length, ann: ann.length, from: Math.round(startAt * 10) / 10, len: Math.round(got * 10) / 10 }] });
           }, function (ex) {
             busyRec = null; chunks = []; release();
             if (ex && ex.message === 'cancelled' && !el.isConnected) return;
             // Nothing is kept from a failed or stopped preparation: the clip is not added to the scan.
-            fail(ex && ex.message && ex.message !== 'cancelled' ? ex.message : T('Could not prepare the clip.'));
-            seek(startAt).then(paint);
+            ed.fail(ex && ex.message && ex.message !== 'cancelled' ? ex.message : T('Could not prepare the clip.'));
+            seek(startAt).then(ed.refresh);
           });
         }
-        seek(0).then(function () { paint(); showPos(); state(); });
+        seek(0).then(function () { ed.refresh(); showPos(); summary(); });
       }
     });
   }
@@ -3393,7 +3601,7 @@
     return Promise.all([all('images'), enc.ready]).then(function (r) {
       var imgs = r[0], done = 0;
       // Image records only (blobs are read one at a time below), so the manifest is small.
-      var manifest = { app: 'wavelength-logbook', version: 3, created: new Date().toISOString(), account: S.account.email, entries: live().map(strip), images: imgs.map(function (x) { return { id: x.id, entryId: x.entryId, w: x.w, h: x.h, kind: isClip(x) ? 'clip' : 'image', type: (x.blob && x.blob.type) || 'image/jpeg', dur: x.dur, sha256: x.sha256 || undefined, file: 'images/' + x.id + '.' + extOf(x), thumb: isClip(x) && x.thumb && x.thumb.size ? 'images/' + x.id + '-thumb.jpg' : null }; }) };
+      var manifest = { app: 'wavelength-logbook', version: 3, created: new Date().toISOString(), account: S.account.email, entries: live().map(strip), images: imgs.map(function (x) { return { id: x.id, entryId: x.entryId, w: x.w, h: x.h, kind: isClip(x) ? 'clip' : 'image', type: (x.blob && x.blob.type) || 'image/jpeg', dur: x.dur, sha256: x.sha256 || undefined, file: 'images/' + x.id + '.' + extOf(x), thumb: isClip(x) && x.thumb && x.thumb.size ? 'images/' + x.id + '-thumb.jpg' : null, base: !isClip(x) && x.base && x.base.size ? 'images/' + x.id + '-base.jpg' : undefined, annot: x.annot || undefined, prov: x.prov || undefined }; }) };
       var chain = zw.add('wavelength-backup.json', JSON.stringify(manifest));
       imgs.forEach(function (x, i) {
         var m = manifest.images[i];
@@ -3401,6 +3609,8 @@
           progress(T('Encrypting photos and clips: {done} of {total}', { done: ++done, total: imgs.length }));
           // A clip's poster frame goes first, so a restore has it when the clip arrives.
           var th = m.thumb ? x.thumb.arrayBuffer().then(function (b) { return zw.add(m.thumb, new Uint8Array(b)); }) : Promise.resolve();
+          // 1.0.12: a photo's redacted, unannotated copy (kept so its annotations can be changed) goes before it too.
+          if (m.base) th = th.then(function () { return x.base.arrayBuffer(); }).then(function (b) { return zw.add(m.base, new Uint8Array(b)); });
           return th.then(function () { return x.blob.arrayBuffer(); }).then(function (b) { return zw.add(m.file, new Uint8Array(b)); });
         });
       });
@@ -3458,7 +3668,16 @@
         if (!ok) { res.damaged++; return; }
         var clip = im.kind === 'clip', blob = new Blob([data], { type: im.type || 'image/jpeg' });
         var th = clip ? Promise.resolve(thumbs[im.id] || new Blob([], { type: 'image/jpeg' })) : thumbOf(blob);
-        return th.then(function (t) { delete thumbs[im.id]; res.media++; return put('images', { id: im.id, entryId: im.entryId, blob: blob, thumb: t, w: im.w, h: im.h, kind: clip ? 'clip' : 'image', dur: im.dur, sha256: im.sha256, created: Date.now() }); });
+        return th.then(function (t) {
+          delete thumbs[im.id]; res.media++;
+          var rec = { id: im.id, entryId: im.entryId, blob: blob, thumb: t, w: im.w, h: im.h, kind: clip ? 'clip' : 'image', dur: im.dur, sha256: im.sha256, created: Date.now() };
+          // 1.0.12 fields, when the backup has them: annotation data (cleaned again on the way in) and the redacted copy.
+          var base = thumbs['base:' + im.id]; delete thumbs['base:' + im.id];
+          if (im.annot && Array.isArray(im.annot.ann)) rec.annot = { v: 1, ann: EDT.cleanAnn(im.annot.ann), burnt: !!im.annot.burnt };
+          if (base && !clip && rec.annot) rec.base = base;
+          if (Array.isArray(im.prov)) rec.prov = im.prov.slice(-10).map(function (p) { return { on: String(p.on || '').slice(0, 10), crop: !!p.crop, r: Number(p.r) % 4 || 0, m: !!p.m, redact: Number(p.redact) || 0, ann: Number(p.ann) || 0 }; });
+          return put('images', rec);
+        });
       });
     });
   }
@@ -3483,7 +3702,7 @@
       if (!man) {
         if (name !== 'wavelength-backup.json') throw new Error('This is not a Wavelength backup file.');
         man = JSON.parse(new TextDecoder().decode(data));
-        (man.images || []).forEach(function (im) { byFile[im.file] = im; if (im.thumb) byFile[im.thumb] = { thumbOf: im.id }; });
+        (man.images || []).forEach(function (im) { byFile[im.file] = im; if (im.thumb) byFile[im.thumb] = { thumbOf: im.id }; if (im.base) byFile[im.base] = { baseOf: im.id }; });
         return confirmAccount(man).then(function (go) {
           if (!go) { stop = true; var c = new Error('cancelled'); c.code = 'cancel'; throw c; }
           return restoreInto(man).then(function (r) { res = r; });
@@ -3491,6 +3710,7 @@
       }
       var im = byFile[name]; if (!im) return;
       if (im.thumbOf) { thumbs[im.thumbOf] = new Blob([data], { type: 'image/jpeg' }); return; }
+      if (im.baseOf) { thumbs['base:' + im.baseOf] = new Blob([data], { type: 'image/jpeg' }); return; }
       return putMedia(im, data, thumbs, res);
     });
     return WLBackup.decrypt(passphrase, WLBackup.blobReader(file), file.size, function (plain, frac) {
@@ -3512,7 +3732,7 @@
         closeSheet();
         return restoreInto(man).then(function (r) {
           res = r;
-          (man.images || []).forEach(function (im) { if (im.thumb && files[im.thumb]) thumbs[im.id] = new Blob([files[im.thumb]], { type: 'image/jpeg' }); });
+          (man.images || []).forEach(function (im) { if (im.thumb && files[im.thumb]) thumbs[im.id] = new Blob([files[im.thumb]], { type: 'image/jpeg' }); if (im.base && files[im.base]) thumbs['base:' + im.id] = new Blob([files[im.base]], { type: 'image/jpeg' }); });
           return (man.images || []).reduce(function (p, im) { return p.then(function () { return files[im.file] ? putMedia(im, files[im.file], thumbs, res) : null; }); }, Promise.resolve());
         }).then(function () { restored(res); });
       });

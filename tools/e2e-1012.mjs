@@ -62,9 +62,9 @@ async function pair(nScans = 5) {
   await call(sup, 'supervisors/accept', { id: inv.id });
   return { learner, sup, linkId: inv.id, entries };
 }
-async function phone({ width = 390, height = 844, device = WIFI, reduced = false, dark = false, lang = '', acc = null, video = false } = {}) {
+async function phone({ width = 390, height = 844, device = WIFI, reduced = false, dark = false, lang = '', acc = null, video = false, bundle = WWW } = {}) {
   reset();
-  serve.dir = WWW;
+  serve.dir = bundle;
   acc = acc || await account();
   const init = [`window.__netdev = JSON.parse(localStorage.getItem('__netdev') || 'null') || ${JSON.stringify(device)};`];
   if (dark) init.push(`localStorage.setItem('wl-theme', 'dark');`);
@@ -330,6 +330,303 @@ if (want('M')) {
     await sleep(800);
     const v = page.video(); await ctx.close();
     if (v) { const f = await v.path(); fs.renameSync(f, path.join(VIDS, 'M-home-scroll-reveal.webm')); }
+  }
+}
+
+// ---------- E: media editor (Annotate | Adjust | Redact), photos and clips ----------
+// Synthetic test pictures only: four coloured quadrants (photo) and the same as a moving clip.
+async function testImage(page) {
+  const b64 = await page.evaluate(() => new Promise((ok) => { const c = document.createElement('canvas'); c.width = 400; c.height = 300; const g = c.getContext('2d');
+    g.fillStyle = '#ff0000'; g.fillRect(0, 0, 200, 150); g.fillStyle = '#00ff00'; g.fillRect(200, 0, 200, 150); g.fillStyle = '#0000ff'; g.fillRect(0, 150, 200, 150); g.fillStyle = '#ffff00'; g.fillRect(200, 150, 200, 150);
+    c.toBlob((b) => { const r = new FileReader(); r.onload = () => ok(r.result.split(',')[1]); r.readAsDataURL(b); }, 'image/png'); }));
+  const f = path.join(OUT, 'quadrants.png'); fs.writeFileSync(f, Buffer.from(b64, 'base64')); return f;
+}
+async function testClip(page, secs) {
+  const f = path.join(OUT, `clip-${secs}s.webm`);
+  if (fs.existsSync(f)) return f;
+  const b64 = await page.evaluate((secs) => new Promise((ok) => {
+    const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d');
+    const rec = new MediaRecorder(c.captureStream(25), { mimeType: 'video/webm;codecs=vp8' }); const chunks = []; rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    const t0 = performance.now(); let raf;
+    const tick = () => { const t = (performance.now() - t0) / 1000; g.fillStyle = '#ff0000'; g.fillRect(0, 0, 160, 120); g.fillStyle = '#00ff00'; g.fillRect(160, 0, 160, 120); g.fillStyle = '#0000ff'; g.fillRect(0, 120, 160, 120); g.fillStyle = '#ffff00'; g.fillRect(160, 120, 160, 120); g.fillStyle = '#fff'; g.fillRect(150 + Math.sin(t * 4) * 20, 110, 20, 20); if (t >= secs) { rec.stop(); return; } raf = requestAnimationFrame(tick); };
+    rec.onstop = () => { cancelAnimationFrame(raf); const r = new FileReader(); r.onload = () => ok(r.result.split(',')[1]); r.readAsDataURL(new Blob(chunks, { type: 'video/webm' })); };
+    rec.start(250); tick();
+  }), secs);
+  fs.writeFileSync(f, Buffer.from(b64, 'base64'));
+  return f;
+}
+const QUAD = { tl: [0.25, 0.25], tr: [0.75, 0.25], bl: [0.25, 0.75], br: [0.75, 0.75], c: [0.5, 0.5] };
+const cname = (rgb) => { const [r, g, b] = rgb; return r > 180 && g > 180 && b < 90 ? 'yellow' : r > 180 && g < 90 && b < 90 ? 'red' : g > 180 && r < 90 && b < 90 ? 'green' : b > 180 && r < 90 && g < 90 ? 'blue' : g > 160 && b > 160 && r < 90 ? 'cyan' : r > 200 && g > 200 && b > 200 ? 'white' : r < 40 && g < 40 && b < 40 ? 'black' : Math.abs(r - 122) < 20 && Math.abs(g - 122) < 20 && Math.abs(b - 122) < 20 ? 'grey' : 'rgb(' + rgb.join(',') + ')'; };
+const named = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, cname(v)]));
+const sampleCanvas = (page, pts = QUAD) => page.evaluate((Q) => { const c = document.querySelector('.editor canvas'); const g = c.getContext('2d'); const o = {}; for (const [k, [x, y]] of Object.entries(Q)) o[k] = [...g.getImageData(Math.floor(c.width * x), Math.floor(c.height * y), 1, 1).data].slice(0, 3); return o; }, pts);
+// Pixels of a stored image record (the saved JPEG) at relative points.
+const sampleStored = (page, accId, pick, pts = QUAD, field = 'blob') => page.evaluate(([id, pick, Q, field]) => new Promise((ok) => {
+  const r = indexedDB.open('wavelength-' + id);
+  r.onsuccess = () => { const q = r.result.transaction('images').objectStore('images').getAll(); q.onsuccess = () => { r.result.close();
+    const list = q.result.filter((x) => x.kind !== 'clip').sort((a, b) => b.created - a.created); const d = pick ? list.find((x) => x.id === pick) : list[0]; if (!d) return ok(null);
+    const blob = d[field]; if (!blob) return ok({ none: true, id: d.id, keys: Object.keys(d) });
+    const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const g = c.getContext('2d'); g.drawImage(im, 0, 0); const o = {}; for (const [k, [x, y]] of Object.entries(Q)) o[k] = [...g.getImageData(Math.floor(c.width * x), Math.floor(c.height * y), 1, 1).data].slice(0, 3); ok({ o, w: c.width, h: c.height, id: d.id, annot: d.annot || null, hasBase: !!d.base, prov: d.prov || null }); };
+    im.src = URL.createObjectURL(blob); }; };
+}), [accId, pick, pts, field]);
+const canvasBox = (page) => page.evaluate(() => { const r = document.querySelector('.editor canvas').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+const dragOn = async (page, a, b) => { const bx = await canvasBox(page); await page.mouse.move(bx.x + bx.w * a[0], bx.y + bx.h * a[1]); await page.mouse.down(); await page.mouse.move(bx.x + bx.w * b[0], bx.y + bx.h * b[1], { steps: 6 }); await page.mouse.up(); await sleep(200); };
+const tapOn = async (page, a) => { const bx = await canvasBox(page); await page.mouse.click(bx.x + bx.w * a[0], bx.y + bx.h * a[1]); await sleep(200); };
+const saveScan = async (page) => { await page.evaluate(() => { const i = document.querySelector('input[name=supervision]'); i.checked = true; i.dispatchEvent(new Event('change', { bubbles: true })); }); await page.click('form button[type=submit]'); const ok = await page.waitForFunction(() => location.hash === '#/', null, { timeout: 10000 }).then(() => true, () => false); if (!ok) console.log('save failed:', await page.evaluate(() => JSON.stringify({ hash: location.hash, err: (document.querySelector('form .err') || {}).textContent, invalid: [...document.querySelectorAll('.field.invalid')].map((f) => f.dataset.req), sheet: (document.querySelector('.sheet') || {}).textContent, gal: document.querySelectorAll('#gal img').length }))); await sleep(600); };
+if (want('E')) {
+  const { ctx, page, acc } = await phone();
+  const img = await testImage(page);
+  await go(page, '#/new?type=cardiac'); await sleep(1500);
+  const openPhoto = async () => { await page.setInputFiles('#pick', img); await page.waitForSelector('.editor canvas'); await sleep(500); };
+  await openPhoto();
+  // E1 three modes, each with its own tools, all at least 44 px and named.
+  const sizes = {};
+  for (const m of ['adjust', 'redact', 'annotate']) {
+    await page.click(`.editor [data-tab=${m}]`); await sleep(150);
+    sizes[m] = await page.evaluate((m) => [...document.querySelectorAll(`.editor [data-panel=${m}] button`)].filter((b) => b.offsetParent && !b.closest('[hidden]')).map((b) => ({ n: b.getAttribute('aria-label') || b.textContent.trim(), h: Math.round(b.getBoundingClientRect().height), w: Math.round(b.getBoundingClientRect().width) })), m);
+  }
+  const tabs = await page.$$eval('.editor [data-tab]', (b) => b.map((x) => x.textContent.trim()));
+  record('E1', 'Three modes, Annotate | Adjust | Redact, each with named tools at least 40 px', tabs.join('|') === 'Annotate|Adjust|Redact' && Object.values(sizes).every((l) => l.length && l.every((b) => b.n && b.h >= 40)), JSON.stringify({ tabs, adjust: sizes.adjust.map((b) => b.n), redact: sizes.redact.map((b) => b.n), annotate: sizes.annotate.map((b) => b.n + ':' + b.h) }).slice(0, 400));
+  const words = await page.evaluate(() => document.querySelector('.editor').textContent);
+  record('E2', 'Cover is now Redact: solid black or grey, and blur is explained as not offered', !/\bCover\b/.test(words) && /Redact/.test(words) && /Black/.test(words) && /Grey/.test(words) && /Blurring is not offered/.test(words), '');
+  // E3 redact (black) the top-left quadrant, then rotate and flip: the redaction stays on the same picture area.
+  await page.click('.editor [data-tab=redact]'); await page.click('.editor [data-rc=black]');
+  await dragOn(page, [0.02, 0.02], [0.48, 0.48]);
+  await page.click('.editor [data-tab=adjust]'); await page.click('.editor [data-a=rotate]'); await sleep(150); await page.click('.editor [data-a=fliph]'); await sleep(150);
+  const r1 = named(await sampleCanvas(page));
+  // Original: red TL (redacted black), green TR, blue BL, yellow BR. Rotate: blue TL, black TR, yellow BL, green BR. Flip H: black TL, blue TR, green BL, yellow BR.
+  record('E3', 'A redaction stays over the same picture area through a turn and a flip (preview)', r1.tl === 'black' && r1.tr === 'blue' && r1.bl === 'green' && r1.br === 'yellow', JSON.stringify(r1));
+  // E4 annotate: a preset label for the scan type, free text, an arrow, a dot, a circle, a box and a pictogram.
+  await page.click('.editor [data-tab=annotate]'); await sleep(200);
+  await page.click('.editor [data-at=label]'); await page.waitForSelector('.editor .ed-pop:not([hidden])');
+  const firstSet = await page.$$eval('.editor .ed-pop .ed-lab', (l) => l.map((x) => x.textContent));
+  const hasLV = await page.$('.editor [data-lbl="LV"]');
+  record('E4', 'Label sets start with the scan type (Cardiac: LV, RV, IVC...) and free text is always offered', firstSet[0] === 'Type your own' && firstSet[1] === 'Cardiac' && !!hasLV, firstSet.join(' | '));
+  await shot(page, 'E4-labels');
+  await page.click('.editor [data-lbl="LV"]'); await sleep(200);
+  await page.click('.editor [data-sa=done]');
+  await page.click('.editor [data-col=cyan]');
+  await page.click('.editor [data-at=rect]'); await dragOn(page, [0.6, 0.6], [0.9, 0.9]);
+  await page.click('.editor [data-sa=done]').catch(() => {});
+  await page.click('.editor [data-col=red]');
+  await page.click('.editor [data-at=dot]'); await tapOn(page, [0.25, 0.75]);
+  await page.click('.editor [data-sa=done]').catch(() => {});
+  await page.click('.editor [data-col=white]');
+  await page.click('.editor [data-at=arrow]'); await dragOn(page, [0.1, 0.55], [0.4, 0.55]);
+  await page.click('.editor [data-sa=done]').catch(() => {});
+  await page.click('.editor [data-at=circle]'); await dragOn(page, [0.55, 0.1], [0.75, 0.3]);
+  await page.click('.editor [data-sa=done]').catch(() => {});
+  await page.click('.editor [data-at=text]'); await page.fill('.editor #edtx', 'Mid'); await page.click('.editor .ed-pop button.apply'); await sleep(200);
+  await page.click('.editor [data-sa=done]').catch(() => {});
+  await page.click('.editor [data-at=picto]'); await page.click('.editor [data-pic="heart-a4c"]'); await sleep(200);
+  await page.click('.editor [data-sa=done]').catch(() => {});
+  const list = await page.$$eval('.editor [data-pick]', (b) => b.map((x) => x.textContent));
+  record('E5', 'Text, label, arrow, dot, circle, box and pictogram are all on the picture and listed', list.length === 7 && list.includes('“LV”') && list.includes('“Mid”') && list.some((x) => /Apical/.test(x)), list.join(', '));
+  await shot(page, 'E5-annotated');
+  const pv = await sampleCanvas(page, { box: [0.6, 0.75], dot: [0.25, 0.75], red: [0.3, 0.3], tl: [0.05, 0.05] });
+  record('E6', 'Colours are applied as chosen (cyan box edge, red dot) and the redaction stays black under them', cname(pv.box) === 'cyan' && cname(pv.dot) === 'red' && cname(pv.tl) === 'black', JSON.stringify(named(pv)));
+  // E7 annotations follow a turn: the red dot moves from bottom-left to top-left on a quarter turn clockwise.
+  await page.click('.editor [data-tab=adjust]'); await page.click('.editor [data-a=rotate]'); await sleep(200);
+  await page.click('.editor [data-tab=annotate]'); await sleep(150);
+  // Before: the dot at (0.25, 0.75), the redaction top-left. A quarter turn clockwise maps (x, y) to (1 - y, x).
+  const turned = named(await sampleCanvas(page, { dot: [0.25, 0.25], red: [0.75, 0.25] }));
+  record('E7', 'Annotations move with the picture: after a quarter turn the dot is at the top-left, the redaction top-right', turned.dot === 'red' && turned.red === 'black', JSON.stringify(turned));
+  await page.click('.editor [data-a=undo]'); await sleep(200);
+  // E8 save: the stored photo equals the preview, with the annotations and the redaction burnt in.
+  const before = named(await sampleCanvas(page, { dot: [0.25, 0.75], tl: [0.05, 0.05] }));
+  const previewPng = await page.evaluate(() => document.querySelector('.editor canvas').toDataURL('image/png'));
+  record('E8a', 'Use this image stays disabled until the identifier declaration is ticked', await page.evaluate(() => document.querySelector('.editor [data-a=save]').disabled), '');
+  await page.check('.editor [data-decl]', { force: true });
+  await page.click('.editor [data-a=save]'); await page.waitForSelector('.editor', { state: 'detached' }); await sleep(300);
+  await saveScan(page);
+  const saved = await sampleStored(page, acc.id, null, { box: [0.6, 0.75], dot: [0.25, 0.75], tl: [0.05, 0.05], tr: [0.75, 0.25] });
+  if (!saved || !saved.o) console.log('stored:', JSON.stringify(saved), await page.evaluate((id) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id); r.onsuccess = () => { const db = r.result; const out = { stores: [...db.objectStoreNames] }; const t = db.transaction(['entries', 'images']); t.objectStore('entries').getAll().onsuccess = (e) => { out.entries = e.target.result.map((x) => ({ id: x.id, type: x.type, images: x.images })); }; t.objectStore('images').getAll().onsuccess = (e) => { out.images = e.target.result.map((x) => ({ id: x.id, kind: x.kind, keys: Object.keys(x) })); }; t.oncomplete = () => ok(JSON.stringify(out)); }; r.onerror = () => ok('open error'); }), acc.id));
+  const sv = saved && saved.o ? named(saved.o) : {};
+  // The whole picture compared: mean difference per channel between the preview and the saved JPEG.
+  const diff = await page.evaluate(([id, png]) => new Promise((ok) => {
+    const r = indexedDB.open('wavelength-' + id);
+    r.onsuccess = () => { const q = r.result.transaction('images').objectStore('images').getAll(); q.onsuccess = () => { r.result.close(); const d = q.result.filter((x) => x.kind !== 'clip').sort((a, b) => b.created - a.created)[0];
+      const a = new Image(), b = new Image(); let n = 0; const both = () => { if (++n < 2) return; const W = a.naturalWidth, H = a.naturalHeight; const ca = document.createElement('canvas'); ca.width = W; ca.height = H; ca.getContext('2d').drawImage(a, 0, 0); const cb = document.createElement('canvas'); cb.width = W; cb.height = H; cb.getContext('2d').drawImage(b, 0, 0, W, H); const pa = ca.getContext('2d').getImageData(0, 0, W, H).data, pb = cb.getContext('2d').getImageData(0, 0, W, H).data; let s = 0; for (let i = 0; i < pa.length; i += 4) s += Math.abs(pa[i] - pb[i]) + Math.abs(pa[i + 1] - pb[i + 1]) + Math.abs(pa[i + 2] - pb[i + 2]); ok({ mean: s / (W * H * 3), size: [W, H, b.naturalWidth, b.naturalHeight] }); };
+      a.onload = both; b.onload = both; a.src = png; b.src = URL.createObjectURL(d.blob); }; };
+  }), [acc.id, previewPng]);
+  record('E8', 'The saved photo matches the preview: annotations and redaction in the pixels (mean difference under 3 of 255)', saved && sv.dot === before.dot && sv.tl === before.tl && diff.mean < 3, JSON.stringify({ preview: before, saved: sv, diff }));
+  record('E9', 'The photo keeps its annotations as data and a redacted copy without them (for editing later)', saved && saved.annot && saved.annot.ann.length === 7 && saved.hasBase && saved.prov && saved.prov[0].redact === 1, JSON.stringify({ ann: saved && saved.annot && saved.annot.ann.length, base: saved && saved.hasBase, prov: saved && saved.prov }));
+  const base = await sampleStored(page, acc.id, saved.id, { box: [0.6, 0.75], dot: [0.25, 0.75], tl: [0.05, 0.05] }, 'base');
+  record('E10', 'The copy kept for editing has the redaction but no annotations: no unredacted original is stored', base && base.o && cname(base.o.tl) === 'black' && cname(base.o.dot) !== 'red' && cname(base.o.box) !== 'cyan', JSON.stringify(base && base.o ? named(base.o) : base));
+  // E11 open it again from the saved scan: annotations come back and can be changed; the redaction cannot be undone.
+  const entry = await page.evaluate(() => (document.querySelector('.toast.act a[href^="#/entry/"]') || {}).getAttribute && document.querySelector('.toast.act a[href^="#/entry/"]').getAttribute('href').split('/')[2]);
+  await go(page, '#/edit/' + entry); await page.waitForSelector('#gal [data-edold]');
+  await page.click('#gal [data-edold]'); await page.waitForSelector('.editor canvas'); await sleep(500);
+  const back = await page.$$eval('.editor [data-pick]', (b) => b.map((x) => x.textContent));
+  await page.click('.editor [data-tab=annotate]');
+  await page.click('.editor [data-pick="2"]').catch(() => {});
+  const which = await text(page, '.editor [data-selname]');
+  await page.click('.editor [data-sa=del]'); await sleep(150);
+  await page.click('.editor [data-tab=adjust]'); await page.click('.editor [data-a=reset]'); await sleep(150);
+  const after = named(await sampleCanvas(page, { tl: [0.05, 0.05] }));
+  const afterReset = await page.$$eval('.editor [data-pick]', (b) => b.length);
+  await page.click('.editor [data-tab=annotate]');
+  record('E11', 'Opened again: all 7 annotations return and can be removed; Reset restores them but cannot bring back what was redacted', back.length === 7 && afterReset === 7 && after.tl === 'black', `${back.join(', ')}; selected ${which}; top-left after Reset ${after.tl}`);
+  await page.click('.editor [data-pick="2"]'); await page.click('.editor [data-sa=del]'); await sleep(150);
+  await page.check('.editor [data-decl]', { force: true }); await page.click('.editor [data-a=save]'); await page.waitForSelector('.editor', { state: 'detached' });
+  await page.click('form button[type=submit]'); await page.waitForFunction(() => /^#\/entry\//.test(location.hash), null, { timeout: 10000 }).catch(() => {}); await sleep(500);
+  const re = await sampleStored(page, acc.id, null, { dot: [0.25, 0.75], tl: [0.05, 0.05] });
+  record('E12', 'Saved again: one annotation fewer, redaction still black, a new image record (older sign-offs void)', re && re.annot && re.annot.ann.length === 6 && cname(re.o.tl) === 'black' && re.id !== saved.id, JSON.stringify({ ann: re && re.annot && re.annot.ann.length, tl: re && cname(re.o.tl), newId: re && re.id !== saved.id }));
+  // E13 text typed as a label is checked for identifiers like the scan's own text.
+  await go(page, '#/new?type=aaa'); await sleep(1200); await openPhoto();
+  await page.click('.editor [data-tab=annotate]'); await page.click('.editor [data-at=text]'); await page.fill('.editor #edtx', 'DOB 01/02/1960'); await page.click('.editor .ed-pop button.apply'); await sleep(200);
+  const warn = await text(page, '.editor .ed-pop .ed-err');
+  record('E13', 'A typed label that looks like an identifier is questioned before it is placed', /date of birth/i.test(warn || ''), warn);
+  await page.click('.editor .ed-pop [data-x]'); await page.click('.editor [data-a=cancel]'); await sleep(200);
+  // E14 grey redaction lands in the saved pixels as solid grey.
+  await openPhoto(); await page.click('.editor [data-tab=redact]'); await page.click('.editor [data-rc=grey]');
+  await dragOn(page, [0.55, 0.55], [0.95, 0.95]);
+  await page.check('.editor [data-decl]', { force: true }); await page.click('.editor [data-a=save]'); await page.waitForSelector('.editor', { state: 'detached' });
+  await saveScan(page);
+  const g = await sampleStored(page, acc.id, null, { br: [0.75, 0.75], tl: [0.25, 0.25] });
+  record('E14', 'Grey redaction is a solid grey fill in the saved picture', g && cname(g.o.br) === 'grey' && cname(g.o.tl) === 'red' && !g.hasBase, JSON.stringify(g && named(g.o)));
+  await ctx.close();
+}
+
+// ---------- C: clips (annotations over time, redaction in every frame, export equals preview) ----------
+const clipFrames = (page, accId, times, pts) => page.evaluate(([id, times, Q]) => new Promise((ok) => {
+  const r = indexedDB.open('wavelength-' + id);
+  r.onsuccess = () => { const q = r.result.transaction('images').objectStore('images').getAll(); q.onsuccess = () => { r.result.close(); const d = q.result.filter((x) => x.kind === 'clip').sort((a, b) => b.created - a.created)[0]; if (!d) return ok(null);
+    const v = document.createElement('video'); v.muted = true; v.src = URL.createObjectURL(d.blob); const out = [];
+    const grab = () => { const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; const g = c.getContext('2d'); g.drawImage(v, 0, 0); const o = {}; for (const [k, [x, y]] of Object.entries(Q)) o[k] = [...g.getImageData(Math.floor(c.width * x), Math.floor(c.height * y), 1, 1).data].slice(0, 3); out.push(o); if (out.length < times.length) v.currentTime = times[out.length]; else ok({ out, w: v.videoWidth, h: v.videoHeight, dur: d.dur, annot: d.annot || null, prov: d.prov || null, hasBase: !!d.base }); };
+    v.onloadeddata = () => { v.currentTime = times[0]; }; v.onseeked = grab; v.onerror = () => ok({ error: true }); }; };
+}), [accId, times, pts]);
+if (want('C')) {
+  const { ctx, page, acc } = await phone();
+  const clip = await testClip(page, 6);
+  await go(page, '#/new?type=aaa'); await sleep(1500);
+  await page.setInputFiles('#vpick', clip); await page.waitForSelector('.editor canvas'); await sleep(2200);
+  const ui = await page.evaluate(() => { const q = (s) => document.querySelector('.editor ' + s); return { play: !!q('[data-a=play]'), scrub: !!q('[data-scrub]'), total: (q('[data-total]') || {}).textContent, tabs: [...document.querySelectorAll('.editor [data-tab]')].map((b) => b.textContent.trim()).join('|'), when: !!q('[data-when]') }; });
+  record('C1', 'Clip editor: Play, scrubber, real length, the same three modes, and "when it shows" for annotations', ui.play && ui.scrub && /^[56]\.\d/.test(ui.total || '') && ui.tabs === 'Annotate|Adjust|Redact' && ui.when, JSON.stringify(ui));
+  // Keep 0 to 3 s. Redact the top-left quarter; label "Ao" for the whole clip; a red dot from 1.5 s on.
+  await page.evaluate(() => { const l = document.querySelector('.editor [data-len]'); l.value = 3; l.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(400);
+  await page.click('.editor [data-tab=redact]');
+  const fits = await page.evaluate(() => { const c = document.querySelector('.editor canvas').getBoundingClientRect(), s = document.querySelector('.editor .stage').getBoundingClientRect(); return c.top >= s.top - 1 && c.bottom <= s.bottom + 1; }); await page.click('.editor [data-rc=black]'); await dragOn(page, [0.01, 0.01], [0.49, 0.49]);
+  await page.click('.editor [data-tab=annotate]');
+  const fitsA = await page.evaluate(() => { const c = document.querySelector('.editor canvas').getBoundingClientRect(), s = document.querySelector('.editor .stage').getBoundingClientRect(); return c.top >= s.top - 1 && c.bottom <= s.bottom + 1 && c.height > 100; });
+  record('C0', 'The whole picture stays in view in every mode (never under the controls)', fits && fitsA, JSON.stringify({ redact: fits, annotate: fitsA }));
+  await page.click('.editor [data-at=label]'); await page.waitForSelector('.editor [data-lbl="Ao"]');
+  const aaaFirst = await page.$$eval('.editor .ed-pop .ed-lab', (l) => l[1] && l[1].textContent);
+  await page.click('.editor [data-lbl="Ao"]'); await sleep(200);
+  await page.click('.editor [data-sa=done]');
+  await page.click('.editor [data-col=red]'); await page.click('.editor [data-at=dot]');
+  await tapOn(page, [0.75, 0.75]);
+  await page.evaluate(() => { const s = document.querySelector('.editor [data-scrub]'); s.value = 1.5; s.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(600);
+  await page.click('.editor [data-when=from]'); await sleep(200);
+  const whenText = await text(page, '.editor [data-whentext]');
+  record('C2', 'A clip annotation can show from a moment on, and the editor says when', /from 1\.5 s to the end of the kept clip/.test(whenText || ''), whenText);
+  await page.click('.editor [data-sa=done]');
+  // Back to the start: at 0 s the dot is not drawn, the label and the redaction are.
+  await page.evaluate(() => { const s = document.querySelector('.editor [data-scrub]'); s.value = 0.2; s.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(600);
+  const p0 = named(await sampleCanvas(page, { tl: [0.25, 0.25], dot: [0.75, 0.75], c: [0.5, 0.5] }));
+  record('C3', 'Preview at 0.2 s: redaction black, dot not yet shown', p0.tl === 'black' && p0.dot === 'yellow', JSON.stringify(p0));
+  await shot(page, 'C3-clip-annotated');
+  // Rotate a quarter turn: everything moves together. Then prepare and save.
+  await page.click('.editor [data-tab=adjust]'); await page.click('.editor [data-a=rotate]'); await sleep(300);
+  const pvPng = await page.evaluate(() => document.querySelector('.editor canvas').toDataURL('image/png'));
+  await page.check('.editor [data-decl]', { force: true });
+  await page.click('.editor [data-a=save]');
+  const prog = [];
+  for (let i = 0; i < 60; i++) { const t = await page.evaluate(() => { const b = document.querySelector('.editor [data-a=save]'); return b ? b.textContent : 'closed'; }); prog.push(t); if (t === 'closed') break; await sleep(250); }
+  record('C4', 'Preparing the clip shows progress and the editor closes when done', prog.some((t) => /Preparing clip/.test(t)) && prog[prog.length - 1] === 'closed', prog.filter((t, i) => i === 0 || t !== prog[i - 1]).join(' > '));
+  await saveScan(page);
+  // Rotated a quarter turn clockwise: the redaction (was top-left) is top-right; the dot (was bottom-right) is bottom-left.
+  const fr = await clipFrames(page, acc.id, [0.1, 0.8, 1.2, 1.7, 2.3, 2.85], { red: [0.75, 0.25], dot: [0.25, 0.75], other: [0.25, 0.25] });
+  const okRed = fr && fr.out && fr.out.every((o) => cname(o.red) === 'black');
+  const dots = fr && fr.out ? fr.out.map((o) => cname(o.dot)) : [];
+  record('C5', 'Redaction is black in every exported frame checked (start, middle, end; 6 frames)', okRed && fr.w < fr.h, JSON.stringify(fr && fr.out ? { size: [fr.w, fr.h], red: fr.out.map((o) => cname(o.red)) } : fr));
+  record('C6', 'The timed annotation is absent before 1.5 s and present after, in the exported frames', dots.slice(0, 3).every((d) => d !== 'red') && dots.slice(3).every((d) => d === 'red'), dots.join(', '));
+  record('C7', 'Stored duration is the length recorded (about 3 s), annotations kept as data (burnt in), first-session provenance', fr && fr.dur > 2.5 && fr.dur <= 3.6 && fr.annot && fr.annot.burnt && fr.annot.ann.length === 2 && fr.annot.ann.some((a) => a.t0 === 1.5) && fr.prov && fr.prov[0].redact === 1 && !fr.hasBase, JSON.stringify({ dur: fr && fr.dur, annot: fr && fr.annot, prov: fr && fr.prov }));
+  // The first exported frame against the preview at the moment of saving (video compression allowed for).
+  const firstDiff = await page.evaluate(([id, png]) => new Promise((ok) => {
+    const r = indexedDB.open('wavelength-' + id);
+    r.onsuccess = () => { const q = r.result.transaction('images').objectStore('images').getAll(); q.onsuccess = () => { r.result.close(); const d = q.result.filter((x) => x.kind === 'clip').sort((a, b) => b.created - a.created)[0];
+      const v = document.createElement('video'); v.muted = true; v.src = URL.createObjectURL(d.blob); const im = new Image();
+      v.onloadeddata = () => { v.currentTime = 0.05; };
+      v.onseeked = () => { im.onload = () => { const W = v.videoWidth, H = v.videoHeight; const a = document.createElement('canvas'); a.width = W; a.height = H; a.getContext('2d').drawImage(v, 0, 0); const b = document.createElement('canvas'); b.width = W; b.height = H; b.getContext('2d').drawImage(im, 0, 0, W, H); const pa = a.getContext('2d').getImageData(0, 0, W, H).data, pb = b.getContext('2d').getImageData(0, 0, W, H).data; let s = 0; for (let i = 0; i < pa.length; i += 4) s += Math.abs(pa[i] - pb[i]) + Math.abs(pa[i + 1] - pb[i + 1]) + Math.abs(pa[i + 2] - pb[i + 2]); ok({ mean: s / (W * H * 3), size: [W, H] }); }; im.src = png; };
+    }; };
+  }), [acc.id, pvPng]);
+  record('C8', 'The saved clip matches the edited preview (first frame, mean difference under 12 of 255)', firstDiff && firstDiff.mean < 12, JSON.stringify(firstDiff));
+  record('C9', 'Label sets follow the scan type (AAA first for an AAA scan)', aaaFirst === 'AAA', aaaFirst);
+  // A clip that fails part-way adds nothing; the editor stays open with an error (as in 1.0.11).
+  await go(page, '#/new?type=aaa'); await sleep(1500);
+  await page.setInputFiles('#vpick', clip); await page.waitForSelector('.editor canvas'); await sleep(2000);
+  const galBefore = await page.evaluate(() => document.querySelectorAll('#gal img').length);
+  await page.evaluate(() => { const s = MediaRecorder.prototype.start; MediaRecorder.prototype.start = function (t) { s.call(this, t); setTimeout(() => this.onerror && this.onerror(new Event('error')), 400); }; });
+  await page.check('.editor [data-decl]', { force: true });
+  await page.click('.editor [data-a=save]'); await sleep(4000);
+  const fail = await page.evaluate(() => ({ open: !!document.querySelector('.editor'), btn: (document.querySelector('.editor [data-a=save]') || {}).textContent, gal: document.querySelectorAll('#gal img').length, err: (document.querySelector('.editor [data-err]') || {}).textContent || '' }));
+  record('C10', 'A clip that fails to prepare is not added: editor open, error shown, Use this clip available again', fail.open && fail.gal === galBefore && /Use this clip/.test(fail.btn || '') && fail.err.length > 5, JSON.stringify(fail));
+  await page.evaluate(() => { const c = document.querySelector('.editor [data-a=cancel]'); c && c.click(); });
+  await ctx.close();
+}
+
+// ---------- B: annotations and the redacted copy survive an encrypted backup and a restore on another phone ----------
+if (want('B')) {
+  globalThis.window = globalThis.window || globalThis;
+  window.WLBackupArgon2 = await import('../src/app/vendor/noble-hashes/argon2.js');
+  for (const f of ['zip.js', 'backup.js']) new Function(fs.readFileSync(new URL('../src/app/' + f, import.meta.url), 'utf8'))();
+  const PASSPHRASE = 'orange tiger lamp river';
+  const A = await phone();
+  const img = await testImage(A.page);
+  await go(A.page, '#/new?type=lung'); await sleep(1500);
+  await A.page.setInputFiles('#pick', img); await A.page.waitForSelector('.editor canvas'); await sleep(500);
+  await A.page.click('.editor [data-tab=redact]'); await dragOn(A.page, [0.02, 0.02], [0.48, 0.48]);
+  await A.page.click('.editor [data-tab=annotate]'); await A.page.click('.editor [data-at=label]'); await A.page.click('.editor [data-lbl="Pleura"]'); await sleep(200);
+  await A.page.check('.editor [data-decl]', { force: true }); await A.page.click('.editor [data-a=save]'); await A.page.waitForSelector('.editor', { state: 'detached' });
+  await saveScan(A.page);
+  const orig = await sampleStored(A.page, A.acc.id, null, { tl: [0.05, 0.05], c: [0.5, 0.5] });
+  await go(A.page, '#/backup'); await A.page.waitForSelector('#bkf');
+  await A.page.fill('#bkp', PASSPHRASE); await A.page.fill('#bkp2', PASSPHRASE); await A.page.check('#bkok'); await A.page.click('#bk');
+  const made = await A.page.waitForSelector('text=Encrypted backup created', { timeout: 90000 }).then(() => true, () => false);
+  const files = await A.page.evaluate(() => window.__files || {});
+  const fname = Object.keys(files).find((k) => /^backup\/Wavelength-backup-.*\.wlbackup$/.test(k));
+  const file = fname ? Buffer.concat(files[fname].map((b) => Buffer.from(b, 'base64'))) : Buffer.alloc(0);
+  const plain = [];
+  await WLBackup.decrypt(PASSPHRASE, async (o, n) => new Uint8Array(file.subarray(o, o + n)), file.length, (p) => { plain.push(Buffer.from(p)); });
+  const zip = Buffer.concat(plain);
+  const inside = WLZip.unzip(zip.buffer.slice(zip.byteOffset, zip.byteOffset + zip.length));
+  const man = JSON.parse(Buffer.from(inside['wavelength-backup.json']).toString());
+  const im = man.images.find((x) => x.id === orig.id);
+  const order = Object.keys(inside);
+  record('B1', 'The encrypted backup carries the annotations as data and the redacted copy, before the photo itself', made && man.version === 3 && im && im.annot && im.annot.ann[0].text === 'Pleura' && im.base && inside[im.base] && order.indexOf(im.base) < order.indexOf(im.file) && im.prov, JSON.stringify({ made, version: man.version, annot: im && im.annot, base: im && im.base, prov: im && im.prov }));
+  const fpath = path.join(OUT, 'b1012.wlbackup'); fs.writeFileSync(fpath, file);
+  await A.ctx.close();
+  // Phone B: same account, a new phone. Restore, then open the photo for editing: the annotation is still editable.
+  const B = await phone({ acc: A.acc });
+  await go(B.page, '#/backup'); await B.page.waitForSelector('#rf', { state: 'attached' });
+  await B.page.setInputFiles('#rf', fpath); await B.page.waitForSelector('#rpf');
+  await B.page.fill('#rpp', PASSPHRASE); await B.page.click('#rpf button.teal');
+  await B.page.waitForFunction(() => document.body.innerText.includes('Restored'), null, { timeout: 90000 }).catch(() => {});
+  await sleep(800);
+  const rest = await sampleStored(B.page, A.acc.id, orig.id, { tl: [0.05, 0.05], c: [0.5, 0.5] });
+  record('B2', 'Restored on another phone: the same pixels (redaction black), the annotations and the redacted copy', rest && rest.annot && rest.annot.ann[0].text === 'Pleura' && rest.hasBase && cname(rest.o.tl) === 'black' && JSON.stringify(rest.o) === JSON.stringify(orig.o), JSON.stringify({ annot: rest && rest.annot, base: rest && rest.hasBase, tl: rest && cname(rest.o.tl) }));
+  const entryId = await B.page.evaluate((id) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id); r.onsuccess = () => { const q = r.result.transaction('images').objectStore('images').getAll(); q.onsuccess = () => { r.result.close(); ok((q.result[0] || {}).entryId); }; }; }), A.acc.id);
+  await go(B.page, '#/edit/' + entryId); await B.page.waitForSelector('#gal [data-edold]'); await sleep(500);
+  await B.page.click('#gal [data-edold]'); await B.page.waitForSelector('.editor canvas'); await sleep(500);
+  const picks = await B.page.$$eval('.editor [data-pick]', (b) => b.map((x) => x.textContent));
+  const tl = named(await sampleCanvas(B.page, { tl: [0.05, 0.05] }));
+  record('B3', 'After restore the photo opens for editing with its annotation, and the redaction cannot be undone', picks.join() === '“Pleura”' && tl.tl === 'black', `${picks.join()}; top-left ${tl.tl}`);
+  await B.page.click('.editor [data-a=cancel]');
+  await B.ctx.close();
+  // B4 a phone still on 1.0.11 restores the same file: the photo (with its annotation in the pixels) comes back, and
+  // the new fields are ignored. Needs the 1.0.11 bundle: REF_BUNDLE=<dir>.
+  if (process.env.REF_BUNDLE) {
+    const fresh = await account('Old', 'Phone');
+    const C = await phone({ acc: fresh, bundle: path.resolve(process.env.REF_BUNDLE) });
+    await go(C.page, '#/backup'); await C.page.waitForSelector('#rf', { state: 'attached' });
+    await C.page.setInputFiles('#rf', fpath); await C.page.waitForSelector('#rpf');
+    await C.page.fill('#rpp', PASSPHRASE); await C.page.click('#rpf button.teal');
+    await C.page.waitForSelector('.sheet [data-ok]', { timeout: 60000 }).then(() => C.page.click('.sheet [data-ok]')).catch(() => {});
+    await C.page.waitForFunction(() => document.body.innerText.includes('Restored'), null, { timeout: 90000 }).catch(() => {});
+    await sleep(800);
+    const old = await sampleStored(C.page, fresh.id, orig.id, { tl: [0.05, 0.05], c: [0.5, 0.5] });
+    record('B4', 'A 1.0.11 phone restores a 1.0.12 backup: the photo as saved (redaction and annotation in the pixels)', old && old.o && cname(old.o.tl) === 'black' && JSON.stringify(old.o) === JSON.stringify(orig.o), JSON.stringify(old && old.o ? named(old.o) : old));
+    await C.ctx.close();
   }
 }
 
