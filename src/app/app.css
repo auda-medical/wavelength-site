@@ -748,3 +748,13 @@ a.evmod:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 .req-order { text-align: center; margin: 6px 0 0; }
 .req-done { border-color: var(--green-line); }
 @media (prefers-reduced-motion: reduce) { .req-dots button::after { transition: none; } }
+
+/* 1.0.12: scroll reveal (revealIn in app.js). Applied only to sections that start below the visible screen. */
+.rv { opacity: 0; transform: translate3d(0, 14px, 0); }
+.rv.in { opacity: 1; transform: none; transition: opacity .26s cubic-bezier(.22,.61,.36,1) var(--rv-d, 0ms), transform .26s cubic-bezier(.22,.61,.36,1) var(--rv-d, 0ms); }
+@media (prefers-reduced-motion: reduce) { .rv, .rv.in { opacity: 1; transform: none; transition: none; } }
+@media print { .rv { opacity: 1; transform: none; } }
+/* 1.0.12: a little depth on cards in the light theme (a hairline shadow under the existing border); none in dark. */
+.card:not(.dark):not(.teal) { box-shadow: 0 1px 2px rgba(15,30,51,.04), 0 4px 14px -10px rgba(15,30,51,.18); }
+html[data-theme="dark"] .card:not(.dark):not(.teal), html[data-theme="dark"] .req { box-shadow: none; }
+.sheet .card, .card .card { box-shadow: none; }

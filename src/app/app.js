@@ -776,8 +776,44 @@
     setSyncDot();
     // A new screen fades in once (CSS, 180 ms, none with reduced motion). A redraw of the same screen does not.
     if (!soft) { var mn = $('main', app); if (mn) mn.classList.add('enter'); }
-    if (!soft) announce();
     if (soft) window.scrollTo(0, keepScroll);
+    revealIn(soft);
+    if (!soft) announce();
+  }
+  // 1.0.12: sections rise and fade in once as they first scroll into view, a restrained version of the website's
+  // (14 px and 260 ms here, 28 px and 1 s there). Only what starts below the visible screen is held back, so nothing
+  // already on screen is delayed; nothing in the scan form or the logbook list animates; once shown it stays shown,
+  // so scrolling back never replays it. One IntersectionObserver, no scroll handler; opacity and transform only.
+  // Off with reduced motion, without IntersectionObserver, and on soft redraws (sync updates do not replay it).
+  var REVEAL_VIEWS = { home: 1, progress: 1, supervise: 1, supervisors: 1, guides: 1, outstanding: 1, supervisor: 1, me: 1, assess: 1, evidence: 1 };
+  var REVEAL_SEL = 'main > .card, main > h2.sec, main > .reqs, main > .mod, main > .entry, main > details.card, main > .guide-sec, main > .btns, main > section.card, main > .legend, main > a.card';
+  // revealSeen: how far down this screen (page y) has already been shown. A redraw of the same screen (a sync, the
+  // account arriving) holds back only what lies below that line and below the visible screen, so content already seen
+  // never animates twice. A new screen starts again at the bottom of what is visible.
+  var revealIO = null, revealSeen = 0;
+  function revealIn(soft) {
+    if (revealIO) { revealIO.disconnect(); revealIO = null; }
+    var y0 = window.pageYOffset, vh = window.innerHeight;
+    if (!soft) revealSeen = y0 + vh;
+    if (!window.IntersectionObserver || reducedMotion() || !REVEAL_VIEWS[route().name]) return;
+    var line = Math.max(revealSeen, y0 + vh) - 8, els = $$(REVEAL_SEL, app);
+    // Read every position first, then write: one layout pass.
+    var below = els.filter(function (el) { return el.getBoundingClientRect().top + y0 > line; });
+    if (!below.length) return;
+    below.forEach(function (el) { el.classList.add('rv'); });
+    revealIO = new IntersectionObserver(function (es) {
+      var k = 0, py = window.pageYOffset;
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        revealIO.unobserve(e.target);
+        revealSeen = Math.max(revealSeen, e.boundingClientRect.bottom + py);
+        e.target.style.setProperty('--rv-d', Math.min(k++, 3) * 55 + 'ms');
+        e.target.classList.add('in');
+        // Afterwards the element carries no transform at all, so later layout and stacking are unchanged.
+        setTimeout(function () { e.target.classList.remove('rv', 'in'); e.target.style.removeProperty('--rv-d'); }, 520);
+      });
+    }, { rootMargin: '0px 0px -6% 0px', threshold: 0.01 });
+    below.forEach(function (el) { revealIO.observe(el); });
   }
   // A small live region announces each new screen by its title; the screen itself is not a live region.
   function announce(text) {
@@ -2406,7 +2442,7 @@
   // (SUPERVISOR_APPROVAL_REQUIRED), so the guide never describes rules that are not in force.
   function supervisionGuideHtml() {
     var req = !!((S.me && S.me.supervisor && S.me.supervisor.required) || (S.links && S.links.me && S.links.me.enforced));
-    var sec = function (id, h, ps) { return '<section class="card guide-sec reveal" id="g-' + id + '"><h3>' + esc(T(h)) + '</h3>' + ps.map(function (p) { return '<p class="small">' + esc(T(p)) + '</p>'; }).join('') + '</section>'; };
+    var sec = function (id, h, ps) { return '<section class="card guide-sec" id="g-' + id + '"><h3>' + esc(T(h)) + '</h3>' + ps.map(function (p) { return '<p class="small">' + esc(T(p)) + '</p>'; }).join('') + '</section>'; };
     return '<div class="card dark"><h3>' + esc(T('How supervisor verification works')) + '</h3><p class="muted small">' + esc(T('Five separate things: the invitation, the supervisor\'s professional registration, Wavelength\'s approval, your programme\'s own rules, and the supervision relationship itself.')) + '</p></div>' +
       sec('invite', 'Invitations', ['You invite a supervisor by email from Me, Your supervisors. They get an email from Wavelength with your name on it. The invitation link works for 30 days, and you can resend it or share a message yourself.', 'Hospital and NHS email often files a first message from a new sender as junk, so ask them to check.']) +
       sec('accept', 'Acceptance', ['Your supervisor accepts in their own Wavelength app, logged in with the email address you invited. Wavelength checks they own that address, through the invitation link or a confirmation email.', 'Until they accept, they show as "Invitation sent". That is normal.']) +
@@ -2553,6 +2589,7 @@
       $$('[data-sv-as]').forEach(function (b) { b.onclick = function () { dashAssess(res.assessmentRequests[Number(b.dataset.svAs)], id); }; });
       $('#newas').onclick = function () { dashAssessNew(res, id); };
       var en = $('[data-end]'); if (en) en.onclick = function () { endSupervision({ linkId: linkId, side: 'supervisor', name: res.learner.name, active: true }); };
+      revealIn(true);
     }).catch(function (ex) { svFail(T('Learner'), 'supervise', ex); });
   }
   function svScanCard(e) { return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T((TYPES[e.type] || {}).label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + (e.images ? ' · ' + esc(plural(e.images, 'image')) : '') + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (e.signoff && e.signoff.status === 'confirmed' ? '<span class="chip green">' + esc(T('Signed off')) + ratingDots(e.signoff.rating) + '</span>' : '<span class="chip">' + esc(T('Not signed')) + '</span>') + '</div></div>'; }

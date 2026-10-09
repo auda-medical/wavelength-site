@@ -250,6 +250,89 @@ if (want('H')) {
   }
 }
 
+// ---------- M: motion ----------
+const rvState = (page) => page.evaluate(() => ({ rv: document.querySelectorAll('.rv').length, hidden: [...document.querySelectorAll('.rv')].filter((e) => getComputedStyle(e).opacity === '0').length, inView: [...document.querySelectorAll('main > *')].filter((e) => { const r = e.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }).filter((e) => e.classList.contains('rv')).length }));
+// A long Home: many scans, supervising learners, a pathway with modules, so there is plenty below the fold.
+async function busyAccount() {
+  const acc = await account('Mo', 'Tion', ['rcem', 'famus']);
+  const types = ['aaa', 'efast', 'lung', 'cardiac', 'dvt'];
+  await call(acc, 'sync', { entries: Array.from({ length: 40 }, (_, i) => ({ id: `m1012${acc.id}x${i}xx`, type: types[i % 5], date: new Date(Date.now() - i * 864e5).toISOString().slice(0, 10), supervision: i % 3 ? 'direct' : 'independent', createdAt: Date.now() - i, updatedAt: 0 })) });
+  return acc;
+}
+if (want('M')) {
+  const acc = await busyAccount();
+  {
+    const { ctx, page } = await phone({ acc });
+    const s0 = await rvState(page);
+    record('M1', 'On arrival nothing on screen is held back; sections below are waiting', s0.inView === 0 && s0.rv > 0 && s0.hidden === s0.rv, JSON.stringify(s0));
+    // Scroll a little and sample one element's opacity and offset over the transition.
+    const samples = await page.evaluate(async () => {
+      const el = document.querySelector('.rv'); if (!el) return null;
+      el.scrollIntoView({ block: 'center' });
+      const out = [], t0 = performance.now();
+      await new Promise((ok) => { const f = () => { const cs = getComputedStyle(el); const m = new DOMMatrixReadOnly(cs.transform === 'none' ? undefined : cs.transform); out.push([Math.round(performance.now() - t0), Number(cs.opacity).toFixed(2), m.m42.toFixed(1)]); if (performance.now() - t0 < 700) requestAnimationFrame(f); else ok(); }; requestAnimationFrame(f); });
+      return out;
+    });
+    const rising = samples && samples.some((x) => Number(x[1]) > 0 && Number(x[1]) < 1 && Number(x[2]) > 0 && Number(x[2]) < 14) && samples[samples.length - 1][1] === '1.00' && samples[samples.length - 1][2] === '0.0';
+    record('M2', 'A section rises (under 14 px) and fades in, then settles fully visible', rising, samples ? samples.filter((_, i) => i % 4 === 0).map((x) => x.join('/')).join(' ') : 'none');
+    // Down to the bottom and back up: everything ends visible, nothing is hidden again.
+    await page.evaluate(async () => { for (let y = 0; y <= document.body.scrollHeight; y += 300) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } await new Promise((r) => setTimeout(r, 700)); for (let y = document.body.scrollHeight; y >= 0; y -= 300) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 40)); } });
+    await sleep(700);
+    const s1 = await rvState(page);
+    record('M3', 'After scrolling down and back up every section is visible and none animates again', s1.rv === 0, JSON.stringify(s1));
+    // A soft redraw (sync) does not replay it.
+    await page.evaluate(() => scrollTo(0, 0)); await page.click('button.sync-pill'); await sleep(300); await page.keyboard.press('Escape');
+    await page.evaluate(() => window.dispatchEvent(new Event('online'))); await sleep(2500);
+    record('M4', 'Sync updates redraw without replaying the motion', (await rvState(page)).rv === 0, JSON.stringify(await rvState(page)));
+    await go(page, '#/new'); await page.waitForSelector('form'); await sleep(400);
+    await page.evaluate(() => scrollTo(0, 3000)); await sleep(300);
+    record('M5', 'The scan form never animates its sections or fields', (await rvState(page)).rv === 0 && (await page.$$eval('form .rv', (x) => x.length)) === 0, '');
+    await page.evaluate(() => { const f = document.querySelector('form[data-dirty]'); if (f) delete f.dataset.dirty; });
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await phone({ acc, reduced: true });
+    await page.evaluate(async () => { for (let y = 0; y <= document.body.scrollHeight; y += 400) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 40)); } });
+    record('M6', 'Reduced motion: no section is ever held back or moved', (await rvState(page)).rv === 0, '');
+    await ctx.close();
+  }
+  // M7 frame timing while scrolling Home and a long Progress page, CPU slowed 4x, with and without the motion.
+  {
+    const measure = async (reduced) => {
+      const { ctx, page } = await phone({ acc, reduced });
+      const cdp = await ctx.newCDPSession(page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+      const out = {};
+      for (const h of ['#/', '#/progress/famus']) {
+        await go(page, h); await sleep(900);
+        out[h] = await page.evaluate(async () => {
+          scrollTo(0, 0); await new Promise((r) => setTimeout(r, 200));
+          const gaps = []; let last = performance.now(), y = 0, run = true;
+          const f = (t) => { gaps.push(t - last); last = t; if (run) requestAnimationFrame(f); };
+          requestAnimationFrame(f);
+          while (y < document.body.scrollHeight - innerHeight) { y += 24; scrollTo(0, y); await new Promise((r) => requestAnimationFrame(r)); }
+          await new Promise((r) => setTimeout(r, 400)); run = false;
+          gaps.sort((a, b) => a - b);
+          return { frames: gaps.length, median: +gaps[Math.floor(gaps.length / 2)].toFixed(1), p95: +gaps[Math.floor(gaps.length * 0.95)].toFixed(1), over50: gaps.filter((g) => g > 50).length };
+        });
+      }
+      await ctx.close();
+      return out;
+    };
+    const on = await measure(false), off = await measure(true);
+    const ok = Object.keys(on).every((h) => on[h].p95 <= off[h].p95 * 1.25 + 4 && on[h].over50 <= off[h].over50 + 2);
+    record('M7', 'Scrolling with the motion is as smooth as without it (CPU 4x slower; p95 frame gap within 25%)', ok, JSON.stringify({ motion: on, reduced: off }));
+  }
+  // A short recording of Home scrolling, for the owner to watch.
+  {
+    const { ctx, page } = await phone({ acc, video: true });
+    await sleep(600);
+    await page.evaluate(async () => { for (let y = 0; y <= document.body.scrollHeight; y += 6) { scrollTo(0, y); await new Promise((r) => requestAnimationFrame(r)); } });
+    await sleep(800);
+    const v = page.video(); await ctx.close();
+    if (v) { const f = await v.path(); fs.renameSync(f, path.join(VIDS, 'M-home-scroll-reveal.webm')); }
+  }
+}
+
 fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, errors }, null, 2));
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length} of ${results.length} passed${errors.length ? `; ${errors.length} page errors` : ''}`);
