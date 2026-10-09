@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Обучающийся установил собственную цель для этого модуля, отличную от цифры программы.",
 "12": "12",
@@ -2074,5 +2074,8 @@
 "few": "{n} варианта",
 "many": "{n} вариантов",
 "other": "{n} варианта"
-}
+},
+"Choose a supervision link.": "Выберите связь с супервизором.",
+"Confirm your email address to decline this invitation.": "Подтвердите адрес электронной почты, чтобы отклонить это приглашение.",
+"This supervision link was not found.": "Эта связь с супервизором не найдена."
 }

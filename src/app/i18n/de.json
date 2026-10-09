@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Die lernende Person hat für dieses Modul ein eigenes Ziel gesetzt, das von der Curriculumvorgabe abweicht.",
 "12": "12",
@@ -2018,5 +2018,8 @@
 "{n} suggestions": {
 "one": "{n} Vorschlag",
 "other": "{n} Vorschläge"
-}
+},
+"Choose a supervision link.": "Wählen Sie eine Supervisionsverbindung.",
+"Confirm your email address to decline this invitation.": "Bestätigen Sie Ihre E-Mail-Adresse, um diese Einladung abzulehnen.",
+"This supervision link was not found.": "Diese Supervisionsverbindung wurde nicht gefunden."
 }

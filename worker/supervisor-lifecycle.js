@@ -381,5 +381,31 @@ export function linkState(link, sup, enforced) {
   if (sup && sup.open && sup.open.status !== 'draft') return { state: 'verifying', label: 'Supervisor verification in progress' };
   return { state: 'unavailable', label: 'Not available for new supervision' };
 }
+// 1.0.12: the stage of one supervision relationship, finer than linkState's label, so the app can say what is
+// happening and what comes next. Derived on every read from the link and the supervisor's standing; never stored.
+// It keeps the relationship (invitation, acceptance, ended) apart from the supervisor's verification (application,
+// professional registration check, Wavelength approval, pause). Private reasons are never exposed: a block, a
+// revocation or a rejection all read as 'unavailable'.
+//   awaiting_acceptance                 invitation sent, the supervisor has not accepted
+//   verification_not_submitted          accepted (approval required), no supervisor application sent yet
+//   awaiting_professional_verification  application sent, professional registration not yet verified
+//   awaiting_approval                   application sent, registration verified (or not needed), decision pending
+//   approved                            active link, current Wavelength approval
+//   not_verified                        active link without approval while approval is not enforced
+//   paused                              approval held but not current (a lapse); no new verified supervision
+//   unavailable                         not available for supervision through Wavelength at present
+//   ended                               the relationship has ended
+export function relationshipStage(link, sup, enforced) {
+  if (link.status === 'ended') return 'ended';
+  if (link.status === 'pending' && (!link.supervisor_id || !link.claimed_at)) return 'awaiting_acceptance';
+  if (sup && sup.block) return 'unavailable';
+  if (sup && sup.current.length) return link.status === 'active' ? 'approved' : 'awaiting_approval';
+  const open = sup && sup.open && sup.open.status !== 'draft' ? sup.open : null;
+  if (open) return sup.status && !sup.status.hasReg ? 'awaiting_professional_verification' : 'awaiting_approval';
+  if (sup && sup.standing === 'paused') return 'paused';
+  if (sup && ['expired', 'withdrawn', 'revoked'].includes(sup.standing) && (enforced || link.status === 'pending')) return 'unavailable';
+  if (link.status === 'pending') return 'verification_not_submitted';
+  return enforced ? 'unavailable' : 'not_verified';
+}
 export const SITE_APP = `${SITE}/app/#`;
 export { parseTs };

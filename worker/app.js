@@ -5,7 +5,7 @@
 //        evidence, evidence/withdraw
 //        assessment/request, assessment/inperson, assessment/cancel, assessment/complete (link), supervisors/add|remove|accept,
 //        supervise/signoff, supervise/assessment, supervise/assessment/new (see supervise.js)
-//   GET  assessments, supervisors, supervise/learner?id=, supervise/signoff?code=, assessment/view?t=
+//   GET  assessments, supervisors, supervise/learner?id=, supervise/learner/scans?id=&filter= (1.0.12), supervise/signoff?code=, assessment/view?t=
 //   GET  me, sync?since=, signoffs, evidence, signoff/view?t=, verify?code= (SO- sign-offs and EV- evidence summaries)
 //   POST signoff/image?code=&entry=&n= (encrypted bytes), signoff/images (manifest)   GET signoff/image?t=&entry=&n=
 //   POST email/verify (public, token), email/resend, supervisors/accept-invite   (worker/email-verify.js)
@@ -726,6 +726,7 @@ async function routeApp(req, env, ctx, url, p) {
   if (p === 'assessments') return SV.assessmentList(env, l);
   if (p === 'supervisors') return SV.supervisorLinks(env, l);
   if (p === 'supervise/learner') return SV.superviseLearner(env, l, url);
+  if (p === 'supervise/learner/scans') return SV.superviseLearnerScans(env, l, url);
   if (p === 'supervise/signoff') return SV.superviseSignoffView(env, l, url);
   const found = await handleSearch(env, l, req, url, p, ctx, body);
   if (found) return found;
