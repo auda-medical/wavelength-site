@@ -466,6 +466,10 @@ test('the verification view: precedence, grouping and the learner audience', () 
   assert.deepEqual(Object.keys(lv).sort(), ['approved', 'reviewOn', 'state', 'v', 'verified']);
   assert.equal(verificationView(st(), { standing: 'revoked' }, { audience: 'learner' }).state, 'not_verified');
   assert.equal(groupLine(approvedGroups([ap('famus', '*')])[0]), 'FAMUS pathway, supervisor: all FAMUS modules');
+  // Verified on is the UK date: 23:30 UTC on 30 June is 1 July in the UK; SQLite's own datetime format is UTC too.
+  assert.equal(approvedGroups([ap('famus', 'famus-dvt', { approved_at: '2026-06-30T23:30:00.000Z' })])[0].verifiedOn, '2026-07-01');
+  assert.equal(approvedGroups([ap('famus', 'famus-dvt', { approved_at: '2026-06-30 23:30:00' })])[0].verifiedOn, '2026-07-01');
+  assert.equal(approvedGroups([ap('famus', 'famus-dvt', { approved_at: '2026-12-31T23:30:00.000Z' })])[0].verifiedOn, '2026-12-31');
   assert.equal(groupLine(approvedGroups([ap('eusem2', 'eusem2-chest'), ap('eusem2', 'eusem2-ocular'), ap('eusem2', 'eusem2-proc')])[0]), 'EUSEM advanced pathway, supervisor: Chest, advanced; Ocular, advanced; Procedures, advanced', 'names holding commas are kept apart');
   assert.equal(groupLine(approvedGroups([ap('eusem', 'eusem-chest'), ap('eusem', 'eusem-ocular')])[0]), 'EUSEM pathway, supervisor: Chest: heart and lung; Ocular');
   assert.equal(groupLine(approvedGroups([ap('fusic', 'fusic-heart', { capacity: 'mentor' }), ap('fusic', 'fusic-lung', { capacity: 'mentor' }), ap('fusic', 'fusic-dvt', { capacity: 'mentor' })])[0]), 'FUSIC pathway, mentor: Heart, Lung and DVT');

@@ -24,13 +24,22 @@
 // registration numbers or evidence.
 import LOGBOOK from '../../data/logbook.json';
 import CFG from '../../data/credentials.json';
+import { ukDate } from '../time.js';
 import { capacityLabel } from './pathways.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
 const TYPES = Object.fromEntries(CFG.credentialTypes.map((t) => [t.id, t]));
 const BODIES = Object.fromEntries(CFG.bodies.map((b) => [b.id, b]));
 const list = (s) => { try { const v = JSON.parse(s || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } };
-const day = (v) => (v ? String(v).slice(0, 10) : null);
+// The UK calendar date of a stored time (ISO, or SQLite's 'YYYY-MM-DD HH:MM:SS' in UTC): an approval at 23:30 UTC in
+// summer is the next day in the UK. A bare date is kept as it is.
+const day = (v) => {
+  if (!v) return null;
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const t = Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(s) ? s : s.replace(' ', 'T') + 'Z');
+  return Number.isFinite(t) ? ukDate(t) : s.slice(0, 10);
+};
 
 // Current approval rows grouped by pathway and role, in logbook order. Each group: the pathway, the verified role
 // (capacity), the approved modules (or every module), the date Wavelength last verified it (approval or renewal) and
