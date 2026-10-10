@@ -58,9 +58,13 @@ export function approvedGroups(approvals) {
     .map((g) => ({ ...g, modules: g.allModules ? [] : g.modules.sort((x, y) => mods(g.pathway).indexOf(x.id) - mods(g.pathway).indexOf(y.id)) }))
     .sort((x, y) => order.indexOf(x.pathway) - order.indexOf(y.pathway) || x.roleLabel.localeCompare(y.roleLabel));
 }
-// One line per group, for emails and the admin console: "FAMUS pathway, supervisor: Thoracic and DVT".
+// One line per group, for emails and the admin console: "FAMUS pathway, supervisor: Thoracic and DVT". Module
+// names that hold a comma or "and" themselves ("Chest, advanced", "Chest: heart and lung") are kept apart with
+// semicolons, so the list cannot be misread.
 export function groupLine(g) {
-  const mods = g.allModules ? `all ${g.pathwayLabel} modules` : g.modules.map((m) => m.label).reduce((s, x, i, a) => (i === 0 ? x : i === a.length - 1 ? `${s} and ${x}` : `${s}, ${x}`), '');
+  const labels = g.modules.map((m) => m.label);
+  const semi = labels.some((x) => /,| and /.test(x));
+  const mods = g.allModules ? `all ${g.pathwayLabel} modules` : semi ? labels.join('; ') : labels.reduce((s, x, i, a) => (i === 0 ? x : i === a.length - 1 ? `${s} and ${x}` : `${s}, ${x}`), '');
   return `${g.pathwayLabel} pathway, ${g.roleLabel.toLowerCase()}: ${mods}`;
 }
 
