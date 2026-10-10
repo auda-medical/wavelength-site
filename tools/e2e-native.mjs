@@ -32,7 +32,8 @@ const noOverflow = async (p, name) => { if (await p.evaluate(() => document.docu
 
 const { ctx, page } = await newApp();
 await page.goto('https://localhost/');
-await page.waitForSelector('#app .auth, #app form', { timeout: 15000 });
+// The start screen also has class auth (data-boot): wait for the screen after it, or typing races the start-up check.
+await page.waitForSelector('#app .auth:not([data-boot]), #app form', { timeout: 15000 });
 if (!(await page.evaluate(() => window.Capacitor.isNativePlatform() && window.WLNative.on))) fail('the bundle does not see itself as native');
 await page.screenshot({ path: `${out}/01-welcome.png` });
 ok('welcome screen opens from the bundle');
