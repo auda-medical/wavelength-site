@@ -247,6 +247,7 @@ function scopeBoxes(ticked, requested = []) {
 const basisBoxes = (creds, ticked = []) => (creds.length ? `<fieldset class="sv-checks"><legend>Credentials this approval relies on</legend>${creds.map((c) => `<label><input type="checkbox" name="basis" value="${c.id}"${ticked.includes(c.id) ? ' checked' : ''}>${esc((TYPE[c.credential_type] || {}).label || c.credential_type)}: ${esc(parseList(c.modules).join(', '))}</label>`).join('')}<small class="form-note">If one of these expires or is withdrawn, supervisor status pauses until it is current again.</small></fieldset>` : '<p class="form-note">No verified credentials. The approval rests on the registration and the application.</p>');
 const optionalNote = '<details class="sv-more"><summary>Add a note (optional)</summary><label>Note (internal, not sent)<textarea name="notes" maxlength="1000"></textarea></label></details>';
 const selfBox = '<div class="sv-banner sv-warn"><b>This looks like your own application.</b> Wavelength recommends that another administrator decides it. If you approve it yourself, it is recorded as a self-approval and listed for an independent review.<label class="consent"><input type="checkbox" name="self_ack" value="1"><span>I am approving my own supervisor status</span></label><label>What independent evidence supports it (required, recorded)<textarea name="self_reason" maxlength="1000"></textarea></label></div>';
+const selfBoxFor = (env) => (env.SUPERVISOR_SELF_APPROVAL === 'refuse' ? '<div class="sv-banner sv-warn"><b>This looks like your own application.</b> Another administrator must decide it (SUPERVISOR_SELF_APPROVAL is "refuse").</div>' : selfBox);
 // "Before approving": the three things a reviewer checks, read from the records.
 function checklist(st, creds) {
   const tick = (ok) => (ok ? '<span class="sv-ok-i" aria-label="Done">✓</span>' : '<span class="sv-no-i" aria-label="Not yet">✗</span>');
@@ -310,7 +311,7 @@ async function applicationDetail(env, appId, note, me = '') {
       ${basisBoxes(verifiedCreds, credIds)}
       <label>Approved until (12 months at most)<input type="date" name="review_on" value="${esc(until)}" max="${esc(until)}" required></label>
       ${st.hasReg ? '' : '<label class="consent"><input type="checkbox" name="exempt" value="1"><span>Registration exemption: approve without a verified registration</span></label><label>Reason for the exemption, and how you checked identity and experience instead<textarea name="exempt_reason" maxlength="1000"></textarea></label>'}
-      ${me && looksLikeSelf(st.learner, me) ? selfBox : ''}${optionalNote}
+      ${me && looksLikeSelf(st.learner, me) ? selfBoxFor(env) : ''}${optionalNote}
       <p class="form-note">Recorded automatically: who decided and when, the modules, role, credentials and evidence, and the status before and after. The supervisor is emailed once the approval is saved.</p>`, renewal ? 'Approve renewal' : 'Approve')}
   </div><details class="sv-more sv-other"><summary>Other decisions: ask for more information, reject${renewal ? ', end the grace period' : ''}, send the receipt</summary><div class="sv-actions">
     ${a.status === 'submitted' ? form('app_receipt', H, '<p class="form-note">Sends the applicant the normal receipt for their current submission if it was never sent. It never sends a second copy and changes nothing in the application.</p>', 'Send submission receipt') : ''}
@@ -406,7 +407,7 @@ async function detail(env, id, note, life = false, me = '') {
     ${scopeBoxes([], openApp ? jsonList(openApp.requested_pathways) : [...new Set(verifiedCreds.flatMap((c) => ((TYPE[c.credential_type] || {}).modules || []).map((m) => String(m.scope || '').split(':')[0]).filter(Boolean)))])}
     ${basisBoxes(verifiedCreds)}
     <label>${life ? 'Approved until (12 months at most)' : 'Review on'}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}"` : ''}></label>
-    ${me && looksLikeSelf(l, me) ? selfBox : ''}${optionalNote}`, 'Approve as Wavelength supervisor');
+    ${me && looksLikeSelf(l, me) ? selfBoxFor(env) : ''}${optionalNote}`, 'Approve as Wavelength supervisor');
   const selfRows = life ? await selfApprovals(env, id) : [];
   const review = selfRows.length ? `<div class="sv-banner sv-warn"><b>Independent review recommended.</b> The current approval was recorded by ${esc(reviewerOf(selfRows[0].approved_by) || 'an administrator')} on ${esc((selfRows[0].approved_at || '').slice(0, 10))}, who appears to be this supervisor. Another administrator should check the identity, registration and credentials and record the result. Nothing is revoked automatically.
     ${form('appr_independent_review', H, '<fieldset><legend>Outcome</legend><label class="consent"><input type="radio" name="outcome" value="confirmed" required><span>Confirmed: identity, registration and the approved modules are supported by independent evidence</span></label><label class="consent"><input type="radio" name="outcome" value="concerns"><span>Concerns: I will revoke or change the approval</span></label></fieldset><label>Note (required for concerns)<textarea name="notes" maxlength="1000"></textarea></label>', 'Record independent review')}</div>` : '';
@@ -855,6 +856,9 @@ async function grantApprovals(env, { st, l, application: a = null, input, actor,
   // Someone approving their own application: allowed (a small team may have no one else), but never silently. The
   // acknowledgement and reason are recorded, and the approval waits for an independent review (Needs attention).
   const self = looksLikeSelf(l, reviewerOf(actor));
+  // SUPERVISOR_SELF_APPROVAL = "refuse" (Worker var, unset by default): an administrator can never decide their own
+  // supervisor status; another administrator must. Unset or anything else: allowed with acknowledgement and review.
+  if (self && env.SUPERVISOR_SELF_APPROVAL === 'refuse') return 'This looks like your own application. Another administrator must decide it.';
   if (self && (!input.selfAck || (input.selfReason || '').length < 20)) return 'This looks like your own application. Wavelength recommends that another administrator decides it. To approve it yourself, tick the self-approval box and say what independent evidence supports it (20 characters or more).';
   const stmts = [], renewed = [], added = [], ended = [], capOf = {};
   for (const sc of scopes) {
