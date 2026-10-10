@@ -5,7 +5,13 @@ gloomy. Version 4 keeps the story, the narration and the real app demonstration,
 sound and the visual atmosphere. Versions 1, 2 and 3 are preserved (renders untouched; source still renders version 3
 exactly, see section 7).
 
-Status: **comparison stage**. Three music candidates are ready on matched samples, with an evaluation page. The full
+Update (10 October 2026, later):
+- **Music:** Fero chose Candidate A for all three films.
+- **Logo sound:** a sonar-inspired logo sound is being chosen from nine auditions (`19-sonar-logo-sound.md`).
+- **Candidate A's ending:** the final chord now follows the closing logo's settle by 0.12 s, so the logo sound is heard first.
+- **Final renders:** they wait for approval of the logo sound.
+
+Status at the time of writing: **comparison stage**. Three music candidates are ready on matched samples, with an evaluation page. The full
 version 4 films are rendered once a direction is chosen by people listening and watching (brief, sections 17 to 19).
 Nothing is published or deployed. No money was spent.
 

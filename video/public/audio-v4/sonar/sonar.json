@@ -1,0 +1,83 @@
+{
+ "A1": {
+  "group": "A",
+  "name": "Rounded rising ping",
+  "desc": "A smooth, rounded sonar ping that rises gently onto A5, with one soft echo.",
+  "hit": 0.35,
+  "seconds": 1.121,
+  "afterHit": 0.771,
+  "truePeak": -7.08
+ },
+ "A2": {
+  "group": "A",
+  "name": "Delicate high ping",
+  "desc": "Higher and more delicate (E6), almost a pure tone, a quick soft decay and a faint echo.",
+  "hit": 0.35,
+  "seconds": 0.822,
+  "afterHit": 0.472,
+  "truePeak": -6.51
+ },
+ "A3": {
+  "group": "A",
+  "name": "Warm full ping",
+  "desc": "Fuller and warmer (D5 with a soft octave below and gentle harmonics), depth without heavy bass or long ringing.",
+  "hit": 0.35,
+  "seconds": 1.02,
+  "afterHit": 0.67,
+  "truePeak": -4.84
+ },
+ "B1": {
+  "group": "B",
+  "name": "Crisp precision ping",
+  "desc": "Short and crisp (A6) with a quick defining transient, no echo; over in about a third of a second.",
+  "hit": 0.35,
+  "seconds": 0.686,
+  "afterHit": 0.336,
+  "truePeak": -3.84
+ },
+ "B2": {
+  "group": "B",
+  "name": "Refined rising glide",
+  "desc": "A bright, elegant glide up a fifth (A5 to E6) with a soft octave shimmer at the finish.",
+  "hit": 0.35,
+  "seconds": 0.935,
+  "afterHit": 0.585,
+  "truePeak": -6.22
+ },
+ "B3": {
+  "group": "B",
+  "name": "Crystalline ping",
+  "desc": "Minimal and precise: a glass-like D6 with faint inharmonic partials, warmed by a soft D5 underneath.",
+  "hit": 0.35,
+  "seconds": 0.969,
+  "afterHit": 0.619,
+  "truePeak": -5.22
+ },
+ "C1": {
+  "group": "C",
+  "name": "Rising sweep",
+  "desc": "A rising sonar sweep (an octave, A4 to A5) that climbs with the logo and lands on the settle, then rings briefly.",
+  "hit": 0.35,
+  "seconds": 0.88,
+  "afterHit": 0.53,
+  "truePeak": -7.45
+ },
+ "C2": {
+  "group": "C",
+  "name": "Ping with musical resolution",
+  "desc": "A rounded ping on A5 that resolves into a soft D major colour (D5 and F#5), the home chord of the music.",
+  "hit": 0.35,
+  "seconds": 1.028,
+  "afterHit": 0.678,
+  "truePeak": -6.16
+ },
+ "C3": {
+  "group": "C",
+  "name": "Wavelength signature: ping and returning echo",
+  "desc": "A sonar ping on A5 whose echo returns higher and warmer, gliding up to lock onto D6: \"tune in, gain clarity\".",
+  "hit": 0.35,
+  "seconds": 1.098,
+  "afterHit": 0.748,
+  "truePeak": -7.24
+ }
+}

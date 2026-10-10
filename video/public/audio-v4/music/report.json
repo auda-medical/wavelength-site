@@ -166,5 +166,19 @@
   "sideToMidDb": -12.9,
   "cues": "warm@0.00 main@6.10 end@15.27",
   "ms": 20794
+ },
+ "A/logo": {
+  "candidate": "A",
+  "name": "Uplifting modern technology",
+  "film": "logo",
+  "seconds": 25.73,
+  "lufs": -20,
+  "truePeak": -2.7,
+  "lowShare": 5.4,
+  "harshShare": 0.9,
+  "correlation": 0.89,
+  "sideToMidDb": -12.2,
+  "cues": "problem@0.00 lift@10.30 end@19.63",
+  "ms": 7028
  }
 }

@@ -32,6 +32,9 @@ export const AD4_PLAN = [
 ];
 // The comparison sample: problem, the brand reveal, the app, free, the close.
 export const SAMPLE4 = ['scan', 'rota', 'brand', 'request', 'free', 'end'];
+// Excerpts of the flagship used for comparisons: the sample, and the logo-sound preview (the end of the problem, the brand
+// reveal and its first narration line, then the closing logo: both places the logo sound is heard).
+export const SUBSETS = { sample: SAMPLE4, logo: ['wait', 'brand', 'end'] };
 export const PLANS = { flagship: FLAGSHIP4_PLAN, short: SHORT4_PLAN, ad: AD4_PLAN };
 
 // Scene length = narration + lead + tail (or `min`), with `overlap` cross-dissolves (as version 3). T: timings.json,

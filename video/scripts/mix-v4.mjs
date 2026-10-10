@@ -14,7 +14,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RATE, readWav, writeWav, lufs, truePeak, limiter, scale } from './music-v4/engine.mjs';
-import { timeline4, cues, SAMPLE4, FPS, SETTLE } from '../src/v4/plans.js';
+import { timeline4, cues, SUBSETS, FPS, SETTLE } from '../src/v4/plans.js';
+import { momentaryMax } from './sonar-v4.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -22,9 +23,16 @@ const pos = args.filter((a) => !a.startsWith('--'));
 const films = (pos[0] || 'sample').split(','), cands = (pos[1] || 'A,B,C').split(',');
 const logoKind = (args.find((a) => a.startsWith('--logo=')) || '--logo=signature').slice(7);
 const OUT = path.resolve(ROOT, (args.find((a) => a.startsWith('--out=')) || '--out=public/audio-v4/mix').slice(6));
+// --as=<dir>: write into OUT/<dir>/ instead of OUT/<candidate>/ (used to keep one mix per logo sound).
+const AS = (args.find((a) => a.startsWith('--as=')) || '').slice(5) || null;
+// --level=momentary: set the logo sound's loudest moment (maximum momentary loudness) a fixed distance under the
+// voice's integrated loudness. Used for the sonar comparisons so every logo sound, including the earlier two-note
+// reference, plays at the same perceived level. Without it, the earlier version 4 rule applies.
+const MOMENTARY = args.includes('--level=momentary');
+const SONAR = fs.existsSync(path.join(ROOT, 'public/audio-v4/sonar/sonar.json')) ? JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio-v4/sonar/sonar.json'), 'utf8')) : {};
 const T = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio-v4/timings.json'), 'utf8'));
 const S = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/v4/script.json'), 'utf8'));
-export const MIX = { speechToMusic: 15, lift: 6, down: 0.35, up: 0.9, minGap: 1.0, logoBelowVoice: 5, target: -15, ceilingTP: -1.0 };
+export const MIX = { speechToMusic: 15, lift: 6, down: 0.35, up: 0.9, minGap: 1.0, logoBelowVoice: 5, logoMomentaryBelowVoice: 1, target: -15, ceilingTP: -1.0 };
 
 // 2x upsampling (24 to 48 kHz): zero-stuffing then a 97-tap windowed-sinc low-pass at the old Nyquist.
 function up2(x) {
@@ -42,8 +50,8 @@ function loadMono(file) {
 const smooth = (x) => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, x)));
 
 export function mixFilm(film, cand) {
-  const key = film === 'sample' ? 'flagship' : film;
-  const tl = timeline4(key, T, S, film === 'sample' ? SAMPLE4 : null);
+  const key = SUBSETS[film] ? 'flagship' : film;
+  const tl = timeline4(key, T, S, SUBSETS[film] || null);
   const n = Math.round(tl.total / FPS * RATE);
   const voice = new Float32Array(n), mL = new Float32Array(n), mR = new Float32Array(n), sL = new Float32Array(n), sR = new Float32Array(n);
   // Narration.
@@ -59,10 +67,14 @@ export function mixFilm(film, cand) {
   const mus = readWav(path.join(ROOT, `public/audio-v4/music/${cand}/${film}.wav`));
   for (let i = 0; i < n && i < mus.L.length; i++) { mL[i] = mus.L[i]; mR[i] = mus.R[i]; }
   // Logo sounds: full reveal at the brand scene (settle 2.0 s into its file), short reveal on the end frame (1.1 s).
+  const place = (file, at, gain = 1) => { const w = readWav(file), s0 = Math.round(at * RATE); for (let i = 0; i < w.L.length; i++) { const j = s0 + i; if (j >= 0 && j < n) { sL[j] += w.L[i] * gain; sR[j] += w.R[i] * gain; } } };
   const logo = (name, sceneFrom, settleFrames, fileSettle) => {
-    const w = readWav(path.join(ROOT, `public/audio-v4/sfx/${name}${logoKind === 'single' ? '-single' : ''}.wav`));
-    const s0 = Math.round(((sceneFrom + settleFrames) / FPS - fileSettle) * RATE);
-    for (let i = 0; i < w.L.length; i++) { const j = s0 + i; if (j >= 0 && j < n) { sL[j] += w.L[i]; sR[j] += w.R[i]; } }
+    const settle = (sceneFrom + settleFrames) / FPS;
+    if (SONAR[logoKind]) {
+      // A sonar candidate: the same quiet air movement as before under the pullback, and the sound's hit on the settle.
+      place(path.join(ROOT, `public/audio-v4/sonar/air-${name === 'reveal' ? 'full' : 'short'}.wav`), settle - fileSettle);
+      place(path.join(ROOT, `public/audio-v4/sonar/${logoKind}.wav`), settle - SONAR[logoKind].hit, Math.pow(10, 6 / 20));
+    } else place(path.join(ROOT, `public/audio-v4/sfx/${name}${logoKind === 'single' ? '-single' : ''}.wav`), settle - fileSettle);
   };
   if (tl.byScene.brand) logo('reveal', tl.byScene.brand.from, SETTLE.full, 2.0);
   if (tl.byScene.end) logo('reveal-short', tl.byScene.end.from, SETTLE.short, 1.1);
@@ -86,7 +98,8 @@ export function mixFilm(film, cand) {
   const gm = Math.pow(10, (voiceUnder - MIX.speechToMusic - musUnder) / 20);
   scale(amL, amR, gm);
   // Logo: its loudness MIX.logoBelowVoice under the voice's loudness.
-  const sfxL = lufs(sL, sR); if (Number.isFinite(sfxL)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoBelowVoice - sfxL) / 20));
+  if (MOMENTARY) { const mm = momentaryMax(sL, sR); if (Number.isFinite(mm)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoMomentaryBelowVoice - mm) / 20)); }
+  else { const sfxL = lufs(sL, sR); if (Number.isFinite(sfxL)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoBelowVoice - sfxL) / 20)); }
   // Sum, master.
   const L = new Float32Array(n), R = new Float32Array(n);
   for (let i = 0; i < n; i++) { L[i] = voice[i] + amL[i] + sL[i]; R[i] = voice[i] + amR[i] + sR[i]; }
@@ -106,14 +119,14 @@ export function mixFilm(film, cand) {
   const vS = sel(voice);
   const mono = Float32Array.from(L, (v, i) => (v + R[i]) / 2);
   const rep = {
-    film, candidate: cand, logo: logoKind, seconds: +(n / RATE).toFixed(2),
+    film, candidate: cand, logo: logoKind, logoMomentaryLUFS: +momentaryMax(sL, sR).toFixed(1), seconds: +(n / RATE).toFixed(2),
     integratedLUFS: +lufs(L, R).toFixed(1), truePeakDBTP: +tp.toFixed(2), limiterCeilingDBFS: +ceil.toFixed(1),
     speechToMusicDb: +(lufs(vS, vS) - lufs(sel(amL), sel(amR))).toFixed(1),
     musicInPausesVsSpeechDb: musGap.length ? +(lufs(gapSel(amL), gapSel(amR)) - lufs(vS, vS)).toFixed(1) : null,
     monoMinusStereoLU: +(lufs(mono, mono) - lufs(L, R)).toFixed(2),
     speechRegions: sp.length,
   };
-  const dir = path.join(OUT, cand);
+  const dir = path.join(OUT, AS || cand);
   writeWav(path.join(dir, `${film}.wav`), L, R);
   writeWav(path.join(dir, 'stems', `${film}-voice.wav`), voice, voice);
   writeWav(path.join(dir, 'stems', `${film}-music.wav`), amL, amR);
@@ -127,7 +140,7 @@ export function mixFilm(film, cand) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const all = {};
-  for (const film of films) for (const c of cands) { const t0 = Date.now(); const r = mixFilm(film, c); r.ms = Date.now() - t0; all[`${c}/${film}`] = r; console.log(JSON.stringify(r)); }
+  for (const film of films) for (const c of cands) { const t0 = Date.now(); const r = mixFilm(film, c); r.ms = Date.now() - t0; all[`${AS || c}/${film}`] = r; console.log(JSON.stringify(r)); }
   const rf = path.join(OUT, 'report.json');
   const prev = fs.existsSync(rf) ? JSON.parse(fs.readFileSync(rf, 'utf8')) : {};
   fs.writeFileSync(rf, JSON.stringify({ ...prev, ...all }, null, 1));

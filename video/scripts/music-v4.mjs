@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compose, CANDIDATES } from './music-v4/score.mjs';
 import { writeWav, lufs, truePeak, scale, biq, filt } from './music-v4/engine.mjs';
-import { timeline4, cues, SAMPLE4 } from '../src/v4/plans.js';
+import { timeline4, cues, SUBSETS } from '../src/v4/plans.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const T = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio-v4/timings.json'), 'utf8'));
@@ -15,7 +15,7 @@ const S = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/v4/script.json'), 'utf
 const args = process.argv.slice(2);
 const films = (args[0] || 'sample,flagship,short,ad').split(',');
 const cands = (args[1] || 'A,B,C').split(',');
-export const filmTL = (film) => (film === 'sample' ? timeline4('flagship', T, S, SAMPLE4) : timeline4(film, T, S));
+export const filmTL = (film) => (SUBSETS[film] ? timeline4('flagship', T, S, SUBSETS[film]) : timeline4(film, T, S));
 
 function bands(L, R) {
   const m = Float64Array.from(L, (v, i) => (v + R[i]) / 2), side = Float64Array.from(L, (v, i) => (v - R[i]) / 2);
@@ -27,7 +27,7 @@ function bands(L, R) {
 }
 const report = {};
 for (const film of films) {
-  const tl = filmTL(film), cue = cues(film === 'sample' ? 'flagship' : film, tl);
+  const tl = filmTL(film), cue = cues(SUBSETS[film] ? 'flagship' : film, tl);
   for (const id of cands) {
     const t0 = Date.now();
     const [L, R] = compose(id, cue, { film });

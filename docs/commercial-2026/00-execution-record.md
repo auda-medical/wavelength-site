@@ -103,6 +103,11 @@ Entries are added at each milestone. Newest at the bottom.
 - Comparison stage only: the full films wait for a human choice of music. Versions 1 to 3 preserved and checked.
 - The version 3 capture metadata, discarded from the working tree by mistake, was restored exactly and committed.
 - Output: `18-videos-v4.md`; files in `wavelength-video-output\comparison-v4\`.
+- Later the same evening, Fero chose Candidate A and asked for sonar logo sounds:
+  - nine original sounds were made and measured;
+  - three finalists (C3, A1, C1) and the two-note reference were placed in the real logo animation;
+  - output: `19-sonar-logo-sound.md`, `wavelength-video-output\comparison-v4\sonar\`;
+  - final renders wait for approval of the logo sound.
 
 ## Decisions and assumptions
 
