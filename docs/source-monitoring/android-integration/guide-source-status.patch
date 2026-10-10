@@ -1,0 +1,737 @@
+diff --git a/src/app/sourcestatus.js b/src/app/sourcestatus.js
+new file mode 100644
+index 0000000..9878736
+--- /dev/null
++++ b/src/app/sourcestatus.js
+@@ -0,0 +1,32 @@
++// Guide source status in the apps (window.WLSources, source monitoring, October 2026), kept apart from app.js so the
++// rules can be tested in Node. The server owns every date (GET /api/app/sources/guide/<slug>); this file keeps the
++// last answer on the device for offline use and decides what may be said:
++//   - "Source checked" only from the server's own date, never from the device's clock or the time it was fetched
++//   - offline, the stored answer is shown with the date this device last received it, never as today's check
++//   - "No changes detected during the latest check" only when the server said so and nothing awaits review
++//   - a newer website version is reported when the server's content version differs from the app's bundled copy
++// Strings stay in app.js (translated with T()).
++(function (root) {
++  'use strict';
++  var KEY = 'wl-src-';
++  function load(slug) { try { var v = JSON.parse(localStorage.getItem(KEY + slug) || 'null'); return v && v.guide && v.receivedOn ? v : null; } catch (e) { return null; } }
++  function save(slug, guide, receivedOn) { try { localStorage.setItem(KEY + slug, JSON.stringify({ guide: guide, receivedOn: receivedOn })); } catch (e) { /* storage full or blocked: live only */ } }
++  // st: the server's guide status; bundled: the guide in the app ({ hash, reviewed, updated }); o: { cached, receivedOn }.
++  function describe(st, bundled, o) {
++    o = o || {};
++    if (!st || typeof st !== 'object') return null;
++    var auto = st.sources && st.sources.automatic || 0;
++    return {
++      checkedOn: auto && /^\d{4}-\d{2}-\d{2}$/.test(st.checkedOn || '') ? st.checkedOn : null,
++      noChange: !!st.noChangeLatest && !(st.pendingReview || []).length,
++      notChecked: !!auto && !st.checkedOn,
++      pending: (st.pendingReview || []).filter(function (p) { return p && /^https?:\/\//.test(p.url || ''); }),
++      newer: !!(st.contentVersion && bundled && bundled.hash && st.contentVersion !== bundled.hash),
++      cached: !!o.cached,
++      receivedOn: o.receivedOn || null
++    };
++  }
++  var api = { load: load, save: save, describe: describe, KEY: KEY };
++  if (typeof module === 'object' && module.exports) module.exports = api;
++  else root.WLSources = api;
++})(typeof window !== 'undefined' ? window : this);
+diff --git a/src/app/app.js b/src/app/app.js
+index 4b6e35e..705afba 100644
+--- a/src/app/app.js
++++ b/src/app/app.js
+@@ -3367,7 +3367,7 @@
+   }
+   function guideFor(pid) { return GUIDE_FOR[pid] || 'pocus-accreditation'; }
+   function guideCard(g, lead) {
+-    return '<a class="card sv-link guide-card' + (lead ? ' lead' : '') + '" href="#/guides/' + esc(g.slug) + '">' + (g.eyebrow ? '<p class="eyebrow" lang="en" dir="ltr">' + esc(g.eyebrow) + '</p>' : '') + '<h3 lang="en" dir="ltr">' + esc(g.title) + '</h3><p class="small muted" lang="en" dir="ltr">' + esc(g.summary) + '</p><p class="small guide-date">' + esc(g.reviewed ? T('Checked against official sources {date}', { date: fmt(g.reviewed) }) : T('Not dated: check each organisation\'s own page')) + '</p></a>';
++    return '<a class="card sv-link guide-card' + (lead ? ' lead' : '') + '" href="#/guides/' + esc(g.slug) + '">' + (g.eyebrow ? '<p class="eyebrow" lang="en" dir="ltr">' + esc(g.eyebrow) + '</p>' : '') + '<h3 lang="en" dir="ltr">' + esc(g.title) + '</h3><p class="small muted" lang="en" dir="ltr">' + esc(g.summary) + '</p><p class="small guide-date">' + esc(g.reviewed ? T('Last clinically reviewed: {date}', { date: fmt(g.reviewed) }) : T('Not dated: check each organisation\'s own page')) + '</p></a>';
+   }
+   function viewGuides(r) {
+     if (r.arg === 'supervisor-verification') return viewGuideSupervision();
+@@ -3401,11 +3401,14 @@
+       if (!g) { mount(shell({ title: T('Guide'), back: 'guides' }, '<div class="card"><p class="small">' + esc(T('This guide is not in this version of the app.')) + '</p><div class="btns"><a class="btn" href="#/guides">' + esc(T('All guides')) + '</a></div></div>')); return; }
+       var age = g.reviewed ? daysBetween(g.reviewed, today()) : null;
+       var notice = '<aside class="guide-note" role="note"><p><b>' + esc(T('Wavelength\'s guide, not an official document.')) + '</b> ' + esc(T('Requirements are set by the bodies named, and can change after this copy was made. Check the current official guidance before you rely on it, and follow your supervisor and local rules.')) + '</p>' +
+-        (g.reviewed ? '<p>' + esc(T('Checked against official sources {date}', { date: fmt(g.reviewed) })) + (g.updated && g.updated > g.reviewed ? ' · ' + esc(T('Updated {date}', { date: fmt(g.updated) })) : '') + '</p>' : '<p>' + esc(T('This guide is not dated against official sources. Check each organisation\'s own page.')) + '</p>') +
++        // Three dates that mean three things (October 2026): the two this copy carries, and "Source checked" only from
++        // the server (guideSourceStatus), never from this device's clock.
++        (g.reviewed ? '<p>' + esc(T('Last clinically reviewed: {date}', { date: fmt(g.reviewed) })) + ' · ' + esc(T('Guidance last updated: {date}', { date: fmt(g.updated && g.updated > g.reviewed ? g.updated : g.reviewed) })) + '</p>' : '<p>' + esc(T('This guide is not dated against official sources. Check each organisation\'s own page.')) + '</p>') +
++        '<p data-srcline hidden></p><p data-srcnewer hidden>' + esc(T('The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.')) + '</p>' +
+         (age != null && age > REVIEW_DAYS ? '<p class="guide-due">' + esc(T('Due for review: last checked more than a year ago.')) + '</p>' : '') + (LANG !== 'en' ? '<p>' + esc(T('Guides are in English.')) + '</p>' : '') + '</aside>';
+       if (glance && g.glance) {
+         mount(shell({ title: g.short, back: 'guides/' + slug }, notice + '<article class="guide-body card glance" lang="en" dir="ltr">' + g.glance.html + '</article><div class="btns"><a class="btn" href="#/guides/' + esc(slug) + '">' + esc(T('Read the full guide')) + '</a></div>'));
+-        guideLinks($('main', app), G); return;
++        guideLinks($('main', app), G); guideSourceStatus(slug, g, $('main', app)); return;
+       }
+       var toc = (g.toc || []).length ? '<details class="card guide-toc"><summary>' + esc(T('Contents')) + '</summary><ol>' + g.toc.map(function (t) { return '<li><button type="button" class="link" data-goto="' + esc(t.id) + '">' + esc(t.label) + '</button></li>'; }).join('') + '</ol></details>' : '';
+       var src = (g.sources || []).length ? '<section class="card guide-src"><h3>' + esc(T('Official sources')) + '</h3><p class="small muted">' + esc(T('Open the current version from the organisation itself:')) + '</p><ul lang="en" dir="ltr">' + g.sources.map(function (x) { return '<li><a href="' + esc(x.url) + '">' + esc(x.label) + '</a></li>'; }).join('') + '</ul></section>' : '';
+@@ -3416,11 +3419,43 @@
+         '<div class="btns"><a class="btn ghost block" href="/guides/' + esc(slug) + '/">' + esc(T('Open on the Wavelength website')) + '</a></div>'));
+       var main = $('main', app);
+       guideLinks(main, G);
++      guideSourceStatus(slug, g, main);
+       $$('[data-goto]', main).forEach(function (b) { b.onclick = function () { var t = document.getElementById(b.dataset.goto); if (t) { scrollToField(t, true); t.setAttribute('tabindex', '-1'); t.focus({ preventScroll: true }); } }; });
+     }).catch(function (ex) { mount(shell({ title: T('Guide'), back: 'guides' }, '<div class="card"><p class="small">' + esc(ex.message) + '</p></div>')); });
+   }
+ 
+ 
++  // Guide source status (source monitoring, October 2026). The server's dates (GET /api/app/sources/guide/<slug>),
++  // shown at once from this device's last answer when there is one, labelled with the day it arrived, then replaced by
++  // the live answer. Offline, or against a server without source monitoring, the stored answer (or nothing) stays:
++  // the guide never waits for it. Rules in src/app/sourcestatus.js.
++  function guideSourceStatus(slug, g, root) {
++    var SRC = window.WLSources, line = $('[data-srcline]', root), newer = $('[data-srcnewer]', root);
++    if (!SRC || !line) return;
++    var box = $('[data-srcnotice]', root);
++    if (!box) { box = document.createElement('div'); box.className = 'guide-note guide-src-note'; box.setAttribute('role', 'status'); box.setAttribute('data-srcnotice', ''); box.hidden = true; line.parentNode.parentNode.insertBefore(box, line.parentNode.nextSibling); }
++    var paint = function (d) {
++      if (!d) return;
++      var text = d.checkedOn ? T('Source checked: {date}', { date: fmt(d.checkedOn) }) + (d.noChange ? ' ' + T('No changes detected during the latest check.') : '') : d.notChecked ? T('Official sources not yet checked automatically.') : '';
++      if (text && d.cached) text += ' ' + T('Shown from this device\'s last connection, {date}.', { date: fmt(d.receivedOn) });
++      line.textContent = text; line.hidden = !text;
++      if (d.pending.length) {
++        var p = d.pending[0];
++        box.innerHTML = '<p>' + esc(T('An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:', { date: fmt(p.detectedOn) })) + ' <a href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer" lang="en" dir="ltr">' + esc(p.source || T('Official sources')) + '</a></p>';
++        box.hidden = false;
++      } else { box.hidden = true; box.innerHTML = ''; }
++      if (newer) newer.hidden = !d.newer;
++    };
++    var stored = SRC.load(slug);
++    if (stored) paint(SRC.describe(stored.guide, g, { cached: true, receivedOn: stored.receivedOn }));
++    api('/api/app/sources/guide/' + encodeURIComponent(slug)).then(function (res) {
++      if (!res || !res.ok || !res.guide) return;
++      SRC.save(slug, res.guide, res.today);
++      var here = route();
++      if (here.name === 'guides' && here.arg === slug) paint(SRC.describe(res.guide, g, { cached: false }));
++    }).catch(function () { /* offline: the stored answer stays, labelled with its day */ });
++  }
++
+   // Supervisor search: results come only from current approvals whose holder opted in (worker/search.js). The ref is
+   // opaque; a request creates an invitation the supervisor accepts on their dashboard.
+   function bindSupSearch() {
+diff --git a/src/app/index.html b/src/app/index.html
+index 6cf9aa4..ebd352f 100644
+--- a/src/app/index.html
++++ b/src/app/index.html
+@@ -29,6 +29,7 @@
+ <script src="/app/editor.js?v=__V__"></script>
+ <script src="/app/forms.js?v=__V__"></script>
+ <script src="/app/netstate.js?v=__V__"></script>
++<script src="/app/sourcestatus.js?v=__V__"></script>
+ <script src="/app/native.js?v=__V__"></script>
+ <script src="/app/app.js?v=__V__"></script>
+ </body>
+diff --git a/src/app/sw.js b/src/app/sw.js
+index 2546376..6bb268f 100644
+--- a/src/app/sw.js
++++ b/src/app/sw.js
+@@ -1,6 +1,6 @@
+ // Wavelength app service worker: the app shell opens offline. API calls always go to the network.
+ const VERSION = '__V__';
+-const SHELL = ['/app/', '/app/app.css?v=__V__', '/app/theme.js?v=__V__', '/app/config.js?v=__V__', '/app/zip.js?v=__V__', '/app/backup.js?v=__V__', '/app/licences.js?v=__V__', '/app/vendor/noble-hashes/argon2.js', '/app/vendor/noble-hashes/blake2.js', '/app/vendor/noble-hashes/_blake.js', '/app/vendor/noble-hashes/_md.js', '/app/vendor/noble-hashes/_u64.js', '/app/vendor/noble-hashes/utils.js', '/app/progress.js?v=__V__', '/app/editor.js?v=__V__', '/app/guides.js?v=__V__', '/app/forms.js?v=__V__', '/app/netstate.js?v=__V__', '/app/native.js?v=__V__', '/app/app.js?v=__V__', '/app/icon-192.png', '/assets/fonts/dm-sans-latin-400-normal.woff2', '/assets/fonts/dm-sans-latin-500-normal.woff2', '/assets/fonts/dm-sans-latin-600-normal.woff2', '/assets/fonts/cormorant-garamond-latin-500-normal.woff2', '/assets/logo-192.png'];
++const SHELL = ['/app/', '/app/app.css?v=__V__', '/app/theme.js?v=__V__', '/app/config.js?v=__V__', '/app/zip.js?v=__V__', '/app/backup.js?v=__V__', '/app/licences.js?v=__V__', '/app/vendor/noble-hashes/argon2.js', '/app/vendor/noble-hashes/blake2.js', '/app/vendor/noble-hashes/_blake.js', '/app/vendor/noble-hashes/_md.js', '/app/vendor/noble-hashes/_u64.js', '/app/vendor/noble-hashes/utils.js', '/app/progress.js?v=__V__', '/app/editor.js?v=__V__', '/app/guides.js?v=__V__', '/app/forms.js?v=__V__', '/app/netstate.js?v=__V__', '/app/sourcestatus.js?v=__V__', '/app/native.js?v=__V__', '/app/app.js?v=__V__', '/app/icon-192.png', '/assets/fonts/dm-sans-latin-400-normal.woff2', '/assets/fonts/dm-sans-latin-500-normal.woff2', '/assets/fonts/dm-sans-latin-600-normal.woff2', '/assets/fonts/cormorant-garamond-latin-500-normal.woff2', '/assets/logo-192.png'];
+ self.addEventListener('install', (e) => { e.waitUntil(caches.open('wl-' + VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
+ self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('wl-') && k !== 'wl-' + VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
+ self.addEventListener('fetch', (e) => {
+diff --git a/src/app/i18n/ar.json b/src/app/i18n/ar.json
+index 6070529..baebda2 100644
+--- a/src/app/i18n/ar.json
++++ b/src/app/i18n/ar.json
+@@ -2522,7 +2522,14 @@
+ "Your changes are not saved yet.": "لم تُحفظ تغييراتك بعد.",
+ "Your crop, redactions and annotations are not saved yet.": "لم يُحفظ القص والحجب والتعليقات التوضيحية بعد.",
+ "{what}, not part of a scan yet.": "{what}، ليست ضمن فحص بعد.",
+-"{n} photos": {"zero": "{n} صور", "one": "صورة واحدة", "two": "صورتان", "few": "{n} صور", "many": "{n} صورة", "other": "{n} صورة"},
++"{n} photos": {
++"zero": "{n} صور",
++"one": "صورة واحدة",
++"two": "صورتان",
++"few": "{n} صور",
++"many": "{n} صورة",
++"other": "{n} صورة"
++},
+ "An unfinished scan was kept on this phone: {what}.": "تم الاحتفاظ بفحص غير مكتمل على هذا الهاتف: {what}.",
+ "Application not chosen": "لم يتم اختيار التطبيق",
+ "Continue it": "متابعته",
+@@ -2557,8 +2564,44 @@
+ "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "احتفظت فحوصك بنسخها الخاصة عند حفظها، لذا هذه بقايا. ليست في معرضك، لكن قد يتمكن حاسوب متصل بكابل من رؤية ذلك المجلد.",
+ "under 0.1 MB": "أقل من 0.1 ميغابايت",
+ "{what}, not saved in your logbook yet.": "{what}، غير محفوظ في سجلك بعد.",
+-"{n} leftover photos deleted.": {"zero": "لم تُحذف أي صورة متبقية.", "one": "حُذفت صورة متبقية واحدة.", "two": "حُذفت صورتان متبقيتان.", "few": "حُذفت {n} صور متبقية.", "many": "حُذفت {n} صورة متبقية.", "other": "حُذفت {n} صورة متبقية."},
+-"{n} more are kept.": {"zero": "لا يوجد المزيد.", "one": "يوجد واحد آخر محفوظ.", "two": "يوجد اثنان آخران محفوظان.", "few": "توجد {n} أخرى محفوظة.", "many": "يوجد {n} آخر محفوظ.", "other": "يوجد {n} آخر محفوظ."},
+-"{n} unfinished scans": {"zero": "لا فحوص غير مكتملة", "one": "فحص واحد غير مكتمل", "two": "فحصان غير مكتملين", "few": "{n} فحوص غير مكتملة", "many": "{n} فحصًا غير مكتمل", "other": "{n} فحص غير مكتمل"},
+-"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {"zero": "لم يعثر Wavelength على صور من إصدارات سابقة.", "one": "عثر Wavelength على صورة واحدة التُقطت بخاصية التقاط صورة في إصدار سابق. وهي محفوظة كما التُقطت، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف.", "two": "عثر Wavelength على صورتين التُقطتا بخاصية التقاط صورة في إصدارات سابقة. وهما محفوظتان كما التُقطتا، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف.", "few": "عثر Wavelength على {n} صور التُقطت بخاصية التقاط صورة في إصدارات سابقة. وهي محفوظة كما التُقطت، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف.", "many": "عثر Wavelength على {n} صورة التُقطت بخاصية التقاط صورة في إصدارات سابقة. وهي محفوظة كما التُقطت، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف.", "other": "عثر Wavelength على {n} صورة التُقطت بخاصية التقاط صورة في إصدارات سابقة. وهي محفوظة كما التُقطت، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف."}
+-}
++"{n} leftover photos deleted.": {
++"zero": "لم تُحذف أي صورة متبقية.",
++"one": "حُذفت صورة متبقية واحدة.",
++"two": "حُذفت صورتان متبقيتان.",
++"few": "حُذفت {n} صور متبقية.",
++"many": "حُذفت {n} صورة متبقية.",
++"other": "حُذفت {n} صورة متبقية."
++},
++"{n} more are kept.": {
++"zero": "لا يوجد المزيد.",
++"one": "يوجد واحد آخر محفوظ.",
++"two": "يوجد اثنان آخران محفوظان.",
++"few": "توجد {n} أخرى محفوظة.",
++"many": "يوجد {n} آخر محفوظ.",
++"other": "يوجد {n} آخر محفوظ."
++},
++"{n} unfinished scans": {
++"zero": "لا فحوص غير مكتملة",
++"one": "فحص واحد غير مكتمل",
++"two": "فحصان غير مكتملين",
++"few": "{n} فحوص غير مكتملة",
++"many": "{n} فحصًا غير مكتمل",
++"other": "{n} فحص غير مكتمل"
++},
++"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {
++"zero": "لم يعثر Wavelength على صور من إصدارات سابقة.",
++"one": "عثر Wavelength على صورة واحدة التُقطت بخاصية التقاط صورة في إصدار سابق. وهي محفوظة كما التُقطت، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف.",
++"two": "عثر Wavelength على صورتين التُقطتا بخاصية التقاط صورة في إصدارات سابقة. وهما محفوظتان كما التُقطتا، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف.",
++"few": "عثر Wavelength على {n} صور التُقطت بخاصية التقاط صورة في إصدارات سابقة. وهي محفوظة كما التُقطت، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف.",
++"many": "عثر Wavelength على {n} صورة التُقطت بخاصية التقاط صورة في إصدارات سابقة. وهي محفوظة كما التُقطت، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف.",
++"other": "عثر Wavelength على {n} صورة التُقطت بخاصية التقاط صورة في إصدارات سابقة. وهي محفوظة كما التُقطت، قبل أي قص أو إخفاء، في مجلد Wavelength على هذا الهاتف."
++},
++"An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:": "تغيّر مصدر رسمي لهذا الدليل في {date}. ملخص Wavelength هذا قيد المراجعة. حتى ذلك الحين، راجع الإرشادات الأصلية:",
++"Guidance last updated: {date}": "آخر تحديث للإرشادات: {date}",
++"Last clinically reviewed: {date}": "آخر مراجعة سريرية: {date}",
++"No changes detected during the latest check.": "لم تُرصد أي تغييرات في آخر فحص.",
++"Official sources not yet checked automatically.": "لم تُفحص المصادر الرسمية تلقائيًا بعد.",
++"Shown from this device's last connection, {date}.": "معروض من آخر اتصال لهذا الجهاز، {date}.",
++"Source checked: {date}": "تم فحص المصدر: {date}",
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "يحتوي الموقع على إصدار أحدث من هذا الدليل مقارنة بالنسخة في التطبيق. افتحه على موقع Wavelength أو حدّث التطبيق."
++}
+\ No newline at end of file
+diff --git a/src/app/i18n/de.json b/src/app/i18n/de.json
+index 27276c7..09ba421 100644
+--- a/src/app/i18n/de.json
++++ b/src/app/i18n/de.json
+@@ -2398,7 +2398,10 @@
+ "Your changes are not saved yet.": "Ihre Änderungen sind noch nicht gespeichert.",
+ "Your crop, redactions and annotations are not saved yet.": "Ihr Zuschnitt, Ihre Schwärzungen und Anmerkungen sind noch nicht gespeichert.",
+ "{what}, not part of a scan yet.": "{what}, noch in keiner Untersuchung.",
+-"{n} photos": {"one": "{n} Foto", "other": "{n} Fotos"},
++"{n} photos": {
++"one": "{n} Foto",
++"other": "{n} Fotos"
++},
+ "An unfinished scan was kept on this phone: {what}.": "Ein unfertiger Scan wurde auf diesem Telefon behalten: {what}.",
+ "Application not chosen": "Anwendung nicht gewählt",
+ "Continue it": "Fortsetzen",
+@@ -2433,8 +2436,28 @@
+ "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Ihre Scans haben beim Speichern eigene Kopien behalten, dies sind also Reste. Sie sind nicht in Ihrer Galerie, aber ein per Kabel verbundener Computer kann diesen Ordner möglicherweise sehen.",
+ "under 0.1 MB": "unter 0,1 MB",
+ "{what}, not saved in your logbook yet.": "{what}, noch nicht in Ihrem Logbuch gespeichert.",
+-"{n} leftover photos deleted.": {"one": "{n} übriges Foto gelöscht.", "other": "{n} übrige Fotos gelöscht."},
+-"{n} more are kept.": {"one": "{n} weiterer wird behalten.", "other": "{n} weitere werden behalten."},
+-"{n} unfinished scans": {"one": "{n} unfertiger Scan", "other": "{n} unfertige Scans"},
+-"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {"one": "Wavelength hat {n} Foto gefunden, das in einer früheren Version mit „Foto aufnehmen“ gemacht wurde. Es ist unverändert, vor jedem Zuschneiden oder Schwärzen, im Wavelength-Ordner auf diesem Telefon gespeichert.", "other": "Wavelength hat {n} Fotos gefunden, die in früheren Versionen mit „Foto aufnehmen“ gemacht wurden. Sie sind unverändert, vor jedem Zuschneiden oder Schwärzen, im Wavelength-Ordner auf diesem Telefon gespeichert."}
+-}
++"{n} leftover photos deleted.": {
++"one": "{n} übriges Foto gelöscht.",
++"other": "{n} übrige Fotos gelöscht."
++},
++"{n} more are kept.": {
++"one": "{n} weiterer wird behalten.",
++"other": "{n} weitere werden behalten."
++},
++"{n} unfinished scans": {
++"one": "{n} unfertiger Scan",
++"other": "{n} unfertige Scans"
++},
++"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {
++"one": "Wavelength hat {n} Foto gefunden, das in einer früheren Version mit „Foto aufnehmen“ gemacht wurde. Es ist unverändert, vor jedem Zuschneiden oder Schwärzen, im Wavelength-Ordner auf diesem Telefon gespeichert.",
++"other": "Wavelength hat {n} Fotos gefunden, die in früheren Versionen mit „Foto aufnehmen“ gemacht wurden. Sie sind unverändert, vor jedem Zuschneiden oder Schwärzen, im Wavelength-Ordner auf diesem Telefon gespeichert."
++},
++"An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:": "Eine offizielle Quelle dieses Leitfadens hat sich am {date} geändert. Diese Wavelength-Zusammenfassung wird geprüft. Bis dahin gilt die ursprüngliche Vorgabe:",
++"Guidance last updated: {date}": "Leitfaden zuletzt aktualisiert: {date}",
++"Last clinically reviewed: {date}": "Zuletzt klinisch geprüft: {date}",
++"No changes detected during the latest check.": "Bei der letzten Prüfung wurden keine Änderungen festgestellt.",
++"Official sources not yet checked automatically.": "Offizielle Quellen noch nicht automatisch geprüft.",
++"Shown from this device's last connection, {date}.": "Angezeigt vom letzten Verbindungsstand dieses Geräts, {date}.",
++"Source checked: {date}": "Quelle geprüft: {date}",
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Auf der Website gibt es eine neuere Fassung dieses Leitfadens als in dieser App. Öffnen Sie sie auf der Wavelength-Website oder aktualisieren Sie die App."
++}
+\ No newline at end of file
+diff --git a/src/app/i18n/es.json b/src/app/i18n/es.json
+index 931c33e..634d256 100644
+--- a/src/app/i18n/es.json
++++ b/src/app/i18n/es.json
+@@ -2398,7 +2398,10 @@
+ "Your changes are not saved yet.": "Sus cambios aún no están guardados.",
+ "Your crop, redactions and annotations are not saved yet.": "Su recorte, ocultaciones y anotaciones aún no están guardados.",
+ "{what}, not part of a scan yet.": "{what}, aún no en una exploración.",
+-"{n} photos": {"one": "{n} foto", "other": "{n} fotos"},
++"{n} photos": {
++"one": "{n} foto",
++"other": "{n} fotos"
++},
+ "An unfinished scan was kept on this phone: {what}.": "Se guardó en este teléfono una exploración sin terminar: {what}.",
+ "Application not chosen": "Aplicación no elegida",
+ "Continue it": "Continuarla",
+@@ -2433,8 +2436,28 @@
+ "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Tus exploraciones guardaron sus propias copias al guardarlas, así que estas son sobrantes. No están en tu galería, pero un ordenador conectado por cable podría ver esa carpeta.",
+ "under 0.1 MB": "menos de 0,1 MB",
+ "{what}, not saved in your logbook yet.": "{what}, aún no guardado en tu registro.",
+-"{n} leftover photos deleted.": {"one": "{n} foto sobrante eliminada.", "other": "{n} fotos sobrantes eliminadas."},
+-"{n} more are kept.": {"one": "Se guarda {n} más.", "other": "Se guardan {n} más."},
+-"{n} unfinished scans": {"one": "{n} exploración sin terminar", "other": "{n} exploraciones sin terminar"},
+-"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {"one": "Wavelength encontró {n} foto tomada con Hacer foto en una versión anterior. Está guardada tal como se tomó, antes de recortes o tachados, en la carpeta de Wavelength de este teléfono.", "other": "Wavelength encontró {n} fotos tomadas con Hacer foto en versiones anteriores. Están guardadas tal como se tomaron, antes de recortes o tachados, en la carpeta de Wavelength de este teléfono."}
+-}
++"{n} leftover photos deleted.": {
++"one": "{n} foto sobrante eliminada.",
++"other": "{n} fotos sobrantes eliminadas."
++},
++"{n} more are kept.": {
++"one": "Se guarda {n} más.",
++"other": "Se guardan {n} más."
++},
++"{n} unfinished scans": {
++"one": "{n} exploración sin terminar",
++"other": "{n} exploraciones sin terminar"
++},
++"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {
++"one": "Wavelength encontró {n} foto tomada con Hacer foto en una versión anterior. Está guardada tal como se tomó, antes de recortes o tachados, en la carpeta de Wavelength de este teléfono.",
++"other": "Wavelength encontró {n} fotos tomadas con Hacer foto en versiones anteriores. Están guardadas tal como se tomaron, antes de recortes o tachados, en la carpeta de Wavelength de este teléfono."
++},
++"An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:": "Una fuente oficial de esta guía cambió el {date}. Este resumen de Wavelength se está revisando. Mientras tanto, consulte la guía original:",
++"Guidance last updated: {date}": "Guía actualizada por última vez: {date}",
++"Last clinically reviewed: {date}": "Última revisión clínica: {date}",
++"No changes detected during the latest check.": "No se detectaron cambios en la última comprobación.",
++"Official sources not yet checked automatically.": "Fuentes oficiales aún no comprobadas automáticamente.",
++"Shown from this device's last connection, {date}.": "Mostrado según la última conexión de este dispositivo, el {date}.",
++"Source checked: {date}": "Fuente comprobada: {date}",
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "La web tiene una versión más reciente de esta guía que la copia de la aplicación. Ábrala en la web de Wavelength o actualice la aplicación."
++}
+\ No newline at end of file
+diff --git a/src/app/i18n/fr.json b/src/app/i18n/fr.json
+index d51dcca..16363f1 100644
+--- a/src/app/i18n/fr.json
++++ b/src/app/i18n/fr.json
+@@ -2398,7 +2398,10 @@
+ "Your changes are not saved yet.": "Vos modifications ne sont pas encore enregistrées.",
+ "Your crop, redactions and annotations are not saved yet.": "Votre recadrage, vos masquages et vos annotations ne sont pas encore enregistrés.",
+ "{what}, not part of a scan yet.": "{what}, pas encore dans un examen.",
+-"{n} photos": {"one": "{n} photo", "other": "{n} photos"},
++"{n} photos": {
++"one": "{n} photo",
++"other": "{n} photos"
++},
+ "An unfinished scan was kept on this phone: {what}.": "Un scan inachevé a été conservé sur ce téléphone : {what}.",
+ "Application not chosen": "Application non choisie",
+ "Continue it": "Le reprendre",
+@@ -2433,8 +2436,28 @@
+ "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Vos scans ont gardé leurs propres copies lors de l'enregistrement : il s'agit donc de restes. Elles ne sont pas dans votre galerie, mais un ordinateur branché par câble pourrait voir ce dossier.",
+ "under 0.1 MB": "moins de 0,1 Mo",
+ "{what}, not saved in your logbook yet.": "{what}, pas encore enregistré dans votre carnet.",
+-"{n} leftover photos deleted.": {"one": "{n} photo restante supprimée.", "other": "{n} photos restantes supprimées."},
+-"{n} more are kept.": {"one": "{n} autre est conservé.", "other": "{n} autres sont conservés."},
+-"{n} unfinished scans": {"one": "{n} scan inachevé", "other": "{n} scans inachevés"},
+-"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {"one": "Wavelength a trouvé {n} photo prise avec « Prendre une photo » dans une version précédente. Elle est stockée telle quelle, avant tout recadrage ou masquage, dans le dossier Wavelength de ce téléphone.", "other": "Wavelength a trouvé {n} photos prises avec « Prendre une photo » dans des versions précédentes. Elles sont stockées telles quelles, avant tout recadrage ou masquage, dans le dossier Wavelength de ce téléphone."}
+-}
++"{n} leftover photos deleted.": {
++"one": "{n} photo restante supprimée.",
++"other": "{n} photos restantes supprimées."
++},
++"{n} more are kept.": {
++"one": "{n} autre est conservé.",
++"other": "{n} autres sont conservés."
++},
++"{n} unfinished scans": {
++"one": "{n} scan inachevé",
++"other": "{n} scans inachevés"
++},
++"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {
++"one": "Wavelength a trouvé {n} photo prise avec « Prendre une photo » dans une version précédente. Elle est stockée telle quelle, avant tout recadrage ou masquage, dans le dossier Wavelength de ce téléphone.",
++"other": "Wavelength a trouvé {n} photos prises avec « Prendre une photo » dans des versions précédentes. Elles sont stockées telles quelles, avant tout recadrage ou masquage, dans le dossier Wavelength de ce téléphone."
++},
++"An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:": "Une source officielle de ce guide a changé le {date}. Ce résumé Wavelength est en cours de révision. D'ici là, consultez la recommandation d'origine :",
++"Guidance last updated: {date}": "Recommandations mises à jour le : {date}",
++"Last clinically reviewed: {date}": "Dernière révision clinique : {date}",
++"No changes detected during the latest check.": "Aucun changement détecté lors de la dernière vérification.",
++"Official sources not yet checked automatically.": "Sources officielles pas encore vérifiées automatiquement.",
++"Shown from this device's last connection, {date}.": "Affiché d'après la dernière connexion de cet appareil, le {date}.",
++"Source checked: {date}": "Source vérifiée : {date}",
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Le site propose une version plus récente de ce guide que la copie de l'application. Ouvrez-le sur le site Wavelength ou mettez à jour l'application."
++}
+\ No newline at end of file
+diff --git a/src/app/i18n/it.json b/src/app/i18n/it.json
+index 485c8f7..c445cea 100644
+--- a/src/app/i18n/it.json
++++ b/src/app/i18n/it.json
+@@ -2398,7 +2398,10 @@
+ "Your changes are not saved yet.": "Le modifiche non sono ancora salvate.",
+ "Your crop, redactions and annotations are not saved yet.": "Ritaglio, oscuramenti e annotazioni non sono ancora salvati.",
+ "{what}, not part of a scan yet.": "{what}, non ancora in un esame.",
+-"{n} photos": {"one": "{n} foto", "other": "{n} foto"},
++"{n} photos": {
++"one": "{n} foto",
++"other": "{n} foto"
++},
+ "An unfinished scan was kept on this phone: {what}.": "Un'ecografia non finita è stata conservata su questo telefono: {what}.",
+ "Application not chosen": "Applicazione non scelta",
+ "Continue it": "Riprendila",
+@@ -2433,8 +2436,28 @@
+ "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Le tue ecografie hanno tenuto le proprie copie al salvataggio, quindi queste sono rimanenze. Non sono nella galleria, ma un computer collegato via cavo potrebbe vedere quella cartella.",
+ "under 0.1 MB": "meno di 0,1 MB",
+ "{what}, not saved in your logbook yet.": "{what}, non ancora salvato nel tuo registro.",
+-"{n} leftover photos deleted.": {"one": "{n} foto rimasta eliminata.", "other": "{n} foto rimaste eliminate."},
+-"{n} more are kept.": {"one": "Ne è conservata {n} in più.", "other": "Ne sono conservate {n} in più."},
+-"{n} unfinished scans": {"one": "{n} ecografia non finita", "other": "{n} ecografie non finite"},
+-"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {"one": "Wavelength ha trovato {n} foto scattata con Scatta foto in una versione precedente. È conservata così com'è stata scattata, prima di ritagli o oscuramenti, nella cartella di Wavelength su questo telefono.", "other": "Wavelength ha trovato {n} foto scattate con Scatta foto in versioni precedenti. Sono conservate così come sono state scattate, prima di ritagli o oscuramenti, nella cartella di Wavelength su questo telefono."}
+-}
++"{n} leftover photos deleted.": {
++"one": "{n} foto rimasta eliminata.",
++"other": "{n} foto rimaste eliminate."
++},
++"{n} more are kept.": {
++"one": "Ne è conservata {n} in più.",
++"other": "Ne sono conservate {n} in più."
++},
++"{n} unfinished scans": {
++"one": "{n} ecografia non finita",
++"other": "{n} ecografie non finite"
++},
++"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {
++"one": "Wavelength ha trovato {n} foto scattata con Scatta foto in una versione precedente. È conservata così com'è stata scattata, prima di ritagli o oscuramenti, nella cartella di Wavelength su questo telefono.",
++"other": "Wavelength ha trovato {n} foto scattate con Scatta foto in versioni precedenti. Sono conservate così come sono state scattate, prima di ritagli o oscuramenti, nella cartella di Wavelength su questo telefono."
++},
++"An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:": "Una fonte ufficiale di questa guida è cambiata il {date}. Questa sintesi di Wavelength è in revisione. Nel frattempo consulti la guida originale:",
++"Guidance last updated: {date}": "Guida aggiornata l'ultima volta: {date}",
++"Last clinically reviewed: {date}": "Ultima revisione clinica: {date}",
++"No changes detected during the latest check.": "Nessuna modifica rilevata all'ultimo controllo.",
++"Official sources not yet checked automatically.": "Fonti ufficiali non ancora controllate automaticamente.",
++"Shown from this device's last connection, {date}.": "Mostrato dall'ultima connessione di questo dispositivo, {date}.",
++"Source checked: {date}": "Fonte controllata: {date}",
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Il sito ha una versione più recente di questa guida rispetto alla copia nell'app. La apra sul sito Wavelength o aggiorni l'app."
++}
+\ No newline at end of file
+diff --git a/src/app/i18n/pl.json b/src/app/i18n/pl.json
+index f3e5566..c1dc136 100644
+--- a/src/app/i18n/pl.json
++++ b/src/app/i18n/pl.json
+@@ -2460,7 +2460,12 @@
+ "Your changes are not saved yet.": "Twoje zmiany nie są jeszcze zapisane.",
+ "Your crop, redactions and annotations are not saved yet.": "Kadrowanie, zamaskowania i adnotacje nie są jeszcze zapisane.",
+ "{what}, not part of a scan yet.": "{what}: jeszcze nie w badaniu.",
+-"{n} photos": {"one": "{n} zdjęcie", "few": "{n} zdjęcia", "many": "{n} zdjęć", "other": "{n} zdjęcia"},
++"{n} photos": {
++"one": "{n} zdjęcie",
++"few": "{n} zdjęcia",
++"many": "{n} zdjęć",
++"other": "{n} zdjęcia"
++},
+ "An unfinished scan was kept on this phone: {what}.": "Na tym telefonie zachowano niedokończone badanie: {what}.",
+ "Application not chosen": "Nie wybrano zastosowania",
+ "Continue it": "Kontynuuj",
+@@ -2495,8 +2500,36 @@
+ "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Twoje badania zachowały własne kopie przy zapisie, więc to są pozostałości. Nie ma ich w galerii, ale komputer podłączony kablem może widzieć ten folder.",
+ "under 0.1 MB": "poniżej 0,1 MB",
+ "{what}, not saved in your logbook yet.": "{what}, jeszcze nie zapisane w dzienniku.",
+-"{n} leftover photos deleted.": {"one": "Usunięto {n} pozostałe zdjęcie.", "few": "Usunięto {n} pozostałe zdjęcia.", "many": "Usunięto {n} pozostałych zdjęć.", "other": "Usunięto {n} pozostałego zdjęcia."},
+-"{n} more are kept.": {"one": "Zachowano jeszcze {n}.", "few": "Zachowano jeszcze {n}.", "many": "Zachowano jeszcze {n}.", "other": "Zachowano jeszcze {n}."},
+-"{n} unfinished scans": {"one": "{n} niedokończone badanie", "few": "{n} niedokończone badania", "many": "{n} niedokończonych badań", "other": "{n} niedokończonego badania"},
+-"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {"one": "Wavelength znalazł {n} zdjęcie zrobione funkcją Zrób zdjęcie we wcześniejszej wersji. Jest przechowywane w stanie oryginalnym, przed przycięciem i zakryciem, w folderze Wavelength na tym telefonie.", "few": "Wavelength znalazł {n} zdjęcia zrobione funkcją Zrób zdjęcie we wcześniejszych wersjach. Są przechowywane w stanie oryginalnym, przed przycięciem i zakryciem, w folderze Wavelength na tym telefonie.", "many": "Wavelength znalazł {n} zdjęć zrobionych funkcją Zrób zdjęcie we wcześniejszych wersjach. Są przechowywane w stanie oryginalnym, przed przycięciem i zakryciem, w folderze Wavelength na tym telefonie.", "other": "Wavelength znalazł {n} zdjęcia zrobione funkcją Zrób zdjęcie we wcześniejszych wersjach. Są przechowywane w stanie oryginalnym, przed przycięciem i zakryciem, w folderze Wavelength na tym telefonie."}
+-}
++"{n} leftover photos deleted.": {
++"one": "Usunięto {n} pozostałe zdjęcie.",
++"few": "Usunięto {n} pozostałe zdjęcia.",
++"many": "Usunięto {n} pozostałych zdjęć.",
++"other": "Usunięto {n} pozostałego zdjęcia."
++},
++"{n} more are kept.": {
++"one": "Zachowano jeszcze {n}.",
++"few": "Zachowano jeszcze {n}.",
++"many": "Zachowano jeszcze {n}.",
++"other": "Zachowano jeszcze {n}."
++},
++"{n} unfinished scans": {
++"one": "{n} niedokończone badanie",
++"few": "{n} niedokończone badania",
++"many": "{n} niedokończonych badań",
++"other": "{n} niedokończonego badania"
++},
++"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {
++"one": "Wavelength znalazł {n} zdjęcie zrobione funkcją Zrób zdjęcie we wcześniejszej wersji. Jest przechowywane w stanie oryginalnym, przed przycięciem i zakryciem, w folderze Wavelength na tym telefonie.",
++"few": "Wavelength znalazł {n} zdjęcia zrobione funkcją Zrób zdjęcie we wcześniejszych wersjach. Są przechowywane w stanie oryginalnym, przed przycięciem i zakryciem, w folderze Wavelength na tym telefonie.",
++"many": "Wavelength znalazł {n} zdjęć zrobionych funkcją Zrób zdjęcie we wcześniejszych wersjach. Są przechowywane w stanie oryginalnym, przed przycięciem i zakryciem, w folderze Wavelength na tym telefonie.",
++"other": "Wavelength znalazł {n} zdjęcia zrobione funkcją Zrób zdjęcie we wcześniejszych wersjach. Są przechowywane w stanie oryginalnym, przed przycięciem i zakryciem, w folderze Wavelength na tym telefonie."
++},
++"An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:": "Oficjalne źródło tego przewodnika zmieniło się {date}. To podsumowanie Wavelength jest weryfikowane. Do tego czasu sprawdź oryginalne wytyczne:",
++"Guidance last updated: {date}": "Ostatnia aktualizacja przewodnika: {date}",
++"Last clinically reviewed: {date}": "Ostatnia weryfikacja kliniczna: {date}",
++"No changes detected during the latest check.": "Podczas ostatniego sprawdzenia nie wykryto zmian.",
++"Official sources not yet checked automatically.": "Oficjalne źródła nie zostały jeszcze sprawdzone automatycznie.",
++"Shown from this device's last connection, {date}.": "Wyświetlono na podstawie ostatniego połączenia tego urządzenia, {date}.",
++"Source checked: {date}": "Źródło sprawdzone: {date}",
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Strona ma nowszą wersję tego przewodnika niż kopia w aplikacji. Otwórz ją na stronie Wavelength lub zaktualizuj aplikację."
++}
+\ No newline at end of file
+diff --git a/src/app/i18n/ru.json b/src/app/i18n/ru.json
+index 516e736..e936fa0 100644
+--- a/src/app/i18n/ru.json
++++ b/src/app/i18n/ru.json
+@@ -2460,7 +2460,12 @@
+ "Your changes are not saved yet.": "Ваши изменения ещё не сохранены.",
+ "Your crop, redactions and annotations are not saved yet.": "Обрезка, скрытия и пометки ещё не сохранены.",
+ "{what}, not part of a scan yet.": "{what}: пока не в исследовании.",
+-"{n} photos": {"one": "{n} фото", "few": "{n} фото", "many": "{n} фото", "other": "{n} фото"},
++"{n} photos": {
++"one": "{n} фото",
++"few": "{n} фото",
++"many": "{n} фото",
++"other": "{n} фото"
++},
+ "An unfinished scan was kept on this phone: {what}.": "На этом телефоне сохранено незавершённое исследование: {what}.",
+ "Application not chosen": "Применение не выбрано",
+ "Continue it": "Продолжить",
+@@ -2495,8 +2500,36 @@
+ "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Ваши исследования сохранили собственные копии при сохранении, так что это остатки. Их нет в галерее, но компьютер, подключённый кабелем, может видеть эту папку.",
+ "under 0.1 MB": "менее 0,1 МБ",
+ "{what}, not saved in your logbook yet.": "{what}, ещё не сохранено в журнале.",
+-"{n} leftover photos deleted.": {"one": "Удалено {n} оставшееся фото.", "few": "Удалено {n} оставшихся фото.", "many": "Удалено {n} оставшихся фото.", "other": "Удалено {n} оставшихся фото."},
+-"{n} more are kept.": {"one": "Сохранено ещё {n}.", "few": "Сохранено ещё {n}.", "many": "Сохранено ещё {n}.", "other": "Сохранено ещё {n}."},
+-"{n} unfinished scans": {"one": "{n} незавершённое исследование", "few": "{n} незавершённых исследования", "many": "{n} незавершённых исследований", "other": "{n} незавершённого исследования"},
+-"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {"one": "Wavelength нашёл {n} фото, снятое через «Сделать фото» в прежней версии. Оно хранится в исходном виде, до обрезки и закрашивания, в папке Wavelength на этом телефоне.", "few": "Wavelength нашёл {n} фото, снятых через «Сделать фото» в прежних версиях. Они хранятся в исходном виде, до обрезки и закрашивания, в папке Wavelength на этом телефоне.", "many": "Wavelength нашёл {n} фото, снятых через «Сделать фото» в прежних версиях. Они хранятся в исходном виде, до обрезки и закрашивания, в папке Wavelength на этом телефоне.", "other": "Wavelength нашёл {n} фото, снятых через «Сделать фото» в прежних версиях. Они хранятся в исходном виде, до обрезки и закрашивания, в папке Wavelength на этом телефоне."}
+-}
++"{n} leftover photos deleted.": {
++"one": "Удалено {n} оставшееся фото.",
++"few": "Удалено {n} оставшихся фото.",
++"many": "Удалено {n} оставшихся фото.",
++"other": "Удалено {n} оставшихся фото."
++},
++"{n} more are kept.": {
++"one": "Сохранено ещё {n}.",
++"few": "Сохранено ещё {n}.",
++"many": "Сохранено ещё {n}.",
++"other": "Сохранено ещё {n}."
++},
++"{n} unfinished scans": {
++"one": "{n} незавершённое исследование",
++"few": "{n} незавершённых исследования",
++"many": "{n} незавершённых исследований",
++"other": "{n} незавершённого исследования"
++},
++"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {
++"one": "Wavelength нашёл {n} фото, снятое через «Сделать фото» в прежней версии. Оно хранится в исходном виде, до обрезки и закрашивания, в папке Wavelength на этом телефоне.",
++"few": "Wavelength нашёл {n} фото, снятых через «Сделать фото» в прежних версиях. Они хранятся в исходном виде, до обрезки и закрашивания, в папке Wavelength на этом телефоне.",
++"many": "Wavelength нашёл {n} фото, снятых через «Сделать фото» в прежних версиях. Они хранятся в исходном виде, до обрезки и закрашивания, в папке Wavelength на этом телефоне.",
++"other": "Wavelength нашёл {n} фото, снятых через «Сделать фото» в прежних версиях. Они хранятся в исходном виде, до обрезки и закрашивания, в папке Wavelength на этом телефоне."
++},
++"An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:": "Официальный источник этого руководства изменился {date}. Это резюме Wavelength пересматривается. До тех пор сверяйтесь с исходным документом:",
++"Guidance last updated: {date}": "Руководство обновлено: {date}",
++"Last clinically reviewed: {date}": "Последняя клиническая проверка: {date}",
++"No changes detected during the latest check.": "При последней проверке изменений не обнаружено.",
++"Official sources not yet checked automatically.": "Официальные источники ещё не проверялись автоматически.",
++"Shown from this device's last connection, {date}.": "Показано по данным последнего подключения этого устройства, {date}.",
++"Source checked: {date}": "Источник проверен: {date}",
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "На сайте есть более новая версия этого руководства, чем копия в приложении. Откройте её на сайте Wavelength или обновите приложение."
++}
+\ No newline at end of file
+diff --git a/src/app/i18n/zh.json b/src/app/i18n/zh.json
+index a49a845..88475fa 100644
+--- a/src/app/i18n/zh.json
++++ b/src/app/i18n/zh.json
+@@ -2367,7 +2367,9 @@
+ "Your changes are not saved yet.": "您的更改尚未保存。",
+ "Your crop, redactions and annotations are not saved yet.": "您的裁剪、遮盖和标注尚未保存。",
+ "{what}, not part of a scan yet.": "{what}，尚未加入扫描。",
+-"{n} photos": {"other": "{n} 张照片"},
++"{n} photos": {
++"other": "{n} 张照片"
++},
+ "An unfinished scan was kept on this phone: {what}.": "此手机上保留了一项未完成的检查：{what}。",
+ "Application not chosen": "未选择应用",
+ "Continue it": "继续",
+@@ -2402,8 +2404,24 @@
+ "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "您的检查在保存时已保留各自的副本，因此这些是遗留文件。它们不在图库中，但通过数据线连接的电脑可能看到该文件夹。",
+ "under 0.1 MB": "小于 0.1 MB",
+ "{what}, not saved in your logbook yet.": "{what}，尚未保存到您的日志。",
+-"{n} leftover photos deleted.": {"other": "已删除 {n} 张遗留照片。"},
+-"{n} more are kept.": {"other": "另有 {n} 项已保留。"},
+-"{n} unfinished scans": {"other": "{n} 项未完成的检查"},
+-"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {"other": "Wavelength 发现 {n} 张在早期版本中用“拍照”拍摄的照片。它们按拍摄原样（未裁剪或遮盖）保存在此手机的 Wavelength 文件夹中。"}
+-}
++"{n} leftover photos deleted.": {
++"other": "已删除 {n} 张遗留照片。"
++},
++"{n} more are kept.": {
++"other": "另有 {n} 项已保留。"
++},
++"{n} unfinished scans": {
++"other": "{n} 项未完成的检查"
++},
++"Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.": {
++"other": "Wavelength 发现 {n} 张在早期版本中用“拍照”拍摄的照片。它们按拍摄原样（未裁剪或遮盖）保存在此手机的 Wavelength 文件夹中。"
++},
++"An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:": "本指南的一个官方来源于 {date} 发生变化。此 Wavelength 摘要正在复核中。在此之前，请查阅原始指南：",
++"Guidance last updated: {date}": "指南最近更新：{date}",
++"Last clinically reviewed: {date}": "最近临床复核：{date}",
++"No changes detected during the latest check.": "最近一次检查未发现变化。",
++"Official sources not yet checked automatically.": "官方来源尚未自动检查。",
++"Shown from this device's last connection, {date}.": "显示的是本设备最近一次联网（{date}）时的信息。",
++"Source checked: {date}": "来源检查：{date}",
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "网站上有比本应用内副本更新的指南版本。请在 Wavelength 网站上打开，或更新应用。"
++}
+\ No newline at end of file
+diff --git a/tools/i18n/batch-source-status.json b/tools/i18n/batch-source-status.json
+new file mode 100644
+index 0000000..e1dbf2d
+--- /dev/null
++++ b/tools/i18n/batch-source-status.json
+@@ -0,0 +1,10 @@
++{
++  "An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:": { "fr": "Une source officielle de ce guide a changé le {date}. Ce résumé Wavelength est en cours de révision. D'ici là, consultez la recommandation d'origine :", "es": "Una fuente oficial de esta guía cambió el {date}. Este resumen de Wavelength se está revisando. Mientras tanto, consulte la guía original:", "de": "Eine offizielle Quelle dieses Leitfadens hat sich am {date} geändert. Diese Wavelength-Zusammenfassung wird geprüft. Bis dahin gilt die ursprüngliche Vorgabe:", "it": "Una fonte ufficiale di questa guida è cambiata il {date}. Questa sintesi di Wavelength è in revisione. Nel frattempo consulti la guida originale:", "pl": "Oficjalne źródło tego przewodnika zmieniło się {date}. To podsumowanie Wavelength jest weryfikowane. Do tego czasu sprawdź oryginalne wytyczne:", "ar": "تغيّر مصدر رسمي لهذا الدليل في {date}. ملخص Wavelength هذا قيد المراجعة. حتى ذلك الحين، راجع الإرشادات الأصلية:", "ru": "Официальный источник этого руководства изменился {date}. Это резюме Wavelength пересматривается. До тех пор сверяйтесь с исходным документом:", "zh": "本指南的一个官方来源于 {date} 发生变化。此 Wavelength 摘要正在复核中。在此之前，请查阅原始指南：" },
++  "Guidance last updated: {date}": { "fr": "Recommandations mises à jour le : {date}", "es": "Guía actualizada por última vez: {date}", "de": "Leitfaden zuletzt aktualisiert: {date}", "it": "Guida aggiornata l'ultima volta: {date}", "pl": "Ostatnia aktualizacja przewodnika: {date}", "ar": "آخر تحديث للإرشادات: {date}", "ru": "Руководство обновлено: {date}", "zh": "指南最近更新：{date}" },
++  "Last clinically reviewed: {date}": { "fr": "Dernière révision clinique : {date}", "es": "Última revisión clínica: {date}", "de": "Zuletzt klinisch geprüft: {date}", "it": "Ultima revisione clinica: {date}", "pl": "Ostatnia weryfikacja kliniczna: {date}", "ar": "آخر مراجعة سريرية: {date}", "ru": "Последняя клиническая проверка: {date}", "zh": "最近临床复核：{date}" },
++  "No changes detected during the latest check.": { "fr": "Aucun changement détecté lors de la dernière vérification.", "es": "No se detectaron cambios en la última comprobación.", "de": "Bei der letzten Prüfung wurden keine Änderungen festgestellt.", "it": "Nessuna modifica rilevata all'ultimo controllo.", "pl": "Podczas ostatniego sprawdzenia nie wykryto zmian.", "ar": "لم تُرصد أي تغييرات في آخر فحص.", "ru": "При последней проверке изменений не обнаружено.", "zh": "最近一次检查未发现变化。" },
++  "Official sources not yet checked automatically.": { "fr": "Sources officielles pas encore vérifiées automatiquement.", "es": "Fuentes oficiales aún no comprobadas automáticamente.", "de": "Offizielle Quellen noch nicht automatisch geprüft.", "it": "Fonti ufficiali non ancora controllate automaticamente.", "pl": "Oficjalne źródła nie zostały jeszcze sprawdzone automatycznie.", "ar": "لم تُفحص المصادر الرسمية تلقائيًا بعد.", "ru": "Официальные источники ещё не проверялись автоматически.", "zh": "官方来源尚未自动检查。" },
++  "Shown from this device's last connection, {date}.": { "fr": "Affiché d'après la dernière connexion de cet appareil, le {date}.", "es": "Mostrado según la última conexión de este dispositivo, el {date}.", "de": "Angezeigt vom letzten Verbindungsstand dieses Geräts, {date}.", "it": "Mostrato dall'ultima connessione di questo dispositivo, {date}.", "pl": "Wyświetlono na podstawie ostatniego połączenia tego urządzenia, {date}.", "ar": "معروض من آخر اتصال لهذا الجهاز، {date}.", "ru": "Показано по данным последнего подключения этого устройства, {date}.", "zh": "显示的是本设备最近一次联网（{date}）时的信息。" },
++  "Source checked: {date}": { "fr": "Source vérifiée : {date}", "es": "Fuente comprobada: {date}", "de": "Quelle geprüft: {date}", "it": "Fonte controllata: {date}", "pl": "Źródło sprawdzone: {date}", "ar": "تم فحص المصدر: {date}", "ru": "Источник проверен: {date}", "zh": "来源检查：{date}" },
++  "The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": { "fr": "Le site propose une version plus récente de ce guide que la copie de l'application. Ouvrez-le sur le site Wavelength ou mettez à jour l'application.", "es": "La web tiene una versión más reciente de esta guía que la copia de la aplicación. Ábrala en la web de Wavelength o actualice la aplicación.", "de": "Auf der Website gibt es eine neuere Fassung dieses Leitfadens als in dieser App. Öffnen Sie sie auf der Wavelength-Website oder aktualisieren Sie die App.", "it": "Il sito ha una versione più recente di questa guida rispetto alla copia nell'app. La apra sul sito Wavelength o aggiorni l'app.", "pl": "Strona ma nowszą wersję tego przewodnika niż kopia w aplikacji. Otwórz ją na stronie Wavelength lub zaktualizuj aplikację.", "ar": "يحتوي الموقع على إصدار أحدث من هذا الدليل مقارنة بالنسخة في التطبيق. افتحه على موقع Wavelength أو حدّث التطبيق.", "ru": "На сайте есть более новая версия этого руководства, чем копия в приложении. Откройте её на сайте Wavelength или обновите приложение.", "zh": "网站上有比本应用内副本更新的指南版本。请在 Wavelength 网站上打开，或更新应用。" }
++}
+diff --git a/tools/i18n/strings.json b/tools/i18n/strings.json
+index bf9c6cd..207465d 100644
+--- a/tools/i18n/strings.json
++++ b/tools/i18n/strings.json
+@@ -110,6 +110,7 @@
+   "Amended: see {code}.",
+   "An approval pauses if the supervisor's registration, a required credential or their email stops being current, and ends at its review date unless renewed. A supervisor can stop by choice, and Wavelength can end an approval.",
+   "An encrypted backup keeps a copy wherever you choose.",
++  "An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:",
+   "An unfinished scan was kept on this phone: {what}.",
+   "An uppercase letter",
+   "Aneurysm",
+@@ -295,7 +296,6 @@
+   "Check the PDF shows the quality-review status your hospital asks for.",
+   "Check the numbers your country or department sets, as the compendium leaves these to local programmes.",
+   "Check your email.",
+-  "Checked against official sources {date}",
+   "Checked automatically against the register.",
+   "Checked {date}.",
+   "Checking the passphrase. This takes a few seconds…",
+@@ -730,6 +730,7 @@
+   "Grade or role (optional)",
+   "Grey",
+   "Guidance",
++  "Guidance last updated: {date}",
+   "Guide",
+   "Guides",
+   "Guides and accreditation",
+@@ -895,6 +896,7 @@
+   "Last backup file created {date}",
+   "Last backup file created {days} ago.",
+   "Last checked {date}.",
++  "Last clinically reviewed: {date}",
+   "Last error",
+   "Last name",
+   "Last synced",
+@@ -1031,6 +1033,7 @@
+   "No approved supervisor found. Check the spelling, or invite them by email.",
+   "No backup file created on this device yet",
+   "No backup file has been created on this device yet.",
++  "No changes detected during the latest check.",
+   "No completed assessment matches that code.",
+   "No effusion",
+   "No evidence summary matches that code.",
+@@ -1117,6 +1120,7 @@
+   "Official public listing (link)",
+   "Official register",
+   "Official sources",
++  "Official sources not yet checked automatically.",
+   "Offline",
+   "On a manikin",
+   "On a manikin (2 at most)",
+@@ -1498,6 +1502,7 @@
+   "Showing",
+   "Shown because it is still open against the targets you set for this module.",
+   "Shown because it is still open on your {pathway} pathway.",
++  "Shown from this device's last connection, {date}.",
+   "Shows for the whole clip.",
+   "Shows from {a} s to the end of the kept clip.",
+   "Shows from {a} s to {b} s of the kept clip.",
+@@ -1558,6 +1563,7 @@
+   "Something went wrong. Please try again.",
+   "Something went wrong. Supervision has not been ended.",
+   "Sonographic Murphy's sign",
++  "Source checked: {date}",
+   "Specialty",
+   "Splenomegaly",
+   "Spread seen under fascia",
+@@ -1692,6 +1698,7 @@
+   "The supervisor needs to enter their name and role and tick the confirmation.",
+   "The support email includes only the app version, platform and language. The website, privacy policy and terms need an internet connection.",
+   "The verified UK pathways, RCEM, FAMUS and FUSIC, plus editable trackers for international pathways and frameworks. One scan can count towards several trackers when it meets their criteria.",
++  "The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.",
+   "Their Wavelength approval is not current at present, so they cannot complete verified supervision through Wavelength. Records they signed earlier keep the status they had when signed.",
+   "Their status shows as pending until they accept, and while any checks and Wavelength approval are under way. That is expected.",
+   "Then press Retry sync. Wavelength also retries by itself.",
+@@ -1853,7 +1860,6 @@
+   "Update Wavelength to keep syncing. Your logbook stays on this phone and you can still read and export it.",
+   "Update and send again",
+   "Update needed on the server for this view.",
+-  "Updated {date}",
+   "Upload",
+   "Upload a PDF, JPEG or PNG file.",
+   "Upload a supporting document, or explain your experience and basis for supervising (at least 80 characters).",
+diff --git a/test/source-status.test.mjs b/test/source-status.test.mjs
+new file mode 100644
+index 0000000..7f341d3
+--- /dev/null
++++ b/test/source-status.test.mjs
+@@ -0,0 +1,52 @@
++// Guide source status in the apps (src/app/sourcestatus.js, October 2026): what a guide may say about its official
++// sources, live and offline. The server owns every date; the device only stores its last answer and says when it
++// arrived. Tested in Node with a stand-in localStorage.
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++
++const SRC = readFileSync(new URL('../src/app/sourcestatus.js', import.meta.url), 'utf8');
++function load(storage) {
++  const win = {};
++  globalThis.localStorage = storage;
++  new Function('window', SRC.replace(/\}\)\(typeof window[^;]*;\s*$/, '})(window);'))(win);
++  return win.WLSources;
++}
++const store = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), m }; };
++const status = (o = {}) => ({ slug: 'fusic-accreditation', contentVersion: 'aaaa', checkedOn: '2026-10-11', noChangeLatest: true, sources: { automatic: 15, byHand: 0 }, pendingReview: [], ...o });
++const bundled = { hash: 'aaaa', reviewed: '2026-10-04', updated: '2026-10-05' };
++
++test('live: the server\'s date and "no changes"; never more than the server said', () => {
++  const W = load(store());
++  assert.deepEqual(W.describe(status(), bundled), { checkedOn: '2026-10-11', noChange: true, notChecked: false, pending: [], newer: false, cached: false, receivedOn: null });
++  assert.equal(W.describe(status({ checkedOn: null }), bundled).notChecked, true, 'never checked: says so, no date');
++  assert.equal(W.describe(status({ checkedOn: 'yesterday' }), bundled).checkedOn, null, 'only a real date');
++  assert.equal(W.describe(status({ sources: { automatic: 0, byHand: 2 } }), bundled).checkedOn, null, 'no automatic sources: no check claimed');
++  const p = W.describe(status({ pendingReview: [{ source: 'FUSIC Heart', url: 'https://ics.ac.uk/product/fusic-heart.html', detectedOn: '2026-10-11' }, { source: 'bad', url: 'javascript:alert(1)' }] }), bundled);
++  assert.equal(p.noChange, false, 'a change awaiting review is never "no changes"');
++  assert.equal(p.pending.length, 1, 'only real links');
++  assert.equal(W.describe(null, bundled), null);
++});
++
++test('the bundled copy is older than the website: reported, not hidden', () => {
++  const W = load(store());
++  assert.equal(W.describe(status({ contentVersion: 'bbbb' }), bundled).newer, true);
++  assert.equal(W.describe(status({ contentVersion: 'aaaa' }), bundled).newer, false);
++  assert.equal(W.describe(status({ contentVersion: null }), bundled).newer, false, 'an older server without versions says nothing');
++});
++
++test('offline: the stored answer, labelled with the day it arrived, never as today\'s check', () => {
++  const s = store(), W = load(s);
++  W.save('fusic-accreditation', status({ checkedOn: '2026-10-09' }), '2026-10-09');
++  const got = W.load('fusic-accreditation');
++  const d = W.describe(got.guide, bundled, { cached: true, receivedOn: got.receivedOn });
++  assert.equal(d.checkedOn, '2026-10-09', 'the server\'s date from that day, not the device\'s today');
++  assert.equal(d.cached, true);
++  assert.equal(d.receivedOn, '2026-10-09');
++  // Storage broken or blocked: no crash, nothing claimed.
++  s.m.set('wl-src-x', '{not json');
++  assert.equal(W.load('x'), null);
++  const W2 = load({ getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } });
++  assert.equal(W2.load('fusic-accreditation'), null);
++  W2.save('fusic-accreditation', status(), '2026-10-11');
++});

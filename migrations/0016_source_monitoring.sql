@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS monitor_sources (
   last_success_at TEXT,                   -- advanced only by a check that genuinely succeeded
   last_change_at TEXT,                    -- the last check that found a meaningful change
   next_check_at TEXT,
+  last_outcome TEXT,                      -- outcome of the latest check (as monitor_runs.outcome), so a guide view never scans the runs
   failures INTEGER NOT NULL DEFAULT 0,    -- consecutive failed checks
   lease_until TEXT,                       -- a run holding this source; stops two runs checking it at once
   etag TEXT,

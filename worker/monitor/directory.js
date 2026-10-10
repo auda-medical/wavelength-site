@@ -72,12 +72,14 @@ export function parseDirectory(adapter, text) {
 }
 
 // ---------- Validation: never let an outage, an empty page or a redesign remove everyone ----------
-export function validate(entries, previous = []) {
+// o.acceptDrop: an administrator checked the source and confirmed a large fall is real (admin 'accept_drop', with a
+// recorded reason). It lifts the 30% rule only: an empty or unreadable list is still refused.
+export function validate(entries, previous = [], o = {}) {
   const listed = previous.filter((e) => e.status !== 'removed').length;
   const bad = entries.filter((e) => !e.name || e.name.length < 3 || !e.roles.length);
   if (!entries.length) return { ok: false, reason: 'empty', message: 'The source returned no entries. Kept the previous directory: an empty list is never read as everyone being removed.' };
   if (bad.length > entries.length * 0.1) return { ok: false, reason: 'format', message: `${bad.length} of ${entries.length} entries have no name or no module: the source format may have changed. Kept the previous directory.` };
-  if (listed >= 20 && entries.length < listed * 0.7) return { ok: false, reason: 'drop', message: `The source lists ${entries.length} people against ${listed} before (a fall of more than 30%). Kept the previous directory until a person confirms.` };
+  if (!o.acceptDrop && listed >= 20 && entries.length < listed * 0.7) return { ok: false, reason: 'drop', message: `The source lists ${entries.length} people against ${listed} before (a fall of more than 30%). Kept the previous directory until an administrator checks the source and accepts the fall.` };
   return { ok: true };
 }
 

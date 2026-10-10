@@ -1,5 +1,6 @@
-// Source monitoring runs (October 2026). The hourly cron (worker/cron.js, '7 * * * *') checks the sources that are
-// due, a few at a time, so each source is checked once a day within the Workers free plan's per-invocation limits.
+// Source monitoring runs (October 2026). The cron (worker/cron.js, '4,24,44 * * * *', three times an hour) checks one
+// due source each time, so each source is checked once a day within the Workers free plan's per-invocation limits:
+// the heaviest real source measured (a 375 KB page) takes about 6 ms of the 10 ms CPU allowed (docs/source-monitoring).
 // Guarantees:
 //   - last_success_at moves only when a check genuinely succeeded; a failure keeps the previous good data and date
 //   - a source is held by a lease while checked, so two runs (or a run and a manual retry) never check it twice
@@ -14,8 +15,8 @@ import { parseDirectory, validate, sync } from './directory.js';
 import { queueStmt, deliverLater } from '../notify.js';
 import { ukDate } from '../time.js';
 
-export const PER_RUN = 3;            // sources per invocation (CPU and query limits of the free plan)
-export const DAY_MS = 23 * 3600e3;   // a successful source is due again a day later (an hour early, so the hourly cron keeps the daily rhythm)
+export const PER_RUN = 1;            // sources per invocation (10 ms CPU on the free plan: one parse and diff each)
+export const DAY_MS = 23 * 3600e3;   // a successful source is due again a day later (an hour early, so the cron keeps the daily rhythm)
 export const LEASE_MS = 10 * 60e3;
 export const TIMEOUT_MS = 15000;
 export const MAX_BYTES = 4 * 1024 * 1024;
@@ -51,7 +52,7 @@ export async function seedSources(env) {
 
 // ---------- One run ----------
 // opts: { trigger: 'cron' | 'manual' | 'on_demand', ids: only these sources (manual retry, a guide being opened),
-// limit, force: check even if not due (manual retry) }. Returns a summary.
+// limit, force: check even if not due (manual retry), acceptDrop: a directory fall an administrator accepted }. Returns a summary.
 export async function monitorRun(env, ctx = null, opts = {}) {
   const trigger = opts.trigger || 'cron', now = Date.now();
   await seedSources(env);
@@ -66,7 +67,7 @@ export async function monitorRun(env, ctx = null, opts = {}) {
     const lease = await env.DB.prepare('UPDATE monitor_sources SET lease_until = ? WHERE id = ? AND (lease_until IS NULL OR lease_until < ?)').bind(iso(now + LEASE_MS), s.id, iso(now)).run();
     if (!(lease.meta && lease.meta.changes)) { out.skipped.push({ id: s.id, why: 'busy' }); continue; }
     let r;
-    try { r = await checkSource(env, s, trigger); } catch (e) { r = { outcome: 'unavailable', error: String(e && e.message || e).slice(0, 300) }; await recordFailure(env, s, r, trigger); }
+    try { r = await checkSource(env, s, trigger, { acceptDrop: !!opts.acceptDrop }); } catch (e) { r = { outcome: 'unavailable', error: String(e && e.message || e).slice(0, 300) }; await recordFailure(env, s, r, trigger); }
     out.checked.push({ id: s.id, outcome: r.outcome });
   }
   if (trigger === 'cron') await notifyAdmins(env, ctx);
@@ -100,11 +101,11 @@ async function fetchSource(env, s) {
   } finally { if (timer) clearTimeout(timer); }
 }
 
-export async function checkSource(env, s, trigger = 'cron') {
+export async function checkSource(env, s, trigger = 'cron', o = {}) {
   const started = iso();
   const got = await fetchSource(env, s);
   if (got.error) return recordFailure(env, s, { outcome: 'unavailable', http: got.status, error: got.error }, trigger, started);
-  if (s.kind === 'directory') return checkDirectory(env, s, got, trigger, started);
+  if (s.kind === 'directory') return checkDirectory(env, s, got, trigger, started, o);
   const meta = JSON.parse(s.meta || '{}');
   if (got.status === 304) return recordSuccess(env, s, { outcome: 'no_change', http: 304, next: { hash: s.content_hash, text: s.snapshot, version: s.doc_version, publishedOn: s.published_on }, result: { classification: 'no_change', summary: 'Not modified since the last check (confirmed by the source).' }, meta }, trigger, started);
   const isPdf = got.type.includes('pdf') || (got.bytes[0] === 0x25 && got.bytes[1] === 0x50 && got.bytes[2] === 0x44 && got.bytes[3] === 0x46);
@@ -130,9 +131,9 @@ async function recordSuccess(env, s, r, trigger, started) {
   const now = iso();
   const changed = !['no_change', 'baseline'].includes(r.result.classification);
   const stmts = [
-    env.DB.prepare(`UPDATE monitor_sources SET status = ?, last_attempt_at = ?, last_success_at = ?, last_change_at = CASE WHEN ? THEN ? ELSE last_change_at END, next_check_at = ?, failures = 0, lease_until = NULL,
+    env.DB.prepare(`UPDATE monitor_sources SET status = ?, last_outcome = ?, last_attempt_at = ?, last_success_at = ?, last_change_at = CASE WHEN ? THEN ? ELSE last_change_at END, next_check_at = ?, failures = 0, lease_until = NULL,
       etag = COALESCE(?, etag), last_modified = COALESCE(?, last_modified), content_hash = ?, doc_version = ?, published_on = ?, snapshot = ?, meta = ?, updated_at = datetime('now') WHERE id = ?`)
-      .bind(changed && NEEDS_REVIEW.has(r.result.classification) ? 'changed' : 'ok', now, now, changed ? 1 : 0, now, iso(Date.now() + DAY_MS), r.etag || null, r.lastModified || null, r.next.hash, r.next.version || null, r.next.publishedOn || null, r.next.text || null, JSON.stringify(r.meta || {}), s.id),
+      .bind(changed && NEEDS_REVIEW.has(r.result.classification) ? 'changed' : 'ok', r.outcome, now, now, changed ? 1 : 0, now, iso(Date.now() + DAY_MS), r.etag || null, r.lastModified || null, r.next.hash, r.next.version || null, r.next.publishedOn || null, r.next.text || null, JSON.stringify(r.meta || {}), s.id),
     env.DB.prepare('INSERT INTO monitor_runs (source_id, trigger, started_at, finished_at, outcome, http_status) VALUES (?,?,?,?,?,?)').bind(s.id, trigger, started || now, now, r.outcome, r.http || null),
   ];
   if (changed) stmts.push(env.DB.prepare('INSERT INTO monitor_changes (source_id, detected_at, classification, summary, evidence, guides, review_status) VALUES (?,?,?,?,?,?,?)')
@@ -145,7 +146,7 @@ export async function recordFailure(env, s, r, trigger, started) {
   const failures = (s.failures || 0) + 1;
   const stmts = [
     // last_success_at, the content hash and the snapshot are left exactly as they were.
-    env.DB.prepare("UPDATE monitor_sources SET status = ?, last_attempt_at = ?, failures = ?, next_check_at = ?, lease_until = NULL, updated_at = datetime('now') WHERE id = ?").bind(r.outcome === 'format_changed' ? 'format_changed' : 'unavailable', now, failures, iso(Date.now() + backoff(failures)), s.id),
+    env.DB.prepare("UPDATE monitor_sources SET status = ?, last_outcome = ?, last_attempt_at = ?, failures = ?, next_check_at = ?, lease_until = NULL, updated_at = datetime('now') WHERE id = ?").bind(r.outcome === 'format_changed' ? 'format_changed' : 'unavailable', r.outcome, now, failures, iso(Date.now() + backoff(failures)), s.id),
     env.DB.prepare('INSERT INTO monitor_runs (source_id, trigger, started_at, finished_at, outcome, http_status, error) VALUES (?,?,?,?,?,?,?)').bind(s.id, trigger, started || now, now, r.outcome, r.http || null, (r.error || '').slice(0, 500)),
   ];
   // A format change is worth one review item (not one per retry): only when the source was not already in that state.
@@ -155,14 +156,14 @@ export async function recordFailure(env, s, r, trigger, started) {
 }
 
 // ---------- Directories ----------
-async function checkDirectory(env, s, got, trigger, started) {
+async function checkDirectory(env, s, got, trigger, started, o = {}) {
   const text = got.status === 304 ? null : new TextDecoder().decode(got.bytes);
   const cur = await env.DB.prepare('SELECT * FROM directory_snapshots WHERE source_id = ? AND current = 1 ORDER BY id DESC LIMIT 1').bind(s.id).first();
   const previous = cur ? JSON.parse(cur.entries) : [];
   if (got.status === 304) return recordDirectory(env, s, { outcome: 'no_change', previous, cur, entries: previous, events: [], hash: cur && cur.content_hash, http: 304 }, trigger, started);
   const parsed = parseDirectory(s.adapter, text);
   if (!parsed.ok) return recordFailure(env, s, { outcome: 'format_changed', http: got.status, error: `Could not read the directory: ${parsed.error}. Kept the previous directory.` }, trigger, started);
-  const v = validate(parsed.entries, previous);
+  const v = validate(parsed.entries, previous, { acceptDrop: o.acceptDrop });
   if (!v.ok) return recordFailure(env, s, { outcome: v.reason === 'empty' ? 'unavailable' : 'format_changed', http: got.status, error: v.message }, trigger, started);
   const hash = await sha256(JSON.stringify(parsed.entries.map((e) => [e.sourceId, e.name, e.organisation, e.roles, e.accredited_on])));
   if (cur && cur.content_hash === hash) return recordDirectory(env, s, { outcome: 'no_change', previous, cur, entries: previous, events: [], hash, http: got.status }, trigger, started);
@@ -190,8 +191,8 @@ async function recordDirectory(env, s, r, trigger, started) {
     if (r.cur && r.events.length) stmts.push(env.DB.prepare("INSERT INTO monitor_changes (source_id, detected_at, classification, summary, evidence, guides, review_status) VALUES (?,?,'directory',?,?, '[]', ?)")
       .bind(s.id, now, `${Object.entries(counts).filter(([k]) => k !== 'listed').map(([k, n]) => `${n} ${k.replace(/_/g, ' ')}`).join(', ')}; ${counts.listed} listed.`, JSON.stringify({ counts, events: r.events.slice(0, 60) }).slice(0, 8000), review.length ? 'open' : 'none'));
   }
-  stmts.push(env.DB.prepare("UPDATE monitor_sources SET status = 'ok', last_attempt_at = ?, last_success_at = ?, last_change_at = CASE WHEN ? THEN ? ELSE last_change_at END, next_check_at = ?, failures = 0, lease_until = NULL, content_hash = ?, meta = json_set(meta, '$.fullAt', ?, '$.counts', json(?)), updated_at = datetime('now') WHERE id = ?")
-    .bind(now, now, r.events.length ? 1 : 0, now, iso(Date.now() + DAY_MS), r.hash || null, now, JSON.stringify(counts), s.id));
+  stmts.push(env.DB.prepare("UPDATE monitor_sources SET status = 'ok', last_outcome = ?, last_attempt_at = ?, last_success_at = ?, last_change_at = CASE WHEN ? THEN ? ELSE last_change_at END, next_check_at = ?, failures = 0, lease_until = NULL, content_hash = ?, meta = json_set(meta, '$.fullAt', ?, '$.counts', json(?)), updated_at = datetime('now') WHERE id = ?")
+    .bind(r.outcome, now, now, r.events.length ? 1 : 0, now, iso(Date.now() + DAY_MS), r.hash || null, now, JSON.stringify(counts), s.id));
   stmts.push(env.DB.prepare('INSERT INTO monitor_runs (source_id, trigger, started_at, finished_at, outcome, http_status, counts) VALUES (?,?,?,?,?,?,?)').bind(s.id, trigger, started || now, now, r.outcome, r.http || null, JSON.stringify(counts)));
   await env.DB.batch(stmts);
   return { outcome: r.outcome, counts };

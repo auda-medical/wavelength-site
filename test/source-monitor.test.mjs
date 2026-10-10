@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { makeEnv, ctx, client } from './helpers/env.mjs';
 import { verifiedAccount, idOf, signup } from './helpers/verify.mjs';
 import SOURCES from '../worker/monitor/sources.json' with { type: 'json' };
-import { seedSources, monitorRun, backoff, ALERT_AFTER, DAY_MS } from '../worker/monitor/run.js';
+import { seedSources, monitorRun, backoff, ALERT_AFTER, DAY_MS, PER_RUN } from '../worker/monitor/run.js';
 import { classify, lineDiff } from '../worker/monitor/classify.js';
 import { htmlToText, htmlMeta, pdfMeta, parseDate, findVersion } from '../worker/monitor/extract.js';
 import { parseFamusHtml, parseFeed, validate, sync, norm } from '../worker/monitor/directory.js';
@@ -93,10 +93,11 @@ test('a newly cited guidance document joins the daily checks; a source no longer
   assert.ok(!r.checked.some((c) => c.id === 'g:old'));
 });
 
-test('a daily run checks a few due sources, records a baseline, and does not check them again the same day', async () => {
+test('a run checks one due source (CPU allowance), records a baseline, and does not check them again the same day', async () => {
   const { env, n } = await setup();
   const r = await monitorRun(env, ctx, { trigger: 'cron' });
-  assert.equal(r.checked.length, 3);
+  assert.equal(r.checked.length, PER_RUN);
+  assert.equal(PER_RUN, 1);
   for (const c of r.checked) {
     const s = await row(env, c.id);
     assert.equal(s.status, 'ok');
@@ -110,9 +111,9 @@ test('a daily run checks a few due sources, records a baseline, and does not che
   assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM monitor_changes").first()).n, 0, 'a baseline is not a change');
 });
 
-test('over a day of hourly runs every automatic source is checked; directories and manual sources never are', async () => {
+test('over a day of runs (three an hour) every automatic source is checked; directories and manual sources never are', async () => {
   const { env, n } = await setup();
-  for (let h = 0; h < 24; h++) await monitorRun(env, ctx, { trigger: 'cron' });
+  for (let h = 0; h < 72; h++) await monitorRun(env, ctx, { trigger: 'cron' });
   const rows = (await env.DB.prepare('SELECT id, mode, last_success_at FROM monitor_sources').all()).results;
   for (const s of rows) assert.equal(!!s.last_success_at, s.mode === 'auto', s.id);
   for (const s of SOURCES.sources.filter((x) => x.mode !== 'auto')) assert.ok(!n.count.has(s.url), `${s.id} never fetched`);
@@ -309,7 +310,7 @@ test('opening a guide before the day\'s check: answered at once with the last re
   assert.equal(st.checkedOn, null, 'the answer does not wait for the source');
   assert.equal(waits.length, 1);
   await Promise.all(waits);
-  assert.equal([...n.count.keys()].length, 2, 'up to two stale sources refreshed in the background');
+  assert.equal([...n.count.keys()].length, 1, 'one stale source refreshed in the background per view');
   // Opening it again within the hour does not hammer the sources.
   const w2 = []; await guideStatus(env, 'rcem-ultrasound-sign-off', { waitUntil: (p) => w2.push(p) });
   await Promise.all(w2);
@@ -409,6 +410,34 @@ test('directory sync never empties or half-applies: empty, partial, broken and u
   await syncNow(env).catch(() => null);
   env.DB.batch = real;
   assert.equal((await env.DB.prepare("SELECT id FROM directory_snapshots WHERE source_id = 'dir:fusic' AND current = 1").first()).id, good.id);
+});
+
+test('a large fall is held until an administrator checks the source and accepts it, with a recorded reason', async () => {
+  const { env, n } = await setup({ DIRECTORY_SYNC: 'true' });
+  const many = Array.from({ length: 30 }, (_, i) => person(`Person ${String.fromCharCode(65 + (i % 26))}${i} Example`, `Hospital ${i}`, ['fusic-heart']));
+  await directory(env, n, many);
+  await syncNow(env);
+  await directory(env, n, many.slice(0, 15));
+  assert.equal((await syncNow(env)).checked[0].outcome, 'format_changed');
+  const html = await sourcesAdminHtml(env, new URL('https://x/admin/sources/?tab=directories'));
+  assert.match(html, /The source lists 15 people against 30/);
+  assert.match(html, /Accept the fall and sync/);
+  assert.match((await sourcesAdminPost(env, adminForm({ action: 'accept_drop', id: 'dir:fusic', reviewer: 'Alex Reviewer' }), 'wavelength', ctx)).m, /how you checked the source/);
+  assert.match((await sourcesAdminPost(env, adminForm({ action: 'accept_drop', id: 'g:esicm-edec', reviewer: 'Alex Reviewer', note: 'x'.repeat(5) }), 'wavelength', ctx)).m, /Not a directory/);
+  assert.equal((await snapshot(env)).filter((e) => e.status === 'listed').length, 30, 'nothing changed before the decision');
+  const r = await sourcesAdminPost(env, adminForm({ action: 'accept_drop', id: 'dir:fusic', reviewer: 'Alex Reviewer', note: 'Checked the ICS directory page: the Southern region moved to its own list.' }), 'wavelength', ctx);
+  assert.equal(r.m, 'Synced: directory.');
+  const snap = await snapshot(env);
+  assert.equal(snap.filter((e) => e.status === 'listed').length, 15);
+  assert.equal(snap.filter((e) => e.status === 'removed').length, 15, 'kept, marked removed, never deleted');
+  const held = await env.DB.prepare("SELECT * FROM monitor_changes WHERE source_id = 'dir:fusic' AND classification = 'format_changed'").first();
+  assert.equal(held.review_status, 'approved');
+  assert.match(held.reviewed_by, /Alex Reviewer/);
+  assert.match(held.review_note, /^Fall accepted: Checked the ICS directory/);
+  assert.equal((await row(env, 'dir:fusic')).status, 'ok');
+  // Accepting a fall never lets an empty or unreadable list through.
+  assert.equal(validate([], many.map((e) => ({ ...e, status: 'listed' })), { acceptDrop: true }).reason, 'empty');
+  assert.doesNotMatch(await sourcesAdminHtml(env, new URL('https://x/admin/sources/?tab=directories')), /Accept the fall/);
 });
 
 test('the FAMUS table adapter reads by headings, ignores contact details, and reports a format change', () => {

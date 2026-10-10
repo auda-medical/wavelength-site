@@ -5,11 +5,12 @@
 //                retries, retention). 05:15 UTC is 06:15 UK time in summer and 05:15 in winter.
 //   30 6 * * 2   newsletter: scheduledNewsletter. Two Tuesday crons cover 7:30am UK time in summer (06:30 UTC) and in
 //   30 7 * * 2   winter (07:30 UTC); scheduledNewsletter itself sends only when it is 7am to 8am in London.
-//   7 * * * *    source-monitor: monitorRun (worker/monitor/run.js). Hourly, a few due sources each time, so every
-//                monitored source is checked once a day within the free plan's per-invocation limits.
+//   4,24,44 * * * *  source-monitor: monitorRun (worker/monitor/run.js). Three times an hour, one due source each
+//                time (72 a day for about 40 sources), so every monitored source is checked once a day within the free
+//                plan's 10 ms CPU per invocation.
 export const DAILY_CRON = '15 5 * * *';
 export const NEWSLETTER_CRONS = Object.freeze(['30 6 * * 2', '30 7 * * 2']);
-export const MONITOR_CRON = '7 * * * *';
+export const MONITOR_CRON = '4,24,44 * * * *';
 
 export function jobFor(cron) {
   if (cron === DAILY_CRON) return 'supervisor-daily';

@@ -22,18 +22,18 @@ export async function guideStatus(env, slug, ctx = null, { refresh = true } = {}
   const g = GUIDES[slug];
   if (!g || g.draft) return null;
   const ids = g.sources;
-  const rows = ids.length ? ((await env.DB.prepare(`SELECT id, name, body, url, mode, status, last_success_at, last_attempt_at, last_change_at, doc_version, published_on, failures FROM monitor_sources WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all()).results || []) : [];
+  const rows = ids.length ? ((await env.DB.prepare(`SELECT id, name, body, url, mode, status, last_outcome, last_success_at, last_attempt_at, last_change_at, doc_version, published_on, failures FROM monitor_sources WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all()).results || []) : [];
   const open = ids.length ? ((await env.DB.prepare(`SELECT c.id, c.source_id, c.detected_at, c.classification, c.summary FROM monitor_changes c WHERE c.review_status IN ('open', 'acknowledged') AND c.source_id IN (${ids.map(() => '?').join(',')}) AND c.classification IN ('meaningful', 'important', 'format_changed') ORDER BY c.id DESC LIMIT 10`).bind(...ids).all()).results || []) : [];
   const auto = rows.filter((r) => r.mode === 'auto');
   const checked = auto.length && auto.every((r) => r.last_success_at) ? auto.map((r) => r.last_success_at).sort()[0] : null;
   const today = ukDate();
   const checkedOn = checked ? ukDate(Date.parse(checked)) : null;
-  const latestRuns = auto.length ? ((await env.DB.prepare(`SELECT source_id, outcome FROM monitor_runs WHERE id IN (SELECT MAX(id) FROM monitor_runs WHERE source_id IN (${auto.map(() => '?').join(',')}) GROUP BY source_id)`).bind(...auto.map((r) => r.id)).all()).results || []) : [];
-  const noChange = !!checked && !open.length && latestRuns.length === auto.length && latestRuns.every((r) => ['no_change', 'minor'].includes(r.outcome));
-  // Opening a guide whose sources were not all checked today asks for a background check of up to two of them: it
+  // The latest outcome is kept on each source (last_outcome), so this reads one row per source, never the run history.
+  const noChange = !!checked && !open.length && auto.every((r) => ['no_change', 'minor'].includes(r.last_outcome));
+  // Opening a guide whose sources were not all checked today asks for a background check of one of them (one parse fits the request's CPU allowance): it
   // never delays the response, and the date shown stays the last genuine success until that check succeeds.
   const stale = auto.filter((r) => !r.last_success_at || ukDate(Date.parse(r.last_success_at)) < today).filter((r) => !r.last_attempt_at || Date.now() - Date.parse(r.last_attempt_at) > 3600e3);
-  if (refresh && ctx && ctx.waitUntil && stale.length && env.MONITOR_ON_DEMAND !== 'false') ctx.waitUntil(monitorRun(env, ctx, { trigger: 'on_demand', ids: stale.slice(0, 2).map((r) => r.id), limit: 2 }).catch(() => null));
+  if (refresh && ctx && ctx.waitUntil && stale.length && env.MONITOR_ON_DEMAND !== 'false') ctx.waitUntil(monitorRun(env, ctx, { trigger: 'on_demand', ids: stale.slice(0, 1).map((r) => r.id), limit: 1 }).catch(() => null));
   const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
   return {
     slug, title: g.title, href: g.href, contentVersion: g.contentVersion,
