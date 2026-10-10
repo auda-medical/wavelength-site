@@ -152,7 +152,10 @@ Cloudflare Workers Builds also deploys on every push to GitHub `main`. GitHub is
 
    Afterwards C1 in `post-deploy-checks.sql` returns no rows, and the supervisor's app shows only "Verified Supervisor".
 9. **Independent review (section 11):** a second administrator records it on the person page.
-10. **Keep `main` in step:** `git -C C:\Users\phira\Wavelength-Cloud\wavelength-site …` belongs to another session, so do it from this worktree: `git branch -f main wavelength-supervisor-prod-20261010` only if `main` is still `2dfd55e`. Then push to GitHub once it is available.
+10. **Keep `main` in step:**
+    - Confirm no worktree has `main` checked out (`git worktree list`) and that `main` is still `2dfd55e`.
+    - From this worktree, run `git branch -f main wavelength-supervisor-prod-20261010`. This moves a shared branch, so it needs approval (section 12).
+    - Push to GitHub once it is available.
 
 **Approval route after deployment:** the person page and the application page now behave identically. No configuration change is needed: `SUPERVISOR_APPROVAL_REQUIRED` stays `"false"` and `SUPERVISOR_SELF_APPROVAL` stays unset.
 
@@ -163,7 +166,7 @@ Cloudflare Workers Builds also deploys on every push to GitHub `main`. GitHub is
   - **No migration and no schema change.** The fix writes only rows the current schema already has: approvals, application decisions, outbox rows and audit rows. They stay valid if the code is rolled back. The old code ignores the new audit fields.
   - If an approval email is still queued during a rollback, the old template would send it without the module list. The daily job sends it within a day.
   - Time Travel: D1 storage version `production`, confirmed from the database's metadata. A bookmark is recorded in step 5. A restore (`npx wrangler d1 time-travel restore wavelength-volunteers --bookmark=<id>`) is destructive and is needed only if records themselves went wrong. Not expected.
-  - Bookmark integrity cannot be checked until step 5 is run, because Wrangler access from this session is a dry run only. The earlier documented recovery point (`2026-10-06T22:28:49Z`) is older than Time Travel's retention window on the free plan and must not be relied on.
+  - Bookmark integrity cannot be checked until step 5 is run, because Wrangler access from this session is a dry run only. The earlier documented recovery point (`2026-10-06T22:28:49Z`) stays inside the free plan's 7-day Time Travel window only until about 13 October 2026. Use the fresh bookmark from step 5.
 - **Email configuration.** Unchanged: `ZEPTOMAIL_TOKEN`, `ZEPTOMAIL_API`, `MAIL_FROM`. Nothing to roll back.
 
 ## 9. Android integration status
