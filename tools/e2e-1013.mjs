@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { harness, net, DEVICE, serve, WWW } from './native-harness.mjs';
 import { localOnly } from './local-only.mjs';
+import { setColour } from './editor-colour.mjs';
 
 const OUT = path.resolve(process.argv[2] || 'e2e-1013-out');
 // BUNDLE=<dir>: run against another build's www (for example the assets/public folder of an installed APK) to show
@@ -141,7 +142,7 @@ if (want('A')) {
   const dragged = await size(page);
   record('A2', 'Dragging the slider with a finger changes the size continuously (no fixed steps of S, M, L)', dragged.value > 100 && dragged.value < 250 && dragged.shown === dragged.value + '%', JSON.stringify(dragged));
   await setSlider(page, 200);
-  await page.click('.editor [data-col=cyan]');
+  await setColour(page, 'cyan');
   await page.click('.editor [data-at=text]'); await page.fill('.editor #edtx', 'Ao'); await page.click('.editor .ed-pop button.apply'); await sleep(200);
   const selText = await size(page);
   record('A3', 'A new label is drawn at the chosen size, and selecting it shows that size and "text size"', selText.shown === '200%' && selText.for === 'Selected label: text size', JSON.stringify(selText));
@@ -239,7 +240,7 @@ if (want('Z')) {
   record('Z1b', 'Zooming in says, in the tip line, that zoom changes only the view, not annotation size or place; zooming out restores the tip', /changes only your view/.test(zt) && /annotations keep their size and place/.test(zt) && !/Zoom/.test(zt2), `${zt} / ${zt2}`);
   record('Z1', 'Zoom buttons: 1× (zoom out unavailable), 1.5×, 2.3×, back to 1.5×, then the whole picture', v0.label === '1×' && v0.outDisabled && v1.label === '1.5×' && Math.abs(v1.z - 1.5) < 0.02 && v2.label === '2.3×' && v3.label === '1.5×' && v4.label === '1×' && !v4.transform, [v0, v1, v2, v3, v4].map((v) => v.label + '/' + v.z).join(' '));
   // Z2 pinch with two fingers in Annotate with the dot tool chosen: the picture zooms, and no dot is left behind.
-  await page.click('.editor [data-tab=annotate]'); await page.click('.editor [data-col=cyan]'); await page.click('.editor [data-at=dot]');
+  await page.click('.editor [data-tab=annotate]'); await setColour(page, 'cyan'); await page.click('.editor [data-at=dot]');
   const st = await stageBox(page);
   await pinch(cdp, st.cx, st.cy, 60, 220);
   const vp = await view(page); const afterPinch = await chips(page);
@@ -300,7 +301,7 @@ if (want('Z')) {
   const sv = await stored(page, acc.id, { dot: target, red: [0.425, 0.6], outside: [0.38, 0.6] });
   const dot = sv && sv.annot && sv.annot.ann.find((a) => a.type === 'dot');
   const svn = sv ? named(sv.o) : {};
-  record('Z10', 'Saved: the dot is stored at the touched picture point at its usual size, and the saved pixels match (dot, redaction)', dot && Math.abs(dot.x - target[0]) < 0.004 && Math.abs(dot.y - target[1]) < 0.004 && dot.size === E.sizeFor('dot', 100) && svn.dot === 'cyan' && svn.red === 'black' && svn.outside === 'blue', JSON.stringify({ dot, saved: svn, size: [sv && sv.w, sv && sv.h] }));
+  record('Z10', 'Saved: the dot is stored at the touched picture point at its usual size, and the saved pixels match (dot, redaction)', dot && Math.abs(dot.x - target[0]) < 0.004 && Math.abs(dot.y - target[1]) < 0.004 && dot.size === E.sizeBase('dot') && svn.dot === 'cyan' && svn.red === 'black' && svn.outside === 'blue', JSON.stringify({ dot, saved: svn, size: [sv && sv.w, sv && sv.h] }));
   // Z11 the clip editor has the same zoom and size controls.
   const clip = path.join(OUT, 'clip-3s.webm');
   if (!fs.existsSync(clip)) {

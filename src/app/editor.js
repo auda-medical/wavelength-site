@@ -91,16 +91,55 @@
   var COLOURS = { white: '#FFFFFF', yellow: '#FFD60A', cyan: '#22D3EE', red: '#FF453A' };
   var SIZES = { s: 0.042, m: 0.058, l: 0.08 };
   var TYPES = ['text', 'arrow', 'dot', 'circle', 'rect', 'picto'];
-  // 1.0.13: one continuous Annotation size, as a percentage of each type's usual size (100% is the old Medium).
-  // a.size stays the stored value, a fraction of the picture's shorter side: the font height of text and labels, a
-  // dot's size, the line thickness and arrowhead of arrows, circles and boxes (their extent is drawn, not sized), and
-  // the plate of a pictogram. Zooming the editor never changes it: sizes are fractions of the picture, not the screen.
-  var SCALE = { min: 40, max: 250, step: 5, base: 100 };
-  function sizeBase(type) { return type === 'picto' ? 0.24 : SIZES.m; }
+  // a.size is the stored value, a fraction of the picture's shorter side: the font height of text and labels, a dot's
+  // size, the line thickness and arrowhead of arrows, circles and boxes (their extent is drawn, not sized), and the
+  // plate of a pictogram. Zooming the editor never changes it: sizes are fractions of the picture, not the screen.
+  //
+  // 1.0.14: the Annotation size slider runs from -100 (Smaller) through 0 (the usual size, the exact middle) to 100
+  // (Larger), on a curve: fine steps near the middle, strong ones towards the ends. Each kind has its own range, so a
+  // line can be a hairline or bold and a label can be a footnote or a heading, without either running off the picture.
+  var POS = { min: -100, max: 100, snap: 3, curve: 1.7 };
+  var RANGE = {
+    text: { base: 0.058, lo: 0.016, hi: 0.3 },   // font height
+    dot: { base: 0.058, lo: 0.014, hi: 0.26 },   // dot radius is 0.32 of this
+    line: { base: 0.058, lo: 0.016, hi: 0.32 },  // arrows, circles, boxes: line thickness 0.28x to 5.5x the usual
+    picto: { base: 0.24, lo: 0.07, hi: 0.92 }    // the plate's side
+  };
+  function rangeOf(type) { return RANGE[type === 'arrow' || type === 'circle' || type === 'rect' ? 'line' : type] || RANGE.text; }
+  function sizeBase(type) { return rangeOf(type).base; }
   function sizeOf(a) { return a && a.size ? a.size : sizeBase(a && a.type); }
-  function scaleOf(a) { return Math.round(sizeOf(a) / sizeBase(a && a.type) * 100); }
-  function clampScale(v) { v = Number(v); if (!isFinite(v)) v = SCALE.base; return Math.max(SCALE.min, Math.min(SCALE.max, v)); }
-  function sizeFor(type, scale) { return Math.round(sizeBase(type) * clampScale(scale) / 100 * 1e4) / 1e4; }
+  // The stored size for a slider position, and the slider position of a stored size (1.0.12 and 1.0.13 sizes included).
+  function sizeAt(type, pos) {
+    var r = rangeOf(type), p = Number(pos); if (!isFinite(p)) p = 0;
+    p = Math.max(POS.min, Math.min(POS.max, p));
+    var e = Math.pow(Math.abs(p) / 100, POS.curve);
+    return Math.round(r.base * Math.pow((p >= 0 ? r.hi : r.lo) / r.base, e) * 1e4) / 1e4;
+  }
+  function posOf(a) {
+    var r = rangeOf(a && a.type), v = sizeOf(a) / r.base;
+    if (Math.abs(v - 1) < 1e-6) return 0;
+    var end = v > 1 ? r.hi / r.base : r.lo / r.base, t = Math.log(v) / Math.log(end);
+    return Math.round(Math.max(0, Math.min(1, Math.pow(Math.max(0, t), 1 / POS.curve))) * 100) * (v > 1 ? 1 : -1);
+  }
+  // A position close enough to the middle is the middle, so the usual size is easy to find again by feel.
+  function snapPos(pos) { pos = Math.round(Number(pos) || 0); return Math.abs(pos) <= POS.snap ? 0 : Math.max(POS.min, Math.min(POS.max, pos)); }
+
+  // ---------- Colours (1.0.14) ----------
+  // An annotation's colour is one of the named colours of 1.0.12 or any #rrggbb from the colour picker. Marks are
+  // edged in the opposite tone, so a dark colour still shows on a dark ultrasound background and a light one on a
+  // bright area.
+  function hexOf(c) { if (typeof c !== 'string') return null; if (Object.prototype.hasOwnProperty.call(COLOURS, c)) return COLOURS[c]; return /^#[0-9a-f]{6}$/i.test(c) ? c.toUpperCase() : null; }
+  function rgbOf(c) { var h = hexOf(c) || '#FFFFFF'; return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function luminance(c) { return rgbOf(c).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (s, v, i) { return s + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+  function contrast(a, b) { var x = luminance(a), y = luminance(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function edgeFor(c) { return luminance(c) < 0.18 ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.85)'; }
+  function hslHex(h, s, l) {
+    h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+    var k = function (n) { return (n + h / 30) % 12; }, a = s * Math.min(l, 1 - l);
+    var f = function (n) { return Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))))); };
+    return '#' + [f(0), f(8), f(4)].map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('').toUpperCase();
+  }
+  var BOX = '#050B14'; // the usual background box behind text
   // The points that carry an annotation's position, in output fractions (for mapping through a crop or turn).
   function annPoints(a) {
     if (a.type === 'arrow') return [{ x: a.x, y: a.y }, { x: a.x2, y: a.y2 }];
@@ -188,7 +227,7 @@
   // ---------- Drawing ----------
   function drawPicto(ctx, a, W, H) {
     var p = PICTO[a.picto]; if (!p) return;
-    var m = Math.min(W, H), size = (a.size || 0.24) * m, col = COLOURS[a.color] || a.color || '#fff';
+    var m = Math.min(W, H), size = Math.min(sizeOf(a), 0.96) * m, col = hexOf(a.color) || '#FFFFFF';
     ctx.save();
     ctx.translate(a.x * W, a.y * H);
     if (a.rot) ctx.rotate(a.rot * Math.PI / 180);
@@ -199,14 +238,15 @@
     ctx.beginPath(); ctx.moveTo(-hw + r, -hw); ctx.arcTo(hw, -hw, hw, hw, r); ctx.arcTo(hw, hw, -hw, hw, r); ctx.arcTo(-hw, hw, -hw, -hw, r); ctx.arcTo(-hw, -hw, hw, -hw, r); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.save();
     ctx.scale(a.flip ? -s : s, s); ctx.translate(-50, -50);
-    ctx.strokeStyle = col; ctx.lineWidth = 3.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = luminance(col) < 0.05 ? '#9DABBA' : col; ctx.lineWidth = 3.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     p.parts.forEach(function (d) { var pp = path2d(d); if (pp) ctx.stroke(pp); });
-    if (p.spot) { ctx.fillStyle = a.color === 'yellow' ? '#FF453A' : '#FFD60A'; ctx.beginPath(); ctx.arc(p.spot[0], p.spot[1], 6, 0, Math.PI * 2); ctx.fill(); }
+    // The spot is yellow, or red when the drawing itself is yellowish, so it always stands out from the outline.
+    if (p.spot) { var c = rgbOf(col); ctx.fillStyle = c[0] > 170 && c[1] > 150 && c[2] < 120 ? '#FF453A' : '#FFD60A'; ctx.beginPath(); ctx.arc(p.spot[0], p.spot[1], 6, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
     // Labels upright, at mirrored positions when the drawing is flipped.
     (p.labels || []).forEach(function (l) {
       var lx = (a.flip ? 100 - l[1] : l[1]) - 50, ly = l[2] - 50, fs = 11 * (l[3] || 1) * s;
-      ctx.font = fontFor(fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col;
+      ctx.font = fontFor(fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = luminance(col) < 0.05 ? '#DCE4EC' : col;
       ctx.fillText(l[0], lx * s, ly * s);
     });
     ctx.restore();
@@ -218,39 +258,50 @@
     ctx.lineTo(x2 - len * Math.cos(ang + 0.45), y2 - len * Math.sin(ang + 0.45));
     ctx.closePath();
   }
-  // One annotation on an output frame W x H. Every mark has a dark edge so it reads on greyscale ultrasound.
+  // The font height of a text annotation on a W x H frame: its size, made smaller only if the text would otherwise
+  // run past the picture's width, so a large label never overflows the image.
+  function textSize(ctx, a, W, H) {
+    var fs = sizeOf(a) * Math.min(W, H);
+    ctx.font = fontFor(fs);
+    var tw = ctx.measureText(a.text || '').width, room = W * 0.96 - fs * 0.8;
+    return tw > room && tw > 0 ? Math.max(4, fs * Math.max(0.05, room) / tw) : fs;
+  }
+  // One annotation on an output frame W x H. Every mark has an edge in the opposite tone, so it reads on greyscale
+  // ultrasound whatever its colour.
   function drawAnn(ctx, a, W, H) {
-    var m = Math.min(W, H), col = COLOURS[a.color] || a.color || '#fff', dark = 'rgba(0,0,0,.85)';
-    var lw = Math.max(2, m * 0.0065 * (a.size ? a.size / SIZES.m : 1));
+    var m = Math.min(W, H), col = hexOf(a.color) || '#FFFFFF', edge = edgeFor(col), k = sizeOf(a) / RANGE.line.base;
+    var lw = Math.max(1, m * 0.0065 * k);
     ctx.save();
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     if (a.type === 'text') {
-      var fs = (a.size || SIZES.m) * m;
+      var fs = textSize(ctx, a, W, H);
       ctx.translate(a.x * W, a.y * H); if (a.rot) ctx.rotate(a.rot * Math.PI / 180);
       ctx.font = fontFor(fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       var tw = ctx.measureText(a.text || '').width;
       if (a.bg === 'box') {
         var px = fs * 0.35, py = fs * 0.22;
-        ctx.fillStyle = 'rgba(5,11,20,.72)';
+        ctx.globalAlpha = 0.85; ctx.fillStyle = hexOf(a.bgc) || BOX;
         ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-tw / 2 - px, -fs / 2 - py, tw + px * 2, fs + py * 2, fs * 0.25); else ctx.rect(-tw / 2 - px, -fs / 2 - py, tw + px * 2, fs + py * 2); ctx.fill();
-      } else { ctx.strokeStyle = dark; ctx.lineWidth = Math.max(2, fs * 0.2); ctx.strokeText(a.text || '', 0, 0); }
+        ctx.globalAlpha = 1;
+      } else { ctx.strokeStyle = edge; ctx.lineWidth = Math.max(2, fs * 0.2); ctx.strokeText(a.text || '', 0, 0); }
       ctx.fillStyle = col; ctx.fillText(a.text || '', 0, 0);
     } else if (a.type === 'arrow') {
-      var x1 = a.x * W, y1 = a.y * H, x2 = a.x2 * W, y2 = a.y2 * H, head = Math.max(lw * 3.4, m * 0.03);
+      // The head follows the line: a hairline arrow has a small head, a bold one a large head.
+      var x1 = a.x * W, y1 = a.y * H, x2 = a.x2 * W, y2 = a.y2 * H, head = Math.max(lw * 3.4, m * 0.03 * Math.min(1, Math.sqrt(k)));
       var ang = Math.atan2(y2 - y1, x2 - x1), sx = x2 - Math.cos(ang) * head * 0.8, sy = y2 - Math.sin(ang) * head * 0.8;
-      ctx.strokeStyle = dark; ctx.lineWidth = lw + 3; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(sx, sy); ctx.stroke();
-      arrowHead(ctx, x1, y1, x2, y2, head + 2); ctx.fillStyle = dark; ctx.fill();
+      ctx.strokeStyle = edge; ctx.lineWidth = lw + 3; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(sx, sy); ctx.stroke();
+      arrowHead(ctx, x1, y1, x2, y2, head + 2); ctx.fillStyle = edge; ctx.fill();
       ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(sx, sy); ctx.stroke();
       arrowHead(ctx, x1, y1, x2, y2, head); ctx.fillStyle = col; ctx.fill();
     } else if (a.type === 'dot') {
-      var rr = (a.size || SIZES.m) * m * 0.32;
-      ctx.beginPath(); ctx.arc(a.x * W, a.y * H, rr + 2, 0, Math.PI * 2); ctx.fillStyle = dark; ctx.fill();
+      var rr = sizeOf(a) * m * 0.32;
+      ctx.beginPath(); ctx.arc(a.x * W, a.y * H, rr + 2, 0, Math.PI * 2); ctx.fillStyle = edge; ctx.fill();
       ctx.beginPath(); ctx.arc(a.x * W, a.y * H, rr, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
     } else if (a.type === 'circle' || a.type === 'rect') {
       var bx = a.x * W, by = a.y * H, bw = a.w * W, bh = a.h * H;
       var shape = function () { ctx.beginPath(); if (a.type === 'circle') ctx.ellipse(bx + bw / 2, by + bh / 2, Math.max(1, bw / 2), Math.max(1, bh / 2), 0, 0, Math.PI * 2); else ctx.rect(bx, by, bw, bh); };
       ctx.translate(bx + bw / 2, by + bh / 2); if (a.rot && a.type === 'rect') ctx.rotate(a.rot * Math.PI / 180); ctx.translate(-(bx + bw / 2), -(by + bh / 2));
-      shape(); ctx.strokeStyle = dark; ctx.lineWidth = lw + 3; ctx.stroke();
+      shape(); ctx.strokeStyle = edge; ctx.lineWidth = lw + 3; ctx.stroke();
       shape(); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
     } else if (a.type === 'picto') {
       ctx.restore(); drawPicto(ctx, a, W, H); return;
@@ -281,9 +332,11 @@
   // Bounds of an annotation in output pixels (W x H), for selection and hit testing.
   function annBounds(ctx, a, W, H) {
     var m = Math.min(W, H);
-    if (a.type === 'text') { var fs = (a.size || SIZES.m) * m; ctx.font = fontFor(fs); var tw = ctx.measureText(a.text || '').width; return { x: a.x * W - tw / 2 - fs * 0.4, y: a.y * H - fs * 0.75, w: tw + fs * 0.8, h: fs * 1.5 }; }
-    if (a.type === 'dot') { var r = (a.size || SIZES.m) * m * 0.32 + m * 0.02; return { x: a.x * W - r, y: a.y * H - r, w: r * 2, h: r * 2 }; }
-    if (a.type === 'picto') { var s = (a.size || 0.24) * m; return { x: a.x * W - s / 2, y: a.y * H - s / 2, w: s, h: s }; }
+    // A small annotation still has a finger-sized area to pick it up by (about 6% of the picture's shorter side).
+    var grow = function (b) { var need = m * 0.06; if (b.w < need) { b.x -= (need - b.w) / 2; b.w = need; } if (b.h < need) { b.y -= (need - b.h) / 2; b.h = need; } return b; };
+    if (a.type === 'text') { var fs = textSize(ctx, a, W, H); ctx.font = fontFor(fs); var tw = ctx.measureText(a.text || '').width; return grow({ x: a.x * W - tw / 2 - fs * 0.4, y: a.y * H - fs * 0.75, w: tw + fs * 0.8, h: fs * 1.5 }); }
+    if (a.type === 'dot') { var r = sizeOf(a) * m * 0.32 + m * 0.02; return grow({ x: a.x * W - r, y: a.y * H - r, w: r * 2, h: r * 2 }); }
+    if (a.type === 'picto') { var s = Math.min(sizeOf(a), 0.96) * m; return grow({ x: a.x * W - s / 2, y: a.y * H - s / 2, w: s, h: s }); }
     if (a.type === 'arrow') { var pad = m * 0.03, x1 = Math.min(a.x, a.x2) * W, y1 = Math.min(a.y, a.y2) * H; return { x: x1 - pad, y: y1 - pad, w: Math.abs(a.x2 - a.x) * W + pad * 2, h: Math.abs(a.y2 - a.y) * H + pad * 2 }; }
     var p2 = m * 0.02; return { x: a.x * W - p2, y: a.y * H - p2, w: a.w * W + p2 * 2, h: a.h * H + p2 * 2 };
   }
@@ -316,8 +369,9 @@
       if (!a || typeof a !== 'object' || TYPES.indexOf(a.type) < 0) return null;
       bad = false;
       var n = function (v, lo, hi) { var r = num(v, lo, hi); if (r === null) bad = true; return r; };
-      var o = { type: a.type, x: n(a.x, 0, 1), y: n(a.y, 0, 1), color: typeof a.color === 'string' && COLOURS.hasOwnProperty(a.color) ? a.color : 'white' };
-      if (a.type === 'text') { o.text = String(a.text == null ? '' : a.text).slice(0, 80); o.bg = a.bg === 'box' ? 'box' : 'outline'; }
+      // A named colour (1.0.12, 1.0.13) or a #rrggbb from the colour picker (1.0.14); anything else is white.
+      var o = { type: a.type, x: n(a.x, 0, 1), y: n(a.y, 0, 1), color: typeof a.color === 'string' && COLOURS.hasOwnProperty(a.color) ? a.color : hexOf(a.color) || 'white' };
+      if (a.type === 'text') { o.text = String(a.text == null ? '' : a.text).slice(0, 80); o.bg = a.bg === 'box' ? 'box' : 'outline'; if (o.bg === 'box' && hexOf(a.bgc)) o.bgc = hexOf(a.bgc); }
       if (a.type === 'arrow') { o.x2 = n(a.x2, 0, 1); o.y2 = n(a.y2, 0, 1); }
       if (a.type === 'circle' || a.type === 'rect') { o.w = n(a.w, -1, 1); o.h = n(a.h, -1, 1); }
       if (a.type === 'picto') { if (typeof a.picto !== 'string' || !PICTO.hasOwnProperty(a.picto)) return null; o.picto = a.picto; if (a.flip) o.flip = true; }
@@ -333,6 +387,7 @@
   root.WLEditor = {
     orientAfter: orientAfter, composeOrient: composeOrient, outSize: outSize, setOrient: setOrient, toSrc: toSrc, toOut: toOut, rectToSrc: rectToSrc, clampRect: clampRect,
     mapAnnotations: mapAnnotations, annAt: annAt, drawFrame: drawFrame, drawAnn: drawAnn, annBounds: annBounds, hit: hit, describe: describe, cleanAnn: cleanAnn,
-    COLOURS: COLOURS, SIZES: SIZES, SCALE: SCALE, sizeBase: sizeBase, sizeOf: sizeOf, scaleOf: scaleOf, sizeFor: sizeFor, clampScale: clampScale, ZOOM: ZOOM, clampView: clampView, pinchView: pinchView, PICTOS: PICTOS, PICTO: PICTO, PRESETS: PRESETS, GROUP_LABEL: GROUP_LABEL, groupsFor: groupsFor, pictosFor: pictosFor
+    COLOURS: COLOURS, SIZES: SIZES, POS: POS, RANGE: RANGE, sizeBase: sizeBase, sizeOf: sizeOf, sizeAt: sizeAt, posOf: posOf, snapPos: snapPos, textSize: textSize,
+    hexOf: hexOf, luminance: luminance, contrast: contrast, edgeFor: edgeFor, hslHex: hslHex, BOX: BOX, ZOOM: ZOOM, clampView: clampView, pinchView: pinchView, PICTOS: PICTOS, PICTO: PICTO, PRESETS: PRESETS, GROUP_LABEL: GROUP_LABEL, groupsFor: groupsFor, pictosFor: pictosFor
   };
 })(typeof window !== 'undefined' ? window : globalThis);
