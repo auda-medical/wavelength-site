@@ -90,11 +90,16 @@ K.shot('F2-unfolded');
 
 // ---------- X: Android ends Wavelength while the editor is open ----------
 K.adb('shell', 'input', 'keyevent', 'KEYCODE_HOME'); await sleep(2500); // leaving the app keeps the work at once
-K.adb('shell', 'am', 'kill', PKG); await sleep(1500);                  // what Android does to a background app short of memory
+// What Android does to a background app short of memory. `am kill` only ends an app Android already counts as
+// cached; if it will not yet, `am force-stop` ends the process just as abruptly (no chance to save anything more).
+let how = 'am kill';
+for (let i = 0; i < 4 && K.pid(); i++) { K.adb('shell', 'am', 'kill', PKG); await sleep(2500); }
+if (K.pid()) { how = 'am force-stop'; K.adb('shell', 'am', 'force-stop', PKG); await sleep(1500); }
 const gone = !K.pid();
+console.log('ended by', how);
 K.start(); await sleep(8000); page = await K.connect(); await page.waitForSelector('nav.tabs', { timeout: 30000 }); await sleep(2500); await K.calibrate();
 const card = await page.evaluate(() => (document.querySelector('[data-kepthome]') || {}).textContent || '');
-record('X1', 'Wavelength ended by Android with the editor open: on reopening, Home says a photo is kept on this phone', gone && /Kept on this phone/.test(card), JSON.stringify({ killed: gone, card }));
+record('X1', 'Wavelength ended by Android with the editor open: on reopening, Home says a photo is kept on this phone', gone && /Kept on this phone/.test(card), JSON.stringify({ killed: gone, how, card }));
 K.shot('X1-home-kept');
 await page.click('[data-kepthome] a'); await page.waitForSelector('[data-addearlier]'); await page.click('[data-addearlier]'); await sleep(600);
 await page.click('label[for=t0]'); await page.waitForSelector('#gal .kept'); await page.click('#gal .kept');
@@ -112,12 +117,13 @@ for (const folded of [false, true]) {
   for (let i = 0; i < 4; i++) {
     await page.evaluate(() => { [...document.querySelectorAll('button, a')].find((x) => /About Wavelength/.test(x.textContent)).click(); });
     await page.waitForSelector('.sheet .about-head'); await sleep(500);
-    await page.evaluate(() => { window.__fr = []; const t0 = performance.now(); const look = () => { document.querySelectorAll('.sheet-was').forEach((g) => { const cs = getComputedStyle(g); window.__fr.push({ logos: g.querySelectorAll('svg').length, bg: cs.backgroundColor }); }); if (performance.now() - t0 < 400) requestAnimationFrame(look); }; requestAnimationFrame(look); });
+    // Sample every frame once the closing copy appears (started by the observer, so the time adb takes is not lost).
+    await page.evaluate(() => { window.__fr = []; window.__rm = matchMedia('(prefers-reduced-motion: reduce)').matches; const mo = new MutationObserver(() => { if (!document.querySelector('.sheet-gone')) return; mo.disconnect(); const t0 = performance.now(); const look = () => { document.querySelectorAll('.sheet-gone .sheet-was').forEach((g) => { const cs = getComputedStyle(g); window.__fr.push({ logos: g.querySelectorAll('svg').length, bg: cs.backgroundColor }); }); if (performance.now() - t0 < 400) requestAnimationFrame(look); }; look(); }); mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] }); });
     await K.backKey();
     const fr = await page.evaluate(() => window.__fr || []); frames += fr.length; bare += fr.filter((f) => f.logos && /rgba\(0, 0, 0, 0\)|transparent/.test(f.bg)).length;
     extra += await page.evaluate(() => (document.querySelector('.sheet .about-head') ? 1 : 0) + (location.hash === '#/settings' ? 0 : 1));
   }
-  record('A1-' + (folded ? 'folded' : 'unfolded'), `About, then the real back key, four times (${folded ? 'folded' : 'unfolded'}): no bare logo on any closing frame; back on Settings each time`, bare === 0 && extra === 0, `${frames} closing frames seen, ${bare} bare, ${extra} wrong endings`);
+  record('A1-' + (folded ? 'folded' : 'unfolded'), `About, then the real back key, four times (${folded ? 'folded' : 'unfolded'}): no bare logo on any closing frame; back on Settings each time`, bare === 0 && extra === 0 && frames > 0, `${frames} closing frames seen, ${bare} bare, ${extra} wrong endings`);
   if (folded) await fold(false);
 }
 

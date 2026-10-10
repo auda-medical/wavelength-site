@@ -14,9 +14,11 @@ export function kit({ adbPath = 'C:/Android/sdk/platform-tools/adb.exe', out, po
   k.shot = (name) => { adb('shell', 'screencap', '-p', '/sdcard/wl.png'); adb('pull', '/sdcard/wl.png', path.join(out, name + '.png')); };
   k.focus = () => (adb('shell', 'dumpsys', 'window').match(/mCurrentFocus=.*/) || [''])[0];
   // The app's window has the focus; the emulator's own "not responding" dialog is answered with Wait.
-  k.appFocused = async () => { for (let i = 0; i < 12; i++) { const w = k.focus(); if (w.includes(PKG)) return true; if (/Not Responding/.test(w)) adb('shell', 'input', 'keyevent', 'KEYCODE_ENTER'); await sleep(1500); } return false; };
+  // An idle emulator locks its screen (no PIN on the test device): wake it and dismiss the lock.
+  k.unlock = () => { adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP'); adb('shell', 'wm', 'dismiss-keyguard'); };
+  k.appFocused = async () => { for (let i = 0; i < 12; i++) { const w = k.focus(); if (w.includes(PKG)) return true; if (/Not Responding/.test(w)) adb('shell', 'input', 'keyevent', 'KEYCODE_ENTER'); else if (/NotificationShade|Keyguard/.test(w)) k.unlock(); await sleep(1500); } return false; };
   k.imeShown = () => /mInputShown=true|mIsInputViewShown=true|isInputViewShown=true/.test(adb('shell', 'dumpsys', 'input_method'));
-  k.pid = () => adb('shell', 'pidof', PKG).trim();
+  k.pid = () => { try { return adb('shell', 'pidof', PKG).trim(); } catch { return ''; } }; // pidof fails when there is none
   function client(wsUrl) {
     const ws = new WebSocket(wsUrl); let id = 0; const wait = {};
     ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && wait[d.id]) { wait[d.id](d); delete wait[d.id]; } };
