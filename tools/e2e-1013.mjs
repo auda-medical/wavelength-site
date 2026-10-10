@@ -286,7 +286,11 @@ if (want('Z')) {
   await page.click('.editor [data-tab=adjust]'); await page.click('.editor [data-a=rotate]'); await sleep(250);
   const vr = await view(page);
   await page.click('.editor [data-a=undo]'); await sleep(150);
-  record('Z9', 'Turning the picture returns to the whole picture (1×), so nothing is left off screen', vr.label === '1×' && !vr.transform, vr.label);
+  await page.click('.editor [data-z=in]'); await sleep(100);
+  await page.click('.editor [data-a=fliph]'); await sleep(250);
+  const vf = await view(page);
+  await page.click('.editor [data-a=undo]'); await sleep(150);
+  record('Z9', 'Turning or flipping the picture returns to the whole picture (1×), so nothing is left off screen', vr.label === '1×' && !vr.transform && vf.label === '1×', `rotate ${vr.label}, flip ${vf.label}`);
   // Z10 save after zooming in and out: the stored annotations and the saved pixels are where they were placed.
   await page.click('.editor [data-z=in]'); await page.click('.editor [data-z=in]'); await sleep(100);
   const preview = await page.evaluate(() => document.querySelector('.editor canvas').toDataURL('image/png'));

@@ -1855,7 +1855,7 @@
       if (d.a === 'reset') { change(); st = JSON.parse(st0); sel = -1; return redraw(); }
       if (d.a === 'apply' && drag === null) { var s = cropSel; cropSel = null; if (s) { change(); var k = k0(); setFrame(EDT.rectToSrc({ x: s.x / k, y: s.y / k, w: s.w / k, h: s.h / k }, st.crop, st.orient), st.orient); box.hidden = true; applyBtn.hidden = true; } return redraw(); }
       if (d.a === 'trim') { var o = size(), cut = o.h * 0.12; change(); setFrame(EDT.rectToSrc({ x: 0, y: cut, w: o.w, h: o.h - cut }, st.crop, st.orient), st.orient); return redraw(); }
-      if (d.a === 'rotate' || d.a === 'fliph' || d.a === 'flipv') { change(); setFrame(st.crop, orientAfter(st.orient, d.a)); NAT.haptic(); return redraw(); }
+      if (d.a === 'rotate' || d.a === 'fliph' || d.a === 'flipv') { change(); setFrame(st.crop, orientAfter(st.orient, d.a)); NAT.haptic(); fitView(); return redraw(); }
       if (d.a === 'save') return cfg.save(st, el);
       if (d.rc) { EDP.redact = d.rc; return state(); }
       if (d.at) {
