@@ -186,6 +186,63 @@ if (want('supervise')) {
 }
 await S.ctx.close();
 
+// Version 3: the whole review across two shifts, through the real interface. The trainee reads what "Wavelength
+// Verified" means, sends a request (identifier check ticked), the supervisor finds it on their dashboard later, reviews
+// and signs, and the trainee opens the signed record. New capture names only: version 1 and 2 captures are untouched.
+if (want('v3')) {
+  const T3 = await phone('learner'); const q = T3.page;
+  await go(q, '#/supervisors', 1600);
+  await q.locator('details.wv-explain summary').first().click().catch(() => {}); await sleep(400);
+  await q.evaluate(() => { const d = document.querySelector('details.wv-explain'); const card = [...document.querySelectorAll('h2,h3')].find((x) => /Linked and invited/.test(x.textContent)); const el = card || d; if (el) window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 90); });
+  await sleep(400); await shot(q, 'v3-supervisors', { verified: 'text=Wavelength Verified' });
+  await q.evaluate(() => { const d = document.querySelector('details.wv-explain'); if (d) window.scrollTo(0, d.getBoundingClientRect().top + scrollY - 120); });
+  await sleep(400); await shot(q, 'v3-verified-explain', {});
+  await go(q, '#/signoff', 1800);
+  for (const label of ['Lung and pleura', 'eFAST or FAFF']) { const el = q.locator(`label.pathcard:has-text("${label}")`).first(); if (await el.count()) { await el.click().catch(() => {}); await sleep(250); } }
+  await q.evaluate(() => window.scrollTo(0, 0)); await sleep(300);
+  await shot(q, 'v3-request-pick', { send: 'button:has-text("Send a request")' });
+  await q.locator('button:has-text("Send a request")').first().click(); await sleep(1600);
+  const sel = q.locator('.sheet select').first();
+  const opt = await sel.locator('option', { hasText: 'Whitfield' }).first().getAttribute('value').catch(() => null);
+  if (opt != null) { await sel.selectOption(opt); await sleep(400); }
+  await shot(q, 'v3-request-to', {});
+  const tick = q.locator('.sheet label:has-text("I have checked every image above") input[type=checkbox], .sheet input[type=checkbox]').last();
+  await tick.check({ force: true }).catch(() => {}); await sleep(300);
+  await q.evaluate(() => { const s = document.querySelector('.sheet'); if (s) s.scrollTop = s.scrollHeight; }); await sleep(400);
+  await shot(q, 'v3-request-ready', { create: 'button:has-text("Create request")' });
+  await q.locator('.sheet button:has-text("Create request")').first().click().catch(() => {}); await sleep(2600);
+  await q.evaluate(() => { const s = document.querySelector('.sheet'); if (s) s.scrollTop = 0; }); await sleep(300);
+  // The link shows this local test server's address; on the live site it starts https://thewavelength.co.uk. Show
+  // that address (the only change to the screen), so the film never displays "localhost".
+  await q.evaluate(() => { const o = location.origin; document.querySelectorAll('.sheet *').forEach((el) => { if (el.value && el.value.includes(o)) el.value = el.value.replace(o, 'https://thewavelength.co.uk'); if (el.children.length === 0 && el.textContent.includes(o)) el.textContent = el.textContent.replace(o, 'https://thewavelength.co.uk'); }); });
+  await sleep(200);
+  await shot(q, 'v3-request-sent', {});
+  await T3.ctx.close();
+
+  const S3 = await phone('sup'); const r = S3.page;
+  await go(r, '#/supervise', 1800); await shot(r, 'v3-dashboard', {});
+  const lid = await w.idOf(w.LEARNER.email);
+  await go(r, `#/supervise/${lid}`, 2000); await shot(r, 'v3-learner', { review: 'button:has-text("Review and sign")' });
+  await r.locator('button:has-text("Review and sign")').first().click(); await sleep(2000);
+  await r.evaluate(() => { document.querySelectorAll('.sheet label, .sheet button').forEach((el) => { if (/^\s*Good\s*$/.test(el.textContent)) el.click(); }); }); await sleep(200);
+  await r.locator('.sheet :text("I reviewed the images")').first().click().catch(() => {});
+  await r.locator('.sheet textarea').first().fill('Good views and a clear interpretation. Well done.').catch(() => {});
+  const cv = r.locator('.sheet canvas').first();
+  if (await cv.count()) { await cv.scrollIntoViewIfNeeded(); const b = await cv.boundingBox(); await r.mouse.move(b.x + 30, b.y + b.height * 0.6); await r.mouse.down(); for (let i = 0; i <= 70; i++) { const t = i / 70; await r.mouse.move(b.x + 30 + t * (b.width * 0.75) + Math.sin(t * 19) * 14, b.y + b.height * (0.62 - 0.22 * Math.sin(t * 9.5) * Math.exp(-t * 1.2) - 0.08 * Math.cos(t * 23))); } await r.mouse.up(); }
+  await r.locator('.sheet input[type=checkbox]').last().check({ force: true }).catch(() => {}); await sleep(300);
+  await scrollShot(r, 'v3-review-sheet', { sheet: true });
+  await r.locator('.sheet button:has-text("Sign off")').last().click().catch(() => {}); await sleep(2600);
+  await shot(r, 'v3-signed-done', {});
+  await S3.ctx.close();
+
+  const T4 = await phone('learner'); const u = T4.page;
+  await go(u, '#/log?s=signed', 2000); await shot(u, 'v3-log-signed', {});
+  await u.locator('a:has-text("Lung and pleura"), .row:has-text("Lung and pleura"), li:has-text("Lung and pleura")').first().click().catch(() => {}); await sleep(1800);
+  await shot(u, 'v3-entry-signed', {});
+  await scrollShot(u, 'v3-entry-scroll');
+  await T4.ctx.close();
+}
+
 // The website, desktop and phone.
 if (want('web')) {
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 2, reducedMotion: 'reduce', locale: 'en-GB' });

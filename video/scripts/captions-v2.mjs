@@ -8,13 +8,15 @@ import { fileURLToPath } from 'node:url';
 import { splitCues, wrapAt } from '../src/v2/cues.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = path.resolve(process.argv[2] || 'captions');
-const T = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio-v2/timings.json'), 'utf8'));
-const S = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/v2/script.json'), 'utf8'));
+const V3 = process.argv.includes('--v3');
+const VER = V3 ? 'v3' : 'v2';
+const OUT = path.resolve(process.argv.slice(2).find((a) => !a.startsWith('--')) || 'captions');
+const T = JSON.parse(fs.readFileSync(path.join(ROOT, `public/audio-${VER}/timings.json`), 'utf8'));
+const S = JSON.parse(fs.readFileSync(path.join(ROOT, `src/${VER}/script.json`), 'utf8'));
 fs.mkdirSync(OUT, { recursive: true });
 
 function scenes(film, file) {
-  const src = fs.readFileSync(path.join(ROOT, 'src/v2', file), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src', VER, file), 'utf8');
   const plan = Function(`return ${src.match(/[A-Z0-9]+_PLAN = (\[[\s\S]*?\]);/)[1]}`)();
   let at = 0; const out = [];
   for (const p of plan) {
@@ -33,7 +35,7 @@ function cues(text, from, dur, max = 42) {
   return chunks.map((x) => { const d = Math.round(dur * x.length / total); const q = { start: at, end: at + d, text: wrapAt(x, max).join('\n') }; at += d; return q; });
 }
 const ts = (f, sep) => { const ms = Math.round(f / 30 * 1000); const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60, r = ms % 1000; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}${sep}${String(r).padStart(3, '0')}`; };
-for (const [film, file, name] of [['flagship', 'Flagship2.jsx', 'wavelength-flagship-film-v2'], ['short', 'Short2.jsx', 'wavelength-free-logbook-short-v2'], ['ad', 'Ad2.jsx', 'wavelength-tailored-training-ad-v2']]) {
+for (const [film, file, name] of (V3 ? [['flagship', 'Flagship3.jsx', 'wavelength-flagship-film-v3'], ['short', 'Short3.jsx', 'wavelength-free-logbook-short-v3'], ['ad', 'Ad3.jsx', 'wavelength-tailored-training-ad-v3']] : [['flagship', 'Flagship2.jsx', 'wavelength-flagship-film-v2'], ['short', 'Short2.jsx', 'wavelength-free-logbook-short-v2'], ['ad', 'Ad2.jsx', 'wavelength-tailored-training-ad-v2']])) {
   const all = scenes(film, file).flatMap((x) => cues(x.text, x.from, x.dur));
   const srt = all.map((c, i) => `${i + 1}\n${ts(c.start, ',')} --> ${ts(c.end, ',')}\n${c.text}\n`).join('\n');
   const vtt = 'WEBVTT\n\n' + all.map((c) => `${ts(c.start, '.')} --> ${ts(c.end, '.')}\n${c.text}\n`).join('\n');

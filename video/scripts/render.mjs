@@ -11,7 +11,8 @@ import { execFileSync } from 'node:child_process';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1')), '..');
 const args = process.argv.slice(2);
 const V2 = args.includes('--v2'); // version 2 compositions, written to final-v2 (version 1 files are never touched)
-const OUT = process.env.WL_VIDEO_OUT || path.resolve(ROOT, '..', '..', 'wavelength-video-output', V2 ? 'final-v2' : 'final');
+const V3 = args.includes('--v3'); // version 3, written to final-v3 (versions 1 and 2 are never touched)
+const OUT = process.env.WL_VIDEO_OUT || path.resolve(ROOT, '..', '..', 'wavelength-video-output', V3 ? 'final-v3' : V2 ? 'final-v2' : 'final');
 fs.mkdirSync(OUT, { recursive: true });
 const no4k = args.includes('--no4k');
 const pick = (args.find((a) => !a.startsWith('--')) || '').split(',').filter(Boolean);
@@ -36,7 +37,22 @@ const JOBS_V2 = [
   { id: 'V2AdCaptioned', name: 'wavelength-tailored-training-ad-v2-captioned' },
   { id: 'V2AdVerticalCaptioned', name: 'wavelength-tailored-training-ad-v2-vertical-captioned' },
 ];
-const JOBS = (V2 ? JOBS_V2 : JOBS_V1).filter((j) => !pick.length || pick.includes(j.id));
+const JOBS_V3 = [
+  { id: 'V3LogoReveal', name: 'wavelength-v3-logo-reveal-preview' },
+  { id: 'V3LogoRevealShort', name: 'wavelength-v3-logo-reveal-short-preview' },
+  { id: 'V3Sample', name: 'wavelength-v3-sample' },
+  { id: 'V3Flagship', name: 'wavelength-flagship-film-v3', k4: true },
+  { id: 'V3FlagshipCaptioned', name: 'wavelength-flagship-film-v3-captioned' },
+  { id: 'V3Short', name: 'wavelength-free-logbook-short-v3' },
+  { id: 'V3ShortVertical', name: 'wavelength-free-logbook-short-v3-vertical' },
+  { id: 'V3ShortCaptioned', name: 'wavelength-free-logbook-short-v3-captioned' },
+  { id: 'V3ShortVerticalCaptioned', name: 'wavelength-free-logbook-short-v3-vertical-captioned' },
+  { id: 'V3Ad', name: 'wavelength-tailored-training-ad-v3' },
+  { id: 'V3AdVertical', name: 'wavelength-tailored-training-ad-v3-vertical' },
+  { id: 'V3AdCaptioned', name: 'wavelength-tailored-training-ad-v3-captioned' },
+  { id: 'V3AdVerticalCaptioned', name: 'wavelength-tailored-training-ad-v3-vertical-captioned' },
+];
+const JOBS = (V3 ? JOBS_V3 : V2 ? JOBS_V2 : JOBS_V1).filter((j) => !pick.length || pick.includes(j.id));
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const run = (a) => execFileSync(npx, a, { stdio: ['ignore', 'inherit', 'inherit'], shell: process.platform === 'win32', cwd: ROOT });
 const q = (s) => (process.platform === 'win32' ? `"${s}"` : s);

@@ -8,8 +8,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BASE = path.join(ROOT, 'public/audio-v2');
-const films = process.argv.slice(2).length ? process.argv.slice(2) : fs.readdirSync(path.join(BASE, 'raw'));
+const V3 = process.argv.includes('--v3'); // version 3 narration lives in public/audio-v3
+const AUD = V3 ? 'audio-v3' : 'audio-v2';
+const BASE = path.join(ROOT, 'public', AUD);
+const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const films = args.length ? args : fs.readdirSync(path.join(BASE, 'raw'));
 
 function read(file) {
   const b = fs.readFileSync(file);
@@ -58,7 +61,7 @@ for (const film of films) {
     const lim = 10 ** (-1.5 / 20);
     if (peak > lim) y = y.map((v) => (Math.abs(v) > lim * 0.9 ? Math.sign(v) * (lim * 0.9 + (Math.abs(v) - lim * 0.9) * (lim * 0.1) / (peak - lim * 0.9)) : v));
     write(path.join(BASE, film, f), y, rate);
-    T[`${film}/${id}`] = { seconds: +(y.length / rate).toFixed(3), file: `audio-v2/${film}/${f}` };
+    T[`${film}/${id}`] = { seconds: +(y.length / rate).toFixed(3), file: `${AUD}/${film}/${f}` };
     console.log(`${film}/${id}: ${(y.length / rate).toFixed(2)} s`);
   }
 }

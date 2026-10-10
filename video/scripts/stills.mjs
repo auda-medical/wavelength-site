@@ -11,9 +11,10 @@ const [id, outDir, list = '0'] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
 
 // Scene starts for scene:offset, computed as src/timeline.js does (that module imports JSON, so it is mirrored here).
-const V2 = (process.argv[2] || '').startsWith('V2');
-const T = JSON.parse(fs.readFileSync(path.join(ROOT, V2 ? 'public/audio-v2/timings.json' : 'public/audio/timings.json')));
-const S = JSON.parse(fs.readFileSync(path.join(ROOT, V2 ? 'src/v2/script.json' : 'src/script.json')));
+const VER = (process.argv[2] || '').startsWith('V3') ? 'v3' : (process.argv[2] || '').startsWith('V2') ? 'v2' : '';
+const V2 = !!VER; // version 2 and 3 share the timing rules
+const T = JSON.parse(fs.readFileSync(path.join(ROOT, VER ? `public/audio-${VER}/timings.json` : 'public/audio/timings.json')));
+const S = JSON.parse(fs.readFileSync(path.join(ROOT, VER ? `src/${VER}/script.json` : 'src/script.json')));
 function sceneStarts(film, plan) {
   let at = 0; const out = {};
   for (const p of plan) {
@@ -32,6 +33,9 @@ const PLAN = {
   Ad: ['ad', 'Ad.jsx'], AdVertical: ['ad', 'Ad.jsx'],
   V2Flagship: ['flagship', 'v2/Flagship2.jsx'], V2FlagshipCaptioned: ['flagship', 'v2/Flagship2.jsx'],
   V2Short: ['short', 'v2/Short2.jsx'], V2ShortVertical: ['short', 'v2/Short2.jsx'], V2ShortCaptioned: ['short', 'v2/Short2.jsx'], V2ShortVerticalCaptioned: ['short', 'v2/Short2.jsx'],
+  V3Flagship: ['flagship', 'v3/Flagship3.jsx'], V3FlagshipCaptioned: ['flagship', 'v3/Flagship3.jsx'],
+  V3Short: ['short', 'v3/Short3.jsx'], V3ShortVertical: ['short', 'v3/Short3.jsx'], V3ShortCaptioned: ['short', 'v3/Short3.jsx'], V3ShortVerticalCaptioned: ['short', 'v3/Short3.jsx'],
+  V3Ad: ['ad', 'v3/Ad3.jsx'], V3AdVertical: ['ad', 'v3/Ad3.jsx'], V3AdCaptioned: ['ad', 'v3/Ad3.jsx'], V3AdVerticalCaptioned: ['ad', 'v3/Ad3.jsx'],
   V2Ad: ['ad', 'v2/Ad2.jsx'], V2AdVertical: ['ad', 'v2/Ad2.jsx'], V2AdCaptioned: ['ad', 'v2/Ad2.jsx'], V2AdVerticalCaptioned: ['ad', 'v2/Ad2.jsx'],
 };
 let starts = {};
@@ -44,7 +48,7 @@ if (PLAN[id]) {
 const frames = list.split(',').map((x) => {
   const [a, b] = x.split(':');
   if (b === undefined) return Number(a);
-  const [base, key] = a.startsWith('v') ? [a.slice(1), 'voice'] : [a, 'from'];
+  const [base, key] = a.startsWith('v') && !starts[a] && starts[a.slice(1)] ? [a.slice(1), 'voice'] : [a, 'from'];
   return starts[base][key] + Number(b);
 });
 
