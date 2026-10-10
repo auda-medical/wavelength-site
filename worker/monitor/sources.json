@@ -133,7 +133,7 @@
    "id": "dir:fusic",
    "kind": "directory",
    "body": "ICS",
-   "name": "FUSIC TMS directory (trainers, mentors and supervisors)",
+   "name": "FUSIC TMS directory",
    "url": "https://ics.ac.uk/learning/fusic/fusic-tms-directory.html",
    "mode": "not_authorised",
    "adapter": "feed_json",
@@ -738,5 +738,5 @@
    "why": null
   }
  ],
- "version": "630a864af90d563e"
+ "version": "c1988a902a10b661"
 }

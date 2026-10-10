@@ -115,6 +115,7 @@ const sourceText = (row, issuerName) => {
   if (row.verification_method === 'automatic_register') return `Checked automatically against ${issuerName}`;
   if (row.verification_method === 'manual_register') return `Checked by the Wavelength team against ${issuerName}`;
   if (row.verification_method === 'manual_evidence') return 'Checked by the Wavelength team from evidence the holder provided';
+  if (row.verification_method === 'directory_listing') return 'Checked by the Wavelength team against the body’s official directory, with identity confirmed separately';
   return 'Checked by the Wavelength team';
 };
 const showSource = (env, s) => !isMockSource(s) || env.VERIFY_MOCK === 'true';

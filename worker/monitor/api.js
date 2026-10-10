@@ -11,6 +11,7 @@ import SOURCES from './sources.json';
 import { NEEDS_REVIEW } from './classify.js';
 import { norm, orgNorm, editDistance } from './directory.js';
 import { monitorRun } from './run.js';
+import { credentialsForListing } from './claims-admin.js';
 import { json, clip } from '../app-util.js';
 import { ukDate } from '../time.js';
 
@@ -103,7 +104,9 @@ export async function listingClaim(env, l, d) {
   if (taken) return json({ ok: false, error: 'Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.' }, 409);
   try { await env.DB.prepare("INSERT INTO directory_links (learner_id, source_id, entry_key, status) VALUES (?,?,?, 'claimed')").bind(l.id, source, key).run(); }
   catch { /* already claimed: one live claim per listing per account */ }
-  return json({ ok: true, claim: { ref: `${source}|${key}`, status: 'claimed', name: hit.name, organisation: hit.organisation, roles: hit.roles, source: hit.sourceName }, message: 'Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.' });
+  // The credentials the listing shows, so the application can tick them (the applicant can still change them).
+  const credentials = credentialsForListing(source, hit.roles).map((c) => ({ type: c.type.id, modules: c.modules }));
+  return json({ ok: true, claim: { ref: `${source}|${key}`, status: 'claimed', name: hit.name, organisation: hit.organisation, roles: hit.roles, source: hit.sourceName }, credentials, message: 'Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.' });
 }
 export async function listingClaims(env, l) {
   const rows = (await env.DB.prepare("SELECT source_id, entry_key, status, flag, claimed_at, decided_at FROM directory_links WHERE learner_id = ? AND status IN ('claimed', 'confirmed') ORDER BY id DESC").bind(l.id).all().catch(() => ({ results: [] }))).results || [];

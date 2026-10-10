@@ -15,6 +15,7 @@ import { verificationReady, lifecycleReady, fullName } from './app-util.js';
 import { standingOf, suggestedScopes, areaLabels, activateClaimedLinks, supervisorUnavailable, AREAS, verificationOf } from './supervisor-lifecycle.js';
 import { approvedGroups, groupLine } from './verification/status.js';
 import { matchNames } from './verification/names.js';
+import { claimsPanel, claimsPost, flaggedClaims } from './monitor/claims-admin.js';
 import { queueStmt, deliver, deliverLater } from './notify.js';
 import { receiptKey, receiptFor } from './supervisor-apply.js';
 import { auditStmt, audit } from './audit.js';
@@ -183,7 +184,8 @@ async function queues(env, tab, note) {
   // 2026, or a genuine further application): each needs a decision so the app does not say "under review".
   const staleOpen = (await env.DB.prepare(`${APP_SQL} WHERE a.status IN ('submitted', 'more_info') AND a.kind != 'renewal' AND EXISTS (SELECT 1 FROM supervisor_approvals x WHERE x.learner_id = a.learner_id AND x.status = 'approved') ORDER BY a.submitted_at`).all()).results || [];
   const selfRows = await selfApprovals(env);
-  const attention = lapses.length + pastDate.length + dueSoon.length + (notif ? 1 : 0) + approvalMail.length + staleOpen.length + selfRows.length;
+  const listingRows = await flaggedClaims(env);
+  const attention = lapses.length + pastDate.length + dueSoon.length + (notif ? 1 : 0) + approvalMail.length + staleOpen.length + selfRows.length + listingRows.length;
   const tabs = [['new', `New applications (${fresh.length})`], ['more', `Waiting for information (${more.length})`], ['renewals', `Renewals (${renewals.length})`], ['attention', `Needs attention (${attention})`], ['claims', `Registration and credential checks (${claims.length})`], ['ended', 'Decided and ended'], ['people', 'People'], ['system', 'System']];
   if (!tabs.some(([k]) => k === tab)) tab = 'new';
   const nav = `<nav class="sv-tabs" aria-label="Queues">${tabs.map(([k, label]) => `<a href="${BASE}?tab=${k}"${k === tab ? ' aria-current="page"' : ''}>${esc(label)}</a>`).join('')}</nav>`;
@@ -200,6 +202,7 @@ async function queues(env, tab, note) {
       ...dueSoon.map((r) => row(r, `Review date ${esc(r.review_on)} within 14 days and no renewal started.`)),
       ...staleOpen.map((a) => row(a, `Application <a class="text-link" href="${BASE}?app=${a.id}">#${a.id}</a> is still open although they hold a current approval, so their app also says it is under review. Record it as approved or decide it.`)),
       ...selfRows.map((r) => row(r, `Approved by ${esc(reviewerOf(r.approved_by) || 'an administrator')} on ${esc((r.approved_at || '').slice(0, 10))}, who appears to be the supervisor. An independent review by another administrator is recommended.`)),
+      ...listingRows.map((k) => row(k, `Their official directory listing (${esc(k.source_id)}) ${k.flag === 'listing_removed' ? 'is no longer in the directory' : 'changed its modules or role'}. Review any approval that relies on it.`)),
       ...approvalMail.map((n) => row(n, `Approval email ${esc(n.status)}${n.last_error ? ` (${esc(n.last_error)})` : ''}: the supervisor may not know they were approved. Resend it from their page or the System tab.`)),
     ];
     body = `${notif ? `<p class="sv-banner sv-warn">${notif} email${notif === 1 ? '' : 's'} may not have gone. See <a class="text-link" href="${BASE}?tab=system">System</a>.</p>` : ''}${rows.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Supervisor</th><th scope="col">What needs attention</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>` : '<p class="admin-summary">Nothing needs attention.</p>'}`;
@@ -419,6 +422,7 @@ async function detail(env, id, note, life = false, me = '') {
   ${life ? await lifecyclePanel(env, id, st, H) : ''}
   <h3 style="margin:28px 0 10px">Professional registration</h3><div class="sv-grid">${regCards}</div>
   <h3 style="margin:28px 0 10px">External credentials</h3><div class="sv-grid">${credCards}</div>
+  ${await claimsPanel(env, id, form)}
   <h3 style="margin:28px 0 10px">Wavelength supervisor approvals</h3>
   ${appRows ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Scope</th><th scope="col">Status</th><th scope="col">Approved</th><th scope="col">Review</th><th scope="col">Notes</th><th scope="col">Action</th></tr></thead><tbody>${appRows}</tbody></table></div>` : '<p class="admin-summary">No approvals.</p>'}
   ${review}${mailRow || st.approvals.length ? emailStatusHtml(mailRow, H) : ''}
@@ -473,6 +477,9 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
   if (life && (action.startsWith('app_') || action === 'grace_block')) return applicationPost(env, f, action, { actor, adminAudit, notes, ctx });
   if (life && action.startsWith('notif_')) return notificationPost(env, f, action, { adminAudit, ctx });
 
+  // Official directory listing claims (worker/monitor/claims-admin.js).
+  const claim = await claimsPost(env, f, action, { learnerId, actor, notes });
+  if (claim) return back(claim);
   if (action.startsWith('reg_')) {
     const r = await env.DB.prepare('SELECT * FROM professional_registrations WHERE id = ? AND learner_id = ?').bind(sid, learnerId).first();
     if (!r) return back('Registration not found.');

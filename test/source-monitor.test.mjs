@@ -520,3 +520,41 @@ test('extraction and classification details', () => {
   assert.equal(vol.classification, 'no_change', 'a generated-on line is not a change');
   assert.equal(sync([], [{ name: 'A B', organisation: 'X', roles: [{ role: 'supervisor', module: 'm' }] }], '2026-10-10').events[0].kind, 'added');
 });
+
+test('an administrator confirms a listing claim: identity method recorded, listed credential verified for exactly the listed modules, no approval', async () => {
+  const { env, n } = await setup({ DIRECTORY_SYNC: 'true' });
+  await directory(env, n, BASE_DIR);
+  await syncNow(env);
+  const { supervisorsAdminPost, supervisorsAdminHtml } = await import('../worker/supervisors-admin.js');
+  const adm = (o) => supervisorsAdminPost(env, adminForm({ reviewer: 'Alex Reviewer', ...o }), 'wavelength', ctx);
+  const jo = await verifiedAccount(env, 'jo.claim@example.test', { firstName: 'Jo', lastName: 'Rivers' });
+  const ref = (await jo.call('/api/app/listings/search?q=jo rivers')).body.results[0].ref;
+  await jo.call('/api/app/listings/claim', { ref });
+  const id = await idOf(env, 'jo.claim@example.test');
+  const link = await env.DB.prepare('SELECT id FROM directory_links').first();
+  const pageHtml = await supervisorsAdminHtml(env, new URL(`https://x/admin/supervisors/?id=${id}`), 'wavelength');
+  assert.match(pageHtml, /Official directory listings claimed/);
+  assert.match(pageHtml, /A matching name is never enough on its own/);
+  assert.match((await adm({ action: 'listing_confirm', learner: id, link: link.id })).m, /Choose how you confirmed/);
+  assert.match((await adm({ action: 'listing_confirm', learner: id, link: link.id, method: 'other', notes: 'x' })).m, /Say how you confirmed/);
+  const ok = await adm({ action: 'listing_confirm', learner: id, link: link.id, method: 'employer_confirmation', notes: 'Clinical director confirmed by phone' });
+  assert.match(ok.m, /^Identity confirmed\. FUSIC trainer: dvt, lung verified from the directory\./, ok.m);
+  const cred = await env.DB.prepare('SELECT * FROM credentials WHERE learner_id = ?').bind(id).first();
+  assert.deepEqual([cred.credential_type, JSON.parse(cred.modules).sort(), cred.status, cred.verification_method, cred.verification_source], ['fusic-trainer', ['dvt', 'lung'], 'verified', 'directory_listing', 'dir:fusic']);
+  assert.equal((await env.DB.prepare('SELECT COUNT(*) AS n FROM supervisor_approvals WHERE learner_id = ?').bind(id).first()).n, 0, 'no approval to supervise');
+  assert.match((await adm({ action: 'listing_confirm', learner: id, link: link.id, method: 'employer_confirmation' })).m, /already decided/);
+  // The listing then loses DVT: flagged on the person page and under Needs attention, never revoked.
+  await directory(env, n, BASE_DIR.map((e) => (e.name === 'Jo Rivers' ? person('Jo Rivers', 'Northtown General Hospital', ['fusic-lung'], 'trainer') : e)));
+  await syncNow(env);
+  assert.equal((await env.DB.prepare('SELECT flag, status FROM directory_links').first()).flag, 'modules_changed');
+  assert.match(await supervisorsAdminHtml(env, new URL('https://x/admin/supervisors/?tab=attention'), 'wavelength'), /changed its modules or role/);
+  assert.equal((await env.DB.prepare('SELECT status FROM credentials WHERE learner_id = ?').bind(id).first()).status, 'verified', 'nothing revoked automatically');
+  assert.match((await adm({ action: 'listing_flag_clear', learner: id, link: link.id, notes: 'DVT approval revoked; lung kept' })).m, /marked reviewed/);
+  // A different claim rejected with a reason.
+  const sam = await verifiedAccount(env, 'sam.claim@example.test', { firstName: 'Sam', lastName: 'Patel' });
+  const sref = (await sam.call('/api/app/listings/search?q=sam patel')).body.results[0].ref;
+  await sam.call('/api/app/listings/claim', { ref: sref });
+  const sid = await idOf(env, 'sam.claim@example.test');
+  const sl = await env.DB.prepare('SELECT id FROM directory_links WHERE learner_id = ?').bind(sid).first();
+  assert.equal((await adm({ action: 'listing_reject', learner: sid, link: sl.id, notes: 'Different person at that hospital' })).m, 'Claim rejected.');
+});

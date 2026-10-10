@@ -37,10 +37,17 @@ for (const f of ['worker/supervisor-lifecycle.js', 'worker/organisations.js', 'w
   for (const m of s.matchAll(/(?:REVIEW_TIME|badge:?)\s*[=:]\s*'((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
 }
 // Worker error messages shown to users.
-for (const f of ['worker/app.js', 'worker/supervise.js', 'worker/app-util.js', 'worker/evidence.js', 'worker/email-verify.js', 'worker/password.js', 'worker/supervisor-apply.js', 'worker/supervisor-lifecycle.js', 'worker/organisations.js', 'worker/search.js', 'worker/professional.js']) {
+for (const f of ['worker/app.js', 'worker/supervise.js', 'worker/app-util.js', 'worker/evidence.js', 'worker/email-verify.js', 'worker/password.js', 'worker/supervisor-apply.js', 'worker/supervisor-lifecycle.js', 'worker/organisations.js', 'worker/search.js', 'worker/professional.js', 'worker/monitor/api.js']) {
   const s = fs.readFileSync(f, 'utf8');
   for (const m of s.matchAll(/error: '((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
   for (const m of s.matchAll(/error: `([^`$]*)`/g)) add(m[1]);
+}
+// Source monitoring and directory search (worker/monitor/api.js): the notes and messages the app shows, and the
+// role words listings carry.
+{
+  const s = fs.readFileSync('worker/monitor/api.js', 'utf8');
+  for (const m of s.matchAll(/(?:note|message): '((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
+  ['Supervisor', 'Trainer', 'Mentor'].forEach(add);
 }
 // New-password checklist (PW_RULES in app.js, rules in worker/password.js).
 ['At least 10 characters', 'An uppercase letter', 'A lowercase letter', 'A number', 'A symbol, such as ! ? # or %', 'Choose a password of at most 200 characters.'].forEach(add);

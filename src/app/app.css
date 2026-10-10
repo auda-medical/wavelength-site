@@ -466,3 +466,10 @@ html[data-theme="dark"] input::placeholder, html[data-theme="dark"] textarea::pl
 @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } }
 html[data-theme="dark"] .sheet.pop { box-shadow: 0 12px 32px rgba(0,0,0,.45); }
 @media (prefers-reduced-motion: reduce) { .sheet.pop { animation: none; } }
+
+/* Official directory search (October 2026): a combobox list under the field */
+.listing { position: relative; }
+.listing-list { list-style: none; margin: 6px 0 0; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: 0 8px 24px rgba(10,21,38,.12); max-height: 320px; overflow: auto; }
+.listing-list li { display: grid; gap: 2px; padding: 10px 12px; min-height: 44px; border-radius: 9px; cursor: pointer; }
+.listing-list li[aria-selected="true"], .listing-list li:hover { background: var(--sand); }
+.listing-list li .chip { justify-self: start; }

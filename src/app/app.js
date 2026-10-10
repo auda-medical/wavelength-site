@@ -1591,7 +1591,7 @@
     mount(shell({ title: T('Your supervisors'), back: 'me' },
       '<div class="card dark"><h3>' + esc(T('Link your supervisors')) + '</h3><p class="muted small">' + esc(T('A linked supervisor sees your progress and your written scan records in their own Wavelength app, never your images. Send sign-off and assessment requests straight to their dashboard. Remove a supervisor at any time.')) + '</p></div>' +
       (S.me && S.me.supervisor && S.me.supervisor.search ? '<form id="svsf" class="card" role="search"><div class="field"><label for="svq">' + esc(T('Find a Wavelength-approved supervisor')) + '</label><input id="svq" type="search" autocomplete="off" minlength="3" placeholder="' + esc(T('Name, at least 3 letters')) + '" aria-describedby="svq-h"><p class="hint" id="svq-h">' + esc(T('Shows only supervisors approved by Wavelength who chose to be found.')) + '</p></div><div id="svres" aria-live="polite"></div></form><p class="small muted" style="margin:-4px 0 12px">' + esc(T('Can\'t find them? Invite a supervisor by email.')) + '</p>' : '') +
-      '<form id="addf" class="card"><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off"></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
+      '<form id="addf" class="card">' + listingBox('svfind2', T('Find your supervisor in an official directory (optional)'), T('Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.')) + '<div id="svpicked"></div><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off"></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
       ((L2.supervisors || []).length ? L2.supervisors.map(function (s) { var vv = WLV.fromLink(s); return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.name || s.email) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div>' + (vv.verified ? '' : linkChip(s)) + '</div>' + (vv.verified ? verifiedLine() + '<button type="button" class="vs-more" data-vinfo="' + s.id + '" aria-haspopup="dialog">' + esc(T('More info')) + '</button>' : '') + (s.state === 'unavailable' ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('Please arrange another suitable supervisor.')) + '</p>' : '') + '<div class="btns">' + (s.status === 'active' || !s.email ? '' : '<button class="btn ghost sm" data-resend="' + esc(s.email) + '">' + esc(T('Resend or share')) + '</button>') + '<button class="btn ghost sm" data-rm="' + s.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('') : '<p class="muted small">' + esc(T('No supervisors linked yet.')) + '</p>') +
       '<div id="backreqs"></div>'));
     // The list carries each supervisor's verification: read again when the copy is more than 30 seconds old.
@@ -1599,6 +1599,11 @@
     bindVerifiedInfo(document, function (id) { var s = (L2.supervisors || []).filter(function (x) { return String(x.id) === String(id); })[0]; return s ? WLV.fromLink(s) : null; }, false);
     returnedRequests();
     bindSupSearch();
+    // Picking a listed supervisor fills in who they are; the invitation still goes to the email the learner types.
+    bindListing('svfind2', function (r) {
+      $('#svpicked').innerHTML = '<p class="small" role="status">' + esc(T('Selected: {name}', { name: [r.name, r.organisation].filter(Boolean).join(', ') })) + (r.onWavelength ? ' · ' + esc(T('On Wavelength')) : '') + '<br>' + esc(listingRoles(r.roles)) + '<br><span class="muted">' + esc(T('Being listed is not Wavelength approval. Enter their email below to invite them.')) + '</span></p>';
+      $('#se2').focus();
+    });
     $('#addf').addEventListener('submit', function (ev) {
       ev.preventDefault(); var b = $('button', this), err = $('.err', this); busy(b, true);
       api('/api/app/supervisors/add', { email: $('#se2').value }).then(function (res) {
@@ -1918,7 +1923,8 @@
       }
       if (step === 'experience') {
         var held = P.credentials || [];
-        body = '<p class="small">' + esc(T('Ultrasound credentials you hold (optional). They are issued by the named bodies, not by Wavelength, and listing them does not imply their endorsement.')) + '</p>' +
+        body = listingBox('svlst', T('Find your listing in an official directory (optional)'), T('FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.')) + '<div id="svclaim"></div>' +
+          '<p class="small">' + esc(T('Ultrasound credentials you hold (optional). They are issued by the named bodies, not by Wavelength, and listing them does not imply their endorsement.')) + '</p>' +
           held.map(function (c) {
             var t = svEditable(cfg, c), on = a.credentialIds.indexOf(c.id) >= 0 ? ' checked' : '';
             if (!t) return '<label class="pathcard"><input type="checkbox" name="credId" value="' + c.id + '"' + on + '><div><b>' + esc(T(c.label)) + '</b><span>' + esc(c.issuer + ((c.moduleLabels || []).length ? ' · ' + c.moduleLabels.map(T).join(', ') : '')) + '</span> ' + verifyChip(c.status) + '</div></label>';
@@ -1984,6 +1990,51 @@
       });
     }).catch(function () { toast(T('Could not load. Check your connection.')); });
   }
+  // ---------- Official directory search (name autocomplete, October 2026) ----------
+  // Searches the official supervisor directories Wavelength may use (worker/monitor/api.js), from three letters, as
+  // a labelled combobox: arrows move, Enter picks, Escape closes, every option is a 44 px target. Results show name,
+  // organisation, directory and listed roles, never contact details. When directory search is off the box is not
+  // shown and manual entry stays the route.
+  var ROLE_WORD = { supervisor: 'Supervisor', trainer: 'Trainer', mentor: 'Mentor' };
+  function listingRoles(roles) {
+    var by = {};
+    // Module names as the logbook names them ("Lung", "DVT"), translated; the raw id only if a module is unknown.
+    (roles || []).forEach(function (r) { var pw = PATHS[String(r.module).split('-')[0]], mod = pw && (pw.modules || []).filter(function (x) { return x.id === r.module; })[0]; (by[r.role] = by[r.role] || []).push(mod ? T(mod.label) : r.module); });
+    return Object.keys(by).map(function (k) { return T(ROLE_WORD[k] || k) + ': ' + by[k].join(', '); }).join(' · ');
+  }
+  function listingBox(id, label, hint) {
+    return '<div class="field listing" data-listing="' + id + '" hidden><label for="' + id + '">' + esc(label) + '</label><input id="' + id + '" type="search" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + id + '-list" aria-describedby="' + id + '-h" placeholder="' + esc(T('Name, at least 3 letters')) + '"><p class="hint" id="' + id + '-h">' + esc(hint) + '</p><ul class="listing-list" id="' + id + '-list" role="listbox" hidden></ul><p class="small muted" data-listing-note aria-live="polite"></p></div>';
+  }
+  function bindListing(id, onPick, opts) {
+    var wrap = $('[data-listing="' + id + '"]'); if (!wrap) return;
+    var input = $('#' + id), list = $('#' + id + '-list'), note = $('[data-listing-note]', wrap), timer = 0, items = [], active = -1, seq = 0;
+    var close = function () { list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); active = -1; };
+    var mark = function (i) { active = i; $$('li', list).forEach(function (li, j) { li.setAttribute('aria-selected', j === i ? 'true' : 'false'); }); if (i >= 0) input.setAttribute('aria-activedescendant', id + '-o' + i); };
+    var pick = function (i) { var it = items[i]; if (!it) return; close(); input.value = it.name; onPick(it); };
+    var show = function (res) {
+      items = res.results || [];
+      note.textContent = items.length ? T(res.note || '') : input.value.trim().length >= 3 ? T('No listing found. Check the spelling, or enter the details by hand.') : '';
+      list.innerHTML = items.map(function (r, i) { return '<li role="option" id="' + id + '-o' + i + '" aria-selected="false" data-i="' + i + '"><b>' + esc(r.name) + '</b>' + (r.onWavelength ? ' <span class="chip green">' + esc(T('On Wavelength')) + '</span>' : '') + '<span class="small muted">' + esc([r.organisation, r.source].filter(Boolean).join(' · ')) + '</span><span class="small">' + esc(listingRoles(r.roles)) + '</span></li>'; }).join('');
+      list.hidden = !items.length; input.setAttribute('aria-expanded', items.length ? 'true' : 'false'); mark(-1);
+      $$('li', list).forEach(function (li) { li.onmousedown = function (e) { e.preventDefault(); }; li.onclick = function () { pick(Number(li.dataset.i)); }; });
+    };
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      var q = input.value.trim();
+      if (q.replace(/\s/g, '').length < 3) { close(); note.textContent = ''; return; }
+      timer = setTimeout(function () { var my = ++seq; api('/api/app/listings/search?q=' + encodeURIComponent(q) + (opts && opts.pathway ? '&pathway=' + encodeURIComponent(opts.pathway) : '')).then(function (res) { if (my === seq && res.ok) show(res); }).catch(function () { note.textContent = T('Could not search. Check your connection, or enter the details by hand.'); }); }, 250);
+    });
+    input.addEventListener('keydown', function (e) {
+      if (list.hidden) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); mark(Math.min(items.length - 1, active + 1)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); mark(Math.max(0, active - 1)); }
+      else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(active); }
+      else if (e.key === 'Escape') { e.preventDefault(); close(); }
+    });
+    input.addEventListener('blur', function () { setTimeout(close, 150); });
+    // Shown only when the server says directory search is available.
+    api('/api/app/listings/search?q=').then(function (res) { if (res.ok && res.available) wrap.hidden = false; }).catch(function () { /* stays hidden: manual entry */ });
+  }
   function svYesNo(name, label, v) {
     return '<div class="field"><span class="lab">' + esc(label) + '</span><div class="seg"><input type="radio" name="' + name + '" id="' + name + 'y" value="yes"' + (v === true ? ' checked' : '') + '><label for="' + name + 'y">' + esc(T('Yes')) + '</label><input type="radio" name="' + name + '" id="' + name + 'n" value="no"' + (v === false ? ' checked' : '') + '><label for="' + name + 'n">' + esc(T('No')) + '</label></div></div>';
   }
@@ -1996,6 +2047,25 @@
       rg.onchange = setReg; setReg();
     }
     if (step === 'experience') $$('input[name=credType]').forEach(function (x) { x.onchange = function () { $('.mods[data-for="' + x.value + '"]').hidden = !x.checked; }; });
+    // "This listing is me": a claim the Wavelength team confirms before it counts. The credentials the listing shows
+    // are ticked for the applicant, who can still change them.
+    if (step === 'experience') bindListing('svlst', function (r) {
+      var box = $('#svclaim');
+      box.innerHTML = '<div class="card"><p class="small"><b>' + esc(T('Is this you?')) + '</b> ' + esc([r.name, r.organisation, r.source].filter(Boolean).join(' · ')) + '<br>' + esc(listingRoles(r.roles)) + '</p><div class="btns"><button type="button" class="btn teal sm" data-claim>' + esc(T('This is me')) + '</button><button type="button" class="btn ghost sm" data-noclaim>' + esc(T('Not me')) + '</button></div></div>';
+      $('[data-noclaim]', box).onclick = function () { box.innerHTML = ''; $('#svlst').value = ''; $('#svlst').focus(); };
+      $('[data-claim]', box).onclick = function () {
+        var b = $('[data-claim]', box); busy(b, true);
+        api('/api/app/listings/claim', { ref: r.ref }).then(function (res) {
+          if (!res.ok) { busy(b, false); toast(res.error, 5000); return; }
+          (res.credentials || []).forEach(function (c) {
+            var t = $('input[name=credType][value="' + c.type + '"]');
+            if (t && !t.checked) { t.checked = true; $('.mods[data-for="' + c.type + '"]').hidden = false; }
+            c.modules.forEach(function (m) { var x = $('input[name="mod-' + c.type + '"][value="' + m + '"]'); if (x) x.checked = true; });
+          });
+          box.innerHTML = '<div class="ok" role="status">' + esc(T(res.message)) + '</div>';
+        }).catch(function () { busy(b, false); toast(T('Could not save. Check your connection.')); });
+      };
+    });
     if (step === 'experience') $$('.mods[data-held] input').forEach(function (x) { x.addEventListener('change', function () { var id = x.closest('.mods').dataset.held, box = $('input[name=credId][value="' + id + '"]'); if (box) box.checked = true; }); });
     if (step === 'evidence') {
       var sj = $('#sj'), cnt = function () { $('#sjc').textContent = T('{n} characters', { n: sj.value.length }) + (a.evidence.length ? '' : ' · ' + T('at least 80 without documents')); };
