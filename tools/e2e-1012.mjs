@@ -636,9 +636,9 @@ if (want('G')) {
   for (const [pw, first] of [['rcem', 'rcem-ultrasound-sign-off'], ['famus', 'famus-accreditation'], ['fusic', 'fusic-accreditation'], ['acem', 'pocus-accreditation']]) {
     const acc = await account('Gu', 'Ide', [pw]);
     const { ctx, page } = await phone({ acc });
-    await go(page, '#/progress'); await page.waitForSelector('.guide-link');
-    const fromProgress = await page.$eval('.guide-link', (a) => a.getAttribute('href'));
-    await page.click('.guide-link'); await page.waitForSelector('.guide-body'); 
+    await go(page, '#/progress'); await page.waitForSelector('.guide-link[data-guides=mine]');
+    const fromProgress = await page.$eval('.guide-link[data-guides=mine]', (a) => a.getAttribute('href'));
+    await page.click('.guide-link[data-guides=mine]'); await page.waitForSelector('.guide-body'); 
     const opened = await page.evaluate(() => location.hash);
     await go(page, '#/guides'); await page.waitForSelector('.guide-card.lead');
     const lead = await page.$eval('.guide-card.lead', (a) => a.getAttribute('href'));

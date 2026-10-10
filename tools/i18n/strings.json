@@ -2172,7 +2172,7 @@
   "{type} selected",
   "{type} selected. Next: the date of the scan.",
   "{what} came back to you because supervision with that supervisor ended or they are no longer available. Nothing needs re-entering.",
-  "{what}, not part of a scan yet. Finish or discard them."
+  "{what}, not part of a scan yet."
  ],
  "plurals": {
   "Saved on this device. {n} entries awaiting sync.": "Saved on this device. {n} entry awaiting sync.",

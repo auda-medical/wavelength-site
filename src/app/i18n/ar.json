@@ -2514,6 +2514,6 @@
 "White, grey or black": "أبيض أو رمادي أو أسود",
 "Your changes are not saved yet.": "لم تُحفظ تغييراتك بعد.",
 "Your crop, redactions and annotations are not saved yet.": "لم يُحفظ القص والحجب والتعليقات التوضيحية بعد.",
-"{what}, not part of a scan yet. Finish or discard them.": "{what}، ليست ضمن فحص بعد. أكملها أو تجاهلها.",
+"{what}, not part of a scan yet.": "{what}، ليست ضمن فحص بعد.",
 "{n} photos": {"zero": "{n} صور", "one": "صورة واحدة", "two": "صورتان", "few": "{n} صور", "many": "{n} صورة", "other": "{n} صورة"}
 }

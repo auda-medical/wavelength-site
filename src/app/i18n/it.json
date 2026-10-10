@@ -2390,6 +2390,6 @@
 "White, grey or black": "Bianco, grigio o nero",
 "Your changes are not saved yet.": "Le modifiche non sono ancora salvate.",
 "Your crop, redactions and annotations are not saved yet.": "Ritaglio, oscuramenti e annotazioni non sono ancora salvati.",
-"{what}, not part of a scan yet. Finish or discard them.": "{what}, non ancora in un esame. Completali o scartali.",
+"{what}, not part of a scan yet.": "{what}, non ancora in un esame.",
 "{n} photos": {"one": "{n} foto", "other": "{n} foto"}
 }

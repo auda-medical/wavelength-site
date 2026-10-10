@@ -2452,6 +2452,6 @@
 "White, grey or black": "Biały, szary lub czarny",
 "Your changes are not saved yet.": "Twoje zmiany nie są jeszcze zapisane.",
 "Your crop, redactions and annotations are not saved yet.": "Kadrowanie, zamaskowania i adnotacje nie są jeszcze zapisane.",
-"{what}, not part of a scan yet. Finish or discard them.": "{what}: jeszcze nie w badaniu. Dokończ lub odrzuć.",
+"{what}, not part of a scan yet.": "{what}: jeszcze nie w badaniu.",
 "{n} photos": {"one": "{n} zdjęcie", "few": "{n} zdjęcia", "many": "{n} zdjęć", "other": "{n} zdjęcia"}
 }

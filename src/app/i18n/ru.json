@@ -2452,6 +2452,6 @@
 "White, grey or black": "Белый, серый или чёрный",
 "Your changes are not saved yet.": "Ваши изменения ещё не сохранены.",
 "Your crop, redactions and annotations are not saved yet.": "Обрезка, скрытия и пометки ещё не сохранены.",
-"{what}, not part of a scan yet. Finish or discard them.": "{what}: пока не в исследовании. Завершите или удалите.",
+"{what}, not part of a scan yet.": "{what}: пока не в исследовании.",
 "{n} photos": {"one": "{n} фото", "few": "{n} фото", "many": "{n} фото", "other": "{n} фото"}
 }

@@ -2359,6 +2359,6 @@
 "White, grey or black": "白色、灰色或黑色",
 "Your changes are not saved yet.": "您的更改尚未保存。",
 "Your crop, redactions and annotations are not saved yet.": "您的裁剪、遮盖和标注尚未保存。",
-"{what}, not part of a scan yet. Finish or discard them.": "{what}，尚未加入扫描。请完成或放弃。",
+"{what}, not part of a scan yet.": "{what}，尚未加入扫描。",
 "{n} photos": {"other": "{n} 张照片"}
 }

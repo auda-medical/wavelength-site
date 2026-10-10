@@ -1191,7 +1191,7 @@
       var main = $('main', app); if (!list.length || !main || route().name !== 'home' || $('[data-kepthome]', main)) return;
       var first = list[0].media, fk = first.formKey || 'new', ent = /^edit:/.test(fk) && S.entries.find(function (x) { return 'edit:' + x.id === fk && !x.deleted; });
       var card = document.createElement('div'); card.className = 'card kept-home'; card.setAttribute('data-kepthome', '');
-      card.innerHTML = '<div class="row"><span class="kept-ic" aria-hidden="true">' + I.camera + '</span><div class="grow"><h3>' + esc(T('Kept on this phone')) + '</h3><p class="small muted" style="margin:0">' + esc(T('{what}, not part of a scan yet. Finish or discard them.', { what: draftWords(list) })) + '</p></div></div><div class="btns"><a class="btn teal sm" href="#/' + (ent ? 'edit/' + esc(ent.id) : 'new') + '">' + esc(T('Review')) + '</a></div>';
+      card.innerHTML = '<div class="row"><span class="kept-ic" aria-hidden="true">' + I.camera + '</span><div class="grow"><h3>' + esc(T('Kept on this phone')) + '</h3><p class="small muted" style="margin:0">' + esc(T('{what}, not part of a scan yet.', { what: draftWords(list) })) + '</p></div></div><div class="btns"><a class="btn teal sm" href="#/' + (ent ? 'edit/' + esc(ent.id) : 'new') + '">' + esc(T('Review')) + '</a></div>';
       // A photo kept from a scan that has since been deleted is offered in a new scan instead.
       if (/^edit:/.test(fk) && !ent) list.forEach(function (x) { if (x.media.formKey === fk) DRAFT.rekey(x.media, 'new'); });
       var anchor = $('.quick', main); anchor = anchor && anchor.closest('.card');
