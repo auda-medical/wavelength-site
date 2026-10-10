@@ -4,7 +4,8 @@
 |---|---|
 | Release branch | `wavelength-supervisor-prod-20261010` (worktree `C:\Users\phira\Wavelength-Cloud\wavelength-supervisor-prod`) |
 | Built on | `2dfd55e`, the source that is live |
-| Release commit | `c9622f0` (plus this documentation commit) |
+| Release commits | `c9622f0`, then `7f2c249` (11 October 2026: "Verified on" is the UK calendar date of the approval; an approval made between midnight and 1am UK time in summer showed the previous day), plus documentation commits |
+| Follow-on branch | `wavelength-source-monitor-20261010` (source monitoring and directory search) contains this branch unchanged; deploying it deploys this fix too. See `docs/source-monitoring/README.md` there |
 | Development branch | `wavelength-supervisor-qa-20261010`, which holds the fuller version for the commercial and Android lines. First report: `docs/supervisor-qa-20261010/README.md` on that branch |
 
 Nothing has been deployed, no production record changed, no live email sent, and nothing purchased.
@@ -97,7 +98,7 @@ Commits:
 | Run | Result |
 |---|---|
 | `main` baseline | 187 tests, all pass |
-| **Release branch** | **222 tests, all pass.** 21 new approval and state tests, 1 self-approval refusal test, 1 failed-save test, 5 security tests, 7 app-reading tests |
+| **Release branch** | **222 tests, all pass** (re-run 11 October 2026 at `7f2c249`; the date fix added assertions to an existing test). 21 new approval and state tests, 1 self-approval refusal test, 1 failed-save test, 5 security tests, 7 app-reading tests |
 | Bundle | `wrangler deploy --dry-run`: bundles cleanly (799 KiB, same bindings and variables as now); nothing uploaded |
 | Browser, website app with the new Worker (`UI=web`) | 274 checks pass |
 | Browser, patched Android-line app with the new Worker (`UI=android`) | 276 checks pass |
