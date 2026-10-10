@@ -851,19 +851,19 @@ html[data-theme="dark"] .card:not(.dark):not(.teal), html[data-theme="dark"] .re
 /* One compact status: a small green check, the title, one line, More info. No coloured panel; green only on the
    check. Pathways and modules are in More info (a bottom sheet on phones, a pop-up beside the button when wide). */
 .card.vs { padding: 14px 16px; }
-.vs-row { display: flex; align-items: center; gap: 12px; }
-.vs-ic { flex: none; width: 20px; height: 20px; color: var(--green); }
+.vs-row { display: flex; align-items: flex-start; gap: 12px; }
+.vs-ic { flex: none; width: 20px; height: 20px; color: var(--green); margin-top: 1px; }
 .vs-t { font: 600 16px/1.3 var(--sans); margin: 0; color: var(--ink); }
 .vs-s { font-size: 13.5px; line-height: 1.4; color: var(--muted); margin: 2px 0 0; }
-.vs-more { flex: none; align-self: center; background: none; border: 0; color: var(--link); font: 600 14px var(--sans); cursor: pointer; padding: 0 4px; min-height: 44px; min-width: 44px; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+/* A 44 px touch target that takes little room: the negative margins keep the card compact. */
+.vs-more { display: inline-flex; align-items: center; background: none; border: 0; color: var(--link); font: 600 14px var(--sans); cursor: pointer; padding: 0 4px; margin: -6px 0 -14px -4px; min-height: 44px; min-width: 44px; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .vs-more:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 6px; }
-.vs-line { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.vs-line { display: flex; width: max-content; max-width: 100%; align-items: center; gap: 6px; margin: 8px 0 2px; font-size: 14px; font-weight: 600; color: var(--ink); }
 .vs-line .vs-ic { width: 16px; height: 16px; }
-.sv-result .vs-more { min-height: 32px; font-size: 13px; vertical-align: middle; }
+.sv-result .vs-more { min-height: 32px; font-size: 13px; vertical-align: middle; margin: 0 0 0 4px; }
 .vs-off .vs-t { font-weight: 600; }
 .vs-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); margin: 0 5px; }
 .vs-dot.amber { background: var(--amber); } .vs-dot.red { background: var(--red); }
-@media (max-width: 359px) { .vs-row { flex-wrap: wrap; } .vs-more { margin-left: 32px; } }
 /* More info content */
 .vi-lead { margin: 0 0 6px; }
 .vi-g { border-top: 1px solid var(--line); padding: 12px 0 2px; margin-top: 10px; }
@@ -878,7 +878,7 @@ html[data-theme="dark"] .card:not(.dark):not(.teal), html[data-theme="dark"] .re
 @media (max-width: 359px) { .vi-dl { grid-template-columns: 1fr; } .vi-dl dd { margin-bottom: 6px; } }
 /* The pop-up form of a sheet (More info on wide screens): anchored to its button, no dimmed page. */
 .sheet-bg.pop { background: transparent; align-items: flex-start; justify-content: flex-start; animation: none; }
-.sheet.pop { position: fixed; width: min(380px, calc(100vw - 24px)); max-height: min(560px, calc(100vh - 24px)); border-radius: 16px; border: 1px solid var(--line); background: var(--card); padding: 14px 18px 16px; box-shadow: 0 12px 32px rgba(10,21,38,.18), 0 2px 6px rgba(10,21,38,.08); animation: popIn .16s ease-out; }
+.sheet.pop { position: fixed; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 24px); border-radius: 16px; border: 1px solid var(--line); background: var(--card); padding: 14px 18px 16px; box-shadow: 0 12px 32px rgba(10,21,38,.18), 0 2px 6px rgba(10,21,38,.08); animation: popIn .16s ease-out; }
 .sheet.pop h2 { font: 500 22px/1.2 var(--serif); }
 .sheet.pop .btns { margin-top: 8px; }
 @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } }
