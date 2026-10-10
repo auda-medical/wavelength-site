@@ -33,9 +33,20 @@ const MOMENTARY = args.includes('--level=momentary');
 // a narrow, gentle cut (-6 dB, Q 2) centred on the logo's arrival pitch and a 1.5 dB overall dip, crossfaded over
 // 150 ms. The music never drops out. Applied the same way to every logo option, so comparisons stay fair.
 const ROOM = args.includes('--room');
+// --level=head: like momentary, but measured only over each logo's attack (0.45 s before to 0.15 s after the settle),
+// so an original and its extended-decay versions start at exactly the same level and differ only in their tails.
+const HEAD = args.includes('--level=head');
+// --protect-logo: the music level never changes while a logo sounds. Where narration follows a logo settle within
+// 1.6 s, the music reaches its under-speech level 0.25 s before the settle, with a slow 0.8 s ramp during the camera
+// move, and then stays steady through the logo, its resonance and the narration (no dip as the logo fades).
+const PROTECT = args.includes('--protect-logo');
+// --tagline=<file under public/> [--tagline-db=<dB>]: replace the closing line (the end scene's narration) with an
+// audition take, at a relative level (the takes are mixed slightly quieter than the other lines when asked).
+const TAGLINE = (args.find((a) => a.startsWith('--tagline=')) || '').slice(10) || null;
+const TAGLINE_DB = Number((args.find((a) => a.startsWith('--tagline-db=')) || '--tagline-db=0').slice(13));
 const readMeta = (dir, file) => { const f = path.join(ROOT, 'public/audio-v4', dir, file); return fs.existsSync(f) ? Object.fromEntries(Object.entries(JSON.parse(fs.readFileSync(f, 'utf8'))).map(([k, v]) => [k, { ...v, dir }])) : {}; };
 // Logo sounds that can replace the original two-note file: the sonar auditions and the final signature options.
-const SONAR = { ...readMeta('sonar', 'sonar.json'), ...readMeta('signature', 'signature.json') };
+const SONAR = { ...readMeta('sonar', 'sonar.json'), ...readMeta('signature', 'signature.json'), ...readMeta('decay', 'decay.json') };
 const T = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio-v4/timings.json'), 'utf8'));
 const S = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/v4/script.json'), 'utf8'));
 export const MIX = { speechToMusic: 15, lift: 6, down: 0.35, up: 0.9, minGap: 1.0, logoBelowVoice: 5, logoMomentaryBelowVoice: 1, target: -15, ceilingTP: -1.0 };
@@ -63,11 +74,17 @@ export function mixFilm(film, cand) {
   // Narration.
   const regions = [];
   for (const sc of tl.scenes) if (sc.audio) {
-    const v = loadMono(sc.audio), s0 = Math.round(sc.voiceFrom / FPS * RATE);
+    const sub = TAGLINE && sc.scene === 'end';
+    const v = loadMono(sub ? TAGLINE : sc.audio), s0 = Math.round(sc.voiceFrom / FPS * RATE);
+    if (sub && TAGLINE_DB) { const k = Math.pow(10, TAGLINE_DB / 20); for (let i = 0; i < v.length; i++) v[i] *= k; }
     for (let i = 0; i < v.length && s0 + i < n; i++) voice[s0 + i] += v[i];
     regions.push([s0 / RATE, (s0 + v.length) / RATE]);
   }
-  // Merge speech regions separated by less than minGap (the music stays down through short pauses).
+  // Logo settles (used by --protect-logo and the logo level).
+  const settleTimes = [tl.byScene.brand && (tl.byScene.brand.from + SETTLE.full) / FPS, tl.byScene.end && (tl.byScene.end.from + SETTLE.short) / FPS].filter((x) => x != null);
+  if (PROTECT) for (const s of settleTimes) { const next = regions.filter((r) => r[0] >= s && r[0] - s < 1.6).sort((a, b) => a[0] - b[0])[0]; if (next) regions.push([s - 0.25, next[0], 0.8]); }
+  // Merge speech regions separated by less than minGap (the music stays down through short pauses). A region may carry
+  // its own ramp-down time (third value).
   const sp = []; for (const r of regions.sort((a, b) => a[0] - b[0])) { const last = sp[sp.length - 1]; if (last && r[0] - last[1] < MIX.minGap) last[1] = Math.max(last[1], r[1]); else sp.push([...r]); }
   // Music.
   const mus = readWav(path.join(ROOT, `public/audio-v4/music/${cand}/${film}.wav`));
@@ -76,7 +93,10 @@ export function mixFilm(film, cand) {
   const place = (file, at, gain = 1) => { const w = readWav(file), s0 = Math.round(at * RATE); for (let i = 0; i < w.L.length; i++) { const j = s0 + i; if (j >= 0 && j < n) { sL[j] += w.L[i] * gain; sR[j] += w.R[i] * gain; } } };
   const logo = (name, sceneFrom, settleFrames, fileSettle) => {
     const settle = (sceneFrom + settleFrames) / FPS;
-    if (SONAR[logoKind]) {
+    if (SONAR[logoKind] && SONAR[logoKind].film) {
+      // An extended-decay version of the original two-note signature, in the published layout (air included).
+      place(path.join(ROOT, 'public/audio-v4', SONAR[logoKind].film[name === 'reveal' ? 'full' : 'short']), settle - fileSettle);
+    } else if (SONAR[logoKind]) {
       // A sonar candidate: the same quiet air movement as before under the pullback, and the sound's hit on the settle.
       place(path.join(ROOT, `public/audio-v4/sonar/air-${name === 'reveal' ? 'full' : 'short'}.wav`), settle - fileSettle);
       place(path.join(ROOT, `public/audio-v4/${SONAR[logoKind].dir}/${logoKind}.wav`), settle - SONAR[logoKind].hit, Math.pow(10, 6 / 20));
@@ -101,9 +121,9 @@ export function mixFilm(film, cand) {
   const downDb = -MIX.lift; // relative automation: 0 dB in pauses, -lift under speech
   for (let i = 0; i < n; i++) {
     const t = i / RATE; let d = 0;
-    for (const [a, b] of sp) {
-      if (t < a - MIX.down || t > b + MIX.up) continue;
-      const k = t < a ? smooth((t - (a - MIX.down)) / MIX.down) : t <= b ? 1 : 1 - smooth((t - b) / MIX.up);
+    for (const [a, b, dn = MIX.down] of sp) {
+      if (t < a - dn || t > b + MIX.up) continue;
+      const k = t < a ? smooth((t - (a - dn)) / dn) : t <= b ? 1 : 1 - smooth((t - b) / MIX.up);
       d = Math.min(d, downDb * k);
     }
     env[i] = Math.pow(10, d / 20);
@@ -115,7 +135,11 @@ export function mixFilm(film, cand) {
   const gm = Math.pow(10, (voiceUnder - MIX.speechToMusic - musUnder) / 20);
   scale(amL, amR, gm);
   // Logo: its loudness MIX.logoBelowVoice under the voice's loudness.
-  if (MOMENTARY) { const mm = momentaryMax(sL, sR); if (Number.isFinite(mm)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoMomentaryBelowVoice - mm) / 20)); }
+  if (HEAD) {
+    const hL = new Float32Array(n), hR = new Float32Array(n);
+    for (const s of settleTimes) for (let i = Math.max(0, Math.round((s - 0.45) * RATE)); i < Math.min(n, Math.round((s + 0.15) * RATE)); i++) { hL[i] = sL[i]; hR[i] = sR[i]; }
+    const mm = momentaryMax(hL, hR); if (Number.isFinite(mm)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoMomentaryBelowVoice - mm) / 20));
+  } else if (MOMENTARY) { const mm = momentaryMax(sL, sR); if (Number.isFinite(mm)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoMomentaryBelowVoice - mm) / 20)); }
   else { const sfxL = lufs(sL, sR); if (Number.isFinite(sfxL)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoBelowVoice - sfxL) / 20)); }
   // Sum, master.
   const L = new Float32Array(n), R = new Float32Array(n);

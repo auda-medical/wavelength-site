@@ -20,8 +20,10 @@ const note = (n) => 440 * Math.pow(2, (n - 69) / 12);
 
 // One voice: pitch glide f0 -> f1 over glide s (ease-out), partials [ratio, amp, decay factor], optional slow beating
 // (a second oscillator detuned by `beat` Hz, the rounded "underwater" quality of sonar), optional FM transient.
-export function voice(buf, t0, { f0, f1 = f0, glide = 0, glideShape = 'out', attack = 0.004, T60 = 0.6, partials = [[1, 1, 1]], beat = 0, beatAmp = 0.5, fm = null, gain = 1, pan = 0, swell = 0 }) {
-  const [L, R] = buf, s0 = Math.round(t0 * RATE), len = Math.round((T60 * 1.3 + swell) * RATE);
+// len: seconds to compute (default T60 x 1.3 plus the swell, as in every published file). beatFadeAfter: seconds after
+// the hit from which the slow beating fades away (time constant 0.2 s), so a longer tail never swells back up.
+export function voice(buf, t0, { f0, f1 = f0, glide = 0, glideShape = 'out', attack = 0.004, T60 = 0.6, partials = [[1, 1, 1]], beat = 0, beatAmp = 0.5, fm = null, gain = 1, pan = 0, swell = 0, len: lenS = null, beatFadeAfter = null }) {
+  const [L, R] = buf, s0 = Math.round(t0 * RATE), len = Math.round((lenS ?? T60 * 1.3 + swell) * RATE);
   const gl = Math.cos((pan + 1) * Math.PI / 4) * Math.SQRT2, gr = Math.sin((pan + 1) * Math.PI / 4) * Math.SQRT2;
   let ph = 0, ph2 = 0;
   const phs = partials.map(() => 0);
@@ -38,7 +40,7 @@ export function voice(buf, t0, { f0, f1 = f0, glide = 0, glideShape = 'out', att
     let v = 0;
     const mod = fm ? fm.index * Math.exp(-t / fm.decay) * Math.sin(TAU * f * fm.ratio * t) : 0;
     partials.forEach(([r, a, d], j) => { phs[j] += TAU * f * r / RATE; const pe = d === 1 ? 1 : Math.exp(-6.9 * Math.max(0, t - swell) / (T60 * d)) / Math.exp(-6.9 * Math.max(0, t - swell) / T60); v += a * pe * Math.sin(phs[j] + (j === 0 ? mod : 0)); });
-    if (beat) { ph2 += TAU * (f + beat) / RATE; v += beatAmp * Math.sin(ph2); }
+    if (beat) { ph2 += TAU * (f + beat) / RATE; const bf = beatFadeAfter != null && t - swell > beatFadeAfter ? Math.exp(-(t - swell - beatFadeAfter) / 0.2) : 1; v += beatAmp * bf * Math.sin(ph2); }
     v *= e * gain;
     const j = s0 + i; if (j < 0 || j >= L.length) continue;
     L[j] += v * gl; R[j] += v * gr;

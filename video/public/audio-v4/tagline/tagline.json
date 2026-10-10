@@ -1,0 +1,44 @@
+{
+ "takes": [
+  {
+   "id": "current",
+   "label": "Current closing line (reference)",
+   "desc": "The approved line as it is now: \"Wavelength. Tune in. Gain clarity.\"",
+   "src": null,
+   "pause": null,
+   "file": "audio-v4/flagship/f13.wav",
+   "seconds": 3.06,
+   "measure": "\"Tune in\" 113 Hz; \"Gain clarity\" 105 Hz, settling 2.1 semitones; pause 0.58 s."
+  },
+  {
+   "id": "take1",
+   "label": "Take 1: Quiet confidence",
+   "desc": "Deeper, restrained and understated. A calm \"Tune in\", then a low, relaxed, unhurried \"Gain clarity\".",
+   "src": "full-line-11",
+   "pause": 0.6,
+   "file": "audio-v4/tagline/take1.wav",
+   "seconds": 3.38,
+   "measure": "\"Tune in\" 93 Hz; \"Gain clarity\" 83 Hz, settling 5.1 semitones, 1.05 s long; pause 0.61 s."
+  },
+  {
+   "id": "take2",
+   "label": "Take 2: Focus and reassurance",
+   "desc": "Your preferred direction. \"Tune in\" gently invites focus; after a short pause, \"Gain clarity\" settles into a warm, reassuring, complete ending.",
+   "src": "full-line-8",
+   "pause": 0.65,
+   "file": "audio-v4/tagline/take2.wav",
+   "seconds": 3.29,
+   "measure": "\"Tune in\" 106 Hz; \"Gain clarity\" 96 Hz, settling 3.4 semitones, longest final vowel (0.32 s); pause 0.65 s."
+  },
+  {
+   "id": "take3",
+   "label": "Take 3: Premium intimate",
+   "desc": "A little more expressive and personal: a brighter, engaging \"Tune in\", then a quiet, close \"Gain clarity\".",
+   "src": "tag-line-3",
+   "pause": 0.55,
+   "file": "audio-v4/tagline/take3.wav",
+   "seconds": 3.25,
+   "measure": "\"Tune in\" 128 Hz; \"Gain clarity\" 92 Hz, settling 4.0 semitones; pause 0.54 s."
+  }
+ ]
+}

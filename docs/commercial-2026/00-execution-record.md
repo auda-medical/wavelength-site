@@ -114,6 +114,15 @@ Entries are added at each milestone. Newest at the bottom.
   - the music makes a little room around each settle instead of the logo being made louder;
   - output: `20-logo-sound-final-comparison.md`, `wavelength-video-output\comparison-v4\signature\`;
   - awaiting Fero's selection.
+- Fero found the reflection glitch-like. Diagnosed:
+  - the music fell 6 dB under the next narration exactly as the logo faded;
+  - the "make room" dip then released;
+  - the reflection raised the level again.
+- Replaced by natural decay extensions of the two-note and C1, plus one intermediate sound; the music stays steady
+  through each logo (`--protect-logo`).
+- Narration now starts 0.7 s after each logo.
+- Three new tagline takes in voice 4: 44 natural generations, no processing.
+- Output: `21-logo-decay-and-tagline.md`, `wavelength-video-output\comparison-v4\decay\`. Awaiting Fero's selection.
 
 ## Decisions and assumptions
 

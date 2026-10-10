@@ -72,6 +72,7 @@ export const Root = () => <>
   <Composition id="V4AdCaptioned" component={Ad4} defaultProps={{ captions: true }} durationInFrames={ad4TL().total} fps={FPS} width={1920} height={1080} />
   <Composition id="V4AdVerticalCaptioned" component={Ad4} defaultProps={{ vertical: true, captions: true }} durationInFrames={ad4TL().total} fps={FPS} width={1080} height={1920} />
   <Composition id="V4LogoPreview" component={Flagship4} defaultProps={{ only: SUBSETS.logo }} durationInFrames={flagship4TL(SUBSETS.logo).total} fps={FPS} width={1920} height={1080} />
+  <Composition id="V4ClosingPreview" component={Flagship4} defaultProps={{ only: SUBSETS.closing }} durationInFrames={flagship4TL(SUBSETS.closing).total} fps={FPS} width={1920} height={1080} />
   <Composition id="V4LogoReveal" component={RevealPreview4} defaultProps={{ variant: 'full' }} durationInFrames={120} fps={FPS} width={1920} height={1080} />
   <Composition id="V4LogoRevealCheck" component={RevealPreview4} defaultProps={{ variant: 'full', check: true }} durationInFrames={120} fps={FPS} width={1920} height={1080} />
   <Composition id="V4LogoRevealShort" component={RevealPreview4} defaultProps={{ variant: 'short' }} durationInFrames={80} fps={FPS} width={1920} height={1080} />
