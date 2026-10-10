@@ -103,7 +103,7 @@ Results: see section 6 (filled in after rendering).
 
 ## 6. Results (10 October 2026)
 
-Files in  (captions in ):
+Files in `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final-v2\` (captions in `final-v2\captions\`):
 
 | File | Length | Format |
 |---|---|---|
