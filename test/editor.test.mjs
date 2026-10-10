@@ -178,45 +178,82 @@ test('a re-edit reports the change from the original photo: earlier turns are co
   assert.deepEqual(E.composeOrient({ r: 0, m: true }, { r: 0, m: true }), { r: 0, m: false });
 });
 
-// ---------- 1.0.13: Annotation size slider and magnification ----------
-test('annotation size: 100% is the old Medium for marks and the usual pictogram, and the slider range maps both ways', () => {
-  assert.equal(E.sizeFor('text', 100), E.SIZES.m);
-  assert.equal(E.sizeFor('arrow', 100), E.SIZES.m);
-  assert.equal(E.sizeFor('picto', 100), 0.24);
+// ---------- 1.0.14: Annotation size (Smaller to Larger, the usual size in the middle) ----------
+test('annotation size: the middle of the slider is the usual size, and every kind has its own range', () => {
+  assert.equal(E.sizeAt('text', 0), E.SIZES.m);
+  assert.equal(E.sizeAt('arrow', 0), E.SIZES.m);
+  assert.equal(E.sizeAt('picto', 0), 0.24);
   for (const type of ['text', 'dot', 'arrow', 'circle', 'rect', 'picto']) {
-    for (let v = E.SCALE.min; v <= E.SCALE.max; v += E.SCALE.step) assert.equal(E.scaleOf({ type, size: E.sizeFor(type, v) }), v, `${type} ${v}%`);
-    assert.equal(E.sizeFor(type, 5), E.sizeFor(type, E.SCALE.min), 'below the range is clamped');
-    assert.equal(E.sizeFor(type, 999), E.sizeFor(type, E.SCALE.max), 'above the range is clamped');
-    assert.equal(E.sizeFor(type, 'x'), E.sizeFor(type, 100), 'nonsense is the usual size');
+    const r = E.RANGE[type === 'arrow' || type === 'circle' || type === 'rect' ? 'line' : type];
+    assert.equal(E.sizeAt(type, E.POS.min), r.lo, `${type} Smaller end`);
+    assert.equal(E.sizeAt(type, E.POS.max), r.hi, `${type} Larger end`);
+    // Stored sizes keep four decimals, so next to the middle (where steps are finest) a position reads back a few
+    // steps away; those positions snap to the middle anyway. Further out every position reads back exactly.
+    for (let p = E.POS.min; p <= E.POS.max; p += 1) { const back = E.posOf({ type, size: E.sizeAt(type, p) }); assert.ok(Math.abs(back - p) <= (Math.abs(p) < 16 ? 8 : 1), `${type} ${p} read back as ${back}`); }
+    assert.equal(E.sizeAt(type, -999), r.lo, 'below the range is clamped');
+    assert.equal(E.sizeAt(type, 999), r.hi, 'above the range is clamped');
+    assert.equal(E.sizeAt(type, 'x'), r.base, 'nonsense is the usual size');
+    for (let p = -99; p <= 100; p++) assert.ok(E.sizeAt(type, p) >= E.sizeAt(type, p - 1) && (Math.abs(p) < 16 || E.sizeAt(type, p) > E.sizeAt(type, p - 1)), `${type} grows with the slider at ${p}`);
   }
-  // Annotations saved by 1.0.12 read back at the size they were drawn: S, M and L are 72%, 100% and 138%.
-  assert.deepEqual(['s', 'm', 'l'].map((k) => E.scaleOf({ type: 'text', size: E.SIZES[k] })), [72, 100, 138]);
-  assert.equal(E.scaleOf({ type: 'picto' }), 100, 'a pictogram without a size is drawn at the usual size');
-  assert.equal(E.scaleOf({ type: 'dot' }), 100);
-  // Sizes stay practical on an ultrasound frame: text between about 2% and 15% of the shorter side.
-  assert.ok(E.sizeFor('text', E.SCALE.min) >= 0.02 && E.sizeFor('text', E.SCALE.max) <= 0.15);
-  // Every slider value survives storage (cleanAnn keeps sizes from 0.01 to 1).
-  const kept = E.cleanAnn([{ type: 'picto', picto: 'side-r', x: 0.5, y: 0.5, size: E.sizeFor('picto', E.SCALE.max) }, { type: 'text', text: 'Ao', x: 0.5, y: 0.5, size: E.sizeFor('text', E.SCALE.min) }]);
-  assert.deepEqual(kept.map((a) => a.size), [E.sizeFor('picto', E.SCALE.max), E.sizeFor('text', E.SCALE.min)]);
+  // Genuinely small and genuinely large: a footnote to a heading for text, a hairline to a bold line.
+  assert.ok(E.RANGE.text.hi / E.RANGE.text.lo > 15 && E.RANGE.line.hi / E.RANGE.line.lo > 15);
+  // A curve: fine steps near the middle, strong ones towards the ends.
+  const step = (p) => E.sizeAt('text', p + 5) / E.sizeAt('text', p);
+  assert.ok(step(0) < 1.02 && Math.log(step(90)) / Math.log(step(0)) > 10, `${step(0)} near the middle, ${step(90)} near the end`);
+  // Close to the middle snaps to it.
+  assert.deepEqual([-3, -1, 0, 2, 3, 4, -4].map(E.snapPos), [0, 0, 0, 0, 0, 4, -4]);
+  // Sizes saved by 1.0.12 and 1.0.13 read back where they are on the new slider, and survive storage.
+  assert.deepEqual(['s', 'm', 'l'].map((k) => E.posOf({ type: 'text', size: E.SIZES[k] })), [-44, 0, 38]);
+  assert.equal(E.posOf({ type: 'picto' }), 0, 'a pictogram without a size is the usual size');
+  const kept = E.cleanAnn([{ type: 'picto', picto: 'side-r', x: 0.5, y: 0.5, size: E.sizeAt('picto', 100) }, { type: 'text', text: 'Ao', x: 0.5, y: 0.5, size: E.sizeAt('text', -100) }]);
+  assert.deepEqual(kept.map((a) => a.size), [E.sizeAt('picto', 100), E.sizeAt('text', -100)]);
 });
 
-test('annotation size changes what is drawn: text height, a line\'s width, a dot\'s radius, a pictogram\'s plate', () => {
-  const rec = () => { const ops = []; const ctx = new Proxy({ canvas: { width: 1000, height: 800 }, measureText: () => ({ width: 40 }) }, { get(t, k) { if (k in t) return t[k]; return (...a) => ops.push([k, ...a]); }, set(t, k, v) { ops.push(['set ' + String(k), v]); t[k] = v; return true; } }); return { ops, ctx }; };
-  const font = (a) => { const { ops, ctx } = rec(); E.drawAnn(ctx, a, 1000, 800); return Number(/(\d+)px/.exec(ops.find((o) => o[0] === 'set font')[1])[1]); };
+test('annotation size changes what is drawn: text height, a line\'s width and head, a dot\'s radius, a pictogram\'s plate', () => {
+  const rec = (tw = 40) => { const ops = []; const ctx = new Proxy({ canvas: { width: 1000, height: 800 }, measureText: () => ({ width: tw }) }, { get(t, k) { if (k in t) return t[k]; return (...a) => ops.push([k, ...a]); }, set(t, k, v) { ops.push(['set ' + String(k), v]); t[k] = v; return true; } }); return { ops, ctx }; };
+  const font = (a, tw) => { const { ops, ctx } = rec(tw); E.drawAnn(ctx, a, 1000, 800); return Number(/(\d+)px/.exec(ops.filter((o) => o[0] === 'set font').pop()[1])[1]); };
   const width = (a) => { const { ops, ctx } = rec(); E.drawAnn(ctx, a, 1000, 800); return ops.filter((o) => o[0] === 'set lineWidth').map((o) => o[1]).pop(); };
   const radius = (a) => { const { ops, ctx } = rec(); E.drawAnn(ctx, a, 1000, 800); return ops.filter((o) => o[0] === 'arc').pop()[3]; };
-  const t = (v) => ({ type: 'text', text: 'LV', x: 0.5, y: 0.5, size: E.sizeFor('text', v) });
-  assert.ok(font(t(50)) < font(t(100)) && font(t(100)) < font(t(200)));
-  assert.ok(Math.abs(font(t(200)) - 2 * font(t(100))) <= 1, 'twice the size is twice the height (to the pixel)');
+  const t = (p) => ({ type: 'text', text: 'LV', x: 0.5, y: 0.5, size: E.sizeAt('text', p) });
+  assert.ok(font(t(-100)) < font(t(0)) && font(t(0)) < font(t(100)));
+  assert.equal(font(t(-100)), Math.round(0.016 * 800), 'smallest text is a footnote (1.6% of the shorter side)');
+  assert.equal(font(t(100)), Math.round(0.3 * 800), 'largest text is a heading (30%)');
+  // A label that would run past the picture is drawn smaller, so it never overflows.
+  assert.ok(font(t(100), 5000) < font(t(100), 40), 'a long, large label is fitted to the picture width');
   for (const type of ['arrow', 'circle', 'rect']) {
-    const a = (v) => (type === 'arrow' ? { type, x: 0.1, y: 0.1, x2: 0.6, y2: 0.6, size: E.sizeFor(type, v) } : { type, x: 0.1, y: 0.1, w: 0.4, h: 0.3, size: E.sizeFor(type, v) });
-    assert.ok(width(a(60)) < width(a(100)) && width(a(100)) < width(a(250)), type);
+    const a = (p) => (type === 'arrow' ? { type, x: 0.1, y: 0.1, x2: 0.6, y2: 0.6, size: E.sizeAt(type, p) } : { type, x: 0.1, y: 0.1, w: 0.4, h: 0.3, size: E.sizeAt(type, p) });
+    assert.ok(width(a(-100)) < width(a(0)) && width(a(0)) < width(a(100)), type);
+    assert.ok(width(a(-100)) >= 1 && width(a(100)) > 4 * width(a(0)), `${type}: a hairline to bold`);
   }
-  const d = (v) => ({ type: 'dot', x: 0.5, y: 0.5, size: E.sizeFor('dot', v) });
-  assert.ok(Math.abs(radius(d(200)) - 2 * radius(d(100))) < 1e-9);
+  const d = (p) => ({ type: 'dot', x: 0.5, y: 0.5, size: E.sizeAt('dot', p) });
+  assert.ok(radius(d(100)) > 4 * radius(d(0)) && radius(d(-100)) < radius(d(0)) / 3);
   const ctx = { measureText: () => ({ width: 40 }), set font(v) {} };
-  const p = (v) => E.annBounds(ctx, { type: 'picto', picto: 'side-r', x: 0.5, y: 0.5, size: E.sizeFor('picto', v) }, 1000, 800).w;
-  assert.ok(Math.abs(p(150) - 1.5 * p(100)) < 1e-6);
+  const pw = (p) => E.annBounds(ctx, { type: 'picto', picto: 'side-r', x: 0.5, y: 0.5, size: E.sizeAt('picto', p) }, 1000, 800).w;
+  assert.ok(pw(100) <= 800 && pw(100) > 0.9 * 800, 'the largest pictogram is nearly the picture, never more');
+  // A tiny annotation can still be picked up with a finger: at least 6% of the shorter side.
+  assert.ok(E.annBounds(ctx, d(-100), 1000, 800).w >= 48);
+});
+
+test('colours: named and picked colours, edges in the opposite tone, contrast, and what may be stored', () => {
+  assert.equal(E.hexOf('yellow'), '#FFD60A');
+  assert.equal(E.hexOf('#22d3ee'), '#22D3EE');
+  assert.equal(E.hexOf('rgb(1,2,3)'), null);
+  assert.equal(E.hslHex(0, 100, 50), '#FF0000');
+  assert.equal(E.hslHex(240, 100, 25), '#000080');
+  assert.equal(E.hslHex(0, 0, 100), '#FFFFFF');
+  assert.match(E.edgeFor('#000080'), /255,255,255/, 'a dark colour gets a light edge');
+  assert.match(E.edgeFor('#FFD60A'), /0,0,0/, 'a light colour gets a dark edge');
+  assert.ok(E.contrast('#FFFFFF', E.BOX) > 15 && E.contrast('#101010', E.BOX) < 3);
+  const out = E.cleanAnn([
+    { type: 'dot', x: 0.5, y: 0.5, color: '#00d5ff' },
+    { type: 'dot', x: 0.5, y: 0.5, color: 'cyan' },
+    { type: 'dot', x: 0.5, y: 0.5, color: 'url(javascript:alert(1))' },
+    { type: 'text', text: 'A', x: 0.5, y: 0.5, color: '#FFFFFF', bg: 'box', bgc: '#123456' },
+    { type: 'text', text: 'B', x: 0.5, y: 0.5, bg: 'outline', bgc: '#123456' },
+    { type: 'text', text: 'C', x: 0.5, y: 0.5, bg: 'box', bgc: 'red;background:url(x)' }
+  ]);
+  assert.deepEqual(out.map((a) => a.color), ['#00D5FF', 'cyan', 'white', '#FFFFFF', 'white', 'white']);
+  assert.deepEqual(out.slice(3).map((a) => a.bgc), ['#123456', undefined, undefined], 'a box colour only for boxed text, only #rrggbb');
 });
 
 test('magnification keeps the picture filling the stage, zooms about the fingers and never leaves a gap', () => {
@@ -246,14 +283,17 @@ test('magnification keeps the picture filling the stage, zooms about the fingers
   assert.deepEqual([v3.tx, v3.ty], [-270, -270]);
 });
 
-test('the app shows a labelled Annotation size slider and zoom controls instead of S, M and L', () => {
+test('the app shows the Annotation size slider (Smaller to Larger, no percentages), one colour control and zoom', () => {
   const app = readFileSync(new URL('../src/app/app.js', import.meta.url), 'utf8');
   assert.ok(!/data-sz="/.test(app) && !/\['s', 'S', 'Small'\]/.test(app), 'the S, M and L buttons are gone');
-  assert.match(app, /<input type="range" id="edsz" data-szr/);
+  assert.match(app, /<input type="range" id="edsz" data-szr min="' \+ EDT\.POS\.min/);
   assert.match(app, /T\('Annotation size'\)/);
+  assert.match(app, /T\('Smaller'\)[\s\S]*T\('Larger'\)/);
+  assert.ok(!/data-szreset|Annotation size \{n\}%/.test(app), 'no percentage on the slider');
+  assert.ok(!/data-col="/.test(app) && /data-colpick/.test(app) && /data-colnow/.test(app), 'one colour control instead of four swatches');
   assert.match(app, /data-z="out"[\s\S]*data-z="fit"[\s\S]*data-z="in"/);
   for (const lang of ['fr', 'es', 'de', 'it', 'pl', 'ar', 'ru', 'zh']) {
     const t = JSON.parse(readFileSync(new URL(`../src/app/i18n/${lang}.json`, import.meta.url), 'utf8'));
-    for (const k of ['Annotation size', 'Zoom in', 'Zoom out', 'Zoom {n} times. Tap to show the whole picture.']) assert.ok(t[k], `${lang}: ${k}`);
+    for (const k of ['Annotation size', 'Smaller', 'Larger', 'Keep editing', 'Keep for later', 'Leave this photo?', 'Choose a colour', 'Zoom in', 'Zoom out', 'Zoom {n} times. Tap to show the whole picture.']) assert.ok(t[k], `${lang}: ${k}`);
   }
 });

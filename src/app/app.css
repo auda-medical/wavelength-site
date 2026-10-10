@@ -282,9 +282,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 
 /* Sheets and modals */
 .sheet-bg { position: fixed; inset: 0; z-index: 50; background: rgba(10,21,38,.55); display: flex; align-items: flex-end; justify-content: center; animation: fade .15s; }
-.sheet { background: var(--bg); width: 100%; max-width: 680px; max-height: 92vh; overflow: auto; border-radius: 22px 22px 0 0; padding: 10px 18px calc(22px + var(--safe-b)); animation: up .2s ease-out; }
-.sheet .grab { width: 40px; height: 5px; border-radius: 9px; background: var(--line); margin: 4px auto 14px; }
-.sheet h2 { font: 500 26px/1.15 var(--serif); margin: 0 0 8px; }
+.sheet, .sheet-was { background: var(--bg); width: 100%; max-width: 680px; max-height: 92vh; overflow: auto; border-radius: 22px 22px 0 0; padding: 10px 18px calc(22px + var(--safe-b)); animation: up .2s ease-out; }
+.sheet .grab, .sheet-was .grab { width: 40px; height: 5px; border-radius: 9px; background: var(--line); margin: 4px auto 14px; }
+.sheet h2, .sheet-was h2 { font: 500 26px/1.15 var(--serif); margin: 0 0 8px; }
 @keyframes fade { from { opacity: 0; } }
 @keyframes up { from { transform: translateY(30px); opacity: .6; } }
 .toast { position: fixed; z-index: 70; left: 50%; bottom: calc(var(--tab) + var(--safe-b) + 14px); transform: translateX(-50%); background: var(--navy); color: var(--cream); padding: 12px 18px; border-radius: 999px; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); max-width: 90vw; animation: up .2s; }
@@ -517,7 +517,7 @@ html[data-theme="dark"] input::placeholder, html[data-theme="dark"] textarea::pl
 .about-facts dd { margin: 0; text-align: end; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .about-links { display: grid; border-top: 1px solid var(--line); margin: 0 0 12px; }
 .about-links a, .about-links button { display: flex; align-items: center; min-height: 48px; border: 0; border-bottom: 1px solid var(--line); background: none; padding: 0; color: var(--link); font: 500 16px var(--sans); text-align: start; cursor: pointer; text-decoration: none; }
-.sheet h3 { font: 600 15px var(--sans); margin: 18px 0 6px; }
+.sheet h3, .sheet-was h3 { font: 600 15px var(--sans); margin: 18px 0 6px; }
 .lic-list { list-style: none; padding: 0; margin: 0 0 8px; font-size: 14px; line-height: 1.45; }
 .lic-list li { padding: 6px 0; border-bottom: 1px solid var(--line); }
 .lic-text summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--link); font-size: 14px; }
@@ -698,7 +698,9 @@ html[data-theme="dark"] .scanform .fs:has(.field.invalid) .fs-n { color: #0A1526
 /* ---------- 1.0.11: sheets open with a softer curve and close with a short fade and slide ---------- */
 .sheet { animation: up .22s cubic-bezier(.2, .8, .2, 1); }
 .sheet-gone { position: fixed; inset: 0; z-index: 49; background: rgba(10,21,38,.55); display: flex; align-items: flex-end; justify-content: center; pointer-events: none; animation: fadeOut .16s ease-in forwards; }
-.sheet-gone .sheet { animation: sheetDown .16s ease-in forwards; }
+/* 1.0.14: the closing copy keeps the sheet's look (its inner box is renamed sheet-was so nothing mistakes it for an
+   open sheet). Unstyled, it drew its content, the About logo among it, bare over the screen for 170 ms. */
+.sheet-gone .sheet-was { animation: sheetDown .16s ease-in forwards; }
 @keyframes fadeOut { to { opacity: 0; } }
 @keyframes sheetDown { to { transform: translateY(24px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .sheet-gone { display: none; } }
@@ -757,7 +759,7 @@ a.evmod:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 /* 1.0.12: a little depth on cards in the light theme (a hairline shadow under the existing border); none in dark. */
 .card:not(.dark):not(.teal) { box-shadow: 0 1px 2px rgba(15,30,51,.04), 0 4px 14px -10px rgba(15,30,51,.18); }
 html[data-theme="dark"] .card:not(.dark):not(.teal), html[data-theme="dark"] .req { box-shadow: none; }
-.sheet .card, .card .card { box-shadow: none; }
+.sheet .card, .sheet-was .card, .card .card { box-shadow: none; }
 
 /* 1.0.12: media editor modes (Annotate | Adjust | Redact) */
 .editor .bar-bot { max-height: 58vh; overflow-y: auto; overscroll-behavior: contain; }
@@ -886,3 +888,67 @@ html[data-theme="dark"] .card:not(.dark):not(.teal), html[data-theme="dark"] .re
 .editor .ed-zoom button[disabled] { opacity: .35; cursor: default; }
 .editor .ed-zoom button:focus-visible { outline: 2px solid var(--teal-l); outline-offset: -2px; }
 .editor.zoomed .ed-zoom .ed-zval { background: var(--teal); }
+
+/* 1.0.14: Progress shows the guides catalogue and the learner's own pathway guide as two named destinations. */
+.guide-links { padding-top: 6px; padding-bottom: 6px; }
+.guide-links .guide-link { padding: 10px 0; min-height: 48px; }
+.guide-links .guide-link + .guide-link { border-top: 1px solid var(--line); }
+
+/* ---------- 1.0.14: editor refinements ---------- */
+/* Colour: a spectrum square that opens the picker, and a circle with the colour in use (replaces four fixed swatches). */
+.editor .ed-opts .ed-colour { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 10px; }
+@media (min-width: 520px) { .editor .ed-opts .ed-colour { grid-row: 1 / span 2; } }
+.editor .ed-colpick { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,.35); cursor: pointer; padding: 0;
+  background: linear-gradient(to bottom, rgba(255,255,255,.55), rgba(255,255,255,0) 45%, rgba(0,0,0,0) 60%, rgba(0,0,0,.55)), linear-gradient(to right, #FF453A, #FFD60A, #34C759, #22D3EE, #3B82F6, #A855F7, #FF453A); }
+.editor .ed-colpick:focus-visible { outline: 2px solid var(--teal-l); outline-offset: 2px; }
+.editor .ed-colnow { width: 34px; height: 34px; border-radius: 50%; background: var(--c, #FFD60A); border: 2px solid #fff; box-shadow: 0 0 0 2px #050b14, 0 0 0 3px rgba(255,255,255,.3); flex: none; }
+.editor .ed-picker { display: grid; gap: 10px; }
+.editor .cp-spec, .editor .cp-grey { position: relative; border-radius: 12px; overflow: hidden; touch-action: none; cursor: crosshair; border: 1px solid rgba(255,255,255,.2); }
+.editor .cp-spec canvas, .editor .cp-grey canvas { display: block; width: 100%; height: 150px; }
+.editor .cp-grey canvas { height: 40px; }
+.editor .cp-spec:focus-visible, .editor .cp-grey:focus-visible { outline: 2px solid var(--teal-l); outline-offset: 2px; }
+.editor .cp-knob { position: absolute; left: 14%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #050b14; pointer-events: none; }
+.editor .cp-row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.editor .cp-recent { display: flex; gap: 8px; flex: 1; }
+.editor .cp-sw { width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); background: var(--c); cursor: pointer; padding: 0; }
+.editor .cp-now { width: 40px; height: 40px; border-radius: 10px; background: var(--c, #FFD60A); border: 2px solid #fff; flex: none; }
+/* Annotation size: Smaller and Larger at the ends, the usual size marked in the exact middle. Rests in the middle and
+   is unavailable until an annotation is selected. */
+.editor .sz-end { flex: none; font: 600 12px var(--sans); color: #B9C4D0; }
+.editor .ed-sztrack { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+.editor .ed-sztrack::after { content: ''; position: absolute; left: 50%; top: 50%; width: 2px; height: 14px; margin: -7px 0 0 -1px; background: rgba(255,255,255,.55); border-radius: 1px; pointer-events: none; }
+.editor .ed-sztrack input[type=range] { width: 100%; }
+.editor .ed-size.off .ed-sztrack, .editor .ed-size.off .sz-end { opacity: .45; }
+.editor .ed-size input[type=range]:disabled { cursor: default; }
+/* Leaving with unsaved work: the editor asks (Keep editing, Keep for later, Discard). */
+.editor .ed-confirm { position: absolute; inset: 0; z-index: 3; background: rgba(5,11,20,.72); display: flex; align-items: flex-end; justify-content: center; }
+.editor .ed-confirm[hidden] { display: none; }
+.editor .ed-cfin { width: 100%; max-width: 520px; background: #0F1E33; border-top: 1px solid rgba(255,255,255,.14); border-radius: 18px 18px 0 0; padding: 18px 16px calc(var(--safe-b) + 16px); color: #fff; }
+.editor .ed-cfin h2 { font: 500 24px/1.2 var(--serif); margin: 0 0 8px; color: #fff; }
+.editor .ed-cfin p { margin: 0 0 12px; color: #DCE4EC; font-size: 15px; line-height: 1.45; }
+.editor .ed-cfbtns { display: grid; gap: 8px; }
+.editor .ed-cfbtns .ed-note2 { margin: -2px 0 4px; }
+.editor .ed-cfbtns .btn.ghost { color: #fff; border-color: rgba(255,255,255,.3); background: transparent; }
+.editor .ed-cfbtns .btn.danger { color: #FF8A80; border-color: rgba(255,138,128,.5); }
+/* Image first on wide screens (the Fold7 unfolded, tablets, a phone on its side): about 62% picture, 38% tools,
+   the tools scrolling in their own column. Narrow screens keep the picture above the tools. */
+@media (min-width: 700px) and (min-aspect-ratio: 4/5) {
+  .editor { display: grid; grid-template-columns: minmax(0, 62fr) minmax(300px, 38fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .editor > .bar-top { grid-column: 1 / -1; grid-row: 1; }
+  .editor > .stage { grid-column: 1; grid-row: 2; min-height: 0; }
+  .editor > .clipbar { grid-column: 1; grid-row: 3; padding-bottom: calc(var(--safe-b) + 8px); }
+  .editor > .bar-bot { grid-column: 2; grid-row: 2 / span 2; max-height: none; overflow-y: auto; border-left: 1px solid rgba(255,255,255,.08); padding-top: 4px; }
+  .editor .ann-tools, .editor .ed-panel[data-panel="adjust"] .ed-tools { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .editor .ed-row.ed-opts { grid-template-columns: auto minmax(0, 1fr); }
+  .editor .ed-opts .ed-colour { grid-row: 1; }
+  .editor .ed-szhead { grid-column: 2; grid-row: 1; display: grid; }
+  .editor .ed-szrow { grid-column: 1 / -1; grid-row: 2; }
+  .editor .ed-pop, .editor .ed-confirm { grid-column: 1 / -1; grid-row: 1 / -1; }
+}
+/* Kept photos and clips: tiles in the scan form, a notice for anything from before Wavelength closed, a Home card. */
+.gallery .kept { outline: 2px dashed var(--amber, #E0A33A); outline-offset: -2px; }
+.gallery .kept .kept-ic { display: grid; place-items: center; width: 100%; height: 100%; color: var(--teal-l); }
+.gallery .kept-l { position: absolute; left: 4px; bottom: 4px; padding: 3px 8px; border-radius: 999px; background: rgba(5,11,20,.82); color: #fff; font: 600 11.5px var(--sans); }
+.kept-note { border: 1px solid var(--amber-line, #E0A33A); background: var(--amber-bg, rgba(224,163,58,.12)); border-radius: 14px; padding: 12px; margin: 0 0 10px; }
+.kept-note p { margin: 0 0 8px; font-size: 14px; }
+.kept-home .kept-ic { color: var(--link); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--chip-teal-bg); flex: none; }

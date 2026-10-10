@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { harness, net, DEVICE, serve, WWW } from './native-harness.mjs';
 import { localOnly } from './local-only.mjs';
+import { setColour } from './editor-colour.mjs';
 
 const OUT = path.resolve(process.argv[2] || 'e2e-1012-out');
 const API = process.argv[4] || 'http://localhost:8787';
@@ -404,13 +405,13 @@ if (want('E')) {
   await shot(page, 'E4-labels');
   await page.click('.editor [data-lbl="LV"]'); await sleep(200);
   await page.click('.editor [data-sa=done]');
-  await page.click('.editor [data-col=cyan]');
+  await setColour(page, 'cyan');
   await page.click('.editor [data-at=rect]'); await dragOn(page, [0.6, 0.6], [0.9, 0.9]);
   await page.click('.editor [data-sa=done]').catch(() => {});
-  await page.click('.editor [data-col=red]');
+  await setColour(page, 'red');
   await page.click('.editor [data-at=dot]'); await tapOn(page, [0.25, 0.75]);
   await page.click('.editor [data-sa=done]').catch(() => {});
-  await page.click('.editor [data-col=white]');
+  await setColour(page, 'white');
   await page.click('.editor [data-at=arrow]'); await dragOn(page, [0.1, 0.55], [0.4, 0.55]);
   await page.click('.editor [data-sa=done]').catch(() => {});
   await page.click('.editor [data-at=circle]'); await dragOn(page, [0.55, 0.1], [0.75, 0.3]);
@@ -513,7 +514,7 @@ if (want('C')) {
   const aaaFirst = await page.$$eval('.editor .ed-pop .ed-lab', (l) => l[1] && l[1].textContent);
   await page.click('.editor [data-lbl="Ao"]'); await sleep(200);
   await page.click('.editor [data-sa=done]');
-  await page.click('.editor [data-col=red]'); await page.click('.editor [data-at=dot]');
+  await setColour(page, 'red'); await page.click('.editor [data-at=dot]');
   await tapOn(page, [0.75, 0.75]);
   await page.evaluate(() => { const s = document.querySelector('.editor [data-scrub]'); s.value = 1.5; s.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(600);
   await page.click('.editor [data-when=from]'); await sleep(200);
@@ -762,7 +763,7 @@ if (only.includes('R')) {
     await page.click('.editor [data-tab=annotate]'); await sleep(500);
     await page.click('.editor [data-at=label]'); await page.waitForSelector('.editor .ed-pop:not([hidden])'); await sleep(900); await page.click('.editor [data-lbl="LV"]'); await sleep(700);
     await page.click('.editor [data-sa=done]').catch(() => {});
-    await page.click('.editor [data-col=cyan]'); await page.click('.editor [data-at=arrow]'); await dragOn(page, [0.15, 0.7], [0.45, 0.55]); await sleep(700);
+    await setColour(page, 'cyan'); await page.click('.editor [data-at=arrow]'); await dragOn(page, [0.15, 0.7], [0.45, 0.55]); await sleep(700);
     await page.click('.editor [data-sa=done]').catch(() => {});
     await page.click('.editor [data-at=picto]'); await sleep(700); await page.click('.editor [data-pic="heart-a4c"]'); await sleep(900);
     await page.click('.editor [data-sa=done]').catch(() => {});
