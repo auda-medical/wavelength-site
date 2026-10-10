@@ -2,6 +2,9 @@
 // Capacitor runtime, the real soft keyboard, the real back key and back gesture, folding and unfolding, and the app
 // being ended by Android. No server: airplane mode, a synthetic cached account (see tools/emulator-kit.mjs).
 //
+// 1.0.14 review: the typed form after Android ends the app (T), camera photos and clips kept out of shared storage and
+// the gallery (M), photos left by earlier versions (L), backup and device-to-device transfer (Y), other apps (O).
+// Y and O need a rootable emulator image (google_apis, `adb root`).
 // Setup (emulator only): a debug build with WebView debugging on, installed; airplane mode on.
 // Run:   node tools/e2e-1014-emulator.mjs <outdir> [adb path]
 import fs from 'node:fs';
@@ -135,6 +138,86 @@ await K.backKey();
 record('G2', 'Back from the catalogue returns to Progress', await page.evaluate(() => location.hash === '#/progress'), await page.evaluate(() => location.hash));
 await K.tapSel('.guide-links a[data-guides=mine]'); await sleep(1500);
 record('G3', 'Progress > My accreditation pathway: the RCEM guide', await page.evaluate(() => /^#\/guides\/.*rcem/.test(location.hash)), await page.evaluate(() => location.hash));
+
+// ---------- 1.0.14 data-protection review (unfolded inner screen; synthetic camera scene and pictures only) ----------
+const sh = (cmd) => { try { return K.adb('shell', cmd); } catch (e) { return String(e.stdout || ''); } };
+const priv = () => sh('run-as ' + PKG + ' ls -la files/wl-captures 2>/dev/null').split('\n').filter((l) => /WL_/.test(l));
+const sharedFiles = () => sh('find /sdcard/Android/data/' + PKG + ' -type f 2>/dev/null').split('\n').filter((l) => l.trim());
+const galleryRows = (kind) => sh(`content query --uri content://media/external/${kind}/media --projection _data`).split('\n').filter((l) => /_data=/.test(l) && !/\/(wl|s|c\d)\.png$/.test(l));
+const relaunchApp = async () => { K.start(); await sleep(8000); page = await K.connect(); await page.waitForSelector('nav.tabs', { timeout: 30000 }); await sleep(2500); await K.calibrate(); };
+const killApp = async () => { K.adb('shell', 'input', 'keyevent', 'KEYCODE_HOME'); await sleep(2500); for (let i = 0; i < 4 && K.pid(); i++) { K.adb('shell', 'am', 'kill', PKG); await sleep(2500); } if (K.pid()) { K.adb('shell', 'am', 'force-stop', PKG); await sleep(1500); } return !K.pid(); };
+// The emulator camera's shutter and confirm button: centred, near the foot of the unfolded screen.
+const SCR = () => { const m = K.adb('shell', 'wm', 'size').match(/(\d+)x(\d+)/); return { w: +m[1], h: +m[2] }; };
+const camTap = async () => { const s = SCR(); K.adb('shell', 'input', 'tap', String(Math.round(s.w / 2)), String(Math.round(s.h * 0.902))); await sleep(3500); };
+const atForm = async (type = 'cardiac') => { await go('#/new?type=' + type); await sleep(2500); await page.evaluate(() => document.querySelector('#gal').scrollIntoView({ block: 'center' })); await sleep(800); };
+const keptCard = () => page.evaluate(() => (document.querySelector('[data-kepthome]') || {}).textContent || '');
+await fold(false);
+await go('#/'); await sleep(800); await page.evaluate(() => { const d = document.querySelector('.sheet [data-discard]'); if (d) d.click(); }); await sleep(500);
+
+// T: what is typed into a scan form survives Android ending Wavelength.
+await go('#/new?type=lung'); await page.waitForSelector('#ef'); await sleep(1500);
+await K.tapSel('#ind'); await sleep(1200); await K.type('Synthetic case typed on emulator');
+await K.backKey(); // closes the keyboard only
+const t0 = await page.evaluate(() => document.querySelector('#ind').value);
+const killedT = await killApp();
+await relaunchApp();
+const tCard = await keptCard();
+await page.click('[data-kepthome] a'); await page.waitForSelector('#ef'); await sleep(1800);
+const t1 = await page.evaluate(() => ({ ind: document.querySelector('#ind').value, type: (document.querySelector('input[name=type]:checked') || {}).value }));
+record('T1', 'Typed into a new scan (real keyboard), then Android ends Wavelength: Home offers the unfinished scan and Review brings the text back', killedT && /1 unfinished scan/.test(tCard) && t1.ind === t0 && t1.ind === 'Synthetic case typed on emulator' && t1.type === 'lung', JSON.stringify({ killedT, tCard, t0, t1 }));
+K.shot('T1-continued');
+await go('#/'); await sleep(600); await page.evaluate(() => { const d = document.querySelector('.sheet [data-discard]'); if (d) d.click(); }); await sleep(800);
+
+// M: camera photos and clips stay in Wavelength's private storage, never shared storage or the gallery.
+const gal0 = { img: galleryRows('images').length, vid: galleryRows('video').length };
+await atForm(); await K.tapSel('#addcam'); await sleep(5000);
+const camOpen = /camera2/.test(K.focus());
+await camTap(); const during = priv(); await camTap(); await sleep(5000);
+const m1 = { camOpen, during: during.length, editor: await page.evaluate(() => { const c = document.querySelector('.editor canvas'); return c ? c.width + 'x' + c.height : null; }).catch(() => null), after: priv().length, shared: sharedFiles(), gallery: galleryRows('images').length - gal0.img };
+record('M1', 'Take photo: the camera writes into Wavelength\'s private folder; once the app has its copy the file is gone; nothing in shared storage or the gallery', m1.camOpen && m1.during === 1 && m1.editor && m1.after === 0 && m1.shared.length === 0 && m1.gallery === 0, JSON.stringify(m1));
+await page.click('.editor [data-a=cancel]').catch(() => {}); await sleep(400); await page.click('.editor [data-cf=discard]').catch(() => {}); await sleep(600);
+await atForm(); await K.tapSel('#addclip'); await sleep(900); await K.tapSel('.sheet [data-v=vcam]'); await sleep(5000);
+await camTap(); await sleep(2500); await camTap(); await sleep(1500); const duringV = priv(); await camTap(); await sleep(8000);
+const m2 = { during: duringV.length, editor: await page.evaluate(() => !!document.querySelector('.editor.clip')).catch(() => false), after: priv().length, shared: sharedFiles(), gallery: galleryRows('video').length - gal0.vid, movies: sh('ls /sdcard/Movies 2>/dev/null').trim() };
+record('M2', 'Record a clip: the clip is written to Wavelength\'s private folder, not the phone\'s gallery; removed once the app has its copy', m2.during === 1 && m2.editor && m2.after === 0 && m2.shared.length === 0 && m2.gallery === 0 && !m2.movies, JSON.stringify(m2));
+await page.click('.editor [data-a=cancel]').catch(() => {}); await sleep(400); await page.click('.editor [data-cf=discard]').catch(() => {}); await sleep(600);
+// M3 Android ends Wavelength while the camera is open: the photo comes back as kept.
+await go('#/'); await sleep(600); await page.evaluate(() => { const d = document.querySelector('.sheet [data-discard]'); if (d) d.click(); }); await sleep(600);
+await atForm(); await K.tapSel('#addcam'); await sleep(5000); await camTap();
+for (let i = 0; i < 4 && K.pid(); i++) { K.adb('shell', 'am', 'kill', PKG); await sleep(2000); }
+const killedM = !K.pid();
+await camTap(); await sleep(10000);
+page = await K.connect(); await page.waitForSelector('nav.tabs', { timeout: 30000 }); await sleep(3000); await K.calibrate();
+const m3 = { killedM, card: await keptCard(), left: priv().length };
+record('M3', 'Android ends Wavelength while the camera is open: on return the photo is kept on this phone (Home) and the camera file is removed', killedM && /1 photo/.test(m3.card) && m3.left === 0, JSON.stringify(m3));
+
+// L: photos versions before 1.0.14 left in shared storage are offered, and deleted only on request.
+const LD = '/sdcard/Android/data/' + PKG + '/files/Pictures';
+sh('mkdir -p ' + LD); for (const n of [1, 2]) sh(`cp /sdcard/wl.png ${LD}/JPEG_20261001_10000${n}_1.jpg`);
+K.adb('shell', 'am', 'force-stop', PKG); await relaunchApp();
+const lSheet = await page.evaluate(() => (document.querySelector('.sheet') || {}).textContent || '');
+const lBefore = sharedFiles().length;
+await page.evaluate(() => document.querySelector('.sheet [data-lgdel]').click()); await sleep(2500);
+record('L1', 'Photos left by earlier versions: offered with Delete, Review or Not now; Delete removes them', /Photos left by earlier versions/.test(lSheet) && /2 photos/.test(lSheet) && lBefore === 2 && sharedFiles().length === 0, JSON.stringify({ lBefore, after: sharedFiles().length }));
+
+// Y: Android backup and device-to-device transfer (the system's own test transport).
+const P0 = sh('settings get secure backup_local_transport_parameters').trim();
+sh('bmgr enable true'); sh('bmgr transport com.android.localtransport/.LocalTransport');
+sh('settings put secure backup_local_transport_parameters is_encrypted=true');
+const cloud = sh('bmgr backupnow ' + PKG);
+sh('rm -f /data/user/0/com.android.localtransport/files/1/_full/' + PKG);
+sh('settings put secure backup_local_transport_parameters is_encrypted=true,is_device_transfer=true');
+const d2d = sh('bmgr backupnow ' + PKG);
+const stored = sh('ls /data/user/0/com.android.localtransport/files/1/_full/ 2>/dev/null').includes(PKG);
+const keptHere = sh('run-as ' + PKG + ' find app_webview/Default/IndexedDB -path "*blob*" -type f').split('\n').filter((l) => l.trim()).length;
+sh('settings put secure backup_local_transport_parameters ' + (P0 && P0 !== 'null' ? P0 : '""'));
+record('Y1', 'Cloud backup refuses Wavelength (Backup is not allowed)', /Backup is not allowed/.test(cloud), cloud.trim().split('\n').pop());
+record('Y2', 'Device-to-device transfer copies nothing of Wavelength although kept photos are on the phone', !stored && keptHere > 0, JSON.stringify({ result: (d2d.match(/uk\.co\.thewavelength\.app with result: [^\n]*/) || [''])[0], stored, blobFilesOnPhone: keptHere }));
+
+// O: other apps (the shell user stands in for any other app) cannot read Wavelength's storage.
+const other = sh('su 2000 ls /data/data/' + PKG + ' 2>&1; su 2000 ls /data/data/' + PKG + '/files/wl-captures 2>&1');
+const modes = sh('run-as ' + PKG + ' stat -c "%A %n" app_webview files files/wl-captures').trim();
+record('O1', 'Another app\'s user id cannot list Wavelength\'s storage; its folders are owner-only', /Permission denied/.test(other) && !/WL_/.test(other) && modes.split('\n').every((l) => /^drwx(------|--x--x|rwx--x)/.test(l)), JSON.stringify({ other: other.trim().split('\n'), modes }));
 
 fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ device: K.dev, results }, null, 2));
 const failed = results.filter((r) => !r.pass);
