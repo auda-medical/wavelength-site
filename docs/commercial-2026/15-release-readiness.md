@@ -18,14 +18,18 @@ changed. No external contact has been made. No paid service has been used.
 | Films version 2: logo | Root cause found (80-unit dash on a 102.5-unit path) and fixed; matches the website mark |
 | Films version 2: narration text | Every line transcribed. A dropped word, a misread phrase and a swallowed "and" were found and fixed by rewording and regenerating |
 | Films version 2: technical | Loudness -15 LUFS, peaks -1.5 dBFS, no clipping (measured after encoding); 30 fps H.264; caption files generated from the same timings |
+| Films version 3: layout | Collision check of all ten compositions (2,280 frames, every sixth): no overlaps; the shift line is protected like a card |
+| Films version 3: logo reveal | Final frame compared with the website's own SVG markup: 0 of 36,100 pixels differ |
+| Films version 3: narration text | Every line transcribed against the script; the flagship soundtrack transcribes as written (one word to check by ear, below) |
+| Films version 3: technical | -15.2 to -15.4 LUFS, peaks at or below -1.3 dBFS, no clipping (measured after encoding); flagship 1:50, short 0:30, advert 0:21 |
 
 ## 2. Completed but awaiting human review
 
 | Item | What Fero needs to do |
 |---|---|
-| **Narration voice** | Listen to the six auditions and the films. The provisional voice (Chatterbox, designed British male) is synthetic, and I cannot hear it. Choose one, or ask for a human voice-over |
+| **Narration voice** | Version 3 uses the voice Fero chose (audition 4, Qwen3-TTS, synthetic). Listen for warmth and rhythm: flagship lines f04 and f12 and two short-film lines are brisker than the 140 to 155 words-a-minute aim. Check "Directly supervised scans" (transcribes as "supervise") |
 | FAMUS and FUSIC pronunciation | Confirm how they should be spoken (the narration avoids them until then) |
-| Films version 2 overall | Watch each film: pacing, illustrations, music level, claims |
+| Films version 3 overall | Watch the sample, then each film: the rota story, the logo reveal and its sound, pacing, illustrations, claims (`16-videos-v3.md` section 7). Version 2 stays as a fallback |
 | Privacy notice wording | Review the new sections before the deploy |
 | Translations of new home sections | A native-speaker review before promoting a language |
 | Commercial strategy, scenarios, proposals | Read `08-commercial-strategy.md`; the proposals are drafts, not sent |
@@ -68,9 +72,11 @@ From `08-commercial-strategy.md` and the opportunity register (estimates, not re
 
 | What | Where |
 |---|---|
+| **Version 3 films (current), captions** | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final-v3\` (captions in `final-v3\captions\`; start with `wavelength-v3-sample-1080p.mp4`; the logo reveal previews are there too) |
+| Version 3 quality evidence | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\v3-qa\` |
 | Version 2 films, captions | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final-v2\` (captions in `final-v2\captions\`) |
 | Voice auditions | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\v2-auditions\` |
 | Version 1 films (archived, not approved) | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final\` |
 | Preview page | Double-click `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\Watch the films.cmd` (opens http://localhost:5174; close the window to stop) |
 | Quality evidence | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\v2-qa\` (collisions, sample review, frames, audio measurements) |
-| Review documents | `C:\Users\phira\Wavelength-Cloud\wavelength-business-development\docs\commercial-2026\` (this report is 15; films 14; deployment plan 10; limitations 09; test report 12; glossary 13) |
+| Review documents | `C:\Users\phira\Wavelength-Cloud\wavelength-business-development\docs\commercial-2026\` (this report is 15; films version 3 16, logo motion and sound 17, films version 2 14; deployment plan 10; limitations 09; test report 12; glossary 13) |

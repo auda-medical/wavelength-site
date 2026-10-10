@@ -86,6 +86,16 @@ Entries are added at each milestone. Newest at the bottom.
 - Deployment plan rewritten (`10-deployment-approval.md`) and release readiness reported
   (`15-release-readiness.md`).
 
+### Films version 3 (10 October 2026, evening)
+- New direction from Fero: the supervisor is not on the trainee's shift (rota mismatch), not just busy. Built in
+  `video/src/v3/` (Flagship3, Short3, Ad3, End3, art3, reveal); versions 1 and 2 untouched.
+- Narration: Fero's chosen voice (audition 4), cloned from the audition itself (a synthetic voice, never a real
+  person); takes chosen by measured pace and pitch range; no pitch or speed processing. Chatterbox not reused.
+- Premium logo reveal (macro, pullback, settle, wordmark, tagline) with original synthesised sound; checked
+  pixel-identical to the website mark. Sound approved for the films only: the app and website stay silent
+  (recommendations in `17-logo-motion-and-sound-recommendations.md`; app and website not modified).
+- Output: `16-videos-v3.md`, renders in `wavelength-video-output\final-v3\`.
+
 ## Decisions and assumptions
 
 Listed in full in each phase document. The main ones:
@@ -139,5 +149,7 @@ screening, store build, film approval, external contact, directory permissions. 
 | `c01f74f` | Tailored training website, review states, supervisor directory filters and tests |
 | `60fdf92` | Films source, dashboard fixes, remaining documents |
 | (final commit) | Final test figures, render results and file locations |
+| `bc53be1` to `af31089` | Films version 2, Windows test fixes, Stripe test-mode separation, deployment plan |
+| `4f1d4b3`, `f60dce9` and the record commit | Films version 3 source, results, assessment, logo and sound recommendations |
 
 Nothing has been pushed (no remote access).
