@@ -187,7 +187,7 @@ test('an invited supervisor claims the link, applies, and is approved for a subs
   assert.equal(sent.status, 200, JSON.stringify(sent.body));
   assert.equal((await p.sup.call('/api/app/supervisor/submit', { declaration: true })).status, 404, 'a second submit finds nothing to send');
   await settle();
-  const life = () => subjects('sup@x.co').filter((x) => /supervisor (application|status)/.test(x));
+  const life = () => subjects('sup@x.co').filter((x) => /supervisor (application|status)|Supervisor Verification/i.test(x));
   assert.deepEqual(life(), ['Wavelength supervisor application received']);
   const adminMail = mailTo('hello@thewavelength.co.uk');
   assert.equal(adminMail.length, 1);
@@ -206,13 +206,13 @@ test('an invited supervisor claims the link, applies, and is approved for a subs
   await verifyReg(env, p.sid);
   assert.match((await admin(env, { action: 'app_approve', app: a.id, scope: ['famus:famus-thoracic'], notes: 'Basis', review_on: addMonths(ukDate(), 13) })).m, /no later than/);
   const ok = await admin(env, { action: 'app_approve', app: a.id, scope: ['famus:famus-thoracic'], notes: 'Basis' });
-  assert.match(ok.m, /Approved until .*1 scope.*1 waiting learner link/);
+  assert.match(ok.m, /Approved until .*FAMUS pathway, supervisor: Thoracic.*1 waiting learner link.*Approval email: accepted by the email provider\./);
   assert.match((await admin(env, { action: 'app_approve', app: a.id, scope: ['famus:famus-thoracic'], notes: 'Basis' })).m, /already been decided/, 'two reviewers cannot both decide');
   await settle();
   const row = await env.DB.prepare("SELECT * FROM supervisor_approvals WHERE learner_id = ? AND status = 'approved'").bind(p.sid).first();
   assert.equal(row.review_on, addMonths(ukDate(), 12));
   assert.equal(row.application_id, a.id);
-  assert.deepEqual(life(), ['Wavelength supervisor application received', 'Your Wavelength supervisor status has been approved']);
+  assert.deepEqual(life(), ['Wavelength supervisor application received', 'Wavelength | Supervisor Verification Approved']);
   assert.deepEqual(subjects('trainee.sup@x.co').filter((s) => /active/.test(s)), ['Your supervisor is now active']);
 
   link = (await p.learner.call('/api/app/supervisors')).body.supervisors[0];
@@ -425,7 +425,7 @@ test('confirm renewal renews the same scopes for 12 months from the current revi
   const row = await env.DB.prepare("SELECT review_on FROM supervisor_approvals WHERE learner_id = ? AND status = 'approved'").bind(p.sid).first();
   assert.equal(row.review_on, addMonths(review, 12));
   await settle();
-  assert.ok(subjects('conf@x.co').includes('Your Wavelength supervisor status has been renewed'));
+  assert.ok(subjects('conf@x.co').includes('Wavelength | Supervisor Verification Renewed'));
 });
 
 test('a registration lapse pauses status at once; the supervisor is told the first day and learners only after 14 days', async () => {
@@ -536,7 +536,7 @@ test('emails that may not have gone are shown on the System tab and can be resen
   await env.DB.prepare("INSERT INTO notification_log (key, kind, payload, status, attempts, created_at) VALUES ('k2', 'lapse', ?, 'unknown', 1, ?)").bind(JSON.stringify({ to: 'y@x.co', data: {} }), new Date().toISOString()).run();
   assert.match(await html(env, '?tab=system'), /The daily job has not run yet/);
   assert.match(await html(env, '?tab=attention'), /2 emails may not have gone/);
-  assert.equal((await admin(env, { action: 'notif_resend', key: 'k1' })).m, 'Sent.');
+  assert.equal((await admin(env, { action: 'notif_resend', key: 'k1' })).m, 'Sent: accepted by the email provider.');
   assert.equal((await admin(env, { action: 'notif_mark_sent', key: 'k2' })).m, 'Marked as sent.');
   const rows = (await env.DB.prepare('SELECT status FROM notification_log ORDER BY key').all()).results.map((r) => r.status);
   assert.deepEqual(rows, ['sent', 'sent']);

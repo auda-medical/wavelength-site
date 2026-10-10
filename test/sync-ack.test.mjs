@@ -122,7 +122,8 @@ test('Android manifest lets WebView see connectivity changes', () => {
 test('after an offline start, the first good sync loads the account details and supervisor links', () => {
   const ok = APP.slice(APP.indexOf("SY.fail = ''; SY.ran = true; SY.lastOk = Date.now();"), APP.indexOf("return setKv('lastSyncOk'"));
   assert.match(ok, /if \(!S\.me\) loadMe\(\)/);
-  assert.match(ok, /if \(!S\.links\) loadLinks\(\)/);
+  // October 2026: also when the copy is more than five minutes old, so a supervisor's new verification arrives.
+  assert.match(ok, /if \(!S\.links \|\| linksStale\(300e3\)\) loadLinks\(\)/);
   const sv = APP.slice(APP.indexOf('function viewSupervisors('), APP.indexOf('function viewSupervisors(') + 5000);
   assert.match(sv, /!S\.links \? /, 'no "No supervisors linked yet" before the links have loaded');
 });

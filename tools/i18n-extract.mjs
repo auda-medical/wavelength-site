@@ -39,8 +39,10 @@ lb.destinations.forEach((d) => { add(d.label); d.steps.forEach(add); });
 // Label maps in app.js passed to T() through a variable (supervisor standing, lapse reasons, wizard steps, signers).
 {
   const s = fs.readFileSync('src/app/app.js', 'utf8');
-  for (const m of s.matchAll(/var (?:SV_STANDING|SV_LAPSE|SV_REASONS|SV_STEP_LABEL|SIGNER_TEXT|SVF) = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/var (?:SV_STANDING|SV_LAPSE|SV_REASONS|SV_STEP_LABEL|SIGNER_TEXT|SVF|VS_STATE) = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
 }
+// Verified roles (data/supervision-policy.json capacities), shown in a verified supervisor's More info.
+for (const c of Object.values(JSON.parse(fs.readFileSync('data/supervision-policy.json', 'utf8')).capacities)) add(c.label);
 // 1.0.12: relationship stages (var STAGE, one [colour, label, meaning, next] list per stage, over several lines) and
 // the sections of the in-app guides (sec('id', 'Heading', ['paragraph', ...]) and guide data in app.js).
 {

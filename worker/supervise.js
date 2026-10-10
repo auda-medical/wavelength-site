@@ -9,7 +9,7 @@ import { buildSummary, signedAssessments } from './evidence.js';
 import { sendMail, learner as learnerOf } from './academy.js';
 import { mustVerify, sendVerification } from './email-verify.js';
 import { snapshotFor, publicSnapshot, logEvent, SIGNER_LABELS } from './professional.js';
-import { supervisorEligibility, eligibilityError, approvalRequired, applyOn, standingOf, linkState, relationshipStage, signerBlocked, returnRequestsStmts, supervisorUnavailable, NEUTRAL_REFUSAL, areaLabels } from './supervisor-lifecycle.js';
+import { supervisorEligibility, eligibilityError, approvalRequired, applyOn, standingOf, linkState, relationshipStage, signerBlocked, returnRequestsStmts, supervisorUnavailable, NEUTRAL_REFUSAL, areaLabels, verificationOf } from './supervisor-lifecycle.js';
 import { audit, auditStmt } from './audit.js';
 import { actionsForSignoff, actionsForAssessment } from './verification/pathways.js';
 import { reviewState, REVIEW_STATES } from './review.js';
@@ -360,7 +360,11 @@ export async function supervisorLinks(env, l) {
     const st = life ? linkState(r, await standing(r.supervisor_id), enforced) : { state: r.status === 'active' ? 'not_verified' : 'invited', label: r.status === 'active' ? 'Not yet verified by Wavelength' : 'Invitation sent' };
     // A supervisor found through search never had their address typed by the learner: it is not shown.
     const stage = relationshipStage(r, life ? await standing(r.supervisor_id) : null, enforced);
-    supervisors.push({ id: r.id, email: r.via === 'search' ? null : r.supervisor_email, status: r.status, state: st.state, stateLabel: st.label, stage, areas: st.areas || [], renewal: !!st.renewal, name: r.first_name ? fullName(r) : '', role: r.role || '', since: r.accepted_at || r.created_at, invitedAt: r.created_at, acceptedAt: r.accepted_at || null, via: r.via || 'email', pending: pendingFor[r.supervisor_id] || 0 });
+    // What the learner may see of the supervisor's verification, from the one authoritative reading: verified now or
+    // not, and for which pathways, modules and roles. Only for a relationship the supervisor has accepted or claimed,
+    // and only while it is the 'approved' stage, so a pending or ended link never shows approval detail.
+    const verification = life && r.supervisor_id && stage === 'approved' ? await verificationOf(env, r.supervisor_id, 'learner', await standing(r.supervisor_id)) : null;
+    supervisors.push({ id: r.id, email: r.via === 'search' ? null : r.supervisor_email, status: r.status, state: st.state, stateLabel: st.label, stage, areas: st.areas || [], renewal: !!st.renewal, name: r.first_name ? fullName(r) : '', role: r.role || '', since: r.accepted_at || r.created_at, invitedAt: r.created_at, acceptedAt: r.accepted_at || null, via: r.via || 'email', pending: pendingFor[r.supervisor_id] || 0, verification });
   }
   const me = life ? await standing(l.id) : null;
   // 1.0.12: relationships that ended in the last 90 days, on both sides, so each person can see that (and when) a
@@ -376,7 +380,7 @@ export async function supervisorLinks(env, l) {
     supervisors,
     invites: (invites.results || []).map((r) => ({ id: r.id, learner: fullName(r), role: r.role || '', organisation: r.organisation || '', at: r.created_at, claimed: !!r.claimed_at, via: r.via || 'email' })),
     learners: (learners.results || []).map((r) => ({ id: r.id, linkId: r.link_id, name: fullName(r), role: profileOf(r).grade || r.role || '', organisation: r.organisation || '', pathways: profileOf(r).pathways || [], pending: pc[r.id] || 0, since: r.accepted_at, available: !enforced || !!(me && me.current.length) })),
-    me: me ? { standing: me.standing, areas: areaLabels(me.current), enforced, apply: applyOn(env) } : { standing: 'none', areas: [], enforced: false, apply: false },
+    me: me ? { standing: me.standing, areas: areaLabels(me.current), enforced, apply: applyOn(env), verification: await verificationOf(env, l.id, 'self', me) } : { standing: 'none', areas: [], enforced: false, apply: false },
     ended,
   });
 }

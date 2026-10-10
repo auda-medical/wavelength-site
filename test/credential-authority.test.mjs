@@ -183,7 +183,7 @@ test('losing a listing or a module pauses exactly the approvals that relied on i
   const cred = await claim(c, 'famus-supervisor', ['thoracic', 'dvt']);
   await admin(env, { learner: lid, sid: cred.id, ...check({ listed_name: 'Ann Lee', modules: ['thoracic', 'dvt'], listed_email: 'mods@x.co' }) });
   assert.equal((await credRow(env, cred.id)).status, 'verified');
-  assert.equal((await admin(env, { action: 'appr_add', learner: lid, scope: ['famus:famus-thoracic', 'famus:famus-dvt'], basis: String(cred.id), capacity: 'supervisor', notes: 'Directory and identity confirmed' })).m, '2 scopes approved.');
+  assert.match((await admin(env, { action: 'appr_add', learner: lid, scope: ['famus:famus-thoracic', 'famus:famus-dvt'], basis: String(cred.id), capacity: 'supervisor', notes: 'Directory and identity confirmed' })).m, /^2 scopes approved\./);
   const scopes = async () => ((await c.call('/api/app/professional')).body.approvals.filter((a) => a.current).map((a) => a.module).sort());
   assert.deepEqual(await scopes(), ['famus-dvt', 'famus-thoracic']);
   // Six months later the directory lists Thoracic only.
@@ -199,9 +199,9 @@ test('capacities at approval: a mentor for FUSIC Lung is refused; FUSIC Heart me
   const env = env0({ SUPERVISOR_APPLY: 'true' });
   const { lid } = await gmcVerified(env, 'cap@x.co');
   assert.match((await admin(env, { action: 'appr_add', learner: lid, scope: ['fusic:fusic-lung'], capacity: 'mentor', notes: 'x' })).m, /not a role for FUSIC Lung/);
-  assert.equal((await admin(env, { action: 'appr_add', learner: lid, scope: ['fusic:fusic-heart'], capacity: 'mentor', notes: 'ICS directory' })).m, '1 scope approved.');
+  assert.match((await admin(env, { action: 'appr_add', learner: lid, scope: ['fusic:fusic-heart'], capacity: 'mentor', notes: 'ICS directory' })).m, /^1 scope approved\./);
   assert.match((await admin(env, { action: 'appr_add', learner: lid, scope: ['famus:famus-dvt'], capacity: 'local_supervisor', notes: 'x' })).m, /not a role/);
-  assert.equal((await admin(env, { action: 'appr_add', learner: lid, scope: ['famus:famus-pva'], capacity: 'local_supervisor', notes: 'Trust letter' })).m, '1 scope approved.');
+  assert.match((await admin(env, { action: 'appr_add', learner: lid, scope: ['famus:famus-pva'], capacity: 'local_supervisor', notes: 'Trust letter' })).m, /^1 scope approved\./);
   const rows = (await env.DB.prepare('SELECT module, capacity FROM supervisor_approvals WHERE learner_id = ? ORDER BY module').bind(lid).all()).results;
   assert.deepEqual(rows.map((r) => `${r.module}:${r.capacity}`), ['famus-pva:local_supervisor', 'fusic-heart:mentor']);
 });
