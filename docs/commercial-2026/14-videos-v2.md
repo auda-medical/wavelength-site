@@ -101,6 +101,41 @@ The films are timed from the narration files, so a recording can replace them di
 
 Results: see section 6 (filled in after rendering).
 
-## 6. Results
+## 6. Results (10 October 2026)
 
-To be completed with the render report.
+Files in  (captions in ):
+
+| File | Length | Format |
+|---|---|---|
+| wavelength-flagship-film-v2-1080p / -4k | 1:33 | 1920 x 1080 and 3840 x 2160, clean |
+| wavelength-flagship-film-v2-captioned-1080p | 1:33 | captioned |
+| wavelength-free-logbook-short-v2-1080p, -vertical-1080x1920 | 0:32 | clean, landscape and portrait |
+| wavelength-free-logbook-short-v2-captioned-1080p, -vertical-captioned-1080x1920 | 0:32 | captioned |
+| wavelength-tailored-training-ad-v2-1080p, -vertical-1080x1920 | 0:22 | clean |
+| wavelength-tailored-training-ad-v2-captioned-1080p, -vertical-captioned-1080x1920 | 0:22 | captioned |
+| wavelength-v2-sample-1080p | 0:23 | review sample (brand, logging, supervisors) |
+| captions/*.en.srt, *.en.vtt | | flagship 28 cues, short 9, advert 6 |
+
+Checks on the finished files:
+- Layout: zero overlaps in all ten compositions (2,016 frames checked).
+- Audio: -15.1 LUFS integrated, peaks at or below -1.4 dBFS, no clipped samples (decoded after encoding).
+- Narration: every line transcribed against the script.
+- Frames reviewed at every fix point.
+
+Defects found during production and fixed:
+- cards over the monitor in the opening;
+- the review headline under the zoomed phone;
+- the bedside note during the zoom;
+- text stacking during cross-dissolves;
+- a static hold in the log scene;
+- a ghosted double phone between scenes;
+- layout jumps when text mounted (FREE. jumping);
+- captions split mid-sentence;
+- a truncated or misread narration line, and a swallowed and.
+
+Not yet done (needs Fero):
+- listening approval of the voice and the music balance;
+- confirmed FAMUS and FUSIC pronunciation;
+- a viewing on a phone and on the target platforms.
+
+The flagship is 1:33: shorter than version 1's 2:15, inside the 90 to 120 second range asked for.
