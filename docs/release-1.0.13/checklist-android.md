@@ -76,6 +76,11 @@ only**.
 | 5.3 | App lock after 90 s away | Asks to unlock | |
 | 5.4 | Dark and light theme in Settings | Both look right, including the editor | |
 
+## Known issue (not a 1.0.13 change)
+
+On a slow connection, typing into Create account in the first moments after opening the app can be cleared. This is
+recorded as a priority fix before public release; it does not affect a phone that is already signed in.
+
 ## Rollback
 
 Keep `wavelength-1.0.12-18-release.apk`. Android cannot install a lower version code over a higher one, so going back
