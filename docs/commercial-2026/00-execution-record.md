@@ -161,3 +161,11 @@ screening, store build, film approval, external contact, directory permissions. 
 | `4f1d4b3`, `f60dce9` and the record commit | Films version 3 source, results, assessment, logo and sound recommendations |
 
 Nothing has been pushed (no remote access).
+
+## Supervisor verification QA (10 October 2026, branch `wavelength-supervisor-qa-20261010`)
+
+Separate worktree `wavelength-supervisor-qa`, from `59b802c`. Fixes the reported contradiction ("verified" and "under
+review" together) and the missing approval email: the admin person-page approval now decides the open application
+and sends the approval email; notes are optional; compact Verified Supervisor display with More info; self-approval
+safeguards. Not deployed, no migration, no production data read or changed, no live email. Full report, read-only
+production queries and the Android integration bundle: `docs/supervisor-qa-20261010/`.

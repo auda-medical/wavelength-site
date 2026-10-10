@@ -7,6 +7,9 @@
 // (test/helpers/env.mjs: node:sqlite, every migration), serving dist/. Every outbound request the Worker makes
 // (ZeptoMail) is answered here and recorded: nothing leaves the machine. All people and numbers are fictional.
 // Run: node build.js && node --import ./test/helpers/register.mjs tools/e2e-verified.mjs <outdir>
+// OLD_WORKER=1: the app against a Worker without this work (no `verification` field, no admin changes), as an
+// installed app meets production before the Worker is deployed. Role and credential details, the admin console and
+// the repair are then skipped; the app must still show one consistent status.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,6 +22,7 @@ import { supervisorsAdminPost } from '../worker/supervisors-admin.js';
 import { ukDate, addMonths, addDays } from '../worker/time.js';
 
 const out = process.argv[2] || 'shots-verified';
+const OLD = process.env.OLD_WORKER === '1';
 fs.mkdirSync(out, { recursive: true });
 const errors = [];
 const fail = (m) => { errors.push(m); console.log('FAIL', m); };
@@ -115,7 +119,7 @@ await ready(learner);
 const A = await applicant('jordan.example@example.test', 'Jordan', 'Example', { learner });
 const cred = (await env.DB.prepare("INSERT INTO credentials (learner_id, credential_type, issuer, programme, role, modules, status, verified_at, verified_by, verification_method, expires_on) VALUES (?, 'famus-supervisor', 'sam', 'famus', 'supervisor', '[\"thoracic\",\"dvt\"]', 'verified', ?, 'admin:wavelength:Alex Reviewer', 'manual_evidence', '2029-06-30')").bind(A.id, new Date().toISOString()).run()).meta.last_row_id;
 await admin({ action: 'app_approve', app: A.app.id, scope: ['famus:famus-thoracic', 'famus:famus-dvt'], basis: String(cred), notes: 'PRIVATE ADMIN NOTE: never shown outside the console' });
-await admin({ action: 'appr_add', learner: A.id, scope: ['fusic:fusic-heart'], capacity: 'mentor' });
+await admin({ action: 'appr_add', learner: A.id, scope: ['fusic:fusic-heart'], capacity: 'mentor', notes: 'Seed: ICS mentor letter (fictional)' });
 // B: the reported production state: approved by the old person-page route, application still "submitted".
 const B = await applicant('riley.legacy@example.test', 'Riley', 'Legacy');
 await env.DB.prepare("INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes) VALUES (?, 'famus', 'famus-thoracic', 'approved', '[]', ?, 'admin:wavelength:Alex Reviewer', ?, 'old route')").bind(B.id, addMonths(ukDate(), 12), new Date().toISOString()).run();
@@ -174,8 +178,8 @@ for (const [label, w, h] of SIZES) for (const theme of ['light', 'dark']) {
   const info = await dlg.innerText();
   const op = await page.evaluate(() => { const d = document.querySelector('.sheet-bg [role=dialog]'); return { o: getComputedStyle(d).opacity, top: d.scrollTop, bg: getComputedStyle(d).backgroundColor }; });
   check(op.o === '1' && op.top === 0 && !/rgba\(.*, 0(\.\d+)?\)$/.test(op.bg), `${name}: More info opaque and opens at its top (${JSON.stringify(op)})`);
-  for (const s of ['FAMUS pathway', 'Thoracic', 'DVT', 'FUSIC pathway', 'Heart', 'Verified role', 'Supervisor', 'Mentor', 'Approved until', 'Verified on', 'Credentials relied on', 'FAMUS supervisor']) check(info.includes(s), `${name}: More info shows "${s}"`);
-  check(/Expires \d{1,2} \S+ 2029/.test(info), `${name}: More info shows the credential's expiry`);
+  for (const s of OLD ? ['FAMUS pathway', 'Thoracic', 'DVT', 'FUSIC pathway', 'Heart', 'Approved until'] : ['FAMUS pathway', 'Thoracic', 'DVT', 'FUSIC pathway', 'Heart', 'Verified role', 'Supervisor', 'Mentor', 'Approved until', 'Verified on', 'Credentials relied on', 'FAMUS supervisor']) check(info.includes(s), `${name}: More info shows "${s}"`);
+  if (!OLD) check(/Expires \d{1,2} \S+ 2029/.test(info), `${name}: More info shows the credential's expiry`);
   check(!/PRIVATE ADMIN NOTE|7200001|evidence/i.test(info), `${name}: no admin notes, registration number or evidence`);
   check(!/Also in progress/.test(info), `${name}: nothing pending is mixed in`);
   const labelled = await page.evaluate(() => { const d = document.querySelector('[role=dialog]'); const h = d && document.getElementById(d.getAttribute('aria-labelledby')); return d && d.getAttribute('aria-modal') === 'true' && h && h.textContent; });
@@ -260,7 +264,7 @@ for (const [label, w, h] of [['phone', 390, 844], ['desktop', 1440, 900]]) {
   await page.locator('.card.vs [data-vinfo]').click();
   await page.waitForTimeout(300);
   const info = await page.locator('.sheet-bg [role=dialog]').innerText();
-  check(/FAMUS pathway/.test(info) && /Thoracic/.test(info) && /Mentor/.test(info) && /Approved until/.test(info), `${name}: More info explains pathways, modules and roles`);
+  check(/FAMUS pathway/.test(info) && /Thoracic/.test(info) && (OLD || (/Mentor/.test(info) && /Approved until/.test(info))), `${name}: More info explains pathways, modules and roles`);
   check(!/Credentials relied on|Also in progress|PRIVATE|Expires/.test(info), `${name}: nothing beyond what a learner should see`);
   await shot(page, `learner-more-info-${label}.png`);
   await cx.close();
@@ -284,7 +288,7 @@ for (const [label, w, h] of [['phone', 390, 844], ['desktop', 1440, 900]]) {
 }
 
 // ---------- Admin console ----------
-for (const [label, w] of [['desktop', 1440], ['phone', 390]]) {
+for (const [label, w] of OLD ? [] : [['desktop', 1440], ['phone', 390]]) {
   const { cx, page } = await open(`admin ${label}`, null, { w, h: 900 });
   await page.goto(BASE + '/admin/login/');
   await page.fill('input[name=username]', 'wavelength'); await page.fill('input[name=password]', ADMIN_PW);
@@ -326,7 +330,7 @@ for (const [label, w] of [['desktop', 1440], ['phone', 390]]) {
   await cx.close();
 }
 // B after the repair: verified, nothing under review.
-{
+if (!OLD) {
   const { cx, page } = await open('B after repair', B.c);
   await page.goto(BASE + '/app/#/supervisor');
   await page.waitForSelector('.card.vs');
