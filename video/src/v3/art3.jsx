@@ -11,7 +11,9 @@ const Pin = ({ s = 18, c = '#9FB0C2' }) => <svg width={s} height={s} viewBox="0 
 
 // A week of shifts: the trainee on nights, the supervisor on days or at another site. Shifts never coincide.
 // at: frame the card starts; cells then fill in one by one.
-export function RotaWeek({ at = 0, w = 1100, scale = 1 }) {
+// mark: frame at which your Tuesday-night scan and their next shift (Thursday) are picked out, linking to the
+// Tuesday 03:40 to Thursday 14:20 handoff later in the film.
+export function RotaWeek({ at = 0, w = 1100, scale = 1, mark = null }) {
   const f = useCurrentFrame();
   const you = { 0: 'night', 1: 'night', 2: 'night', 5: 'night' };
   const sup = { 0: 'site', 3: 'day', 4: 'day', 6: 'day' };
@@ -20,12 +22,14 @@ export function RotaWeek({ at = 0, w = 1100, scale = 1 }) {
     const t = at + 10 + (row ? 28 : 0) + i * 4;
     const p = prog(f, t, t + 12);
     const style = { night: ['rgba(110,130,210,0.28)', '#C9D2F6', <Moon key="m" />, 'Night'], day: ['rgba(127,196,204,0.22)', C.tealL, <Sun key="s" />, 'Day'], site: ['rgba(159,176,194,0.16)', C.slate, <Pin key="p" />, 'Other site'] }[kind];
-    return <div key={i} style={{ height: 64 * scale, borderRadius: 14 * scale, background: style[0], border: `1px solid ${style[1]}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 * scale, color: style[1], fontSize: 20 * scale, opacity: p, transform: `scale(${0.85 + 0.15 * p})` }}>{style[2]}{style[3]}</div>;
+    const hot = mark != null && ((row === 0 && i === 1) || (row === 1 && i === 3));
+    const hp = hot ? prog(f, mark + (row ? 18 : 0), mark + (row ? 18 : 0) + 14) : 0;
+    return <div key={i} style={{ position: 'relative', boxShadow: hp ? `0 0 0 ${3 * scale * hp}px ${C.tealL}, 0 0 ${26 * hp}px rgba(127,196,204,${0.45 * hp})` : undefined, height: 64 * scale, borderRadius: 14 * scale, background: style[0], border: `1px solid ${style[1]}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 * scale, color: style[1], fontSize: 20 * scale, opacity: p, transform: `scale(${0.85 + 0.15 * p})` }}>{style[2]}{style[3]}{hp ? <div style={{ position: 'absolute', left: -20 * scale, right: -20 * scale, [row ? 'top' : 'bottom']: -31 * scale, textAlign: 'center', fontSize: 17 * scale, letterSpacing: '0.14em', color: C.tealL, opacity: hp, whiteSpace: 'nowrap' }}>{row ? 'THEIR NEXT SHIFT' : 'YOUR SCAN'}</div> : null}</div>;
   };
   const col = { display: 'grid', gridTemplateColumns: `${200 * scale}px repeat(7, 1fr)`, gap: 10 * scale, alignItems: 'center' };
   return <div data-box="art" style={{ width: w, padding: 34 * scale, borderRadius: 26 * scale, background: 'rgba(10,21,38,0.72)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 40px 90px rgba(0,0,0,.45)', opacity: prog(f, at, at + 12), fontFamily: SANS }}>
     <div style={{ ...col, marginBottom: 16 * scale }}><div />{DAYS.map((d) => <div key={d} style={{ textAlign: 'center', fontSize: 18 * scale, letterSpacing: '0.16em', color: C.slate }}>{d}</div>)}</div>
-    <div style={{ ...col, marginBottom: 12 * scale }}><div style={{ fontSize: 26 * scale, color: C.cream }}>You</div>{DAYS.map((_, i) => cell(you[i], i, 0))}</div>
+    <div style={{ ...col, marginBottom: (mark != null ? 44 : 12) * scale }}><div style={{ fontSize: 26 * scale, color: C.cream }}>You</div>{DAYS.map((_, i) => cell(you[i], i, 0))}</div>
     <div style={col}><div style={{ fontSize: 26 * scale, color: C.cream, lineHeight: 1.15 }}>Your<br />supervisor</div>{DAYS.map((_, i) => cell(sup[i], i, 1))}</div>
   </div>;
 }

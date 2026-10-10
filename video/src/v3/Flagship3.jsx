@@ -52,8 +52,8 @@ function Scan({ s }) {
 function Rota({ s }) {
   const v = s.voiceFrom - s.from;
   return <SceneFade dur={s.dur} next={s.overlap}><Backdrop />
-    <div style={{ position: 'absolute', left: 0, right: 0, top: 110, display: 'flex', justifyContent: 'center' }}><Eyebrow2 at={4} style={{ fontSize: 26 }}>Different shifts</Eyebrow2></div>
-    <div style={{ position: 'absolute', left: 190, top: 210 }}><RotaWeek at={6} w={1540} scale={1.2} /></div>
+    <div style={{ position: 'absolute', left: 0, right: 0, top: 200, display: 'flex', justifyContent: 'center' }}><Eyebrow2 at={4} style={{ fontSize: 26 }}>Different shifts</Eyebrow2></div>
+    <div style={{ position: 'absolute', left: 190, top: 300 }}><RotaWeek at={6} w={1540} scale={1.2} mark={v + sec(3.6)} /></div>
     <div style={{ position: 'absolute', left: 0, right: 0, top: 820, display: 'flex', justifyContent: 'center' }}><Head at={v + sec(2.0)} size={72} id="noton">Your supervisor isn't on your shift.</Head></div>
   </SceneFade>;
 }
@@ -87,7 +87,7 @@ function Brand({ s }) {
   const up = prog(f, sec(3.2), sec(3.2) + 32);
   return <SceneFade dur={s.dur} inF={10} next={s.overlap}><Backdrop />
     <Sequence from={0} durationInFrames={130}><Audio src={staticFile('audio-v3/sfx/reveal.wav')} volume={0.6} /></Sequence>
-    <div style={{ position: 'absolute', inset: 0, transform: `translateX(${-480 * g}px)`, opacity: outOf(f, s) }}><LogoReveal cx={960} cy={400} size={150} variant="full" wordSize={66} /></div>
+    <div style={{ position: 'absolute', inset: 0, transform: `translateX(${-480 * g}px) scale(${1 + 0.035 * prog(f, sec(3.4), s.dur, easeIO)})`, transformOrigin: '480px 450px', opacity: outOf(f, s) }}><LogoReveal cx={960} cy={400} size={150} variant="full" wordSize={66} /></div>
     <Device x={PH.x} y={interpolate(up, [0, 1], [1100, PH.y])} k={PH.k} states={[{ src: 'home', at: 0 }]} opacity={up > 0 ? 1 : 0} />
   </SceneFade>;
 }

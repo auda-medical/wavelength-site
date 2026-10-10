@@ -12,6 +12,8 @@ const list = (d) => (fs.existsSync(path.join(OUT, d)) ? fs.readdirSync(path.join
 const mb = (d, f) => (fs.statSync(path.join(OUT, d, f)).size / 1e6).toFixed(1) + ' MB';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+const v3 = list('final-v3').filter((f) => f.endsWith('.mp4')).sort((a, b) => (/flagship-film-v3-1080p/.test(b) - /flagship-film-v3-1080p/.test(a)) || a.localeCompare(b));
+const caps3 = list('final-v3/captions');
 const v2 = list('final-v2').filter((f) => f.endsWith('.mp4'));
 const v1 = list('final').filter((f) => f.endsWith('.mp4'));
 const caps = list('final-v2/captions');
@@ -19,13 +21,16 @@ const aud = list('v2-auditions').filter((f) => f.endsWith('.wav'));
 const notes = fs.existsSync(path.join(OUT, 'v2-auditions', 'notes.json')) ? JSON.parse(fs.readFileSync(path.join(OUT, 'v2-auditions', 'notes.json'), 'utf8')) : {};
 const label = (f) => f.replace(/^wavelength-/, '').replace(/\.mp4$/, '').replace(/-/g, ' ');
 const trackFor = (f) => { const base = f.replace(/-(1080p|4k|vertical-1080x1920|captioned.*)\.mp4$/, '').replace(/\.mp4$/, ''); const vtt = caps.find((c) => c.startsWith(base) && c.endsWith('.vtt')); return vtt && !/captioned/.test(f) ? `<track kind="captions" srclang="en" label="English" src="final-v2/captions/${vtt}">` : ''; };
-const film = (d, f) => `<figure class="${/vertical/.test(f) ? 'tall' : ''}"><video controls preload="metadata" src="${d}/${f}">${d === 'final-v2' ? trackFor(f) : ''}</video><figcaption><b>${esc(label(f))}</b><span>${mb(d, f)}</span></figcaption></figure>`;
+const track3 = (f) => { const base = f.replace(/-(1080p|4k|vertical-1080x1920|captioned.*).mp4$/, '').replace(/.mp4$/, ''); const vtt = caps3.find((c) => c.startsWith(base) && c.endsWith('.vtt')); return vtt && !/captioned/.test(f) ? `<track kind="captions" srclang="en" label="English" src="final-v3/captions/${vtt}">` : ''; };
+const film = (d, f) => `<figure class="${/vertical/.test(f) ? 'tall' : ''}"><video controls preload="metadata" src="${d}/${f}">${d === 'final-v2' ? trackFor(f) : d === 'final-v3' ? track3(f) : ''}</video><figcaption><b>${esc(label(f))}</b><span>${mb(d, f)}</span></figcaption></figure>`;
 const html = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wavelength films</title><link rel="icon" href="data:,">
 <style>:root{color-scheme:dark}body{margin:0;font:16px/1.5 "Segoe UI",system-ui,sans-serif;background:#0A1526;color:#F7F5F0}main{max-width:1280px;margin:0 auto;padding:24px 16px 80px}h1{font-weight:500;font-size:30px;margin:8px 0 4px}h2{font-weight:500;font-size:22px;margin:40px 0 6px;color:#7FC4CC}p{color:#9FB0C2;max-width:860px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px}figure{margin:0;background:#0F1E33;border:1px solid #1d2f48;border-radius:14px;overflow:hidden}figure.tall video{aspect-ratio:9/16;max-height:640px}video{width:100%;display:block;background:#000}figcaption{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;font-size:14px;text-transform:capitalize}figcaption span{color:#9FB0C2;text-transform:none}.aud{display:grid;gap:12px}.aud div{background:#0F1E33;border:1px solid #1d2f48;border-radius:12px;padding:12px 14px}.aud audio{width:100%;margin-top:8px}.note{font-size:14px;color:#9FB0C2}.warn{border-left:3px solid #E9B872;padding-left:12px}</style></head><body><main>
 <h1>Wavelength films: review copies</h1><p class="warn">Private review copies on this computer. Not approved for publication. Version 2 needs your viewing and listening approval: the narration voice in particular.</p>
-<h2>Version 2</h2><p>Clean versions have no burned-in subtitles; use the CC button for English captions. Captioned versions are for muted social playback. Caption files (SRT and WebVTT) are in final-v2\\captions.</p>
+<h2>Version 3 (current)</h2><p>The rota-mismatch story, the cinematic logo reveal and voice 4. Clean versions have no burned-in subtitles (CC button for captions); captioned versions are for muted social playback. Caption files are in final-v3\captions.</p>
+<div class="grid">${v3.length ? v3.map((f) => film('final-v3', f)).join('') : '<p>Not rendered yet.</p>'}</div>
+<h2>Version 2 (superseded)</h2><p>Clean versions have no burned-in subtitles; use the CC button for English captions. Captioned versions are for muted social playback. Caption files (SRT and WebVTT) are in final-v2\\captions.</p>
 <div class="grid">${v2.length ? v2.map((f) => film('final-v2', f)).join('') : '<p>Not rendered yet.</p>'}</div>
-<h2>Voice auditions (version 2)</h2><p>The same passage, with real script lines, in each candidate voice. Please listen and choose; measurements and machine transcription cannot judge warmth or naturalness. Every voice is synthetic and designed from a written description: none copies a real person.</p>
+<h2>Voice auditions</h2><p>Fero chose audition 4 for version 3 (backup: audition 3). Every voice is synthetic and designed from a written description: none copies a real person.</p>
 <div class="aud">${aud.map((f) => `<div><b>${esc(f.replace('.wav', ''))}</b><div class="note">${esc(notes[f] || '')}</div><audio controls preload="none" src="v2-auditions/${f}"></audio></div>`).join('') || '<p>None yet.</p>'}</div>
 <h2>Version 1 (archived, not approved)</h2><div class="grid">${v1.map((f) => film('final', f)).join('')}</div>
 </main></body></html>`;

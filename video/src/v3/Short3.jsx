@@ -21,8 +21,8 @@ const sec = (x) => Math.round(x * FPS);
 
 function Hook({ s, V }) {
   return <SceneFade dur={s.dur} inF={1} next={s.overlap}><Backdrop tone="dim" w={V ? 1080 : 1920} h={V ? 1920 : 1080} />
-    <div style={{ position: 'absolute', left: 0, right: 0, top: V ? 380 : 120, display: 'flex', justifyContent: 'center' }}><Eyebrow2 at={0} style={{ fontSize: V ? 34 : 26 }}>Different shifts</Eyebrow2></div>
-    <div style={{ position: 'absolute', left: V ? 50 : 310, top: V ? 520 : 240 }}><RotaWeek at={0} w={V ? 980 : 1300} scale={V ? 0.72 : 1} /></div>
+    <div style={{ position: 'absolute', left: 0, right: 0, top: V ? 640 : 120, display: 'flex', justifyContent: 'center' }}><Eyebrow2 at={0} style={{ fontSize: V ? 34 : 26 }}>Different shifts</Eyebrow2></div>
+    <div style={{ position: 'absolute', left: V ? 50 : 310, top: V ? 760 : 240 }}><RotaWeek at={0} w={V ? 980 : 1300} scale={V ? 0.72 : 1} mark={sec(2.2)} /></div>
   </SceneFade>;
 }
 // A phone close-up with one line of copy above (portrait) or beside it (landscape); optional shift line.
@@ -52,7 +52,7 @@ function Free({ s, V }) {
   </SceneFade>;
 }
 const ZONES_L = { hook: { x: 260, y: 900, w: 1400 }, log: { x: 150, y: 860, w: 820, align: 'left' }, request: { x: 150, y: 860, w: 820, align: 'left' }, review: { x: 150, y: 860, w: 820, align: 'left' }, free: { x: 260, y: 900, w: 1400 } };
-const ZONES_V = { hook: { x: 80, y: 1100, w: 920 }, log: { x: 80, y: 1480, w: 920 }, request: { x: 80, y: 1480, w: 920 }, review: { x: 80, y: 1480, w: 920 }, free: { x: 80, y: 1260, w: 920 } };
+const ZONES_V = { hook: { x: 80, y: 1140, w: 920 }, log: { x: 80, y: 1480, w: 920 }, request: { x: 80, y: 1480, w: 920 }, review: { x: 80, y: 1480, w: 920 }, free: { x: 80, y: 1260, w: 920 } };
 
 export function Short3({ vertical = false, captions = false }) {
   const V = vertical;

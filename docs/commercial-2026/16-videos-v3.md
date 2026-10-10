@@ -95,6 +95,54 @@ Exact timings come from the narration (`public/audio-v3/timings.json`), see sect
   pace and range). There is no time-stretching or pitch processing.
 - **Backup:** voice 3 (`3-qwen-pipeline-q2-voice.wav`) if needed. The Chatterbox voice is not used.
 
-## 6. Timings, checks and assessment
+## 6. Results (10 October 2026)
 
-To be completed after rendering.
+Files: `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final-v3\`. Captions are in `final-v3\captions\`
+(flagship 30 cues, short 7, advert 6).
+
+| File | Length | Notes |
+|---|---|---|
+| wavelength-flagship-film-v3-1080p, -4k, -captioned-1080p | 1:50 | Target 105 to 125 s |
+| wavelength-free-logbook-short-v3-1080p, -vertical-1080x1920, -captioned-1080p, -vertical-captioned-1080x1920 | 0:30 | Target 30 to 40 s |
+| wavelength-tailored-training-ad-v3-1080p, -vertical-1080x1920, -captioned-1080p, -vertical-captioned-1080x1920 | 0:21 | Target 20 to 25 s |
+| wavelength-v3-sample-1080p | 0:31 | Review sample: scan, rota, logo reveal, request |
+| wavelength-v3-logo-reveal-preview-1080p, -short-preview-1080p | 0:04, 0:03 | Standalone logo reveals with their sound |
+
+Checks on the finished files:
+
+- **Layout:** no copy, caption, call to action, QR code or the shift line overlaps a phone or other copy in any of the
+  ten compositions (2,280 frames checked, every sixth frame).
+- **Logo:** the reveal's final frame is pixel-identical to the website's own SVG (0 of 36,100 pixels differ).
+- **Audio:** -15.2 to -15.4 LUFS integrated, peaks at or below -1.3 dBFS, no clipping (measured after encoding).
+- **Narration:** every line transcribed against the script; the full flagship soundtrack transcribes as written. To
+  check by ear: "Directly supervised scans" transcribes as "supervise"; a dropped final "d" cannot be ruled out.
+- **Pace** (words a minute, natural takes, no processing):
+  - flagship mostly 142 to 166;
+  - f04 180 and f12 167 (brisker than the 140 to 155 aim even after retakes and rephrasing);
+  - short lines 144 to 207 (short punchy phrases);
+  - advert 128 to 133.
+- **Voice consistency:** pitch 94 to 119 Hz across lines (audition 4: 105 Hz).
+
+## 7. Marketing assessment (honest, before human review)
+
+No score is claimed: the 9.5 target can only be judged by people watching and listening.
+
+| Criterion | Assessment | Depends on human review |
+|---|---|---|
+| Clarity of the clinical problem | The rota mismatch is explicit by 12 s (night scan, "DIFFERENT SHIFTS", your scan on Tuesday, their next shift on Thursday, the week passing) | Whether clinicians recognise themselves in it |
+| Immediate engagement | Opens on the scan screen with a clock; no logo first | Whether the first 3 s hold a scrolling viewer |
+| Accuracy of the solution | Only live features; real captures; the direct-supervision caveat spoken and shown | — |
+| Supervision workflow demonstration | The strongest sequence: request on "Your shift · Tuesday 03:40", reviewed on "Their shift · Thursday 14:20", then the signed record with its code | Pace of the phone close-ups on a small screen |
+| User understanding | One idea per scene; step labels; shift line | Comprehension by someone new to Wavelength |
+| Free-logbook value | Narration says what is free (recording, requests, progress); the screen says FREE.; the call to action repeats it | — |
+| Narration quality | Fero's chosen voice 4, consistent across lines; some lines brisker than ideal | **Entirely**: warmth, naturalness and rhythm need listening |
+| Visual sophistication | Cinematic logo reveal, camera moves, consistent dark brand palette, no clutter | Taste; the illustration style versus real footage |
+| Professional credibility | No endorsement or accreditation claims; the verification wording comes from the app | — |
+| Commercial persuasion | Problem, solution, proof (the code), free, courses | Real-world response (use the campaign links) |
+| Call-to-action clarity | START YOUR FREE LOGBOOK first, then EXPLORE OUR COURSES; website and QR | — |
+
+Known weaknesses I would still improve:
+1. Real course footage (with consent) for the advert and the education scene.
+2. Calmer takes or a human voice-over if the brisker lines bother listeners.
+3. The portrait rota is small on a phone (consider a two-day close-up instead of a full week).
+4. A separate instructional walkthrough could reuse these captures (not made).
