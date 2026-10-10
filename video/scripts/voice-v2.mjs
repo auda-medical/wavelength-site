@@ -42,7 +42,8 @@ function compress(x, rate) {
 function speechRms(x, rate) {
   const win = Math.round(rate * 0.05); const r = [];
   for (let i = 0; i + win < x.length; i += win) { let s = 0; for (let k = i; k < i + win; k++) s += x[k] * x[k]; r.push(Math.sqrt(s / win)); }
-  const gate = Math.max(...r) * 10 ** (-30 / 20); const v = r.filter((q) => q > gate);
+  let top = 0; for (const q of r) top = Math.max(top, q);
+  const gate = top * 10 ** (-30 / 20); const v = r.filter((q) => q > gate);
   return Math.sqrt(v.reduce((a, q) => a + q * q, 0) / Math.max(1, v.length));
 }
 const T = fs.existsSync(path.join(BASE, 'timings.json')) ? JSON.parse(fs.readFileSync(path.join(BASE, 'timings.json'), 'utf8')) : {};
@@ -53,7 +54,8 @@ for (const film of films) {
     let y = compress(trim(x, rate), rate);
     const g = 10 ** (-18 / 20) / speechRms(y, rate);
     y = y.map((v) => v * g);
-    const peak = Math.max(...y.map(Math.abs)), lim = 10 ** (-1.5 / 20);
+    let peak = 0; for (const v of y) peak = Math.max(peak, Math.abs(v));
+    const lim = 10 ** (-1.5 / 20);
     if (peak > lim) y = y.map((v) => (Math.abs(v) > lim * 0.9 ? Math.sign(v) * (lim * 0.9 + (Math.abs(v) - lim * 0.9) * (lim * 0.1) / (peak - lim * 0.9)) : v));
     write(path.join(BASE, film, f), y, rate);
     T[`${film}/${id}`] = { seconds: +(y.length / rate).toFixed(3), file: `audio-v2/${film}/${f}` };

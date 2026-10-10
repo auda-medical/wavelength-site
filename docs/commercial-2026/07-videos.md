@@ -1,5 +1,9 @@
 # Promotional films: scripts, storyboards, production and quality assessment
 
+> **Version 1, not approved.** Fero reviewed these films on 10 October 2026 and asked for a substantial redesign.
+> They are kept unchanged (renders in `final\`, source at Git tag `video-v1`). The redesign is version 2:
+> `14-videos-v2.md`.
+
 Source: `video/` (Remotion 4.0.534 compositions, Playwright captures of the real app, local narration and original
 music). Rendered files are never committed. They go to
 `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final\`, with a `render-report.json` beside them. The

@@ -25,7 +25,7 @@ for line in S['films'][film]:
     sentences = [s for s in re.split(r'(?<=[.?!])\s+', text) if s.strip()]
     parts = []
     for i, s in enumerate(sentences):
-        torch.manual_seed(11 + i)
+        torch.manual_seed(line.get('seed', 11) + i)
         w = m.generate(s, audio_prompt_path=REF, exaggeration=line.get('exaggeration', 0.45), cfg_weight=0.45).squeeze(0).numpy()
         parts.append(w)
         if i < len(sentences) - 1: parts.append(np.zeros(int(m.sr * 0.32)))

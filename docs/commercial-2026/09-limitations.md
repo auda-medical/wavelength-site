@@ -54,18 +54,22 @@ fix is named.
 
 ## Films
 
-1. **No person has watched or listened to them yet.** Audio was checked by loudness measurement and by machine
-   transcription (character error rate 0 to 4% per line), not by ear. Voice quality, music balance and pacing need a
-   human judgement.
-2. The narration is a synthetic voice (Kokoro, British English). Some listeners will notice. A recorded human voice
-   would be warmer: replace the WAV files in `public/audio/` and re-run the render.
-3. The ultrasound image in the editor scene is a drawn illustration, not a scan.
-4. No `.srt` subtitle file yet. The short and the vertical advert have burnt-in subtitles; the flagship does not.
-5. Not test-uploaded to LinkedIn or Instagram, which re-encode uploads.
-6. The encodes are tagged full-range (`yuvj420p`, Remotion's default). Most players handle this; it has not been
-   checked on LinkedIn or Instagram. If colours look slightly washed out there, re-render with `--color-space=bt709` (one flag in
-   `scripts/render.mjs`).
-7. App screens show the 1.0.12 interface of this branch. Later interface changes will make the films slightly dated.
+Version 1 (the nine files in `final\`) was reviewed by Fero and **not approved**. It is kept unchanged. Version 2:
+
+1. **The narration voice is not approved.**
+   - Version 2 uses a provisional synthetic voice: Chatterbox speaking a designed British male voice.
+   - I cannot listen. Pitch, range, brightness, pace and machine transcription were measured, but warmth, naturalness
+     and rhythm need Fero's ears.
+   - If no candidate is acceptable, a human voice-over recorded to `video/src/v2/script.json` replaces it without
+     other changes.
+2. FAMUS and FUSIC have no confirmed spoken pronunciation, so the narration does not say them (on screen only).
+3. The illustrations are original line art. A real course shoot (with consent) would look more premium than any
+   illustration, and is the recommended next step for the advert. Never imply photographs where none exist.
+4. App screens show this branch's 1.0.12 interface, and in places the course date "21 Dec 2026". Refresh the films
+   when the date passes or the interface changes.
+5. Not test-uploaded to LinkedIn or Instagram, which re-encode uploads. The encodes are full-range `yuvj420p`; if
+   colours look washed out on a platform, re-render with `--color-space=bt709`.
+6. Rendering runs on this computer's CPU only, so a full voice change and re-render takes about two hours.
 
 ## Commercial research
 
@@ -80,8 +84,14 @@ fix is named.
 
 ## Testing environment
 
-1. On this Windows checkout, `npm test` runs no tests (quoted glob) and 3 tests fail because of CRLF line endings
-   (`core.autocrlf=true`). On an LF checkout every test passes (see `12-reporting-and-test-report.md`).
+1. Fixed on 10 October 2026:
+   - `npm test` now runs on Windows (the glob is double-quoted).
+   - The three tests that failed only because of CRLF line endings now compare content instead.
+   - Windows and Linux checkouts both pass.
+4. Two local browser checks in `tools/e2e-supervisor-ui.mjs` fail against the stand-in Worker (`tools/dev-worker.mjs`):
+   the organisation on the account, and a later step that times out.
+   - They fail identically on the untouched 1.0.12 code, so this project did not cause them.
+   - They were written for `wrangler dev` with `.dev.vars`; re-run them that way before the next store build.
 2. Tests use node:sqlite in place of D1 and a KV stub. D1-specific behaviour (limits, latency, replication) is not
    exercised.
 3. No external penetration test or production load test has been done.

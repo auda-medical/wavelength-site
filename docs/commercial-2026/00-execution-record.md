@@ -66,6 +66,26 @@ Entries are added at each milestone. Newest at the bottom.
 - Output: `09-limitations.md`, `10-deployment-approval.md`, `11-onerota-analytics-spec.md` (OneRota not modified),
   `12-reporting-and-test-report.md`.
 
+### Final review and films version 2 (10 October 2026, later the same day)
+- Fero reviewed the version 1 films and asked for a substantial redesign. Version 1 is preserved: renders unchanged in
+  `final\`, source at Git tag `video-v1`.
+- Version 2 built in `video/src/v2/`:
+  - redesigned films, corrected logo, separate narration and screen copy;
+  - camera close-ups of the app and original illustrations;
+  - captions and caption files, a layout collision check, new music cues.
+- Voice evaluation: Qwen3-TTS (VoiceDesign, then a design-then-clone pipeline) and Chatterbox, all local and free,
+  with synthetic designed voices only. A provisional voice was chosen on measurements; it awaits Fero's listening.
+  Output: `13-pronunciation-glossary.md`, `14-videos-v2.md`.
+- Application review:
+  - the Windows test failures were fixed (`npm test` runs and passes on Windows);
+  - the app end-to-end suite passes against the local Worker;
+  - two supervisor interface checks fail identically on the untouched 1.0.12 code (a harness difference, not a
+    regression).
+- Business review: Stripe test-mode events are now kept out of every money figure; the finance tab names bookings
+  taken and recognised revenue separately.
+- Deployment plan rewritten (`10-deployment-approval.md`) and release readiness reported
+  (`15-release-readiness.md`).
+
 ## Decisions and assumptions
 
 Listed in full in each phase document. The main ones:

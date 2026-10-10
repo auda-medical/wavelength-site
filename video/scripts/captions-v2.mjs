@@ -1,10 +1,11 @@
 // Caption files for the version 2 films: SRT and WebVTT, timed from the measured narration
 // (public/audio-v2/timings.json) and the scene plans, using the same cue splitting as the burned-in captions
-// (src/v2/kit2.jsx cuesFor: at most two lines of about 42 characters). Every spoken line is included.
+// (src/v2/cues.js: a sentence per cue where it fits, two lines of about 42 characters). Every spoken line is included.
 //   node scripts/captions-v2.mjs <outdir>
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { splitCues, wrapAt } from '../src/v2/cues.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.resolve(process.argv[2] || 'captions');
@@ -28,13 +29,9 @@ function scenes(film, file) {
   return out;
 }
 function cues(text, from, dur, max = 42) {
-  const words = text.split(' '); const chunks = []; let cur = '';
-  for (const w of words) { const next = cur ? cur + ' ' + w : w; if (next.length > max * 2 || (cur.length > max * 0.9 && /[,.?]$/.test(cur))) { chunks.push(cur); cur = w; } else cur = next; }
-  if (cur) chunks.push(cur);
-  const total = chunks.reduce((a, c) => a + c.length, 0); let at = from;
-  return chunks.map((c) => { const d = Math.round(dur * c.length / total); const q = { start: at, end: at + d, text: wrap(c, max) }; at += d; return q; });
+  const chunks = splitCues(text, max); const total = chunks.reduce((a, x) => a + x.length, 0); let at = from;
+  return chunks.map((x) => { const d = Math.round(dur * x.length / total); const q = { start: at, end: at + d, text: wrapAt(x, max).join('\n') }; at += d; return q; });
 }
-function wrap(s, max) { if (s.length <= max) return s; const mid = s.length / 2; let best = -1; for (let i = 0; i < s.length; i++) if (s[i] === ' ' && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i; return best < 0 ? s : s.slice(0, best) + '\n' + s.slice(best + 1); }
 const ts = (f, sep) => { const ms = Math.round(f / 30 * 1000); const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60, r = ms % 1000; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}${sep}${String(r).padStart(3, '0')}`; };
 for (const [film, file, name] of [['flagship', 'Flagship2.jsx', 'wavelength-flagship-film-v2'], ['short', 'Short2.jsx', 'wavelength-free-logbook-short-v2'], ['ad', 'Ad2.jsx', 'wavelength-tailored-training-ad-v2']]) {
   const all = scenes(film, file).flatMap((x) => cues(x.text, x.from, x.dur));

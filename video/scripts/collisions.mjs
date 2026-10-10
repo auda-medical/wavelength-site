@@ -44,7 +44,7 @@ for (const id of ids) {
   const composition = await selectComposition({ serveUrl, id, inputProps: { probe: true } });
   const frames = new Map();
   await renderFrames({
-    serveUrl, composition, inputProps: { probe: true }, outputDir: null, imageFormat: 'none', everyNthFrame: every, concurrency: 4, logLevel: 'error',
+    serveUrl, composition, inputProps: { probe: true }, outputDir: null, imageFormat: 'none', everyNthFrame: every, concurrency: 2, logLevel: 'error',
     onBrowserLog: (log) => { const t = log.text || ''; if (t.startsWith('WLBOX ')) { const j = JSON.parse(t.slice(6)); frames.set(j.f, j.boxes); } },
     onStart: () => {}, onFrameUpdate: () => {},
   });

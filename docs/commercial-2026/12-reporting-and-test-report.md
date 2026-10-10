@@ -57,6 +57,11 @@ zero.
 | Baseline before the project (Windows checkout) | `node --import ./test/helpers/register.mjs --test --test-concurrency=1 test/*.test.mjs` | 315 tests: 311 pass, 3 fail (CRLF), 1 skipped |
 | End of project (Windows checkout) | same | 359 tests: 355 pass, 3 fail (the same CRLF cases), 1 skipped |
 | End of project (LF checkout of commit `60fdf92`) | same, on a clone with `core.autocrlf=false` | 359 tests: 358 pass, 0 fail, 1 skipped |
+| Final review (Windows checkout, after the line-ending fixes and the Stripe test-mode test) | `npm test` (now works on Windows) | 360 tests: 359 pass, 0 fail, 1 skipped; exit code 0 |
+
+The three Windows-only failures were tests that matched source text with LF-only regular expressions, plus the
+organisation seed check comparing a CRLF file with LF text. Production builds run on Linux and were never affected.
+They are fixed (content compared, line endings ignored), so a developer on Windows now sees a clean run.
 
 New test files and what they prove:
 
@@ -95,6 +100,8 @@ New test files and what they prove:
 | Real enquiry, campaign attribution, objection switch | same | Stored with region, class and campaign; counters recorded; objection respected |
 | Business dashboard, 12 tabs at 1440 and 390 px (24 views) with 60 days of fictional traffic, bookings, ledger, time and opportunities | `video/scripts/dashboard-check.mjs` | No overflow, console errors, "undefined", "NaN" or double-encoded characters. Per-course profit checked by hand (7 places, £2,765 gross, £42 estimated fees, £600 venue, £2,123 profit, 76.8%) |
 | App screens for the films (sign-off, export, supervisors, verify) | `video/scripts/capture.mjs` | Captured without console errors |
+| Existing app features end to end: international pathways, sign-off with ratings, structured assessments (link, in person, dashboard), supervisor links and dashboard, verification, translated screens | `tools/e2e-app.mjs` against `tools/dev-worker.mjs` | All functional checks pass. The one browser error is the suite's deliberate refusal of a summative assessment with a feedback-only outcome (HTTP 400, as intended) |
+| Supervisor interface (organisation combobox, unsaved guard, sheets, identifier check, fingerprints, upload queue, log out others, search) | `tools/e2e-supervisor-ui.mjs` | Most checks pass. Two fail (account organisation, a later timeout), **identically on the untouched 1.0.12 code**: a harness difference under the stand-in Worker, not a regression. Re-run with `wrangler dev` before the next store build |
 
 Defects found by these checks and fixed:
 
@@ -103,6 +110,10 @@ Defects found by these checks and fixed:
 - Course costs paid before a course counted in the month paid, while the course's revenue counted on the course date.
   Costs linked to a course date now count on that date, and the overview adds "Bookings taken" (cash by payment
   date).
+- Stripe test-mode events would have been recorded as real bookings if a test endpoint were pointed at the site. They
+  are now stored as test bookings (`livemode = 0`), shown as a count on the Courses tab, and excluded from every
+  money figure (tested). The finance tab now names "Bookings taken (cash, by payment date)" and "Recognised revenue
+  (by course date)" separately.
 
 ### Video checks
 

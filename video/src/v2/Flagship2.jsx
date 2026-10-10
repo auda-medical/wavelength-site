@@ -5,14 +5,14 @@
 import React from 'react';
 import { Sequence, Audio, staticFile, useCurrentFrame, interpolate } from 'remotion';
 import { Backdrop, Wordmark, Pill, QRCode, Social, WaveLine, mark } from '../kit.jsx';
-import { C, SERIF, SANS, Line, Eyebrow2, Head, Focus, Device, onScreen, Captions, cuesFor, Probe, prog, clamp, Mark, SceneFade, outOf } from './kit2.jsx';
+import { C, SERIF, SANS, Line, Eyebrow2, Head, Focus, Device, onScreen, Captions, cuesFor, Probe, prog, clamp, Mark, SceneFade, outOf, easeIO } from './kit2.jsx';
 import { Cart, Person, Couch, ScanImage, TeachingRoom } from './art.jsx';
 import { timeline2, duck, FPS } from './timeline2.js';
 
 export const FLAGSHIP2_PLAN = [
   { scene: 'problem', min: 11.5, lead: 0.4, tail: 0.9, overlap: 0.5 },
   { scene: 'brand', min: 5.2, lead: 0.5, overlap: 0.5 },
-  { scene: 'log', min: 13.5, lead: 0.4, tail: 1.0, overlap: 0.5 },
+  { scene: 'log', min: 10.8, lead: 0.4, tail: 0.9, overlap: 0.5 },
   { scene: 'pathways', min: 9.0, lead: 0.4, overlap: 0.5 },
   { scene: 'supervisors', min: 7.6, lead: 0.4, overlap: 0.5 },
   { scene: 'review', min: 18.0, lead: 0.4, tail: 0.8, overlap: 0.5 },
@@ -73,7 +73,7 @@ function Brand({ s }) {
       <div style={{ marginTop: 40 }}><Line at={14} id="wordmark" style={{ fontFamily: SANS, fontWeight: 600, fontSize: 78, letterSpacing: '0.38em', color: C.cream }}>WAVELENGTH</Line></div>
       <div style={{ marginTop: 26 }}><Line at={24} id="designed" style={{ fontFamily: SERIF, fontSize: 52, color: C.slate }}>Designed for real clinical practice</Line></div>
     </div>
-    <Device x={1180} y={interpolate(up, [0, 1], [1100, 70])} k={1.08} states={[{ src: 'home', at: 0 }]} />
+    <Device x={1120} y={interpolate(up, [0, 1], [1100, 60])} k={1.12} states={[{ src: 'home', at: 0 }]} />
   </SceneFade>;
 }
 
@@ -147,7 +147,7 @@ function Supervisors({ s }) {
   const d = { x: 1120, y: 60, k: 1.12 };
   const card = onScreen(d, 195, 300);
   return <SceneFade dur={s.dur} next={s.overlap}><Backdrop />
-    <Focus keys={[{ at: 0, s: 1, fx: card.x, fy: card.y, tx: card.x, ty: card.y }, { at: v + sec(0.6), dur: 30, s: 1.75, fx: card.x, fy: card.y, tx: 1380, ty: 560 }]}>
+    <Focus keys={[{ at: 0, s: 1, fx: card.x, fy: card.y, tx: card.x, ty: card.y }, { at: v + sec(0.6), dur: 30, s: 1.75, fx: card.x, fy: card.y, tx: 1380, ty: 560 }, { at: s.dur - 42, dur: 24, s: 1, fx: card.x, fy: card.y, tx: card.x, ty: card.y }]}>
       <Device x={d.x} y={d.y} k={d.k} states={[{ src: 'supervisors', at: 0 }]} />
     </Focus>
     <div style={{ position: 'absolute', left: 150, top: 360, width: 800 }}>
@@ -200,9 +200,9 @@ function Progress({ s }) {
 // ---------- 8. Free ----------
 function Free({ s }) {
   const f = useCurrentFrame();
-  const p = prog(f, 14, 34) * outOf(f, s);
+  const p = prog(f, 26, 44) * outOf(f, s);
   return <SceneFade dur={s.dur} next={s.overlap}><Backdrop drift={2} />
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transform: `scale(${1 + 0.05 * prog(f, 0, s.dur, easeIO)})` }}>
       <Line at={2} id="free" style={{ fontFamily: SANS, fontWeight: 600, fontSize: 64, letterSpacing: '0.12em', color: C.cream }}>YOUR ULTRASOUND LOGBOOK.</Line>
       <div data-box="text" data-id="free" style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 280, lineHeight: 1, color: C.tealL, opacity: p, transform: `scale(${0.94 + 0.06 * p})`, marginTop: 8 }}>FREE.</div>
     </div>

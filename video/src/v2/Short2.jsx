@@ -38,7 +38,7 @@ function Hook({ s, V }) {
 }
 function Free({ s, V }) {
   const f = useCurrentFrame();
-  const p = prog(f, 12, 30) * outOf(f, s);
+  const p = prog(f, 26, 44) * outOf(f, s);
   return <SceneFade dur={s.dur} next={s.overlap}><Backdrop w={V ? 1080 : 1920} h={V ? 1920 : 1080} drift={2} />
     <div style={{ position: 'absolute', left: 0, right: 0, top: V ? 560 : 260, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
       <div data-box="logo" style={{ opacity: outOf(f, s) }}><Mark size={V ? 130 : 110} draw={prog(f, 0, 22)} ring={prog(f, 0, 18)} /></div>

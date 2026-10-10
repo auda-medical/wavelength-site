@@ -6,6 +6,7 @@
 import React, { useLayoutEffect, useContext, createContext } from 'react';
 import { useCurrentFrame, interpolate, Easing, getInputProps } from 'remotion';
 import { C, SERIF, SANS, Phone, Browser, clamp } from '../kit.jsx';
+import { splitCues, wrapAt } from './cues.js';
 export { clamp };
 
 export { C, SERIF, SANS };
@@ -27,8 +28,9 @@ export function Line({ children, at = 0, out = null, dur = 12, style = {}, id = 
   if (out == null) out = ctx.outAt;
   const p = prog(f, at, at + dur);
   const q = out == null ? 0 : prog(f, out, out + 10, easeIO);
-  if (p <= 0.001 || q >= 0.999) return null;
-  return <div style={{ overflow: 'hidden', paddingBottom: '0.14em', marginBottom: '-0.14em', textAlign: align }}>
+  // Before it arrives and after it leaves, the line keeps its space (invisible), so nothing around it jumps.
+  const shown = p > 0.001 && q < 0.999;
+  return <div style={{ overflow: 'hidden', paddingBottom: '0.14em', marginBottom: '-0.14em', textAlign: align, visibility: shown ? 'visible' : 'hidden' }}>
     <div data-box={role} data-id={id} style={{ transform: `translateY(${(1 - p) * 105 - q * 30}%)`, opacity: Math.min(1, p * 1.6) * (1 - q), ...style }}>{children}</div>
   </div>;
 }
@@ -79,24 +81,12 @@ export function Captions({ cues, zone, size = 38 }) {
   </div>;
 }
 
-// Splits a spoken line into caption cues of at most two short lines, timed by share of characters.
+// Caption cues from a spoken line (src/v2/cues.js: sentence first, then commas), timed by share of characters.
 export function cuesFor(text, from, dur, max = 42) {
-  const words = text.split(' ');
-  const chunks = []; let cur = '';
-  for (const w of words) {
-    const next = cur ? cur + ' ' + w : w;
-    if (next.length > max * 2 || (cur.length > max * 0.9 && /[,.?]$/.test(cur))) { chunks.push(cur); cur = w; } else cur = next;
-  }
-  if (cur) chunks.push(cur);
+  const chunks = splitCues(text, max);
   const total = chunks.reduce((a, c) => a + c.length, 0);
   let at = from;
-  return chunks.map((c) => { const d = Math.round(dur * c.length / total); const q = { start: at, end: at + d, text: wrap2(c, max) }; at += d; return q; });
-}
-function wrap2(s, max) {
-  if (s.length <= max) return s;
-  const mid = s.length / 2; let best = -1;
-  for (let i = 0; i < s.length; i++) if (s[i] === ' ' && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
-  return best < 0 ? s : <>{s.slice(0, best)}<br />{s.slice(best + 1)}</>;
+  return chunks.map((c) => { const d = Math.round(dur * c.length / total); const lines = wrapAt(c, max); const q = { start: at, end: at + d, text: lines.length > 1 ? <>{lines[0]}<br />{lines[1]}</> : c }; at += d; return q; });
 }
 
 // Layout probe: with inputProps { probe: true }, logs the rendered bounds of every visible data-box element each frame
