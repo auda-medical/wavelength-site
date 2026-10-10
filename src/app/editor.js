@@ -68,10 +68,39 @@
     return clampRect({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) }, crop);
   }
 
+  // ---------- Magnification (1.0.13) ----------
+  // The preview is enlarged on screen only, with a CSS transform translate(tx, ty) scale(z) from the canvas's top-left
+  // corner. Every pointer position is read back through the transformed box, so drawing, moving and redacting land on
+  // the same picture pixels at any zoom, and nothing saved depends on it. b: the canvas's unzoomed box inside the stage
+  // (L, T, w, h) and the stage size (SW, SH), all in CSS pixels.
+  var ZOOM = { min: 1, max: 5 };
+  // Keeps the picture filling the stage when it is larger than it, and centred when it is smaller.
+  function clampView(v, b) {
+    var z = Math.max(ZOOM.min, Math.min(ZOOM.max, Number(v.z) || 1));
+    var ax = function (t, size, at, room) { var s = size * z; return s <= room ? (room - s) / 2 - at : Math.max(room - s - at, Math.min(-at, t)); };
+    return { z: z, tx: ax(Number(v.tx) || 0, b.w, b.L, b.SW), ty: ax(Number(v.ty) || 0, b.h, b.T, b.SH) };
+  }
+  // Zoom to z with the picture point that was under m0 (stage coordinates) at view v0 moved to m: a pinch whose
+  // fingers also move pans as it zooms. With m0 equal to m it zooms about that point (buttons, the wheel).
+  function pinchView(v0, m0, m, z, b) {
+    var ux = (m0.x - b.L - v0.tx) / v0.z, uy = (m0.y - b.T - v0.ty) / v0.z;
+    return clampView({ z: z, tx: m.x - b.L - z * ux, ty: m.y - b.T - z * uy }, b);
+  }
+
   // ---------- Annotations ----------
   var COLOURS = { white: '#FFFFFF', yellow: '#FFD60A', cyan: '#22D3EE', red: '#FF453A' };
   var SIZES = { s: 0.042, m: 0.058, l: 0.08 };
   var TYPES = ['text', 'arrow', 'dot', 'circle', 'rect', 'picto'];
+  // 1.0.13: one continuous Annotation size, as a percentage of each type's usual size (100% is the old Medium).
+  // a.size stays the stored value, a fraction of the picture's shorter side: the font height of text and labels, a
+  // dot's size, the line thickness and arrowhead of arrows, circles and boxes (their extent is drawn, not sized), and
+  // the plate of a pictogram. Zooming the editor never changes it: sizes are fractions of the picture, not the screen.
+  var SCALE = { min: 40, max: 250, step: 5, base: 100 };
+  function sizeBase(type) { return type === 'picto' ? 0.24 : SIZES.m; }
+  function sizeOf(a) { return a && a.size ? a.size : sizeBase(a && a.type); }
+  function scaleOf(a) { return Math.round(sizeOf(a) / sizeBase(a && a.type) * 100); }
+  function clampScale(v) { v = Number(v); if (!isFinite(v)) v = SCALE.base; return Math.max(SCALE.min, Math.min(SCALE.max, v)); }
+  function sizeFor(type, scale) { return Math.round(sizeBase(type) * clampScale(scale) / 100 * 1e4) / 1e4; }
   // The points that carry an annotation's position, in output fractions (for mapping through a crop or turn).
   function annPoints(a) {
     if (a.type === 'arrow') return [{ x: a.x, y: a.y }, { x: a.x2, y: a.y2 }];
@@ -304,6 +333,6 @@
   root.WLEditor = {
     orientAfter: orientAfter, composeOrient: composeOrient, outSize: outSize, setOrient: setOrient, toSrc: toSrc, toOut: toOut, rectToSrc: rectToSrc, clampRect: clampRect,
     mapAnnotations: mapAnnotations, annAt: annAt, drawFrame: drawFrame, drawAnn: drawAnn, annBounds: annBounds, hit: hit, describe: describe, cleanAnn: cleanAnn,
-    COLOURS: COLOURS, SIZES: SIZES, PICTOS: PICTOS, PICTO: PICTO, PRESETS: PRESETS, GROUP_LABEL: GROUP_LABEL, groupsFor: groupsFor, pictosFor: pictosFor
+    COLOURS: COLOURS, SIZES: SIZES, SCALE: SCALE, sizeBase: sizeBase, sizeOf: sizeOf, scaleOf: scaleOf, sizeFor: sizeFor, clampScale: clampScale, ZOOM: ZOOM, clampView: clampView, pinchView: pinchView, PICTOS: PICTOS, PICTO: PICTO, PRESETS: PRESETS, GROUP_LABEL: GROUP_LABEL, groupsFor: groupsFor, pictosFor: pictosFor
   };
 })(typeof window !== 'undefined' ? window : globalThis);

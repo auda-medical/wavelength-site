@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* El residente fijó su propio objetivo para este módulo, distinto de la cifra del programa.",
 "12": "12",
@@ -2317,5 +2317,20 @@
 "What {pathway} asks for, step by step, with the official sources.": "Lo que pide {pathway}, paso a paso, con las fuentes oficiales.",
 "If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "Si usa una VPN, compruebe que está conectada. Una VPN, un cortafuegos o una restricción de red pueden afectar a la conexión: siga las normas de su organización.",
 "VPN status not available on this phone": "Estado de la VPN no disponible en este teléfono",
-"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Su dispositivo parece conectado, pero Wavelength no puede acceder a su servidor. Sus exploraciones siguen guardadas en este dispositivo. Este teléfono no indica a las apps si hay una VPN activa."
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Su dispositivo parece conectado, pero Wavelength no puede acceder a su servidor. Sus exploraciones siguen guardadas en este dispositivo. Este teléfono no indica a las apps si hay una VPN activa.",
+"Annotation size": "Tamaño de las anotaciones",
+"Annotation size {n}%. Tap to return to 100%.": "Tamaño de las anotaciones {n} %. Toque para volver al 100 %.",
+"For new annotations": "Para nuevas anotaciones",
+"Selected arrow: line thickness": "Flecha seleccionada: grosor de línea",
+"Selected box: line thickness": "Recuadro seleccionado: grosor de línea",
+"Selected circle: line thickness": "Círculo seleccionado: grosor de línea",
+"Selected dot: size": "Punto seleccionado: tamaño",
+"Selected label: text size": "Etiqueta seleccionada: tamaño del texto",
+"Selected pictogram: size": "Pictograma seleccionado: tamaño",
+"Zoom": "Zoom",
+"Zoom in": "Acercar",
+"Zoom out": "Alejar",
+"Zoom {n} times. Tap to show the whole picture.": "Zoom ×{n}. Toque para ver la imagen completa.",
+"Zoom: the whole picture is shown": "Zoom: se muestra la imagen completa",
+"Zoomed in. Zoom changes only your view: annotations keep their size and place in the picture.": "Zoom activado. El zoom solo cambia su vista: las anotaciones conservan su tamaño y su lugar en la imagen."
 }

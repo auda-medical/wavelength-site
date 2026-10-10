@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Osoba szkolona ustaliła własny cel dla tego modułu, inny niż w programie.",
 "12": "12",
@@ -2379,5 +2379,20 @@
 "What {pathway} asks for, step by step, with the official sources.": "Czego wymaga {pathway}, krok po kroku, z oficjalnymi źródłami.",
 "If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "Jeśli używasz VPN, sprawdź, czy jest połączony. VPN, zapora sieciowa lub ograniczenie sieci mogą wpływać na połączenie: przestrzegaj zasad swojej organizacji.",
 "VPN status not available on this phone": "Stan VPN niedostępny na tym telefonie",
-"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Urządzenie wydaje się połączone, ale Wavelength nie może połączyć się ze swoim serwerem. Twoje badania pozostają zapisane na tym urządzeniu. Ten telefon nie informuje aplikacji, czy VPN jest włączony."
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Urządzenie wydaje się połączone, ale Wavelength nie może połączyć się ze swoim serwerem. Twoje badania pozostają zapisane na tym urządzeniu. Ten telefon nie informuje aplikacji, czy VPN jest włączony.",
+"Annotation size": "Rozmiar adnotacji",
+"Annotation size {n}%. Tap to return to 100%.": "Rozmiar adnotacji {n}%. Dotknij, aby wrócić do 100%.",
+"For new annotations": "Dla nowych adnotacji",
+"Selected arrow: line thickness": "Zaznaczona strzałka: grubość linii",
+"Selected box: line thickness": "Zaznaczona ramka: grubość linii",
+"Selected circle: line thickness": "Zaznaczony okrąg: grubość linii",
+"Selected dot: size": "Zaznaczona kropka: rozmiar",
+"Selected label: text size": "Zaznaczona etykieta: rozmiar tekstu",
+"Selected pictogram: size": "Zaznaczony piktogram: rozmiar",
+"Zoom": "Powiększenie",
+"Zoom in": "Powiększ",
+"Zoom out": "Pomniejsz",
+"Zoom {n} times. Tap to show the whole picture.": "Powiększenie ×{n}. Dotknij, aby pokazać cały obraz.",
+"Zoom: the whole picture is shown": "Powiększenie: widoczny jest cały obraz",
+"Zoomed in. Zoom changes only your view: annotations keep their size and place in the picture.": "Powiększono. Powiększenie zmienia tylko widok: adnotacje zachowują rozmiar i miejsce na obrazie."
 }
