@@ -5,12 +5,13 @@ import { allowed } from './access.js';
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 export const SECTIONS = [
+  { id: 'business', label: 'Business performance', about: 'Website, logbook, supervision, courses, tailored training, finance, owner time, marketing and the monthly report.' },
   { id: 'volunteers', label: 'Volunteers', about: 'Scanning-model sign-ups: contact status, delete and export.' },
   { id: 'academy', label: 'Academy', about: 'Learners, certificates, attempts, feedback and exports.' },
   { id: 'supervisors', label: 'Supervisor verification', about: 'Applications, renewals, credential claims, people and the email outbox.' },
   { id: 'organisations', label: 'Organisations', about: 'The organisation directory, aliases, merges and requests.' },
   { id: 'faculty', label: 'Faculty applications', about: 'Teach with us applications.' },
-  { id: 'departments', label: 'Department enquiries', about: 'Training enquiries from departments.' },
+  { id: 'departments', label: 'Training enquiries', about: 'Tailored training enquiries: contact details, messages, contacted status and export.' },
   { id: 'newsletter', label: 'Newsletter', about: 'Zoho Campaigns connection, the weekly send and the send log.' },
   { id: 'logins', label: 'Logins', about: 'Change the volunteer and admin passwords.' },
 ];

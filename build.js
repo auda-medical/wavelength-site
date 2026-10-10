@@ -2161,6 +2161,13 @@ for (const [p, html] of Object.entries(pages)) {
   fs.writeFileSync(path.join(dir, 'index.html'), sizeImages(html));
 }
 fs.writeFileSync(path.join(DIST, '404.html'), notFound);
+// Business measurement (worker/metrics.js, worker/business.js): the public page list (anything else is counted as
+// "(other)", so the counters cannot be filled with made-up paths) and each course date's capacity, price and Stripe
+// link. Committed with content changes, like worker/academy-data.json. Deterministic: no build id or date.
+fs.writeFileSync(path.join(ROOT, 'worker/site-data.json'), JSON.stringify({
+  paths: Object.keys(pages).filter((p) => !p.startsWith('/admin/') && !p.startsWith('/volunteer/') && !p.startsWith('/email/')).sort(),
+  courses: courses.map((c) => ({ slug: c.slug, title: c.title, status: c.status || 'open', price: c.price ?? null, dates: (c.dates || []).map((d) => ({ date: d.date, venue: d.venue || '', city: d.city || '', capacity: d.capacity ?? null, price: d.price ?? c.price ?? null, stripeLink: d.stripeLink || '', stripePaymentLink: d.stripePaymentLink || '' })) })),
+}, null, 1) + '\n');
 
 // Static files
 function copyDir(src, dst) {

@@ -42,6 +42,8 @@ import { versionInfo, mustUpgrade, UPGRADE } from './version.js';
 import { handleOrganisations, checkOrgId, orgsReady } from './organisations.js';
 import { normOrg } from './org-norm.js';
 import { handleSearch, searchOn } from './search.js';
+import { appEvent, activity, count, forgetLearner } from './metrics.js';
+import { actionsForSignoff } from './verification/pathways.js';
 
 import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady, sigKind, withSigKind, splitSigKind } from './app-util.js';
 
@@ -270,6 +272,7 @@ async function deleteAccount(env, l, req, ctx) {
   if (d.keepCertificates && hasCerts.n) stmts.push(env.DB.prepare('UPDATE learners SET password_hash = NULL, profile = NULL, declaration_at = NULL, organisation = NULL, role = NULL WHERE id = ?').bind(l.id));
   else stmts.push(env.DB.prepare('DELETE FROM attempts WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM certificates WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM learners WHERE id = ?').bind(l.id));
   await env.DB.batch(stmts);
+  await forgetLearner(env, l.id);
   if (supervision.notify && supervision.notify.length) deliverLater(env, ctx, supervision.notify);
   return json({ ok: true }, 200, { 'Set-Cookie': clearCookie });
 }
@@ -325,7 +328,7 @@ async function syncGet(env, l, url) {
   return json({ ok: true, now, after: more ? last.id : '', more, entries: results.map(entryOut) });
 }
 
-async function syncPost(env, l, req) {
+async function syncPost(env, l, req, ctx) {
   const d = await body(req);
   if (!d || !Array.isArray(d.entries)) return json({ ok: false, error: 'Nothing to save.' }, 400);
   const incoming = d.entries.slice(0, 200);
@@ -335,6 +338,7 @@ async function syncPost(env, l, req) {
   // never takes silence for success. Reasons are English keys the app translates. Older apps ignore `rejected`.
   const rejected = [];
   const refuse = (id, reason) => { if (id) rejected.push({ id: clip(id, 40), reason }); };
+  let created = 0;
   for (const raw of d.entries.slice(200)) refuse(String(raw && raw.id || ''), 'Too many entries in one sync. It will be sent next time.');
   for (const raw of incoming) {
     const id = String(raw && raw.id || '');
@@ -369,9 +373,11 @@ async function syncPost(env, l, req) {
     }
     const text = JSON.stringify(e);
     if (ex) await env.DB.prepare('UPDATE logbook_entries SET scan_type = ?, scan_date = ?, data = ?, updated_at = ?, deleted = 0 WHERE id = ?').bind(e.type, e.date, text, now, id).run();
-    else await env.DB.prepare('INSERT INTO logbook_entries (id, learner_id, scan_type, scan_date, data, updated_at) VALUES (?,?,?,?,?,?)').bind(id, l.id, e.type, e.date, text, now).run();
+    else { await env.DB.prepare('INSERT INTO logbook_entries (id, learner_id, scan_type, scan_date, data, updated_at) VALUES (?,?,?,?,?,?)').bind(id, l.id, e.type, e.date, text, now).run(); created++; }
     saved.push({ ...e, updatedAt: now });
   }
+  // Business measurement: how many new entries reached the server (a count, never their content).
+  if (created && ctx && ctx.waitUntil) ctx.waitUntil(count(env, [['app.entries_created', '', created]]));
   return json({ ok: true, now, saved, rejected });
 }
 
@@ -460,7 +466,7 @@ async function signoffComplete(env, req, ctx) {
   }
   const owner = await env.DB.prepare('SELECT title, first_name, last_name FROM learners WHERE id = ?').bind(so.learner_id).first();
   // Whoever holds a link signs as themselves: the snapshot records the details as declared, not verified.
-  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote', learnerName: owner ? fullName(owner) : null });
+  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote', learnerName: owner ? fullName(owner) : null, actions: actionsForSignoff(sup.basis) });
   const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
     .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
   // A double tap or a second tab: only the first submission signs.
@@ -511,7 +517,7 @@ async function signoffInPerson(env, l, req) {
   const so = { id, learner_id: l.id, snapshot: JSON.stringify(snapshotOf(entries)) };
   const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
   // Signed on the learner's own phone: the signer's details are declared, not verified.
-  const snap = await snapshotFor(env, { entries, declared: sup, method: 'in-person', learnerName: fullName(l) });
+  const snap = await snapshotFor(env, { entries, declared: sup, method: 'in-person', learnerName: fullName(l), actions: actionsForSignoff(sup.basis) });
   await env.DB.prepare(`INSERT INTO signoffs (id, learner_id, method, entry_ids, snapshot, status, supervisor_name, supervisor_role, supervisor_reg, supervisor_email, accreditation, basis, comment, decisions, ratings, signature, signed_at${snap ? ', supervisor_snapshot' : ''}) VALUES (?,?,?,?,?,'signed',?,?,?,?,?,?,?,?,?,?,datetime('now')${snap ? ',?' : ''})`)
     .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : [])).run();
   await applySignoff(env, so, decisions, sup, 'in-person', ratings, snap);
@@ -648,6 +654,9 @@ export async function handleApp(req, env, ctx) {
   const out = new Response(res.body, res);
   out.headers.set('X-Request-Id', rid);
   log(env, { rid, route: routeName(url.pathname), method: req.method, status: out.status, ms: Date.now() - t0, app: appVersion(req.headers.get('X-Wavelength-App')), err });
+  // Business measurement (worker/metrics.js): route pattern and status only, after the response, never failing it.
+  // The body is read only for a failed sign-up, to classify the reason.
+  appEvent(env, ctx, { method: req.method, route: routeName(url.pathname), status: out.status, res: p === 'signup' && out.status === 400 ? out.clone() : null });
   return out;
 }
 
@@ -673,6 +682,7 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'assessment/complete') return SV.assessmentComplete(env, req);
     const l = await learner(env, req);
     if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
+    if (p !== 'account/delete') activity(env, ctx, l.id);
     if (p === 'profile') return saveProfile(env, l, req);
     if (p === 'password') return changePassword(env, l, req);
     if (p === 'logout-all') return logoutAll(env, l, req);
@@ -680,7 +690,7 @@ async function routeApp(req, env, ctx, url, p) {
     if (org) return org;
     const found = await handleSearch(env, l, req, url, p, ctx, body);
     if (found) return found;
-    if (p === 'sync') return syncPost(env, l, req);
+    if (p === 'sync') return syncPost(env, l, req, ctx);
     if (p === 'signoff/request') return signoffRequest(env, l, req);
     if (p === 'signoff/inperson') return signoffInPerson(env, l, req);
     if (p === 'signoff/cancel') return signoffCancel(env, l, req);
@@ -720,6 +730,7 @@ async function routeApp(req, env, ctx, url, p) {
   const l = await learner(env, req);
   if (p === 'me') return l && l.password_hash ? me(env, l, req) : json({ ok: false, auth: false, academy: !!l, ...versionInfo(env, req) });
   if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
+  activity(env, ctx, l.id);
   if (p === 'sync') return syncGet(env, l, url);
   if (p === 'signoffs') return signoffList(env, l);
   if (p === 'evidence') return listEvidence(env, l, json);

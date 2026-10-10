@@ -425,3 +425,46 @@
 // Language menu: close when tapping elsewhere or pressing Escape.
 document.addEventListener('click', function (e) { document.querySelectorAll('.lang-menu[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); }); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape') document.querySelectorAll('.lang-menu[open]').forEach(function (d) { d.removeAttribute('open'); }); });
+
+// Cookieless measurement (worker/metrics.js; privacy notice "Measuring how the website is used"). No cookies, no
+// identifiers, no fingerprinting: each page view sends the page path, the referring site and any campaign tags in the
+// address, which the server counts in aggregate. Off when the visitor switched it off on the privacy page (stored on
+// this device only), or when the browser sends Global Privacy Control or Do Not Track. Failures are silent.
+(function () {
+  var off = false;
+  try { off = localStorage.getItem('wl-measure') === 'off'; } catch (e) { /* storage blocked */ }
+  if (navigator.globalPrivacyControl || navigator.doNotTrack === '1' || window.doNotTrack === '1') off = true;
+  // The privacy page switch: [data-measure-toggle] shows and changes the choice on this device.
+  document.querySelectorAll('[data-measure-toggle]').forEach(function (b) {
+    var show = function () { var on = !off; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.textContent = on ? 'Turn off measurement on this device' : 'Turn measurement back on'; var s = document.querySelector('[data-measure-state]'); if (s) s.textContent = on ? 'Measurement is on for this device.' : 'Measurement is off for this device.'; };
+    show();
+    b.addEventListener('click', function () { off = !off; try { if (off) localStorage.setItem('wl-measure', 'off'); else localStorage.removeItem('wl-measure'); } catch (e) { /* storage blocked */ } show(); });
+  });
+  if (off || !navigator.sendBeacon || !window.JSON) return;
+  var send = function (o) { try { navigator.sendBeacon('/api/m', new Blob([JSON.stringify(o)], { type: 'text/plain' })); } catch (e) { /* never break the page */ } };
+  var q = new URLSearchParams(location.search), u = {};
+  ['source', 'medium', 'campaign', 'content'].forEach(function (k) { var v = q.get('utm_' + k); if (v) u[k] = v.slice(0, 60); });
+  // A campaign label (never anything about the visitor) stays with this browser tab, so an enquiry or booking made in
+  // the same visit can be credited to the post or email that brought it.
+  var camp = '';
+  try { if (u.campaign) sessionStorage.setItem('wl-c', u.campaign.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60)); camp = sessionStorage.getItem('wl-c') || ''; } catch (e) { /* storage blocked */ }
+  var ref = '';
+  try { ref = document.referrer ? new URL(document.referrer).origin + '/' : ''; } catch (e) { ref = ''; }
+  var nav = performance && performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
+  send({ t: 'pv', p: location.pathname, r: ref, u: u, reload: !!(nav && (nav.type === 'reload' || nav.type === 'back_forward')) });
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('a,button') : null;
+    if (!a) return;
+    if (a.getAttribute('data-m')) send({ t: 'ev', n: 'cta', l: a.getAttribute('data-m'), p: location.pathname });
+    var href = a.getAttribute('href') || '';
+    if (/^https:\/\/(book|buy)\.stripe\.com\//.test(href)) {
+      send({ t: 'ev', n: 'book', p: location.pathname });
+      if (camp && href.indexOf('client_reference_id=') < 0) a.setAttribute('href', href + (href.indexOf('?') < 0 ? '?' : '&') + 'client_reference_id=wl-' + camp);
+    }
+  }, true);
+  var started = false;
+  document.querySelectorAll('form[data-m-form]').forEach(function (f) {
+    if (camp) { var h = f.querySelector('input[name="campaign"]'); if (h) h.value = camp; }
+    f.addEventListener('focusin', function () { if (started) return; started = true; send({ t: 'ev', n: 'enquiry_start', l: f.getAttribute('data-m-form'), p: location.pathname }); });
+  });
+})();

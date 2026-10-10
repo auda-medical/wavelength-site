@@ -11,6 +11,7 @@ import { mustVerify, sendVerification } from './email-verify.js';
 import { snapshotFor, publicSnapshot, logEvent, SIGNER_LABELS } from './professional.js';
 import { supervisorEligibility, eligibilityError, approvalRequired, applyOn, standingOf, linkState, relationshipStage, signerBlocked, returnRequestsStmts, supervisorUnavailable, NEUTRAL_REFUSAL, areaLabels } from './supervisor-lifecycle.js';
 import { audit, auditStmt } from './audit.js';
+import { actionsForSignoff, actionsForAssessment } from './verification/pathways.js';
 import { nowIso, parseTs } from './time.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
@@ -58,8 +59,8 @@ function formError(f, kind) {
 // The assessor's verified status is captured with the signature and never changed afterwards. Only the dashboard
 // route identifies the assessor by their Wavelength account; in person and by link, the details are as declared.
 async function finishAssessment(env, row, f, sup, sig, supervisorId, method) {
-  const who = await env.DB.prepare('SELECT a.learner_id, l.title, l.first_name, l.last_name FROM assessments a JOIN learners l ON l.id = a.learner_id WHERE a.id = ?').bind(row.id).first();
-  const snap = await snapshotFor(env, { pathway: row.pathway, module: row.module, declared: sup, method, accountId: supervisorId || null, learnerName: who ? fullName(who) : null });
+  const who = await env.DB.prepare('SELECT a.learner_id, a.kind, l.title, l.first_name, l.last_name FROM assessments a JOIN learners l ON l.id = a.learner_id WHERE a.id = ?').bind(row.id).first();
+  const snap = await snapshotFor(env, { pathway: row.pathway, module: row.module, declared: sup, method, accountId: supervisorId || null, learnerName: who ? fullName(who) : null, actions: actionsForAssessment(row.kind || who && who.kind) });
   const r = await env.DB.prepare(`UPDATE assessments SET status = 'signed', outcome = ?, assessed_on = ?, data = ?, supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL, supervisor_id = COALESCE(?, supervisor_id)${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
     .bind(f.outcome, f.date, JSON.stringify({ ...JSON.parse(row.data || '{}'), ...f }), sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sig, supervisorId || null, ...(snap ? [JSON.stringify(snap)] : []), row.id).run();
   return !!(r.meta && r.meta.changes); // false when another submission signed it first
@@ -464,8 +465,9 @@ export async function superviseSignoffComplete(env, l, req, applySignoff, cleanS
   const d = await body(req);
   const so = d && await env.DB.prepare("SELECT * FROM signoffs WHERE id = ? AND supervisor_id = ? AND status = 'pending'").bind(clip(d.code, 20), l.id).first();
   if (!so || so.expires_at < Date.now()) return json({ ok: false, error: 'This request is no longer open.' }, 404);
-  // Checked again at submit: an approval that ended, or a scope that does not cover every scan, refuses here.
-  const g = await guard(env, l, so.learner_id, { types: typesIn(so.snapshot) });
+  // Checked again at submit: an approval that ended, a scope that does not cover every scan, or a capacity that does
+  // not allow this kind of sign-off (data/supervision-policy.json), refuses here.
+  const g = await guard(env, l, so.learner_id, { types: typesIn(so.snapshot), actions: actionsForSignoff(d.basis) });
   if (g.res) return g.res;
   const sup = cleanSupervisor({ ...d, email: l.email });
   const sig = String(d.signature || '');
@@ -474,7 +476,7 @@ export async function superviseSignoffComplete(env, l, req, applySignoff, cleanS
   const decisions = d.decisions && typeof d.decisions === 'object' ? d.decisions : {};
   const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
   // Signed from the supervisor's own logged-in account: capture their verified status as it is now.
-  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'dashboard', accountId: l.id, learnerName: fullName(g.t) });
+  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'dashboard', accountId: l.id, learnerName: fullName(g.t), actions: actionsForSignoff(sup.basis) });
   const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', method = 'dashboard', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = ?, accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
     .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
   if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This request is no longer open.' }, 404);
@@ -487,7 +489,7 @@ export async function superviseAssessmentComplete(env, l, req) {
   const d = await body(req);
   const a = d && await env.DB.prepare("SELECT * FROM assessments WHERE id = ? AND supervisor_id = ? AND status = 'pending'").bind(clip(d.code, 20), l.id).first();
   if (!a || a.expires_at < Date.now()) return json({ ok: false, error: 'This request is no longer open.' }, 404);
-  const g = await guard(env, l, a.learner_id, { scopes: [`${a.pathway}:${a.module}`] });
+  const g = await guard(env, l, a.learner_id, { scopes: [`${a.pathway}:${a.module}`], actions: actionsForAssessment(a.kind) });
   if (g.res) return g.res;
   const f = cleanForm(d), sup = cleanAssessor({ ...d, email: l.email }), sig = String(d.signature || '');
   const err = formError(f, a.kind);
@@ -503,7 +505,7 @@ export async function superviseAssessmentNew(env, l, req) {
   const d = await body(req);
   if (!d) return json({ ok: false, error: 'You no longer supervise this learner.' }, 404);
   if (!moduleOf(d.pathway, d.module) || !KINDS.includes(d.kind)) return json({ ok: false, error: 'Choose the pathway module and type of assessment.' }, 400);
-  const g = await guard(env, l, d.learnerId, { scopes: [`${d.pathway}:${d.module}`] });
+  const g = await guard(env, l, d.learnerId, { scopes: [`${d.pathway}:${d.module}`], actions: actionsForAssessment(d.kind) });
   if (g.res) return g.res;
   const t = g.t;
   const f = cleanForm(d), sup = cleanAssessor({ ...d, email: l.email }), sig = String(d.signature || '');
@@ -515,7 +517,7 @@ export async function superviseAssessmentNew(env, l, req) {
   const id = code('AS');
   await env.DB.prepare("INSERT INTO assessments (id, learner_id, pathway, module, kind, method, entry_ids, snapshot, data, supervisor_id) VALUES (?,?,?,?,?,'dashboard',?,?,'{}',?)")
     .bind(id, t.id, d.pathway, d.module, d.kind, JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snap(entries)), l.id).run();
-  await finishAssessment(env, { id, data: '{}', pathway: d.pathway, module: d.module }, f, sup, sig, l.id, 'dashboard');
+  await finishAssessment(env, { id, data: '{}', pathway: d.pathway, module: d.module, kind: d.kind }, f, sup, sig, l.id, 'dashboard');
   return json({ ok: true, code: id });
 }
 
@@ -559,7 +561,7 @@ export async function superviseAssessmentAmend(env, l, req) {
   if (Date.now() - parseTs(old.signed_at) > AMEND_DAYS * 864e5) return json({ ok: false, error: `Assessments can be amended for ${AMEND_DAYS} days. Record a new assessment instead.` }, 400);
   const reason = clip(d.reason, 1000);
   if (reason.length < 5) return json({ ok: false, error: 'Say why you are amending this assessment.' }, 400);
-  const g = await guard(env, l, old.learner_id, { scopes: [`${old.pathway}:${old.module}`] });
+  const g = await guard(env, l, old.learner_id, { scopes: [`${old.pathway}:${old.module}`], actions: actionsForAssessment(old.kind) });
   if (g.res) return g.res;
   const f = cleanForm(d), sup = cleanAssessor({ ...d, email: l.email }), sig = String(d.signature || '');
   const err = formError(f, old.kind);
@@ -572,7 +574,7 @@ export async function superviseAssessmentAmend(env, l, req) {
   if (!(claim.meta && claim.meta.changes)) return json({ ok: false, error: 'This assessment has already been amended.' }, 409);
   await env.DB.prepare("INSERT INTO assessments (id, learner_id, pathway, module, kind, method, entry_ids, snapshot, data, supervisor_id, amends, amend_reason) VALUES (?,?,?,?,?,'dashboard',?,?,'{}',?,?,?)")
     .bind(id, old.learner_id, old.pathway, old.module, old.kind, old.entry_ids, old.snapshot, l.id, old.id, reason).run();
-  await finishAssessment(env, { id, data: '{}', pathway: old.pathway, module: old.module }, f, sup, sig, l.id, 'dashboard');
+  await finishAssessment(env, { id, data: '{}', pathway: old.pathway, module: old.module, kind: old.kind }, f, sup, sig, l.id, 'dashboard');
   await env.DB.batch([
     env.DB.prepare("UPDATE assessments SET status = 'superseded' WHERE id = ? AND superseded_by = ?").bind(old.id, id),
     auditStmt(env, { actorType: 'supervisor', actorId: l.id, action: 'assessment.amend', subjectType: 'assessment', subjectId: id, meta: { amends: old.id } }),

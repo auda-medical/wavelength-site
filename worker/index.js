@@ -16,6 +16,10 @@ import { organisationsAdminHtml, organisationsAdminPost } from './organisations.
 import { adminAccess, allowed } from './access.js';
 import { runScheduled } from './cron.js';
 import { legacyAdminPath, adminNav, consoleHome } from './admin-console.js';
+import { beacon } from './metrics.js';
+import { handleStripe } from './bookings.js';
+import { businessRoute } from './business.js';
+import { confirmListingPage, confirmListingPost } from './verification/directory-review.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
 // admin_hash, session_secret, admin_session_secret). Passwords are stored as PBKDF2 hashes, never in plain text.
@@ -230,6 +234,14 @@ async function adminRoute(req, env, ctx, url, p, s) {
 
   if (p === '/admin/') return page(consoleHome(acc), '');
 
+  // Business dashboard (worker/business.js): owner role. CSV exports keep the .csv path.
+  if (p === '/admin/business/' || p.startsWith('/admin/business/')) {
+    const out = await businessRoute(env, req, url, p);
+    if (out.redirect) return redirect(out.redirect);
+    if (out.csv) return csvResponse(out.csv.rows || [], out.csv.cols, out.csv.name);
+    return page(out.html, 'business');
+  }
+
   if (p === '/admin/volunteers/export.csv') return exportCsv(env);
   if (p === '/admin/volunteers/') {
     if (req.method === 'POST') {
@@ -353,6 +365,13 @@ export default {
       if (!env.DB) return redirect('/training/?error=1#enquire');
       return redirect(await enquireTraining(env, req, ctx));
     }
+    // Cookieless website measurement (worker/metrics.js): always 204, never fails visibly.
+    if (p === '/api/m') return beacon(req, env, ctx);
+    // Stripe webhook (worker/bookings.js): 404 until STRIPE_WEBHOOK_SECRET is set.
+    if (p === '/api/stripe/webhook') return handleStripe(req, env);
+    // A supervisor confirms (or disputes) that they are the person listed in an official directory, from a link sent to
+    // the address the directory lists (worker/verification/directory-review.js). GET shows buttons; only POST acts.
+    if (p === '/api/confirm-listing') return req.method === 'POST' ? confirmListingPost(req, env) : confirmListingPage(req, env);
     // /api/app/* also serves the store apps from their own origins (worker/native.js).
     if (p.startsWith('/api/app/')) return req.method === 'OPTIONS' ? preflight(req) : withNative(req, await handleApp(req, env, ctx));
     // Certificate PDFs are public by code; the store apps fetch them to save or share.

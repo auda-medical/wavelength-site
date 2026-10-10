@@ -18,6 +18,8 @@ import { receiptKey, receiptFor } from './supervisor-apply.js';
 import { auditStmt, audit } from './audit.js';
 import { ukDate, addDays, addMonths, businessDaysSince, longDate } from './time.js';
 import { isGmc, gmcRegisterUrl, gmcReview, restrictionDecision, GMC_SOURCE, RESTRICTION_STATE, MAX_CHECK_AGE_DAYS } from './verification/register-review.js';
+import { directoryOf, directoryPanel, directoryPost } from './verification/directory-admin.js';
+import { capacitiesFor, capacityLabel, CAPACITIES } from './verification/pathways.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
@@ -26,8 +28,10 @@ const date = (v) => (ISO.test(String(v || '')) ? String(v) : null);
 const nowIso = () => new Date().toISOString();
 const BASE = '/admin/supervisors/';
 const PATHS = LOGBOOK.pathways.filter((p) => p.modules && p.modules.length);
+// True once migration 0015 (approval capacity) is applied.
+async function hasCapacity(env) { try { await env.DB.prepare('SELECT capacity FROM supervisor_approvals LIMIT 0').all(); return true; } catch { return false; } }
 const REG_QUEUE = ['pending', 'manual_verification_required', 'manual_review', 'mismatch', 'source_unavailable'];
-const CRED_QUEUE = ['claimed', 'evidence_required', 'manual_review', 'more_evidence', 'not_found', 'source_unavailable'];
+const CRED_QUEUE = ['claimed', 'evidence_required', 'manual_review', 'more_evidence', 'not_found', 'source_unavailable', 'directory_match', 'identity_pending'];
 const NAV = `<a class="text-link" href="/admin/volunteers/">Volunteers</a> · <a class="text-link" href="/admin/academy/">Academy</a> · <a class="text-link" href="${BASE}">Supervisor verification</a> · <a class="text-link" href="/admin/organisations/">Organisations</a>`;
 const name = (l) => [l.title, l.first_name, l.last_name].filter(Boolean).join(' ');
 const reviewerField = '<label>Your name (recorded with the decision)<input name="reviewer" autocomplete="name" maxlength="80" required></label>';
@@ -211,7 +215,7 @@ async function applicationDetail(env, appId, note) {
   const dl = (rows) => `<dl class="sv-dl">${rows.filter(([, v]) => v !== null && v !== undefined && v !== '').map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
   const actions = !open ? '' : `<h3 style="margin:28px 0 10px">Decision</h3><div class="sv-actions">
     ${renewal && live.length ? form('app_confirm_renewal', H, `<p class="form-note">Renews the same scopes (${esc(live.map((x) => scopeLabel(x.pathway, x.module)).join(', '))}) until ${esc(longDate(until))}, keeping their basis. Use "Approve" instead to change scopes or basis.</p><label>Note (optional)<input name="notes" maxlength="500"></label>`, 'Confirm renewal') : ''}
-    ${form('app_approve', H, `<p class="form-note">Scopes: pre-ticked from the areas and pathways requested${live.length ? ' and the current approval' : ''}. Tick only what the evidence supports.</p>${scopeBoxes(ticked)}
+    ${form('app_approve', H, `<p class="form-note">Scopes: pre-ticked from the areas and pathways requested${live.length ? ' and the current approval' : ''}. Tick only what the evidence supports.</p>${scopeBoxes(ticked)}<label>Capacity for new scopes<select name="capacity">${CAPACITIES.map((k) => `<option value="${k}"${k === 'supervisor' ? ' selected' : ''}>${esc(capacityLabel(k))}</option>`).join('')}</select></label>
       <p class="form-note">Credentials this approval relies on. If one of them expires or is withdrawn, supervisor status pauses until it is current again.</p><div class="sv-checks">${verifiedCreds.map((c) => `<label><input type="checkbox" name="basis" value="${c.id}">${esc((TYPE[c.credential_type] || {}).label || c.credential_type)}: ${esc(parseList(c.modules).join(', '))}</label>`).join('') || '<span class="admin-summary">No verified credentials. Record the basis in the note.</span>'}</div>
       <label>Approved until (12 months at most)<input type="date" name="review_on" value="${esc(until)}" max="${esc(until)}" required></label>
       ${st.hasReg ? '' : '<label class="consent"><input type="checkbox" name="exempt" value="1"><span>Registration exemption: approve without a verified registration</span></label><label>Reason for the exemption, and how you checked identity and experience instead<textarea name="exempt_reason" maxlength="1000"></textarea></label>'}
@@ -294,6 +298,7 @@ async function detail(env, id, note, life = false) {
     Automatic result: ${esc(c.match_result || 'n/a')} (${esc(c.match_method || '')} ${esc(c.match_version || '')}) · Source: ${esc(c.verification_source || 'none')} · Method: ${esc(c.verification_method || 'none')} · Verified by: ${esc(c.verified_by || 'n/a')} ${esc(c.verified_at || '')}${c.failure_state ? ` · <b>${esc(c.failure_state.replace(/_/g, ' '))}</b>` : ''}<br>
     Holder's note: ${esc(c.claim_note || 'none')}<br><small>${esc(t.access || '')}</small></p>
     ${evList('credential', c.id)}
+    ${c.active && directoryOf(c.credential_type) ? directoryPanel(c, { H, evid, form, esc }) : ''}
     ${c.active ? `<div class="sv-actions">
     ${form('cred_approve', { ...H, sid: c.id }, `<div class="sv-checks">${checks}</div><label>How you checked<select name="method"><option value="manual_evidence">From the evidence provided</option><option value="manual_register">Against the body's own public list</option></select></label><label>Evidence relied on<select name="evidence"><option value="">None listed</option>${evOpts}</select></label><label>Issued on<input type="date" name="issued_on" value="${esc(c.issued_on || '')}"></label><label>Expires on<input type="date" name="expires_on" value="${esc(c.expires_on || '')}"></label><label>Review on<input type="date" name="review_on" value="${esc(c.review_on || '')}"></label><label>Notes<input name="notes" required maxlength="500"></label>`, 'Approve credential')}
     ${form('cred_more', { ...H, sid: c.id }, '<label>What evidence you need (emailed to the holder)<textarea name="notes" required maxlength="800"></textarea></label>', 'Request more evidence')}
@@ -302,10 +307,12 @@ async function detail(env, id, note, life = false) {
     ${['revoked', 'rejected', 'expired'].includes(c.status) ? form('cred_reinstate', { ...H, sid: c.id }, '<label>Why it is valid again<input name="notes" required maxlength="500"></label><label>Expires on<input type="date" name="expires_on"></label>', 'Reinstate') : ''}
     </div>` : ''}</div>`;
   }).join('') || '<p class="admin-summary">No credentials claimed.</p>';
-  const appRows = allApps.map((a) => `<tr><td>${esc(scopeLabel(a.pathway, a.module))}</td><td>${pill(a.status)}${a.status === 'approved' && !st.hasReg ? '<br><small>Not current: no verified registration</small>' : ''}</td><td>${esc(a.approved_by || '')} ${esc((a.approved_at || '').slice(0, 10))}</td><td>${esc(a.review_on || '')}</td><td>${esc(a.notes || '')}${a.ended_reason ? `<br>Ended: ${esc(a.ended_reason)} (${esc(a.ended_by || '')})` : ''}</td><td>${a.status === 'approved' ? form('appr_revoke', { ...H, sid: a.id }, `<label>Reason (internal)<input name="notes" required maxlength="500"></label>${life ? `<label>Message to the supervisor (optional, emailed)<input name="message" maxlength="500"></label>${allApps.filter((x) => x.status === 'approved').length === 1 ? '<p class="form-note">This is their last scope: revoking it blocks one-off assessor signing through Wavelength unless you tick the box.</p><label class="consent"><input type="checkbox" name="one_off" value="1"><span>One-off assessment remains permitted</span></label><label>Why<input name="one_off_note" maxlength="500"></label>' : ''}` : ''}`, 'Revoke', 'Revoke this supervisor approval? It stops counting at once. Past sign-offs keep what was true when they were signed.') : form('appr_reinstate', { ...H, sid: a.id }, `<label>Why<input name="notes" required maxlength="500"></label><label>Approved until${life ? ' (12 months at most)' : ''}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}" required` : ''}></label>${life ? '<p class="form-note">Reinstating also lifts an active block.</p>' : ''}`, 'Reinstate')}</td></tr>`).join('');
+  const appRows = allApps.map((a) => `<tr><td>${esc(scopeLabel(a.pathway, a.module))}<br><small>${esc(capacityLabel(a.capacity || 'supervisor'))}</small></td><td>${pill(a.status)}${a.status === 'approved' && !st.hasReg ? '<br><small>Not current: no verified registration</small>' : ''}</td><td>${esc(a.approved_by || '')} ${esc((a.approved_at || '').slice(0, 10))}</td><td>${esc(a.review_on || '')}</td><td>${esc(a.notes || '')}${a.ended_reason ? `<br>Ended: ${esc(a.ended_reason)} (${esc(a.ended_by || '')})` : ''}</td><td>${a.status === 'approved' ? form('appr_revoke', { ...H, sid: a.id }, `<label>Reason (internal)<input name="notes" required maxlength="500"></label>${life ? `<label>Message to the supervisor (optional, emailed)<input name="message" maxlength="500"></label>${allApps.filter((x) => x.status === 'approved').length === 1 ? '<p class="form-note">This is their last scope: revoking it blocks one-off assessor signing through Wavelength unless you tick the box.</p><label class="consent"><input type="checkbox" name="one_off" value="1"><span>One-off assessment remains permitted</span></label><label>Why<input name="one_off_note" maxlength="500"></label>' : ''}` : ''}`, 'Revoke', 'Revoke this supervisor approval? It stops counting at once. Past sign-offs keep what was true when they were signed.') : form('appr_reinstate', { ...H, sid: a.id }, `<label>Why<input name="notes" required maxlength="500"></label><label>Approved until${life ? ' (12 months at most)' : ''}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}" required` : ''}></label>${life ? '<p class="form-note">Reinstating also lifts an active block.</p>' : ''}`, 'Reinstate')}</td></tr>`).join('');
   const verifiedCreds = allCreds.filter((c) => c.active && c.status === 'verified');
   const addApproval = form('appr_add', H, `<p class="form-note">Modules (scope). Tick only the modules the evidence supports. "All modules" is recorded as its own scope.</p>
     ${PATHS.map((p) => `<fieldset class="sv-checks"><legend>${esc(p.label)}</legend><label><input type="checkbox" name="scope" value="${p.id}:*">All modules</label>${p.modules.map((m) => `<label><input type="checkbox" name="scope" value="${p.id}:${m.id}">${esc(m.label)}</label>`).join('')}</fieldset>`).join('')}
+    <label>Capacity<select name="capacity">${CAPACITIES.map((k) => `<option value="${k}"${k === 'supervisor' ? ' selected' : ''}>${esc(capacityLabel(k))}</option>`).join('')}</select></label>
+    <p class="form-note">The capacity decides what they may sign for each module (data/supervision-policy.json). FAMUS and FUSIC Heart mentors review scans and give feedback but never sign the final or triggered assessment; FUSIC modules other than Heart use trainers, one module at a time; FAMUS peripheral access is approved locally. A scope that does not recognise the capacity is refused.</p>
     <p class="form-note">Basis: the verified credentials this approval relies on.</p><div class="sv-checks">${verifiedCreds.map((c) => `<label><input type="checkbox" name="basis" value="${c.id}">${esc((TYPE[c.credential_type] || {}).label || c.credential_type)}: ${esc(parseList(c.modules).join(', '))}</label>`).join('') || '<span class="admin-summary">No verified credentials. Record the basis in the notes.</span>'}</div>
     <label>${life ? 'Approved until (12 months at most)' : 'Review on'}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}"` : ''}></label><label>Notes (basis and reasoning)<textarea name="notes" required maxlength="1000"></textarea></label>`, 'Approve as Wavelength supervisor for these scopes');
   const badges = badgesFrom(env, st);
@@ -474,7 +481,13 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
     if (!c) return back('Credential not found.');
     const t = TYPE[c.credential_type] || { modules: [] };
     if (!notes) return back('Add notes or a reason.');
+    if (action === 'cred_directory_check' || action === 'cred_listing_send') return directoryPost(env, f, action, c, { reviewer, actor, back, ev, decided, ctx });
     if (action === 'cred_approve') {
+      // A credential the body lists in an official directory is verified through the directory check, which also
+      // needs identity confirmed separately. Approving from evidence (for example the body's own letter) needs that
+      // evidence named.
+      if (directoryOf(c.credential_type) && f.get('method') === 'manual_register') return back('This credential has an official directory: use "Record directory check", which also needs identity confirmed separately.');
+      if (directoryOf(c.credential_type) && !Number(f.get('evidence'))) return back("Approving from evidence needs the evidence you relied on, such as the body's confirmation or certificate.");
       const modules = f.getAll('modules').map(String).filter((m) => t.modules.some((x) => x.id === m));
       if (!modules.length) return back('Tick at least one module.');
       const method = f.get('method') === 'manual_register' ? 'manual_register' : 'manual_evidence';
@@ -541,13 +554,19 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
       const reviewOn = until();
       if (reviewOn === false) return back('The approved-until date must be after today and no more than 12 months away.');
       const basis = f.getAll('basis').map(Number).filter((x) => st.credentials.some((c) => c.id === x));
+      // Capacity (migration 0015): every chosen scope must recognise it, or nothing is approved.
+      const capacity = CAPACITIES.includes(f.get('capacity')) ? String(f.get('capacity')) : 'supervisor';
+      const capCol = await hasCapacity(env);
+      if (capacity !== 'supervisor' && !capCol) return back('Approving in a capacity other than supervisor needs migration 0015.');
+      const unfit = scopes.filter((s) => { const [p, m] = s.split(':'); return m === '*' ? !(PATHS.find((x) => x.id === p) || { modules: [] }).modules.every((mm) => capacitiesFor(p, mm.id).includes(capacity)) : !capacitiesFor(p, m).includes(capacity); });
+      if (unfit.length) return back(`${capacityLabel(capacity)} is not a role for ${unfit.map((s) => scopeLabel(...s.split(':'))).join(', ')}. Choose another capacity or untick those scopes.`);
       let added = 0;
       for (const s of scopes) {
         const [p, m] = s.split(':');
         try {
-          await env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes${life ? ', required_basis' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?${life ? ',?' : ''})`).bind(learnerId, p, m, JSON.stringify(basis), reviewOn, actor, nowIso(), notes, ...(life ? [JSON.stringify(basis)] : [])).run();
+          await env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes${life ? ', required_basis' : ''}${capCol ? ', capacity' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?${life ? ',?' : ''}${capCol ? ',?' : ''})`).bind(learnerId, p, m, JSON.stringify(basis), reviewOn, actor, nowIso(), notes, ...(life ? [JSON.stringify(basis)] : []), ...(capCol ? [capacity] : [])).run();
           added++;
-          await ev({ subjectType: 'approval', action: 'admin_approved', outcome: 'approved', scope: s, notes: `${notes} | basis credentials: ${basis.join(',') || 'none'}` });
+          await ev({ subjectType: 'approval', action: 'admin_approved', outcome: 'approved', scope: s, notes: `${notes} | capacity: ${capacity} | basis credentials: ${basis.join(',') || 'none'}` });
         } catch { /* already approved for this scope */ }
       }
       if (life && added) {
@@ -587,8 +606,9 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
       if (reviewOn === false) return back('The approved-until date must be after today and no more than 12 months away.');
       // A new row, so the revoked one and its reason stay in the record.
       try {
-        await env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes${life ? ', required_basis, registration_exempt, exempt_reason, application_id' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?${life ? ',?,?,?,?' : ''})`)
-          .bind(learnerId, a.pathway, a.module, a.basis, reviewOn, actor, nowIso(), `Reinstated from #${a.id}: ${notes}`, ...(life ? [a.required_basis || '[]', a.registration_exempt || 0, a.exempt_reason || null, a.application_id || null] : [])).run();
+        const capCol = await hasCapacity(env);
+        await env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes${life ? ', required_basis, registration_exempt, exempt_reason, application_id' : ''}${capCol ? ', capacity' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?${life ? ',?,?,?,?' : ''}${capCol ? ',?' : ''})`)
+          .bind(learnerId, a.pathway, a.module, a.basis, reviewOn, actor, nowIso(), `Reinstated from #${a.id}: ${notes}`, ...(life ? [a.required_basis || '[]', a.registration_exempt || 0, a.exempt_reason || null, a.application_id || null] : []), ...(capCol ? [a.capacity || 'supervisor'] : [])).run();
       } catch { return back('This scope is already approved.'); }
       await ev({ subjectType: 'approval', subjectId: a.id, action: 'admin_reinstated', outcome: 'approved', scope: `${a.pathway}:${a.module}`, notes });
       if (life) {
@@ -749,7 +769,8 @@ async function applicationPost(env, f, action, { actor, adminAudit, notes, ctx }
     const live = st.approvals;
     const base = renewal && live.length ? (live.map((x) => x.review_on).filter(Boolean).sort()[0] || day) : day;
     const maxUntil = addMonths(base > day ? base : day, 12);
-    let scopes, basis = [], exempt = 0, exemptReason = null, reviewOn;
+    let scopes, basis = [], exempt = 0, exemptReason = null, reviewOn, capacity = 'supervisor';
+    const capCol = await hasCapacity(env);
     if (action === 'app_confirm_renewal') {
       if (!renewal) return back('Only a renewal can be confirmed in one step.');
       if (!live.length) return back('There is no live approval to renew (it may have expired). Use Approve and tick the scopes.');
@@ -763,6 +784,9 @@ async function applicationPost(env, f, action, { actor, adminAudit, notes, ctx }
       reviewOn = date(f.get('review_on')) || maxUntil;
       if (reviewOn <= day || reviewOn > maxUntil) return back(`The approved-until date must be after today and no later than ${maxUntil}.`);
       basis = f.getAll('basis').map(Number).filter((x) => st.credentials.some((c) => c.id === x && c.status === 'verified'));
+      capacity = CAPACITIES.includes(f.get('capacity')) ? String(f.get('capacity')) : 'supervisor';
+      const unfit = scopes.filter((sc) => { const [p, m] = sc.split(':'); return m !== '*' && !capacitiesFor(p, m).includes(capacity); });
+      if (unfit.length) return back(`${capacityLabel(capacity)} is not a role for ${unfit.map((sc) => scopeLabel(...sc.split(':'))).join(', ')}.`);
       if (!notes) return back('Add a decision note: the basis and your reasoning.');
       if (!st.hasReg) {
         exemptReason = clip(f.get('exempt_reason'), 1000);
@@ -783,8 +807,8 @@ async function applicationPost(env, f, action, { actor, adminAudit, notes, ctx }
         stmts.push(env.DB.prepare('UPDATE supervisor_approvals SET review_on = ?, last_renewed_at = ?, application_id = ?, basis = ?, required_basis = ?, registration_exempt = ?, exempt_reason = ?, notes = ? WHERE id = ? AND status = ?').bind(reviewOn, at, a.id, JSON.stringify(basis), JSON.stringify(basis), exempt, exemptReason, notes, row.id, 'approved'));
         renewed.push(sc);
       } else {
-        stmts.push(env.DB.prepare("INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes, application_id, registration_exempt, exempt_reason, required_basis) VALUES (?,?,?,'approved',?,?,?,?,?,?,?,?,?)")
-          .bind(lid, p, m, JSON.stringify(basis), reviewOn, actor, at, notes || `Approved with application #${a.id}`, a.id, exempt, exemptReason, JSON.stringify(basis)));
+        stmts.push(env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes, application_id, registration_exempt, exempt_reason, required_basis${capCol ? ', capacity' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?,?,?,?,?${capCol ? ',?' : ''})`)
+          .bind(lid, p, m, JSON.stringify(basis), reviewOn, actor, at, notes || `Approved with application #${a.id}`, a.id, exempt, exemptReason, JSON.stringify(basis), ...(capCol ? [capacity] : [])));
         added.push(sc);
       }
     }

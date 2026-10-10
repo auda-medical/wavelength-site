@@ -13,6 +13,7 @@ import { currentStatus, scopeLabel, logEvent, PURGE_EVIDENCE_DAYS, recheckDue } 
 import { queueStmt, deliver, deliverLater } from './notify.js';
 import { auditStmt, audit } from './audit.js';
 import { nowIso, ukDate, addDays, daysBetween, parseTs } from './time.js';
+import { capacitiesFor, allowedActions } from './verification/pathways.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
 export const AREAS = LOGBOOK.supervisionAreas || [];
@@ -86,21 +87,34 @@ export async function standingOf(env, learnerId, st = null) {
 // An old 'active' row in supervisor_links is necessary but never sufficient.
 // force: check even when SUPERVISOR_APPROVAL_REQUIRED is off (supervisor search must only ever show people who are
 // approved now). With force, callers must also require enforced to be true: before migration 0012 nothing is checked.
-export async function supervisorEligibility(env, accountId, { scopes = [], types = [], force = false } = {}) {
+// actions: what the supervisor is about to do (data/supervision-policy.json), for example ['review'] or ['final']. Only
+// approvals whose capacity allows every action count for the scope: a FUSIC Heart mentor approval covers scan review
+// but never the triggered assessment, and a FUSIC trainer approval covers only the module it names.
+export async function supervisorEligibility(env, accountId, { scopes = [], types = [], force = false, actions = null } = {}) {
   if ((!approvalRequired(env) && !force) || !(await lifecycleReady(env))) return { ok: true, enforced: false, reasons: [], approvedFor: [] };
   const st = await currentStatus(env, accountId);
   const current = st.approvals.filter((a) => a.current);
+  const capable = actions && actions.length ? current.filter((a) => capacityAllows(a, actions)) : current;
   const reasons = [];
   if (!st.learner) reasons.push('no_account');
   else if (st.learner.email_status !== 'verified') reasons.push('email');
   if (!current.length) reasons.push(st.approvals.length ? 'paused' : 'not_approved');
-  const missingScopes = scopes.filter((sc) => !current.some((a) => coversScope(a, sc)));
-  const coveredTypes = new Set(current.flatMap(typesOf));
+  const missingScopes = scopes.filter((sc) => !capable.some((a) => coversScope(a, sc)));
+  const coveredTypes = new Set(capable.flatMap(typesOf));
   const missingTypes = [...new Set(types)].filter((t) => !coveredTypes.has(t));
-  if (current.length && (missingScopes.length || missingTypes.length)) reasons.push('out_of_scope');
-  return { ok: !reasons.length, enforced: true, reasons, missingScopes, missingTypes, approvedFor: current.map((a) => `${a.pathway}:${a.module}`), areas: areaLabels(current) };
+  const capacityOnly = current.length && (missingScopes.length || missingTypes.length) && scopes.every((sc) => current.some((a) => coversScope(a, sc))) && types.every((t) => new Set(current.flatMap(typesOf)).has(t));
+  if (current.length && (missingScopes.length || missingTypes.length)) reasons.push(capacityOnly ? 'capacity' : 'out_of_scope');
+  return { ok: !reasons.length, enforced: true, reasons, missingScopes, missingTypes, approvedFor: capable.map((a) => `${a.pathway}:${a.module}`), areas: areaLabels(current) };
+}
+// Does an approval's capacity allow these actions on its module (or on every module of its pathway, for '*')?
+function capacityAllows(a, actions) {
+  const cap = a.capacity || 'supervisor';
+  if (a.module !== '*' && !capacitiesFor(a.pathway, a.module).includes(cap)) return false;
+  const allowed = allowedActions(a.pathway, a.module, cap);
+  return actions.every((x) => allowed.includes(x));
 }
 export function eligibilityError(el) {
+  if (el.reasons.includes('capacity')) return 'Your Wavelength approval for this module is in a role that does not cover this kind of sign-off or assessment (for example a mentor cannot sign a final or triggered assessment). Ask the learner to send it to a supervisor or trainer for the module.';
   if (el.reasons.includes('out_of_scope')) return `You are not approved by Wavelength to supervise ${el.missingTypes && el.missingTypes.length ? 'every scan in this request' : 'this module'}. Ask the learner to send it to another supervisor or a one-off assessor.`;
   if (el.reasons.includes('email')) return 'Confirm your email address first.';
   if (el.reasons.includes('paused')) return 'Your Wavelength supervisor status is paused or has expired, so you cannot complete supervisor actions at present. Open Me, Supervisor, to see why.';
