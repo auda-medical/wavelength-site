@@ -1,50 +1,56 @@
-# 1.0.14 (20): readiness, security and an honest score
+# 1.0.14 (20): release gate after the data-protection review
 
-## Readiness
+## Gate
 
-**Ready for the owner's phone and internal testing** once signed. **Not yet for public release** (Play production or
-open testing) until two things are done. First, the "phone only" rows of `checklist-fold7.md` must pass on the Fold7.
-Second, the owner must review the privacy points below. No server change is needed.
+| Question | Answer | Evidence |
+|---|---|---|
+| Does incomplete scan-form information survive app termination? | **Yes.** It is kept 0.6 s after typing, and at once when the app is left; Home and the form offer it back; it saves as one scan; it is never applied over a newer saved version | e2e-1014 F1 to F11; emulator T1 (real keyboard, `am kill`); upgrade U3 |
+| Do unfinished images and clips remain recoverable? | **Yes.** This covers the editor open, Keep for later, a prepared but unsaved item, and the camera still open when Android ends the app | e2e-1014 P; emulator X1, X2, M3 |
+| Is unredacted media excluded from unintended backups? | **Yes, proved.** Cloud backup is refused. Device-to-device transfer copies nothing; a control build without the rules did copy the photos. Camera captures no longer reach the gallery or shared storage | emulator Y1, Y2, M1, M2; `data-protection-review.md` §3 |
+| Is account isolation correct? | **Yes.** There is a drafts database per account, and another account's database is closed before one is opened. After log out the items stay hidden and come back only for the same account. Sync works after logging out and in (a defect in the first candidate, fixed) | e2e-1014 I1 to I3; emulator O1 |
+| Do saved scans and attachments remain intact? | **Yes.** All 745 scan-form controls are unchanged. A 1.0.13 scan with its photo (same SHA-256) and unsynced state survives the in-place update | e2e-1011 F0; upgrade U2; e2e-upgrade 12/12 |
+| Do all existing regression tests pass? | **Yes.** Two intended exceptions, as before: e2e-1013 A (the old slider) and e2e-1011 from E6 (the old Cover mode) | `test-report.md` |
+| Is the unsigned release ready for signing? | **Yes, for your Fold7 and internal testing** | Checksums and rehearsal in `signing-and-install.md` |
+
+**Recommendation.** Sign and install 1.0.14 (20) on the Fold7, over 1.0.13 and after a backup. Do **checklist 1.19
+first** (clips recorded through Wavelength may be in your gallery), then the rest of `checklist-fold7.md`.
+
+**Not yet for public release** (Play production or open testing) until:
+
+1. the phone-only checklist rows pass;
+2. the privacy notice and terms text is deployed to the website;
+3. you have added and signed DPIA Amendment 2.
 
 ## Security and privacy findings
 
-1. **Safety copies hold unredacted originals on the phone.** The drafts store (`wavelength-<account>-drafts`) keeps the
-   original file of a new photo or clip until it is used, discarded or the scan is saved. It is never synced, uploaded,
-   shared or put in a backup. Google backup is off (`allowBackup` false). Account deletion removes it, and Discard
-   removes it. This is the same exposure as the image store the app already has, but it lasts longer for an
-   abandoned edit. The privacy notice's "images never leave the device" stays true. **Owner review:** add a sentence
-   to the privacy notice and the DPIA record ("unfinished photos and clips are kept on the device until used or
-   discarded"). Possibly also add an expiry, for example 30 days, for items kept and never finished.
-2. **Log out does not remove safety copies**, which matches how the image store has always behaved. A shared phone
-   with two accounts keeps each account's separately.
-3. **A crafted backup could store a non-colour.** Fixed: colour names are checked as own properties (`hexOf`), and
-   anything else is ignored.
-4. **No new permissions, routes, libraries, cookies or analytics.** CSP and the native layer are unchanged.
-   `webContentsDebuggingEnabled` is false in the release.
-5. **Signing:** the original keystore was not opened. The script uses hidden prompts and process-only environment
-   variables, removes them at the end, and refuses to overwrite files.
+1. **Clips recorded through Wavelength were in the phone's gallery** (from the start of clips to 1.0.13).
+   - **Severity:** high.
+   - **Status:** fixed for new clips. Existing ones need your check (checklist 1.19); Wavelength cannot delete another
+     app's files.
+2. **"Take photo" originals left in the app's shared-storage folder** (1.0.8 to 1.0.13).
+   - **Severity:** moderate. Other apps can't read the folder on Android 11+, but a cable-connected computer may.
+   - **Status:** fixed. Leftovers are offered at the first start.
+3. **Safety copies hold unredacted originals on the phone** until the item is saved or discarded.
+   - **Severity:** low, mitigated: private storage, excluded from every backup and transfer, per account.
+   - **Status:** the privacy notice text and the DPIA amendment are prepared for you.
+4. **Sync answers dropped after logging out and in** (first 1.0.14 candidate only, never installed).
+   - **Severity:** moderate, an integrity issue.
+   - **Status:** fixed and tested.
+5. **Discarded files are erased lazily** by the WebView: at the latest at the next start, as observed on the emulator.
+   - **Severity:** low. Until then they stay in private storage and are excluded from backup.
+   - **Status:** documented.
+6. **No new permissions, server routes, libraries or analytics.** The signing material was never opened.
 
-## Score (out of 10, honest)
+## Score (out of 10)
 
 | Area | Score | Why not 10 |
 |---|---|---|
-| Media safety (item 1) | 9 | Proved in the browser, on the real WebView, through fold/unfold and through Android ending the app. Not yet proved on a Samsung keyboard, with a camera-recorded clip, or with a Recents swipe. Typed scan fields are still lost if the app is killed before saving. |
-| Annotation size (2) | 9 | The model is tested; the feel of the curve needs a thumb on the phone. |
-| Resize dot (3) | 10 | |
-| Colour (4) | 8.5 | Complete and tested. The spectrum square is small on the cover screen, and the contrast edge is a judgement call that needs real scans. |
-| Fold7 layout (5) | 8.5 | Folded and unfolded proved on an emulator, not on the hinge. Landscape on the cover screen keeps the phone layout. |
-| Guides from Progress (6) | 10 | |
-| About flash (7) | 9.5 | No bare logo in 51 sampled closing frames on a real WebView. A slowed screen recording on the phone is still to do. |
-| Backup acknowledgement (8) | 10 | |
-| Slow-start sign-up (9) | 9 | Tested with a delayed server, not with real Flight mode. |
-| Whole app as a busy clinician (13) | 8.5 | Clear wording and no surprise losses. Still open: the scan form does not keep typed fields across a kill, translations are machine-drafted, and pictograms need clinical review. |
+| Prevention of data loss (media and typed scans) | 9.5 | Everything is proved on the emulator and in the browser. A Recents swipe and the Samsung keyboard need the phone |
+| Protection of patient information on the device | 9 | Gallery and shared-storage leaks are closed and backup exclusion is proved. Samsung Camera and Smart Switch are not tested; existing gallery clips need your action |
+| Account isolation and sync integrity | 9.5 | Proved in the browser. A shared real device with two accounts is not tested |
+| Completed 1.0.14 refinements (keyboard Back, slider, colour, Fold layout, guides, About, backup tick, sign-up) | 9 | Unchanged and retested; feel and hinge need the phone |
+| Whole app as a busy clinician | 9 | Translations are machine-drafted; pictograms need clinical review |
 
-**Overall: 9 / 10 for this release's scope.** A true 10 needs the phone-only checks passing, a draft of the scan
-form's typed fields kept on the phone like the media, and a native-speaker pass on the translations.
-
-## Remaining defects and gaps (none blocking internal testing)
-
-- The scan form's typed fields are not kept across Android ending the app (media are). This would be a 1.0.15
-  candidate.
-- 58 new strings in eight languages are machine-drafted.
-- The emulator cannot prove the Samsung keyboard, One UI gestures, the camera or the hinge sensor.
+**Overall: 9 / 10, honestly.** The remaining point is the phone itself: the checklist's phone-only rows, Samsung
+Camera's behaviour with the private file, and the website and DPIA paperwork. I would not call it 10 / 10 before
+those are done.
