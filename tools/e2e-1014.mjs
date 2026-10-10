@@ -13,6 +13,9 @@
 //   A  About: no bare logo while the sheet closes
 //   B  backup: the acknowledgement is unticked for every new backup
 //   R  sign-up on a slow start: typing is never cleared, one request however many taps
+//   F  what is typed into a scan form survives Wavelength closing: kept at once, offered back, one scan only, never
+//      applied over a newer saved version, discarded only on request
+//   I  kept items stay with their account; sync still works after logging out and in again in the same run
 //
 // Setup: node mobile/scripts/build-www.mjs, then in another terminal
 //   node --import ./test/helpers/register.mjs tools/dev-worker.mjs
@@ -204,10 +207,14 @@ if (want('P')) {
   await page.evaluate(() => { history.replaceState(null, '', '#/'); }); await page.reload(); await page.waitForSelector('nav.tabs'); await sleep(1500);
   await page.click('[data-kepthome] a'); await page.waitForSelector('[data-addearlier]'); await page.click('[data-addearlier]'); await sleep(500);
   const addedNote = await text(page, '[data-earlier]');
-  await page.click('label[for=t0]'); await page.waitForSelector('#gal .kept');
+  // The note appears only while the application is still to be chosen. Since the review, an earlier step's typed form is
+  // itself kept, and Review continues it with its application chosen, so Images are already showing.
+  const restShown = await page.evaluate(() => !document.querySelector('#rest').hidden);
+  if (!restShown) await page.click('label[for=t0]');
+  await page.waitForSelector('#gal .kept');
   await page.click('#gal .kept'); await page.waitForSelector('.editor canvas'); await sleep(600); await page.click('.editor [data-tab=annotate]');
   const back16 = await chips(page);
-  record('P16', 'Wavelength closed with the editor open (after the app was paused): the photo and its dot come back', dk.length === 1 && dk[0].ann === 1 && back16.join() === 'Dot' && /under Images once you choose/.test(addedNote || ''), JSON.stringify({ kept: dk, back: back16, addedNote }));
+  record('P16', 'Wavelength closed with the editor open (after the app was paused): the photo and its dot come back', dk.length === 1 && dk[0].ann === 1 && back16.join() === 'Dot' && (restShown || /under Images once you choose/.test(addedNote || '')), JSON.stringify({ restShown, kept: dk, back: back16, addedNote }));
   await page.click('.editor [data-a=cancel]'); await page.click('.editor [data-cf=discard]'); await sleep(300);
   // P17 re-editing a saved photo: Back with changes asks Discard changes (no Keep for later); the saved photo stays.
   await go(page, '#/log'); await sleep(500);
@@ -489,6 +496,159 @@ if (want('R')) {
   net.offline = false;
   record('R3', 'Offline: a plain message (not a technical error), the fields kept, the button ready to try again', /Could not reach Wavelength/.test(off.err || '') && off.first === 'Off' && !off.btn, JSON.stringify(off));
   await b.ctx.close();
+}
+
+// ---------- F: what is typed into a scan form survives Wavelength closing ----------
+// The typed-form records (DRAFT forms) straight from IndexedDB.
+const formRecs = (page, accId) => page.evaluate((id) => new Promise((ok) => {
+  const r = indexedDB.open('wavelength-' + id + '-drafts');
+  r.onupgradeneeded = () => { r.transaction.abort(); ok([]); };
+  r.onsuccess = () => { const d = r.result; if (!d.objectStoreNames.contains('forms')) { d.close(); return ok([]); } const q = d.transaction('forms').objectStore('forms').getAll(); q.onsuccess = () => { d.close(); ok(q.result); }; };
+  r.onerror = () => ok([]);
+}), accId);
+const relaunch = async (page) => { await page.evaluate(() => { history.replaceState(null, '', '#/'); }); await page.reload(); await page.waitForSelector('nav.tabs'); await sleep(1500); };
+const pick = (page, name, value) => page.evaluate(([n, v]) => { const i = [...document.querySelectorAll(`#ef [name="${n}"]`)].find((x) => x.value === v); i.checked = true; i.dispatchEvent(new Event('change', { bubbles: true })); }, [name, value]);
+const firstValue = (page, name) => page.evaluate((n) => document.querySelector(`#ef [name="${n}"]`).value, name);
+const typeIn = async (page, sel, v) => { await page.fill(sel, v); await sleep(50); };
+const pause = async (page) => { await page.evaluate(() => window.__fire('App', 'appStateChange', { isActive: false })); await sleep(250); };
+const formVals = (page) => page.evaluate(() => { const f = document.querySelector('#ef'); if (!f) return null; const g = (n) => { const els = [...f.querySelectorAll(`[name="${n}"]`)]; const c = els.find((x) => ((x.type === 'radio' || x.type === 'checkbox') ? x.checked : true)); return c ? c.value : ''; }; return { type: g('type'), indication: g('indication'), interpretation: g('interpretation'), reflection: g('reflection'), supervision: g('supervision'), setting: g('setting'), overall: g('overall'), dirty: !!f.dataset.dirty }; });
+const localEntries = (page, accId) => page.evaluate((id) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id); r.onsuccess = () => { const q = r.result.transaction('entries').objectStore('entries').getAll(); q.onsuccess = () => { r.result.close(); ok(q.result.filter((x) => !x.deleted)); }; }; }), accId);
+if (want('F')) {
+  const { ctx, page, acc } = await phone();
+  // F1 typed, then the app is left: kept at once (no wait for the pause after typing).
+  await go(page, '#/new'); await page.waitForSelector('#ef'); await sleep(600);
+  await pick(page, 'type', 'cardiac'); await sleep(500);
+  await page.selectOption('#setting', { index: 1 });
+  await typeIn(page, '#ind', 'Breathless, ?effusion');
+  await pick(page, 'overall', 'Abnormal');
+  await typeIn(page, '#interp', 'Small pericardial effusion, no tamponade features');
+  await pick(page, 'supervision', await firstValue(page, 'supervision'));
+  await typeIn(page, '#refl', 'Look at the IVC too next time');
+  const typed = await formVals(page);
+  await pause(page);
+  const f1 = await formRecs(page, acc.id);
+  record('F1', 'Typing a scan, then leaving the app: what was typed is kept on this phone at once', f1.length === 1 && f1[0].formKey === 'new' && f1[0].type === 'cardiac' && f1[0].data.pairs.some((p) => p[0] === 'reflection' && /IVC/.test(p[1])), JSON.stringify(f1.map((x) => ({ type: x.type, pairs: x.data.pairs.length }))));
+  // F2 Wavelength is closed by Android: Home says an unfinished scan is kept.
+  await relaunch(page);
+  const card = await text(page, '[data-kepthome]');
+  record('F2', 'After Wavelength closes, Home says an unfinished scan is kept, and since when', /1 unfinished scan/.test(card || '') && /Kept since/.test(card || ''), card);
+  await shot(page, 'F2-home-unfinished');
+  // F3 Review continues it: every answer back, nothing saved yet.
+  await page.click('[data-kepthome] a'); await page.waitForSelector('#ef'); await sleep(1200);
+  const back3 = await formVals(page);
+  const note3 = await text(page, '[data-formdraft]');
+  record('F3', 'Review: the scan form comes back with every answer (application, setting, text, choices); nothing saved until Save', back3.type === typed.type && back3.indication === typed.indication && back3.interpretation === typed.interpretation && back3.reflection === typed.reflection && back3.supervision === typed.supervision && back3.setting === typed.setting && back3.overall === 'Abnormal' && back3.dirty && /Continued from/.test(note3 || '') && (await localEntries(page, acc.id)).length === 0, JSON.stringify({ typed, back3, note3 }));
+  await shot(page, 'F3-continued');
+  // F4 Save: one scan, saved under the id fixed when the form opened; the kept form is gone.
+  const draftId = f1[0].entryId;
+  await page.click('form button[type=submit]'); await page.waitForFunction(() => location.hash === '#/', null, { timeout: 10000 }).catch(() => {}); await sleep(800);
+  const e4 = await localEntries(page, acc.id), r4 = await formRecs(page, acc.id);
+  record('F4', 'Saved: exactly one scan (with the id it was started under), and the kept form is removed', e4.length === 1 && e4[0].id === draftId && /IVC/.test(e4[0].reflection) && r4.length === 0, JSON.stringify({ entries: e4.map((x) => x.id), draftId, kept: r4.length }));
+  // F5 a kept form whose scan was saved (Wavelength closed between the save and removing the form) never makes a second scan.
+  await page.evaluate(([id, eid]) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id + '-drafts'); r.onsuccess = () => { const t = r.result.transaction('forms', 'readwrite'); t.objectStore('forms').put({ id: 'stale1', formKey: 'new', entryId: eid, type: 'cardiac', data: { pairs: [['type', 'cardiac'], ['indication', 'stale copy']], names: ['type', 'indication'] }, created: Date.now() - 5000, updated: Date.now() - 5000, session: 'old' }); t.oncomplete = () => { r.result.close(); ok(); }; }; }), [acc.id, draftId]);
+  await relaunch(page);
+  const card5 = await text(page, '[data-kepthome]');
+  await go(page, '#/new'); await page.waitForSelector('#ef'); await sleep(1200);
+  const offer5 = await text(page, '[data-formdraft]');
+  record('F5', 'A kept form whose scan is already saved is not offered (no second copy of the scan) and is removed', !card5 && !offer5 && (await formRecs(page, acc.id)).length === 0 && (await localEntries(page, acc.id)).length === 1, JSON.stringify({ card5, offer5 }));
+  await go(page, '#/'); await sleep(500);
+  // F6 an edit kept and continued, applied to the version it began from.
+  await go(page, '#/edit/' + draftId); await page.waitForSelector('#ef'); await sleep(900);
+  await typeIn(page, '#ind', 'Breathless, effusion confirmed');
+  await pause(page);
+  await relaunch(page);
+  const card6 = await text(page, '[data-kepthome]');
+  await page.click('[data-kepthome] a'); await page.waitForSelector('#ef'); await sleep(1200);
+  const v6 = await formVals(page);
+  record('F6', 'Changes to a saved scan, kept when Wavelength closed, continue from Home on the same scan', /1 unfinished scan/.test(card6 || '') && v6.indication === 'Breathless, effusion confirmed' && v6.dirty, JSON.stringify({ card6, v6 }));
+  // F7 the scan changes after an edit was kept (saved again with other text): the kept edit is never applied.
+  await page.evaluate(() => { location.hash = '#/'; }); await sleep(400); await page.click('.sheet [data-discard]'); await sleep(600);
+  const afterDiscard = (await formRecs(page, acc.id)).length;
+  await go(page, '#/edit/' + draftId); await page.waitForSelector('#ef'); await sleep(900);
+  await typeIn(page, '#ind', 'Older unfinished wording');
+  await pause(page);
+  await relaunch(page);
+  await go(page, '#/edit/' + draftId); await page.waitForSelector('#ef'); await sleep(900);
+  await typeIn(page, '#ind', 'Newer saved wording'); await page.click('form button[type=submit]'); await sleep(1500);
+  await go(page, '#/edit/' + draftId); await page.waitForSelector('#ef'); await sleep(1200);
+  const v7 = await formVals(page), note7 = await text(page, '[data-formdraft]'), cont7 = await page.$('[data-fdgo]');
+  record('F7', 'When the scan has changed since an edit was kept, the older edit is not applied: the newer saved version stays, and the edit can be read', afterDiscard === 0 && v7.indication === 'Newer saved wording' && !cont7 && /changed since/.test(note7 || '') && !v7.dirty, JSON.stringify({ afterDiscard, v7, note7 }));
+  await shot(page, 'F7-not-applied');
+  await page.click('[data-fdsee]'); await sleep(500);
+  const sheet8 = await text(page, '.sheet');
+  record('F8', 'See what was typed: the kept text can be read and copied', /Older unfinished wording/.test(sheet8 || ''), sheet8);
+  await shot(page, 'F8-see-typed');
+  await page.click('.sheet [data-dropfd]'); await sleep(800);
+  record('F8b', 'Discard it: removed on request only', (await formRecs(page, acc.id)).length === 0 && !(await text(page, '[data-formdraft]')), '');
+  // F9 two unfinished new scans are both kept; neither overwrites the other.
+  await go(page, '#/'); await sleep(400);
+  for (const t of ['First unfinished', 'Second unfinished']) {
+    await go(page, '#/new'); await page.waitForSelector('#ef'); await sleep(900);
+    await pick(page, 'type', 'lung'); await sleep(300); await typeIn(page, '#ind', t);
+    await pause(page);
+    await relaunch(page);
+  }
+  const card9 = await text(page, '[data-kepthome]'), recs9 = await formRecs(page, acc.id);
+  record('F9', 'Two unfinished new scans: both kept, Home counts both', /2 unfinished scans/.test(card9 || '') && recs9.length === 2, JSON.stringify({ card9, n: recs9.length }));
+  // F10 continuing one while typing in another asks first and keeps what was typed here.
+  await go(page, '#/new'); await page.waitForSelector('#ef'); await sleep(900);
+  await pick(page, 'type', 'aaa'); await sleep(300); await typeIn(page, '#ind', 'Third, typed here'); await sleep(900);
+  await page.click('[data-fdgo]'); await sleep(400);
+  const ask10 = await text(page, '.sheet h2');
+  await page.click('.sheet [data-sw]'); await sleep(1500);
+  const v10 = await formVals(page), recs10 = await formRecs(page, acc.id);
+  record('F10', 'Continuing an unfinished scan while typing another asks first; what was typed here is kept too', /Switch to the unfinished scan/.test(ask10 || '') && /unfinished/.test(v10.indication) && recs10.length === 3, JSON.stringify({ ask10, v10: v10.indication, n: recs10.length }));
+  // F11 Discard changes on leaving deletes that form's kept copy only.
+  await page.evaluate(() => { location.hash = '#/'; }); await sleep(400); await page.click('.sheet [data-discard]'); await sleep(800);
+  const n11 = (await formRecs(page, acc.id)).length;
+  record('F11', 'Leaving with Discard changes removes that form\'s kept copy, and only that one', n11 === 2, String(n11));
+  await ctx.close();
+}
+
+// ---------- I: one account's kept items never show in another's; sync works after logging out and in ----------
+async function logOut(page) {
+  await go(page, '#/settings'); await page.waitForSelector('#lo'); await page.click('#lo'); await sleep(800);
+  if (await page.$('.sheet')) { await page.evaluate(() => { const b = [...document.querySelectorAll('.sheet .btns button')].pop(); if (b) b.click(); }); await sleep(1500); }
+  await page.waitForFunction(() => !document.querySelector('nav.tabs'), null, { timeout: 15000 }).catch(() => {});
+}
+async function logIn(page, who) {
+  await go(page, '#/login'); await page.waitForSelector('#f #em'); await page.fill('#em', who.email); await page.fill('#pw', 'Long-password-1'); await page.click('#f button[type=submit]');
+  await page.waitForSelector('nav.tabs', { timeout: 15000 }); await sleep(2500);
+}
+if (want('I')) {
+  const a = await account(), b = await account();
+  const { ctx, page } = await phone({ acc: a });
+  const img = await testImage(page);
+  await openPhoto(page, img);
+  await page.click('.editor [data-tab=annotate]'); await page.click('.editor [data-at=dot]'); await tapOn(page, [0.5, 0.5]);
+  await back(page); await sleep(300); await page.click('.editor [data-cf=later]'); await sleep(600);
+  await typeIn(page, '#ind', 'Account A only'); await pause(page);
+  await relaunch(page);
+  const cardA = await text(page, '[data-kepthome]');
+  await logOut(page);
+  await logIn(page, b);
+  const cardB0 = await text(page, '[data-kepthome]');
+  await go(page, '#/log'); await sleep(600); await go(page, '#/'); await sleep(1500);
+  const cardB = cardB0 || await text(page, '[data-kepthome]');
+  const bDrafts = await drafts(page, b.id), bForms = await formRecs(page, b.id);
+  record('I1', 'Logged out of A and in as B on the same phone: none of A\'s kept photo or unfinished scan shows for B', /Kept on this phone/.test(cardA || '') && !cardB && bDrafts.length === 0 && bForms.length === 0, JSON.stringify({ cardA, cardB }));
+  // I2 the sign-out counter: B's scans still sync after a log out and log in in the same run (defect found in this review).
+  await go(page, '#/new?type=lung'); await page.waitForSelector('#ef'); await sleep(900);
+  await pick(page, 'supervision', await firstValue(page, 'supervision'));
+  await typeIn(page, '#ind', 'B synced');
+  await page.click('form button[type=submit]'); await page.waitForFunction(() => location.hash === '#/', null, { timeout: 10000 }).catch(() => {}); await sleep(5000);
+  // The phone must take the server's answer (in 1.0.14 before this review the scan reached the server, but the answer
+  // was dropped as if from an earlier login: the scan stayed "awaiting sync" and nothing new was pulled).
+  const srv = await fetch(API + '/api/app/sync?since=0', { headers: { ...H, Authorization: 'Bearer ' + b.token } }).then((x) => x.json());
+  const onServer = JSON.stringify(srv.entries || []).includes('B synced');
+  const local = (await localEntries(page, b.id)).find((x) => x.indication === 'B synced');
+  record('I2', 'After logging out and in again without restarting, a new scan syncs and the phone marks it synced', onServer && local && !local._dirty, JSON.stringify({ onServer, dirty: local && local._dirty }));
+  // I3 back to A: A's kept items are offered again, to A only.
+  await logOut(page);
+  await logIn(page, a);
+  const cardA2 = await text(page, '[data-kepthome]');
+  record('I3', 'Back in as A: A\'s kept photo and unfinished scan are offered again', /1 unfinished scan/.test(cardA2 || '') && /1 photo/.test(cardA2 || ''), cardA2);
+  await ctx.close();
 }
 
 fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, errors }, null, 2));

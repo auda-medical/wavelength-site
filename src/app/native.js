@@ -210,6 +210,20 @@
     } catch (e) { NET_OK = false; }
   }
 
+  // 1.0.14: photos and clips taken with the camera (Android, WLCapture in MainActivity). The app's own file chooser
+  // has the camera write them into Wavelength's private storage, never the gallery or shared storage; the app removes
+  // each file once it holds its own copy. captures() lists any left behind (Wavelength closed while the camera was
+  // open) and photos earlier versions left in the app's shared-storage folder (legacy). Elsewhere: none, nothing to do.
+  var Cap = PLATFORM === 'android' ? plugin('WLCapture') : null;
+  function captures() { if (!Cap) return Promise.resolve([]); try { return Cap.list().then(function (r) { return (r && r.files) || []; }, function () { return []; }); } catch (e) { return Promise.resolve([]); } }
+  function captureRemove(names, legacy) { if (!Cap || !names || !names.length) return Promise.resolve(0); try { return Cap.remove({ names: names, legacy: !!legacy }).then(function (r) { return (r && r.removed) || 0; }, function () { return 0; }); } catch (e) { return Promise.resolve(0); } }
+  function captureFile(f) {
+    var src = cap && cap.convertFileSrc ? cap.convertFileSrc(f.path) : '';
+    if (!src) return Promise.reject(new Error('unreadable'));
+    return fetch(src).then(function (r) { if (!r.ok) throw new Error('unreadable'); return r.blob(); }).then(function (b) { return new File([b], f.name, { type: f.kind === 'clip' ? 'video/mp4' : 'image/jpeg', lastModified: f.modified || Date.now() }); });
+  }
+  if (Cap) { try { var csub = Cap.addListener('elsewhere', function (d) { window.dispatchEvent(new CustomEvent('wl:capture-elsewhere', { detail: d || {} })); }); if (csub && csub.catch) csub.catch(function () {}); } catch (e) { /* older build */ } }
+
   // The installed app's version and build, read from the app's own metadata (Android versionName and versionCode,
   // iOS CFBundleShortVersionString and CFBundleVersion), so About always matches the store listing. Falls back to the
   // numbers the bundle was built with, then to none. Never needs the network.
@@ -247,6 +261,9 @@
     setLock: setLock,
     verify: verify,
     netStatus: netStatus,
+    captures: Cap ? captures : null,
+    captureRemove: captureRemove,
+    captureFile: captureFile,
     plugin: plugin
   };
 })();

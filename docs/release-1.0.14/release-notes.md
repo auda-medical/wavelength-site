@@ -13,10 +13,10 @@ Causes, before and after for each fix: `fixes-and-causes.md`. Tests: `test-repor
 
 ## For learners (store "What's new", under 500 characters)
 
-> Your photos and clips are safe while you edit: Back closes the keyboard first, and leaving with unsaved changes
-> asks before anything is discarded. Unfinished work is kept on your phone, even if Wavelength closes. Annotation
-> size now runs from Smaller to Larger, starting in the middle for each new mark. One colour control with recent
-> colours and a default. The unfolded Fold shows the picture beside the tools. Smoother About, backup and sign-up.
+> Your work is safe: photos, clips and unfinished scans are kept on your phone if Wavelength closes, and offered back
+> when you return. Photos and clips you take now stay inside Wavelength, never in your gallery. Back closes the
+> keyboard first and asks before discarding anything. Annotation size runs from Smaller to Larger, with one colour
+> control. The unfolded Fold shows the picture beside the tools.
 
 ## What changed
 
@@ -38,10 +38,19 @@ Causes, before and after for each fix: `fixes-and-causes.md`. Tests: `test-repor
 8. **Backup**: the acknowledgement is unticked for every new backup.
 9. **Sign-up on a slow start**: a late start-up answer never clears what you are typing; one request however many
    taps; plain wording when the connection fails (not "Failed to fetch").
+10. **Unfinished scans are kept**: what is typed into a scan form survives Wavelength closing, is offered back, saves
+    as one scan only, and is never applied over a newer saved version.
+11. **Camera photos and clips stay in Wavelength's private storage**, never the gallery or shared storage. Clips
+    recorded through Wavelength before 1.0.14 were saved by the camera app in the phone's gallery: check the gallery.
+    Photos left by earlier versions in Wavelength's shared folder are offered for review or deletion at the first start.
+12. **Sync after logging out and in again** without restarting works again (a fault in the first 1.0.14 candidate).
+
+Data protection: `data-protection-review.md` (storage map, backup and device-transfer proof, privacy notice and DPIA
+amendment for the owner).
 
 ## Known limitations
 
-- The scan form's typed fields are not kept if Wavelength is closed before the scan is saved (as in 1.0.13). Photos
-  and clips are.
-- Translations of the new wording (58 strings) are machine-drafted, like the rest of the app's translations.
+- The privacy notice and logbook terms describing the safety copies are updated on the branch but not yet on the
+  live website; deploy them with the release.
+- Translations of the new wording (96 strings) are machine-drafted, like the rest of the app's translations.
 - Pictograms still need clinical review (unchanged from 1.0.12).

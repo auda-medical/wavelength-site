@@ -32,8 +32,7 @@ the background, a crash, a restart) lost them too.
 - Folding, unfolding and rotating never restarted the app (the Android activity handles those changes itself); the
   editor keeps its work through them.
 
-Not covered: the scan form's typed fields are still not kept if Wavelength is closed before the scan is saved (as in
-1.0.13). Media are.
+What is typed into a scan form is kept the same way (section 10).
 
 ## 2. Annotation size
 
@@ -111,3 +110,49 @@ reach Wavelength. Check your connection and try again." (it read "Failed to fetc
 - A panel's field took focus 30 ms after opening, which could reopen the keyboard after Back had closed it.
 - "Review" from Home and "Add to this scan" put items under Images, hidden until the application is chosen: the
   notice now sits at the top of the form and says where they went.
+
+## 10. Typed scan forms survive Wavelength closing (data-protection review)
+
+**Before.** Everything typed into a scan form (application, findings, interpretation, reflection, supervision,
+pathways) was only in memory until Save, so Android ending Wavelength in the background lost it.
+
+**Now.** What is typed is kept on this phone 0.6 s after the last change, and at once when the app is left. It is
+kept in the drafts database (store `forms`, one record per open form), never synced or backed up. Home lists
+"unfinished scans" with the kept photos, with the date and size. The scan form offers **Continue it** or **Discard**.
+- A new scan saves under the id fixed when its form opened, so a continued form can only make one scan.
+- An unfinished edit is applied only if the saved scan is still the version it began from. Otherwise its text is
+  shown to read and copy, never applied over the newer version.
+- Two unfinished scans are both kept. Continuing one while typing another asks first and keeps both.
+- Discard changes on leaving deletes that form's copy only. Nothing is deleted by age.
+
+## 11. Camera photos and clips stayed outside Wavelength (data-protection review)
+
+**Cause.** Capacitor's camera hand-off wrote "Take photo" originals to the app's shared-storage folder
+(`Android/data/.../files/Pictures`) and never removed them. "Record a clip" gave the camera app no output file, so the
+camera app saved every clip in the phone's gallery. There, other apps and cloud photo backup can reach it. Both have
+been true since those features shipped. They were reproduced on the emulator.
+
+**Now.** Wavelength's own file chooser (`WLChromeClient`) has the camera write each photo or clip into Wavelength's
+private storage (`files/wl-captures`). The app takes its own copy and removes the file. A capture left behind because
+Android ended Wavelength while the camera was open comes back as a kept item at the next start. "Take photo" leftovers
+from earlier versions are offered once: Delete the leftover copies, Review them first, or Not now. A camera app that
+ignores the private file and keeps its own copy triggers a message to delete it from the gallery. Choosing an existing
+photo or clip is unchanged. Details: `data-protection-review.md`.
+
+## 12. Sync after logging out and in again (found in this review, in the first 1.0.14 candidate)
+
+**Cause.** The drafts module's run id was declared `var SESSION` in the same scope as the sync's sign-out counter, so
+it replaced the counter with text. After logging out and in again without restarting the app, every sync answer was
+dropped as if it belonged to the earlier login. Scans reached the server, but the phone kept them as "awaiting sync"
+and stopped receiving changes.
+
+**Now.** The run id is `RUN`. A unit test keeps exactly one `SESSION`. The browser check I2 fails on the first
+candidate and passes now.
+
+## 13. Kept items after logging in
+
+**Cause.** Straight after logging in, Home is shown under the address `#/login`. The kept-items card checked for the
+Home address and did not appear until Home was opened again.
+
+**Now.** The card belongs to the Home screen that asked for it.
+

@@ -69,7 +69,8 @@ test('the Android plugin is registered, read-only and needs only ACCESS_NETWORK_
   const dir = new URL('../mobile/android/app/src/main/java/uk/co/thewavelength/app/', import.meta.url);
   const main = readFileSync(new URL('MainActivity.java', dir), 'utf8');
   const plug = readFileSync(new URL('NetworkPlugin.java', dir), 'utf8');
-  assert.match(main, /registerPlugin\(NetworkPlugin\.class\);\s*super\.onCreate/);
+  // Registered before the bridge starts (1.0.14 also registers WLCapture there).
+  assert.match(main, /registerPlugin\(NetworkPlugin\.class\);(\s*registerPlugin\(\w+\.class\);)*\s*super\.onCreate/);
   assert.match(plug, /@CapacitorPlugin\(name = "WLNetwork"\)/);
   assert.match(plug, /registerDefaultNetworkCallback/);
   assert.match(plug, /NET_CAPABILITY_VALIDATED/);

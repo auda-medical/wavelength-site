@@ -28,6 +28,13 @@ Rows marked **phone only** could not be proved in the browser or emulator runs.
 | 1.10 | Re-edit a saved photo, rotate it, Back | Keep editing or Discard changes; Discard leaves the saved photo unchanged | |
 | 1.11 | Fold and unfold, and rotate, with the editor open and changes made | Editor stays open with all its work; the layout switches | phone only (hinge) |
 | 1.12 | Save a scan with an Unfinished photo | Asks: Finish them first / Save without them | |
+| 1.13 | New scan > Clip > Record a clip (Samsung Camera); record 3 s; accept | The clip opens in Wavelength's editor. Then open Gallery: **no new video**. If Wavelength says "Your camera app kept a copy", note it and delete the gallery copy | phone only (Samsung Camera) |
+| 1.14 | New scan > Take photo; accept | The photo opens in the editor. My Files > Internal storage > Android > data > uk.co.thewavelength.app (if visible) has no new JPEG_ file; Gallery has no new photo | phone only |
+| 1.15 | First start of 1.0.14 | If photos from earlier versions are found: "Photos left by earlier versions" with Delete the leftover copies / Review them first / Not now. Choose **Review them first** if unsure; they then show on Home as kept photos | phone only (your leftovers) |
+| 1.16 | Type into a new scan (application, findings, reflection); swipe Wavelength away from Recents; reopen | Home: "1 unfinished scan"; Review brings back every answer; Save makes exactly one scan | phone only (Recents) |
+| 1.17 | Edit a saved scan, type a change, swipe Wavelength away; reopen; open the scan's Edit | "Unfinished changes to this scan were kept": Continue the changes restores them | |
+| 1.18 | Log out (Settings), log in again without closing the app; save a scan with Wi-Fi on | The scan shows as synced (not "awaiting sync") | |
+| 1.19 | Before installing: Gallery > Videos (and the camera folder): any clips recorded through Wavelength before 1.0.14? | Delete any that could identify a patient; check Samsung Cloud / Google Photos did not upload them | **owner action** |
 
 ## 2. Annotation size
 

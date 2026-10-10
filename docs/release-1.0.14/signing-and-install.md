@@ -16,12 +16,14 @@ below, with the same hidden prompts, and stops at the first check that fails.
 Expected unsigned checksums (also in `SHA256SUMS.txt`):
 
 ```
-526fcfc6b41f310e02493ef0776c620cd1ee4903e3b1f21de2d73006d47f0763  wavelength-1.0.14-20-unsigned.apk
-15f3a78ff525c74992e2734d5c09ee952e39950731a959b361a7dec236476939  wavelength-1.0.14-20-unsigned.aab
+bcdcbc2a190680fd88732c06e26c25f0a765d5475441c3ccdf218b7c671c698e  wavelength-1.0.14-20-unsigned.apk
+4d9e9d316d8b9801306f6460fc2fba2bb1480d12caf7cc871a83a541b80f58bc  wavelength-1.0.14-20-unsigned.aab
 ```
 
-The script was rehearsed end to end with the throwaway emulator test key (`-Rehearsal`); every check passed and the
-rehearsal files were deleted. The original keystore has not been opened.
+These are the files after the data-protection review (10 October 2026). The first 1.0.14 candidate, never signed or
+installed, is kept beside them in `superseded-candidate-1`; do not sign it (it has the sync fault found in the review).
+The script was rehearsed end to end with the throwaway emulator test key (`-Rehearsal`) on these files; every check
+passed and the rehearsal files were deleted. The original keystore has not been opened.
 
 ## 1. Check the unsigned files
 
