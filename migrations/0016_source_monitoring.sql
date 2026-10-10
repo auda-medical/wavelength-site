@@ -110,3 +110,17 @@ CREATE TABLE IF NOT EXISTS directory_links (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS directory_links_one ON directory_links (learner_id, source_id, entry_key) WHERE status IN ('claimed', 'confirmed');
 CREATE INDEX IF NOT EXISTS directory_links_entry ON directory_links (source_id, entry_key);
+
+-- Objections (UK GDPR Article 21): a listed person who asks not to be included. Matched on the normalised name and,
+-- when given, organisation, so the person never comes back at a later sync. Recording one removes them from both
+-- stored snapshots and from the directory events at once (worker/monitor/admin.js, action 'optout').
+CREATE TABLE IF NOT EXISTS directory_optouts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_id TEXT NOT NULL,                -- a directory, or '*' for every directory
+  name_norm TEXT NOT NULL,                -- norm(name) (worker/monitor/directory.js)
+  org_norm TEXT,                          -- orgNorm(organisation), or null for any organisation
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_by TEXT,
+  note TEXT                               -- how the request arrived; never the requester's contact details
+);
+CREATE UNIQUE INDEX IF NOT EXISTS directory_optouts_one ON directory_optouts (source_id, name_norm, COALESCE(org_norm, ''));

@@ -137,11 +137,20 @@ export function sync(previous, incoming, day) {
   });
   prev.forEach((p, i) => {
     if (used.has(i)) return;
-    if (p.status === 'removed') { next.push(p); return; } // stays removed, kept for history
+    // Stays removed, kept for history (a relisting keeps the same key) for twelve months, then dropped at the next
+    // sync: a person who left the directory is not kept indefinitely (docs/source-monitoring/permissions.md).
+    if (p.status === 'removed') { if (!p.removed_on || p.removed_on >= keepFrom(day)) next.push(p); return; }
     const entry = { ...p, status: 'removed', removed_on: day };
     next.push(entry);
     events.push({ key: p.key, kind: 'removed', before: pick(p), review: true });
   });
   return { entries: next.sort((a, b) => a.key.localeCompare(b.key)), events };
 }
+// Objections: entries matching a recorded opt-out (same normalised name; same organisation when one was given).
+export function optedOut(e, optouts, sourceId) {
+  const n = norm(e.name), o = orgNorm(e.organisation);
+  return optouts.some((x) => (x.source_id === '*' || x.source_id === sourceId) && x.name_norm === n && (!x.org_norm || x.org_norm === o));
+}
+export const REMOVED_KEEP_DAYS = 365;
+const keepFrom = (day) => new Date(Date.parse(`${day}T12:00:00Z`) - REMOVED_KEEP_DAYS * 864e5).toISOString().slice(0, 10);
 const pick = (e) => ({ name: e.name, organisation: e.organisation, roles: e.roles, accredited_on: e.accredited_on || null });

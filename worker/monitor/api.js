@@ -9,7 +9,7 @@
 //   reviewedOn   the last documented clinical review of the guide (front matter reviewed)
 import SOURCES from './sources.json';
 import { NEEDS_REVIEW } from './classify.js';
-import { norm, orgNorm, editDistance } from './directory.js';
+import { norm, orgNorm, editDistance, optedOut } from './directory.js';
 import { monitorRun } from './run.js';
 import { credentialsForListing } from './claims-admin.js';
 import { json, clip } from '../app-util.js';
@@ -51,7 +51,13 @@ export async function guideStatus(env, slug, ctx = null, { refresh = true } = {}
 // confirmed claim links them to the listing and who chose to be found (supervisor search consent).
 const MIN = 3, MAX_RESULTS = 8;
 let CACHE = { at: 0, key: '', list: [] };
+// Objections are applied on every read too, so a cached list never shows someone whose objection was just recorded.
 async function listings(env) {
+  const all = await listingsAll(env);
+  const optouts = (await env.DB.prepare('SELECT source_id, name_norm, org_norm FROM directory_optouts').all().catch(() => ({ results: [] }))).results || [];
+  return optouts.length ? all.filter((x) => !optedOut(x, optouts, x.source)) : all;
+}
+async function listingsAll(env) {
   const rows = (await env.DB.prepare("SELECT s.source_id, s.id, s.entries, m.name AS source_name, m.body FROM directory_snapshots s JOIN monitor_sources m ON m.id = s.source_id WHERE s.current = 1 AND m.mode = 'auto'").all()).results || [];
   const key = rows.map((r) => `${r.source_id}:${r.id}`).join(',');
   if (CACHE.key === key && Date.now() - CACHE.at < 300e3) return CACHE.list;

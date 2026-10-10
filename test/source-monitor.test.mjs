@@ -440,6 +440,54 @@ test('a large fall is held until an administrator checks the source and accepts 
   assert.doesNotMatch(await sourcesAdminHtml(env, new URL('https://x/admin/sources/?tab=directories')), /Accept the fall/);
 });
 
+test('people removed from a directory are kept twelve months, then dropped; directory events thirteen months', async () => {
+  const a = person('Alex Example', 'Northtown General Hospital', ['fusic-heart']), b = person('Jo Rivers', 'Southport District', ['fusic-lung']);
+  let snap = sync([], [a, b], '2026-01-10').entries;
+  snap = sync(snap, [a], '2026-02-01').entries;
+  assert.equal(snap.find((e) => e.name === 'Jo Rivers').status, 'removed');
+  assert.ok(sync(snap, [a, person('Kim Newton', 'Harbour City Hospital', ['fusic-abdo'])], '2027-01-31').entries.some((e) => e.name === 'Jo Rivers'), 'within twelve months: kept');
+  assert.ok(!sync(snap, [a, person('Kim Newton', 'Harbour City Hospital', ['fusic-abdo'])], '2027-02-02').entries.some((e) => e.name === 'Jo Rivers'), 'after twelve months: dropped');
+  const { env } = await setup();
+  await seedSources(env);
+  await env.DB.prepare("INSERT INTO directory_events (source_id, entry_key, at, kind) VALUES ('dir:fusic', 'old', ?, 'added'), ('dir:fusic', 'new', ?, 'added')").bind(new Date(Date.now() - 400 * 864e5).toISOString(), new Date().toISOString()).run();
+  await env.DB.prepare("DELETE FROM settings WHERE key = 'monitor_retention_day'").run();
+  await monitorRun(env, ctx, { trigger: 'cron' });
+  assert.deepEqual((await env.DB.prepare('SELECT entry_key FROM directory_events').all()).results.map((r) => r.entry_key), ['new']);
+});
+
+test('an objection removes the person at once (both stored copies, history, search) and keeps them out of later syncs', async () => {
+  const { env, n } = await setup({ DIRECTORY_SYNC: 'true' });
+  await directory(env, n, BASE_DIR);
+  await syncNow(env);
+  await directory(env, n, [...BASE_DIR, person('Kim Newton', 'Harbour City Hospital', ['fusic-abdo'])]);
+  await syncNow(env);
+  const l = await verifiedAccount(env, 'searcher@example.test');
+  const search = async (q) => (await (await handleApp(new Request(`https://thewavelength.co.uk/api/app/listings/search?q=${encodeURIComponent(q)}`, { headers: { Cookie: l.cookie } }), env, ctx)).json()).results.map((r) => `${r.name} | ${r.organisation}`);
+  assert.equal((await search('Sam Patel')).length, 2);
+  assert.match((await sourcesAdminPost(env, adminForm({ action: 'optout', source: 'dir:fusic', name: 'Sam Patel', reviewer: 'Alex Reviewer' }), 'wavelength', ctx)).m, /how the request arrived/);
+  const r = await sourcesAdminPost(env, adminForm({ action: 'optout', source: 'dir:fusic', name: 'Dr Sam PATEL', organisation: 'Westfield Royal Infirmary NHS Trust', reviewer: 'Alex Reviewer', note: 'Email to hello@ on 11 Oct' }), 'wavelength', ctx);
+  assert.match(r.m, /Objection recorded\. 1 matching entry removed/);
+  assert.deepEqual(await search('Sam Patel'), ['Sam Patel | Eastbridge University Hospital'], 'the other Sam Patel stays');
+  for (const s of (await env.DB.prepare("SELECT entries FROM directory_snapshots WHERE source_id = 'dir:fusic'").all()).results) assert.ok(!/Westfield/.test(s.entries), 'gone from the current and the previous copy');
+  assert.ok(!(await env.DB.prepare("SELECT entry_key FROM directory_events").all()).results.some((e) => /westfield/.test(e.entry_key)), 'and from the change history');
+  // The next sync still lists them at the source: they are not taken in again, and no removal is reported.
+  await directory(env, n, [...BASE_DIR, person('Kim Newton', 'Harbour City Hospital', ['fusic-abdo']), person('Lee Ford', 'Harbour City Hospital', ['fusic-abdo'])]);
+  await syncNow(env);
+  assert.ok(!(await snapshot(env)).some((e) => /Westfield/.test(e.organisation)));
+  assert.ok(!(await events(env)).some((e) => /westfield/.test(e.entry_key)));
+  const html = await sourcesAdminHtml(env, new URL('https://x/admin/sources/?tab=directories'));
+  assert.match(html, /Email to hello@ on 11 Oct/);
+  assert.match(html, /Withdraw objection/);
+  // An objection for every directory, organisation left empty, covers a move.
+  await sourcesAdminPost(env, adminForm({ action: 'optout', source: '*', name: 'Kim Newton', reviewer: 'Alex Reviewer', note: 'Letter' }), 'wavelength', ctx);
+  assert.deepEqual(await search('Kim Newton'), []);
+  const row = await env.DB.prepare("SELECT id FROM directory_optouts WHERE name_norm = 'kim newton'").first();
+  assert.match((await sourcesAdminPost(env, adminForm({ action: 'optout_remove', id: row.id, reviewer: 'Alex Reviewer', note: 'Asked to be listed again' }), 'wavelength', ctx)).m, /Objection withdrawn/);
+  const audit = (await env.DB.prepare("SELECT action, meta FROM audit_events WHERE action LIKE 'directory.%'").all()).results;
+  assert.deepEqual(audit.map((a) => a.action), ['directory.optout', 'directory.optout', 'directory.optout_withdrawn']);
+  assert.ok(!audit.some((a) => /patel|newton/i.test(a.meta || '')), 'the audit trail names nobody');
+});
+
 test('the FAMUS table adapter reads by headings, ignores contact details, and reports a format change', () => {
   const html = `<table><tr><th>Name</th><th>Position</th><th>Trust/Hospital</th><th>Thoracic</th><th>Abdo/Renal</th><th>DVT</th><th>US Assisted LP</th><th>Date Accredited</th><th>Contact</th></tr>
   <tr><td>Dr Alex Example</td><td>Consultant</td><td>Northtown General Hospital</td><td>✓</td><td></td><td>✓</td><td></td><td>01/03/2025</td><td>alex@example.test</td></tr>

@@ -11,7 +11,7 @@
 import SOURCES from './sources.json';
 import { htmlToText, htmlMeta, pdfMeta, sha256 } from './extract.js';
 import { classify, NEEDS_REVIEW } from './classify.js';
-import { parseDirectory, validate, sync } from './directory.js';
+import { parseDirectory, validate, sync, optedOut } from './directory.js';
 import { queueStmt, deliverLater } from '../notify.js';
 import { ukDate } from '../time.js';
 
@@ -163,6 +163,9 @@ async function checkDirectory(env, s, got, trigger, started, o = {}) {
   if (got.status === 304) return recordDirectory(env, s, { outcome: 'no_change', previous, cur, entries: previous, events: [], hash: cur && cur.content_hash, http: 304 }, trigger, started);
   const parsed = parseDirectory(s.adapter, text);
   if (!parsed.ok) return recordFailure(env, s, { outcome: 'format_changed', http: got.status, error: `Could not read the directory: ${parsed.error}. Kept the previous directory.` }, trigger, started);
+  // People who objected are never taken in (they were removed from the stored snapshots when the objection was recorded).
+  const optouts = (await env.DB.prepare("SELECT source_id, name_norm, org_norm FROM directory_optouts WHERE source_id IN (?, '*')").bind(s.id).all()).results || [];
+  if (optouts.length) parsed.entries = parsed.entries.filter((e) => !optedOut(e, optouts, s.id));
   const v = validate(parsed.entries, previous, { acceptDrop: o.acceptDrop });
   if (!v.ok) return recordFailure(env, s, { outcome: v.reason === 'empty' ? 'unavailable' : 'format_changed', http: got.status, error: v.message }, trigger, started);
   const hash = await sha256(JSON.stringify(parsed.entries.map((e) => [e.sourceId, e.name, e.organisation, e.roles, e.accredited_on])));
@@ -218,6 +221,8 @@ async function retention(env) {
   if (done === day) return;
   await env.DB.batch([
     env.DB.prepare("DELETE FROM monitor_runs WHERE started_at < ?").bind(iso(Date.now() - 90 * 864e5)),
+    // Directory events name people: kept 13 months, long enough to review a year's changes.
+    env.DB.prepare("DELETE FROM directory_events WHERE at < ?").bind(iso(Date.now() - 395 * 864e5)),
     env.DB.prepare("INSERT INTO settings (key, value) VALUES ('monitor_retention_day', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").bind(day),
   ]);
 }

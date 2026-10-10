@@ -5,6 +5,8 @@
 import SOURCES from './sources.json';
 import { monitorRun } from './run.js';
 import { ukDate } from '../time.js';
+import { norm, orgNorm, optedOut } from './directory.js';
+import { audit } from '../audit.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
@@ -41,9 +43,21 @@ export async function sourcesAdminHtml(env, url) {
   let body = '';
   if (tab === 'review') body = open.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Detected</th><th scope="col">Source</th><th scope="col">Kind</th><th scope="col">Summary</th><th scope="col">Guides</th></tr></thead><tbody>${open.map((c) => `<tr><td>${when(c.detected_at)}</td><td><a class="text-link" href="${BASE}?change=${c.id}">${esc(c.name)}</a></td><td>${pill(c.classification === 'important' ? 'changed' : c.classification === 'format_changed' ? 'format_changed' : 'changed')} ${esc(c.classification)}</td><td>${esc(c.summary)}</td><td>${esc(JSON.parse(c.guides || '[]').join(', '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">Nothing needs review.</p>';
   if (tab === 'sources') body = `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Source</th><th scope="col">State</th><th scope="col">Last successful check</th><th scope="col">Next check</th><th scope="col">Last change</th><th scope="col">Version / date</th><th scope="col"></th></tr></thead><tbody>${sources.map((s) => `<tr><td><a class="text-link" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.name)}</a><br><small>${esc(s.body || '')} · ${esc(s.mode.replace(/_/g, ' '))}${JSON.parse(s.guides || '[]').length ? ` · ${esc(JSON.parse(s.guides).join(', '))}` : ''}</small></td><td>${pill(s.status)}${s.failures ? `<br><small>${s.failures} failed in a row</small>` : ''}</td><td>${when(s.last_success_at)}</td><td>${s.mode === 'auto' ? when(s.next_check_at) : '<span class="muted">not scheduled</span>'}</td><td>${when(s.last_change_at)}</td><td><small>${esc(s.doc_version || '')} ${esc(s.published_on || '')}</small></td><td>${s.mode === 'auto' ? form('retry', { id: s.id }, '', 'Check now') : ''}</td></tr>`).join('')}</tbody></table></div>`;
-  if (tab === 'directories') body = dirs.map((d) => { const c = JSON.parse(d.meta || '{}').counts || {}; return `<div class="sv-card" style="margin:0 0 12px"><h4 style="margin:0 0 6px">${esc(d.name)} ${pill(d.status)}</h4><p class="admin-summary">${d.mode === 'auto' ? `Last successful sync ${when(d.last_success_at)} · listed ${c.listed ?? 'n/a'} · added ${c.added || 0} · changed ${(c.organisation_changed || 0) + (c.modules_added || 0) + (c.modules_removed || 0) + (c.role_changed || 0) + (c.name_corrected || 0)} · removed ${c.removed || 0}` : 'Not read automatically: the body has not given written permission. Individual checks stay manual, on the person page.'}</p><p class="admin-summary"><small>${esc(JSON.parse(d.meta || '{}').why || '')}</small></p>${held[d.id] ? `<p class="admin-summary">${esc(held[d.id])}</p>${form('accept_drop', { id: d.id }, `${reviewerField}<label>How you checked the source (required)<input name="note" maxlength="500" required></label>`, 'Accept the fall and sync')}` : ''}</div>`; }).join('') + `<p class="admin-summary">Directory sync switch (DIRECTORY_SYNC): <b>${env.DIRECTORY_SYNC === 'true' ? 'on' : 'off'}</b>.</p>`;
+  if (tab === 'directories') body = dirs.map((d) => { const c = JSON.parse(d.meta || '{}').counts || {}; return `<div class="sv-card" style="margin:0 0 12px"><h4 style="margin:0 0 6px">${esc(d.name)} ${pill(d.status)}</h4><p class="admin-summary">${d.mode === 'auto' ? `Last successful sync ${when(d.last_success_at)} · listed ${c.listed ?? 'n/a'} · added ${c.added || 0} · changed ${(c.organisation_changed || 0) + (c.modules_added || 0) + (c.modules_removed || 0) + (c.role_changed || 0) + (c.name_corrected || 0)} · removed ${c.removed || 0}` : 'Not read automatically: the body has not given written permission. Individual checks stay manual, on the person page.'}</p><p class="admin-summary"><small>${esc(JSON.parse(d.meta || '{}').why || '')}</small></p>${held[d.id] ? `<p class="admin-summary">${esc(held[d.id])}</p>${form('accept_drop', { id: d.id }, `${reviewerField}<label>How you checked the source (required)<input name="note" maxlength="500" required></label>`, 'Accept the fall and sync')}` : ''}</div>`; }).join('') + `<p class="admin-summary">Directory sync switch (DIRECTORY_SYNC): <b>${env.DIRECTORY_SYNC === 'true' ? 'on' : 'off'}</b>.</p>` + await optoutsPanel(env, dirs);
   if (tab === 'runs') { const runs = (await env.DB.prepare('SELECT r.*, s.name FROM monitor_runs r LEFT JOIN monitor_sources s ON s.id = r.source_id ORDER BY r.id DESC LIMIT 100').all()).results || []; body = runs.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">When</th><th scope="col">Source</th><th scope="col">Trigger</th><th scope="col">Outcome</th><th scope="col">Detail</th></tr></thead><tbody>${runs.map((r) => `<tr><td>${when(r.started_at)}</td><td>${esc(r.name || r.source_id)}</td><td>${esc(r.trigger)}</td><td>${esc(String(r.outcome || '').replace(/_/g, ' '))}${r.http_status ? ` <small>HTTP ${r.http_status}</small>` : ''}</td><td><small>${esc(r.error || r.counts || '')}</small></td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No checks yet.</p>'; }
   return STYLE + head + body;
+}
+
+// Objections (Article 21): a listed person asks not to be included. Recorded by name (and organisation, if given);
+// never their contact details.
+async function optoutsPanel(env, dirs) {
+  const rows = (await env.DB.prepare('SELECT * FROM directory_optouts ORDER BY id DESC LIMIT 200').all().catch(() => ({ results: [] }))).results || [];
+  const names = Object.fromEntries(dirs.map((d) => [d.id, d.name]));
+  const sel = `<label>Directory<select name="source"><option value="*">Every directory</option>${dirs.map((d) => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select></label>`;
+  return `<div class="sv-card" style="margin:16px 0 12px"><h4 style="margin:0 0 6px">Objections: people who asked not to be included</h4>
+  <p class="admin-summary">Recording an objection removes every matching entry from the stored directory (current and previous copies) and its change history at once, and keeps the person out of later syncs, name search and claims. Matching is on the name and, if you give one, the organisation: leave the organisation empty to cover a move.</p>
+  ${form('optout', {}, `${sel}<label>Name as listed (required)<input name="name" maxlength="120" required></label><label>Organisation (optional)<input name="organisation" maxlength="160"></label>${reviewerField}<label>How the request arrived (required; no contact details)<input name="note" maxlength="300" required></label>`, 'Record objection')}
+  ${rows.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Recorded</th><th scope="col">Directory</th><th scope="col">Name</th><th scope="col">Organisation</th><th scope="col">By</th><th scope="col">Note</th><th scope="col"></th></tr></thead><tbody>${rows.map((r) => `<tr><td>${when(r.created_at.replace(' ', 'T') + 'Z')}</td><td>${esc(r.source_id === '*' ? 'Every directory' : names[r.source_id] || r.source_id)}</td><td>${esc(r.name_norm)}</td><td>${esc(r.org_norm || 'any')}</td><td>${esc(r.created_by || '')}</td><td>${esc(r.note || '')}</td><td>${form('optout_remove', { id: r.id }, `${reviewerField}<label>Why (required)<input name="note" maxlength="300" required></label>`, 'Withdraw objection')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No objections recorded.</p>'}</div>`;
 }
 
 async function changeReport(env, id) {
@@ -85,6 +99,36 @@ export async function sourcesAdminPost(env, f, admin, ctx) {
     const c = r.checked[0];
     if (c && c.outcome !== 'format_changed' && c.outcome !== 'unavailable') await env.DB.prepare("UPDATE monitor_changes SET review_status = 'approved', reviewed_by = ?, reviewed_at = ?, review_note = ? WHERE source_id = ? AND classification = 'format_changed' AND review_status IN ('open', 'acknowledged')").bind(`admin:${clip(admin, 40)}:${reviewer}`, new Date().toISOString(), `Fall accepted: ${note}`, id).run();
     return { tab: 'directories', m: c ? `Synced: ${c.outcome.replace(/_/g, ' ')}.` : 'Not synced: directory sync is off or a check is already running.' };
+  }
+  if (action === 'optout') {
+    const source = clip(f.get('source'), 80) || '*', name = clip(f.get('name'), 120), org = clip(f.get('organisation'), 160), note = clip(f.get('note'), 300);
+    const nn = norm(name), on = org ? orgNorm(org) : null;
+    if (nn.replace(/ /g, '').length < 3 || !reviewer || note.length < 3) return { tab: 'directories', m: 'Enter the name as listed, your name and how the request arrived.' };
+    const dirs = ((await env.DB.prepare("SELECT id FROM monitor_sources WHERE kind = 'directory'").all()).results || []).map((r) => r.id);
+    if (source !== '*' && !dirs.includes(source)) return { tab: 'directories', m: 'Not a directory.' };
+    const rule = { source_id: source, name_norm: nn, org_norm: on };
+    // The objection and every removal it implies are one batch: stored copies and history go together.
+    const stmts = [env.DB.prepare('INSERT OR IGNORE INTO directory_optouts (source_id, name_norm, org_norm, created_by, note) VALUES (?,?,?,?,?)').bind(source, nn, on, `admin:${clip(admin, 40)}:${reviewer}`, note)];
+    let removed = 0;
+    const snaps = (await env.DB.prepare(`SELECT id, source_id, entries FROM directory_snapshots WHERE source_id ${source === '*' ? "LIKE 'dir:%'" : '= ?'}`).bind(...(source === '*' ? [] : [source])).all()).results || [];
+    for (const s of snaps) {
+      const entries = JSON.parse(s.entries), out = entries.filter((e) => optedOut(e, [rule], s.source_id));
+      if (!out.length) continue;
+      removed = Math.max(removed, out.length);
+      const keep = entries.filter((e) => !out.includes(e));
+      stmts.push(env.DB.prepare('UPDATE directory_snapshots SET entries = ?, entry_count = ? WHERE id = ?').bind(JSON.stringify(keep), keep.filter((e) => e.status !== 'removed').length, s.id));
+      stmts.push(env.DB.prepare(`DELETE FROM directory_events WHERE source_id = ? AND entry_key IN (${out.map(() => '?').join(',')})`).bind(s.source_id, ...out.map((e) => e.key)));
+    }
+    await env.DB.batch(stmts);
+    await audit(env, { actorType: 'admin', actorId: clip(admin, 40), action: 'directory.optout', meta: { removed } });
+    return { tab: 'directories', m: removed ? `Objection recorded. ${removed} matching ${removed === 1 ? 'entry' : 'entries'} removed.` : 'Objection recorded. No matching entry is stored now; the person will not be taken in later.' };
+  }
+  if (action === 'optout_remove') {
+    const note = clip(f.get('note'), 300);
+    if (!reviewer || note.length < 3) return { tab: 'directories', m: 'Enter your name and why the objection is withdrawn.' };
+    const r = await env.DB.prepare('DELETE FROM directory_optouts WHERE id = ?').bind(Number(f.get('id'))).run();
+    if (r.meta && r.meta.changes) await audit(env, { actorType: 'admin', actorId: clip(admin, 40), action: 'directory.optout_withdrawn' });
+    return { tab: 'directories', m: r.meta && r.meta.changes ? 'Objection withdrawn. The person is taken in again at the next sync.' : 'Nothing changed.' };
   }
   if (action === 'review') {
     const outcome = ['acknowledged', 'approved', 'dismissed'].includes(f.get('outcome')) ? String(f.get('outcome')) : null;
