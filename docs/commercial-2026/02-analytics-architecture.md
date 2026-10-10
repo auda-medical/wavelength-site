@@ -129,6 +129,11 @@ Counted from existing tables (`supervisor_applications`, `professional_registrat
 | Net revenue | gross − refunds | |
 | Delivery costs | `ledger` expense lines linked to the course date (`course:<slug>@<date>`) | Actual and estimate shown separately. |
 | Profit per course | net revenue − delivery costs − payment fees | Payment fees from Stripe when known, else an estimate marked as such. |
+| Bookings taken | paid bookings by payment (or recording) date, gross − refunds | Shown on the overview beside net revenue, so money for a later course is visible the day it is paid. |
+
+Dating rule (matching): revenue from a booking belongs to its course date, and so does any cost linked to that course
+date (`ledgerDay`), wherever the money moved. A venue paid in October for a December course therefore counts in
+December with the course's revenue. Unlinked ledger lines count on the date entered. "Bookings taken" is the cash view.
 
 ### 4.5 Tailored training
 

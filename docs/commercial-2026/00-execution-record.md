@@ -37,6 +37,35 @@ Entries are added at each milestone. Newest at the bottom.
   5 February 2026) and Cloudflare free-tier limits (D1 free-tier daily limits enforced since 1 September 2026).
 - Output: `01-analytics-audit.md`.
 
+### Phase 2: analytics, bookings, finance and dashboard (10 October 2026)
+- Cookieless measurement, app events, Stripe webhook (off by default), ledger, owner time, opportunity register and the
+  private dashboard with monthly report and CSV exports. Migration 0014 (not applied).
+- Output: `02-analytics-architecture.md`, `05-privacy-security-review.md`, `06-campaign-links.md`. Commit `e4d7aef`.
+
+### Phases B to E: credential verification, supervision authority, directory, asynchronous review
+- Capacities per pathway (FAMUS supervisor and mentor, FUSIC trainer and Heart mentor, local supervisors), directory
+  checks with independent identity confirmation, nine credential states, listed-contact confirmation, accept and
+  decline with reason on review requests. GMC workflow preserved. Migration 0015 (not applied).
+- Output: `03-credential-verification.md`. Commits `e4d7aef` and `c01f74f`.
+
+### Website: free logbook, supervision story, Tailored Training, UK and international
+- Output: `04-website-changes.md`. Commit `c01f74f`.
+
+### Commercial strategy, partnerships, scenarios and draft proposals (not sent)
+- Output: `08-commercial-strategy.md`.
+
+### Films
+- Remotion project in `video/`, real app captures from a fictional local world, local narration and original music.
+  Layered captures so fixed bars and modal sheets behave as on a phone. Renders in
+  `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final\` (see `render-report.json` there).
+- Output: `07-videos.md`.
+
+### Final checks and documents
+- Browser check of the business dashboard with fictional data found two defects, both fixed with tests: double-encoded
+  characters in `worker/business.js`, and course costs dated differently from course revenue.
+- Output: `09-limitations.md`, `10-deployment-approval.md`, `11-onerota-analytics-spec.md` (OneRota not modified),
+  `12-reporting-and-test-report.md`.
+
 ## Decisions and assumptions
 
 Listed in full in each phase document. The main ones:
@@ -55,13 +84,16 @@ Listed in full in each phase document. The main ones:
 
 ## Files changed
 
-Updated at each commit. See "Local commits".
+See each commit (`git show --stat <commit>`) and the phase documents. Areas: `worker/` (metrics, bookings, business
+dashboard, departments, review, verification), `migrations/0014` and `0015`, `build.js`, `data/`, `src/assets/`, `src/app/`
+(review states, translations), `test/` (three new files), `docs/commercial-2026/`, `video/`.
 
 ## Tests
 
 | When | Command | Result |
 |---|---|---|
 | Baseline, before any change | `node --import ./test/helpers/register.mjs --test --test-concurrency=1 test/*.test.mjs` (Git Bash) | 315 tests: 311 pass, 3 fail, 1 skipped |
+| End of project, Windows checkout | same | 359 tests: 355 pass, 3 fail (same CRLF cases), 1 skipped |
 
 Notes on the baseline:
 - `npm test` runs 0 tests on Windows: cmd.exe passes the quoted glob `'test/*.test.mjs'` through literally. Run the
@@ -71,12 +103,19 @@ Notes on the baseline:
 
 ## Known limitations
 
-Collected in `09-limitations.md` at the end of the project.
+See `09-limitations.md`.
 
 ## Outstanding actions for the owner
 
-Collected in `10-deployment-approval.md` at the end of the project.
+See `10-deployment-approval.md`: merge, migrations 0014 and 0015, deploy, Stripe webhook, privacy notice and DPIA
+screening, store build, film approval, external contact, directory permissions. Nothing there has been done.
 
 ## Local commits
 
-Listed at the end of the project.
+| Commit | Summary |
+|---|---|
+| `e4d7aef` | Business analytics foundation, private dashboard and pathway-specific supervision authority |
+| `c01f74f` | Tailored training website, review states, supervisor directory filters and tests |
+| (this commit) | Films source, dashboard fixes, remaining documents |
+
+Nothing has been pushed (no remote access).

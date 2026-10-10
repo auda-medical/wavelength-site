@@ -208,8 +208,12 @@ export async function bookingRows(env, rd) {
 }
 export async function ledgerRows(env, rd, from, to) {
   if (!rd.ledger) return null;
-  return (await env.DB.prepare('SELECT * FROM ledger WHERE entry_date BETWEEN ? AND ? ORDER BY entry_date DESC, id DESC LIMIT 5000').bind(from, to).all()).results || [];
+  return (await env.DB.prepare(`SELECT * FROM ledger WHERE ${LEDGER_DAY_SQL} BETWEEN ? AND ? ORDER BY entry_date DESC, id DESC LIMIT 5000`).bind(from, to).all()).results || [];
 }
+// The date a ledger line belongs to: a cost linked to a course date counts on that date, like the course's revenue, so
+// a venue paid in October for a December course lands in December. Every other line counts on the date entered.
+export const ledgerDay = (l) => (/^course:.+@\d{4}-\d{2}-\d{2}$/.test(l.service || '') ? l.service.slice(-10) : l.entry_date);
+const LEDGER_DAY_SQL = "(CASE WHEN service LIKE 'course:%@____-__-__' THEN substr(service, -10) ELSE entry_date END)";
 export async function timeRows(env, rd, from, to) {
   if (!rd.ledger) return null;
   return (await env.DB.prepare('SELECT * FROM owner_time WHERE voided_at IS NULL AND work_date BETWEEN ? AND ? ORDER BY work_date DESC, id DESC LIMIT 5000').bind(from, to).all()).results || [];
@@ -217,6 +221,17 @@ export async function timeRows(env, rd, from, to) {
 // The date a booking's revenue belongs to: the course date (service delivered), else the payment date.
 export const bookingDay = (b) => b.course_date || String(b.paid_at || b.created_at || '').slice(0, 10);
 export const inRange = (d, from, to) => d >= from && d <= to;
+// Money taken in a period: paid bookings by the date they were paid (or recorded), whatever the course date. Gross less
+// refunds, before fees. Shown beside revenue so a booking for a later course is visible the day it is paid.
+export function takenIn(bookings, from, to) {
+  const t = { places: 0, pence: 0, n: 0 };
+  for (const b of bookings || []) {
+    if (!PAID.includes(b.status)) continue;
+    if (!inRange(String(b.paid_at || b.created_at || '').slice(0, 10), from, to)) continue;
+    t.n++; t.places += b.places || 1; t.pence += (b.gross_pence || 0) - (b.refund_pence || 0);
+  }
+  return t;
+}
 
 // Per course date: capacity, places, occupancy, money and profit.
 export function courseDates(bookings = [], ledger = [], courses = SITE.courses || [], vat = '') {

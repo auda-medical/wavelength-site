@@ -10,7 +10,7 @@ import { handleApp } from '../worker/app.js';
 import { hashPassword } from '../worker/app-util.js';
 import { beaconRows, classify, normPath, deviceOf, budget, LIMITS, signupReason, appRows, rollup } from '../worker/metrics.js';
 import { verifyStripe, signStripe, courseFor, estimateFee } from '../worker/bookings.js';
-import { pnl, parseRange, perHour, funnel, enquiryStats } from '../worker/business-data.js';
+import { pnl, parseRange, perHour, funnel, enquiryStats, ledgerDay, ledgerRows, takenIn } from '../worker/business-data.js';
 import { campaignUrl, priority } from '../worker/business.js';
 import SITE from '../worker/site-data.json' with { type: 'json' };
 
@@ -199,6 +199,24 @@ test('profit and loss: paid bookings only, refunds, estimated fees, delivery and
   assert.equal(perHour(30000, 0), null);
 });
 
+test('course money is matched: costs linked to a course date count on that date; bookings taken count by payment date', async () => {
+  assert.equal(ledgerDay({ service: 'course:core-emergency-ultrasound@2026-12-21', entry_date: '2026-10-05' }), '2026-12-21');
+  assert.equal(ledgerDay({ service: 'general', entry_date: '2026-10-05' }), '2026-10-05');
+  assert.equal(ledgerDay({ service: 'course:broken', entry_date: '2026-10-05' }), '2026-10-05', 'a malformed link falls back to the entry date');
+  const env = makeEnv();
+  await env.DB.prepare("INSERT INTO ledger (entry_date, kind, category, stream, service, amount_pence) VALUES ('2026-10-05', 'expense', 'venue', 'courses', 'course:core-emergency-ultrasound@2026-12-21', 60000), ('2026-10-05', 'expense', 'software', 'general', 'general', 1200)").run();
+  const rd = { ledger: true };
+  assert.deepEqual((await ledgerRows(env, rd, '2026-10-01', '2026-10-31')).map((l) => l.category), ['software'], 'October carries only the unlinked cost');
+  assert.deepEqual((await ledgerRows(env, rd, '2026-12-01', '2026-12-31')).map((l) => l.category), ['venue'], 'the venue lands with the December course');
+  const bookings = [
+    { status: 'paid', gross_pence: 39500, refund_pence: 0, places: 1, course_date: '2026-12-21', paid_at: '2026-10-08T10:00:00Z' },
+    { status: 'part_refunded', gross_pence: 79000, refund_pence: 39500, places: 2, course_date: '2026-12-21', created_at: '2026-10-09 09:00:00' },
+    { status: 'pending', gross_pence: 39500, places: 1, course_date: '2026-12-21', created_at: '2026-10-09 09:00:00' },
+  ];
+  assert.deepEqual(takenIn(bookings, '2026-10-01', '2026-10-31'), { places: 3, pence: 79000, n: 2 }, 'paid money is visible the month it is taken, refunds deducted, pending ignored');
+  assert.deepEqual(takenIn(bookings, '2026-11-01', '2026-11-30'), { places: 0, pence: 0, n: 0 });
+});
+
 test('date ranges: presets, a custom range in either order, and no future dates', () => {
   const r = parseRange(new URLSearchParams('range=7d'), '2026-10-10');
   assert.deepEqual([r.from, r.to, r.days, r.prevFrom, r.prevTo], ['2026-10-04', '2026-10-10', 7, '2026-09-27', '2026-10-03']);
@@ -289,8 +307,12 @@ test('the business dashboard is behind the admin login, shows "Not measured" bef
   for (const tab of ['website', 'logbook', 'supervision', 'courses', 'training', 'finance', 'time', 'marketing', 'opportunities', 'monthly', 'settings']) {
     const r = await get(env, `/admin/business/${tab}/?range=90d`, cookie);
     assert.equal(r.status, 200, tab);
-    assert.doesNotMatch(await r.text(), /undefined|NaN/, `${tab} has no undefined or NaN`);
+    const html = await r.text();
+    assert.doesNotMatch(html, /undefined|NaN/, `${tab} has no undefined or NaN`);
+    // UTF-8 text decoded twice shows as "Â£" or "â€“": the pound sign and dashes must arrive intact.
+    assert.doesNotMatch(html, /Â[ -¿]|â€|Ã[\u0080-¿]/, `${tab} has no double-encoded characters`);
   }
+  assert.match(await (await get(env, '/admin/business/finance/?range=90d', cookie)).text(), /Amount incl\. VAT \(£\)/);
   assert.match(await (await get(env, '/admin/', cookie)).text(), /href="\/admin\/business\/"/);
 });
 
