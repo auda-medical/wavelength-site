@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* 学员为此模块设定了自己的目标，与课程大纲数值不同。",
 "12": "12",
@@ -2293,5 +2293,20 @@
 "Declined. The request has gone back to the learner.": "已拒绝。请求已退回给学员。",
 "Under review: your supervisor has opened this request.": "审核中：您的督导已打开此请求。",
 "Declined by the supervisor: {note}": "督导已拒绝：{note}",
-"Declined by the supervisor.": "督导已拒绝。"
+"Declined by the supervisor.": "督导已拒绝。",
+"Annotation size": "标注大小",
+"Annotation size {n}%. Tap to return to 100%.": "标注大小 {n}%。点按恢复为 100%。",
+"For new annotations": "用于新标注",
+"Selected arrow: line thickness": "所选箭头：线条粗细",
+"Selected box: line thickness": "所选方框：线条粗细",
+"Selected circle: line thickness": "所选圆圈：线条粗细",
+"Selected dot: size": "所选圆点：大小",
+"Selected label: text size": "所选标签：文字大小",
+"Selected pictogram: size": "所选图示：大小",
+"Zoom": "缩放",
+"Zoom in": "放大",
+"Zoom out": "缩小",
+"Zoom {n} times. Tap to show the whole picture.": "缩放 ×{n}。点按显示整张图像。",
+"Zoom: the whole picture is shown": "缩放：显示整张图像",
+"Zoomed in. Zoom changes only your view: annotations keep their size and place in the picture.": "已放大。缩放只改变您的视图：标注在图像中的大小和位置保持不变。"
 }

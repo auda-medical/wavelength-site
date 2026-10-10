@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Osoba szkolona ustaliła własny cel dla tego modułu, inny niż w programie.",
 "12": "12",
@@ -2386,5 +2386,20 @@
 "Declined. The request has gone back to the learner.": "Odrzucono. Prośba wróciła do uczącego się.",
 "Under review: your supervisor has opened this request.": "W trakcie przeglądu: Twój opiekun otworzył tę prośbę.",
 "Declined by the supervisor: {note}": "Odrzucone przez opiekuna: {note}",
-"Declined by the supervisor.": "Odrzucone przez opiekuna."
+"Declined by the supervisor.": "Odrzucone przez opiekuna.",
+"Annotation size": "Rozmiar adnotacji",
+"Annotation size {n}%. Tap to return to 100%.": "Rozmiar adnotacji {n}%. Dotknij, aby wrócić do 100%.",
+"For new annotations": "Dla nowych adnotacji",
+"Selected arrow: line thickness": "Zaznaczona strzałka: grubość linii",
+"Selected box: line thickness": "Zaznaczona ramka: grubość linii",
+"Selected circle: line thickness": "Zaznaczony okrąg: grubość linii",
+"Selected dot: size": "Zaznaczona kropka: rozmiar",
+"Selected label: text size": "Zaznaczona etykieta: rozmiar tekstu",
+"Selected pictogram: size": "Zaznaczony piktogram: rozmiar",
+"Zoom": "Powiększenie",
+"Zoom in": "Powiększ",
+"Zoom out": "Pomniejsz",
+"Zoom {n} times. Tap to show the whole picture.": "Powiększenie ×{n}. Dotknij, aby pokazać cały obraz.",
+"Zoom: the whole picture is shown": "Powiększenie: widoczny jest cały obraz",
+"Zoomed in. Zoom changes only your view: annotations keep their size and place in the picture.": "Powiększono. Powiększenie zmienia tylko widok: adnotacje zachowują rozmiar i miejsce na obrazie."
 }

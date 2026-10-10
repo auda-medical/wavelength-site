@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Die lernende Person hat für dieses Modul ein eigenes Ziel gesetzt, das von der Curriculumvorgabe abweicht.",
 "12": "12",
@@ -2324,5 +2324,20 @@
 "Declined. The request has gone back to the learner.": "Abgelehnt. Die Anfrage ist an die lernende Person zurückgegangen.",
 "Under review: your supervisor has opened this request.": "In Prüfung: Ihre Supervisorin oder Ihr Supervisor hat diese Anfrage geöffnet.",
 "Declined by the supervisor: {note}": "Von der Supervision abgelehnt: {note}",
-"Declined by the supervisor.": "Von der Supervision abgelehnt."
+"Declined by the supervisor.": "Von der Supervision abgelehnt.",
+"Annotation size": "Größe der Anmerkungen",
+"Annotation size {n}%. Tap to return to 100%.": "Größe der Anmerkungen {n} %. Tippen, um auf 100 % zurückzusetzen.",
+"For new annotations": "Für neue Anmerkungen",
+"Selected arrow: line thickness": "Ausgewählter Pfeil: Linienstärke",
+"Selected box: line thickness": "Ausgewählter Rahmen: Linienstärke",
+"Selected circle: line thickness": "Ausgewählter Kreis: Linienstärke",
+"Selected dot: size": "Ausgewählter Punkt: Größe",
+"Selected label: text size": "Ausgewählte Beschriftung: Textgröße",
+"Selected pictogram: size": "Ausgewähltes Piktogramm: Größe",
+"Zoom": "Zoom",
+"Zoom in": "Vergrößern",
+"Zoom out": "Verkleinern",
+"Zoom {n} times. Tap to show the whole picture.": "Zoom {n}-fach. Tippen, um das ganze Bild zu zeigen.",
+"Zoom: the whole picture is shown": "Zoom: das ganze Bild wird gezeigt",
+"Zoomed in. Zoom changes only your view: annotations keep their size and place in the picture.": "Vergrößert. Der Zoom ändert nur Ihre Ansicht: Anmerkungen behalten ihre Größe und Lage im Bild."
 }

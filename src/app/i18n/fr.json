@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* L'apprenant a fixé son propre objectif pour ce module, différent du chiffre du programme.",
 "12": "12",
@@ -2324,5 +2324,20 @@
 "Declined. The request has gone back to the learner.": "Refusée. La demande est retournée à l’apprenant.",
 "Under review: your supervisor has opened this request.": "En cours d’examen : votre superviseur a ouvert cette demande.",
 "Declined by the supervisor: {note}": "Refusée par le superviseur : {note}",
-"Declined by the supervisor.": "Refusée par le superviseur."
+"Declined by the supervisor.": "Refusée par le superviseur.",
+"Annotation size": "Taille des annotations",
+"Annotation size {n}%. Tap to return to 100%.": "Taille des annotations {n} %. Touchez pour revenir à 100 %.",
+"For new annotations": "Pour les nouvelles annotations",
+"Selected arrow: line thickness": "Flèche sélectionnée : épaisseur du trait",
+"Selected box: line thickness": "Cadre sélectionné : épaisseur du trait",
+"Selected circle: line thickness": "Cercle sélectionné : épaisseur du trait",
+"Selected dot: size": "Point sélectionné : taille",
+"Selected label: text size": "Étiquette sélectionnée : taille du texte",
+"Selected pictogram: size": "Pictogramme sélectionné : taille",
+"Zoom": "Zoom",
+"Zoom in": "Zoom avant",
+"Zoom out": "Zoom arrière",
+"Zoom {n} times. Tap to show the whole picture.": "Zoom ×{n}. Touchez pour afficher toute l'image.",
+"Zoom: the whole picture is shown": "Zoom : toute l'image est affichée",
+"Zoomed in. Zoom changes only your view: annotations keep their size and place in the picture.": "Zoom activé. Le zoom ne change que votre vue : les annotations gardent leur taille et leur place dans l'image."
 }

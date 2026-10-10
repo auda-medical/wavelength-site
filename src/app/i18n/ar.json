@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* حدّد المتدرّب هدفًا خاصًا لهذه الوحدة يختلف عن رقم المنهج.",
 "12": "12",
@@ -2448,5 +2448,20 @@
 "Declined. The request has gone back to the learner.": "تم الرفض. عاد الطلب إلى المتدرب.",
 "Under review: your supervisor has opened this request.": "قيد المراجعة: فتح المشرف هذا الطلب.",
 "Declined by the supervisor: {note}": "رفضه المشرف: {note}",
-"Declined by the supervisor.": "رفضه المشرف."
+"Declined by the supervisor.": "رفضه المشرف.",
+"Annotation size": "حجم التعليقات التوضيحية",
+"Annotation size {n}%. Tap to return to 100%.": "حجم التعليقات التوضيحية {n}٪. اضغط للعودة إلى 100٪.",
+"For new annotations": "للتعليقات التوضيحية الجديدة",
+"Selected arrow: line thickness": "السهم المحدد: سُمك الخط",
+"Selected box: line thickness": "المربع المحدد: سُمك الخط",
+"Selected circle: line thickness": "الدائرة المحددة: سُمك الخط",
+"Selected dot: size": "النقطة المحددة: الحجم",
+"Selected label: text size": "التسمية المحددة: حجم النص",
+"Selected pictogram: size": "الرسم التوضيحي المحدد: الحجم",
+"Zoom": "التكبير",
+"Zoom in": "تكبير",
+"Zoom out": "تصغير",
+"Zoom {n} times. Tap to show the whole picture.": "تكبير ×{n}. اضغط لعرض الصورة كاملة.",
+"Zoom: the whole picture is shown": "التكبير: الصورة معروضة كاملة",
+"Zoomed in. Zoom changes only your view: annotations keep their size and place in the picture.": "تم التكبير. التكبير يغيّر العرض فقط: تحتفظ التعليقات التوضيحية بحجمها ومكانها في الصورة."
 }

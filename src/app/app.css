@@ -846,3 +846,43 @@ html[data-theme="dark"] .card:not(.dark):not(.teal), html[data-theme="dark"] .re
 .guide-src a { color: var(--link); font-weight: 600; overflow-wrap: anywhere; }
 .log-guides { text-align: center; margin: 18px 0 6px; }
 [dir="rtl"] [dir="ltr"].guide-head, [dir="rtl"] .guide-card [dir="ltr"] { text-align: left; }
+
+/* 1.0.13: Annotation size slider (replaces S, M and L) and magnification in the media editor */
+.editor .stage canvas { transform-origin: 0 0; }
+.editor.zoomed .stage canvas { will-change: transform; }
+/* Colours and the size heading share the first row; the slider has the full width of the second. Wider screens: the
+   colours on the left, the heading and slider beside them. */
+.editor .ed-row.ed-opts { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; row-gap: 2px; align-items: center; }
+.editor .ed-size { display: contents; }
+.editor .ed-opts .ed-swatches { grid-column: 1; grid-row: 1; }
+.editor .ed-szhead { grid-column: 2; grid-row: 1; display: grid; gap: 1px; min-width: 0; }
+.editor .ed-szrow { grid-column: 1 / -1; grid-row: 2; }
+@media (min-width: 520px) {
+  .editor .ed-opts .ed-swatches { grid-row: 1 / span 2; }
+  .editor .ed-szhead { display: flex; align-items: baseline; gap: 10px; }
+  .editor .ed-szrow { grid-column: 2; }
+}
+.editor .ed-szhead label { font-size: 12.5px; font-weight: 600; color: #DCE4EC; }
+.editor .ed-szval { flex: none; min-width: 54px; min-height: 40px; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: #fff; font: 600 12.5px var(--sans); font-variant-numeric: tabular-nums; cursor: pointer; }
+.editor .ed-szrow { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.editor .sz-a { flex: none; font: 600 12px var(--sans); color: #B9C4D0; line-height: 1; }
+.editor .sz-a.big { font-size: 20px; }
+.editor .ed-size input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 36px; margin: 0; background: transparent; cursor: pointer; --fill: 50%; }
+.editor .ed-size input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--teal-l) var(--fill), rgba(255,255,255,.22) var(--fill)); }
+.editor .ed-size input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px; margin-top: -11px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.editor .ed-size input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: rgba(255,255,255,.22); }
+.editor .ed-size input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--teal-l); }
+.editor .ed-size input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+[dir="rtl"] .editor .ed-size input[type=range]::-webkit-slider-runnable-track { background: linear-gradient(to left, var(--teal-l) var(--fill), rgba(255,255,255,.22) var(--fill)); }
+.editor .ed-size input[type=range]:focus-visible { outline: 2px solid var(--teal-l); outline-offset: 2px; border-radius: 6px; }
+.editor .ed-szfor { min-width: 0; font-size: 12px; color: #9DABBA; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.editor.working .ed-size { opacity: .45; pointer-events: none; }
+.editor .ed-zoom { position: absolute; right: 10px; bottom: 10px; z-index: 1; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(5,11,20,.6); border: 1px solid rgba(255,255,255,.16); box-shadow: 0 2px 10px rgba(0,0,0,.35); transition: opacity .15s ease; }
+.editor.touching .ed-zoom { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .editor .ed-zoom { transition: none; } }
+[dir="rtl"] .editor .ed-zoom { right: auto; left: 10px; }
+.editor .ed-zoom button { min-width: 44px; height: 40px; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 600 13px var(--sans); font-variant-numeric: tabular-nums; display: grid; place-items: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.editor .ed-zoom button:active:not([disabled]) { background: rgba(255,255,255,.12); }
+.editor .ed-zoom button[disabled] { opacity: .35; cursor: default; }
+.editor .ed-zoom button:focus-visible { outline: 2px solid var(--teal-l); outline-offset: -2px; }
+.editor.zoomed .ed-zoom .ed-zval { background: var(--teal); }

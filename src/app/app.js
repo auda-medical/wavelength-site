@@ -727,7 +727,7 @@
   // A scan form with unsaved changes asks before any navigation (header back, tabs, links, the Android back button).
   // hashchange cannot be cancelled, so the previous address is put back without a render while the learner decides.
   var lastHash = location.hash, leaving = false;
-  window.addEventListener('hashchange', function () {
+  window.addEventListener('hashchange', function (ev) {
     var dirty = document.querySelector('form[data-dirty]');
     if (dirty && !leaving && location.hash !== lastHash) {
       var target = location.hash;
@@ -737,9 +737,60 @@
       });
       return;
     }
-    leaving = false; lastHash = location.hash;
-    render(); window.scrollTo(0, 0);
+    leaving = false;
+    var from = ev && ev.oldURL && ev.oldURL.indexOf('#') >= 0 ? ev.oldURL.slice(ev.oldURL.indexOf('#')) : lastHash;
+    var back = navArrive(from || '#/', location.hash || '#/');
+    lastHash = location.hash;
+    navReturning = back;
+    render();
+    navReturning = false;
+    if (navRestore) applyRestore(); else if (!back || !navMem[navKey(location.hash)]) window.scrollTo(0, 0);
   });
+
+  // ---------- 1.0.13: going back returns to the screen as it was left ----------
+  // Going back (the header's back arrow, the Android back button or gesture, the browser's back) to a screen in the
+  // trail that led here brings it back as the learner left it: its filters and search (which live in its address),
+  // the sections that were open, and the scroll position. The position is applied as soon as the screen's content is
+  // in the page (screens that load their content, like Guides, call mount() again when it arrives), before the browser
+  // paints, so the screen never shows its top first. Going forward to a screen (a tab, a link) starts it at the top.
+  var navTrail = [location.hash || '#/'], navMem = {}, navBack = '', navRestore = null, navReturning = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) { /* older browsers restore nothing anyway */ }
+  function navKey(h) { return String(h || '').replace(/^#\/?/, '').split('?')[0].replace(/\/+$/, ''); }
+  // Called on every address change, before the new screen is drawn: the page still shows the screen being left.
+  function navArrive(from, to) {
+    var m = $('main', app);
+    if (m) navMem[navKey(from)] = { hash: from, y: window.pageYOffset, open: $$('details', m).map(function (d) { return d.open; }) };
+    navTrail[navTrail.length - 1] = from; // its own address may have changed in place (a filter, a search)
+    var key = navKey(to), i = -1, j;
+    for (j = navTrail.length - 2; j >= 0; j--) if (navKey(navTrail[j]) === key) { i = j; break; }
+    var asked = navBack && navKey(navBack) === key; navBack = '';
+    // Back: asked for (back arrow, Android back), or the browser stepped to the previous address in the trail.
+    var back = i >= 0 && (asked || (i === navTrail.length - 2 && navTrail[i] === to));
+    navRestore = null;
+    if (!back) { navTrail.push(to); if (navTrail.length > 60) navTrail.splice(0, navTrail.length - 60); return false; }
+    navTrail.length = i + 1;
+    var mem = navMem[key];
+    // The back arrow names the bare screen; the filters and search it was left with come back with it.
+    if (mem && mem.hash !== to && to.indexOf('?') < 0 && mem.hash.indexOf('?') >= 0) history.replaceState(null, '', mem.hash);
+    navTrail[i] = location.hash;
+    if (mem) navRestore = { key: key, y: mem.y, open: mem.open, until: Date.now() + 2000 };
+    return true;
+  }
+  // Puts back open sections and the scroll position. If the content is not all there yet (still loading), it scrolls as
+  // far as it can and finishes when the content arrives; the learner's own touch, wheel or key cancels it.
+  function applyRestore() {
+    var r = navRestore; if (!r) return;
+    if (navKey(location.hash) !== r.key || Date.now() > r.until) { navRestore = null; return; }
+    var m = $('main', app); if (!m) return;
+    var ds = $$('details', m);
+    (r.open || []).forEach(function (o, i) { if (o && ds[i] && !ds[i].open) ds[i].open = true; });
+    var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo(0, Math.min(r.y, max));
+    if (max >= r.y - 1) navRestore = null;
+  }
+  ['touchstart', 'wheel', 'keydown'].forEach(function (t) { window.addEventListener(t, function () { navRestore = null; }, { passive: true, capture: true }); });
+  // The header's back arrow is a back step, not a new visit.
+  document.addEventListener('click', function (e) { var a = e.target && e.target.closest && e.target.closest('header.top a.back'); if (a) navBack = a.getAttribute('href') || ''; }, true);
   window.addEventListener('online', function () { S.online = true; if (SY.fail === 'offline') SY.fail = ''; setSyncDot(); if (S.account) netKick(); });
   window.addEventListener('offline', function () { S.online = false; setSyncDot(); });
   // In the store apps, returning to the app arrives as wl:resume (below), which also reads the network first.
@@ -778,7 +829,7 @@
     (views[r.name] || viewHome)(r);
     setSyncDot();
     // A new screen fades in once (CSS, 180 ms, none with reduced motion). A redraw of the same screen does not.
-    if (!soft) { var mn = $('main', app); if (mn) mn.classList.add('enter'); }
+    if (!soft && !navReturning) { var mn = $('main', app); if (mn) mn.classList.add('enter'); }
     if (soft) window.scrollTo(0, keepScroll);
     revealIn(soft);
     if (!soft) announce();
@@ -824,7 +875,7 @@
     var h = text || ($('header.top h1') || $('h1', app) || {}).textContent || '';
     sr.textContent = ''; setTimeout(function () { sr.textContent = h; }, 60);
   }
-  function mount(html) { app.innerHTML = html; bindUpdate(); $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); }); bindLang(app); }
+  function mount(html) { app.innerHTML = html; bindUpdate(); $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); }); bindLang(app); if (navRestore) applyRestore(); }
 
   // ---------- Auth views ----------
   function authFrame(title, lede, body) {
@@ -1537,7 +1588,9 @@
     box: ic('<rect x="4" y="6" width="16" height="12" rx="1"/>', 20),
     picto: ic('<circle cx="12" cy="5" r="2"/><path d="M8 10h8l-1 5h-2l-1 6-1-6H9z"/>', 20),
     play: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>',
-    pause: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>'
+    pause: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>',
+    zin: ic('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M10.5 7.5v6M7.5 10.5h6"/>', 18),
+    zout: ic('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6"/>', 18)
   };
   var orientAfter = EDT.orientAfter;
   function orientWords(o) {
@@ -1545,7 +1598,7 @@
     return T(['Flipped horizontally', 'Flipped horizontally, then rotated 90° clockwise', 'Flipped vertically', 'Flipped horizontally, then rotated 90° anticlockwise'][o.r]);
   }
   var COLOUR_NAMES = { white: 'White', yellow: 'Yellow', cyan: 'Cyan', red: 'Red' };
-  var EDP = { mode: 'adjust', color: 'yellow', size: 'm', bg: 'outline', redact: 'black' }; // colour, size and fill are remembered while the app is open
+  var EDP = { mode: 'adjust', color: 'yellow', scale: 100, bg: 'outline', redact: 'black' }; // colour, size and fill are remembered while the app is open
   // cfg: kind ('image' | 'clip'), title, declText, saveLabel, media (clip controls), type (scan type), w and h (source
   // size), state (initial crop, orient, redact, ann), source() (what to draw), time() (clip seconds into the kept
   // selection, or null), locked() (true while a clip is being prepared), onState(), save(state, el), close(value).
@@ -1556,7 +1609,8 @@
     var tb = function (k, label, full, attrs) { return '<button type="button" class="tool et" ' + attrs + ' aria-label="' + esc(full || label) + '">' + ET[k] + '<span>' + esc(label) + '</span></button>'; };
     var el = document.createElement('div'); el.className = 'editor' + (clip ? ' clip' : ''); el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', cfg.title);
     el.innerHTML = '<div class="bar-top"><button type="button" class="tool" data-a="cancel">' + esc(T('Cancel')) + '</button><b class="ed-title">' + esc(cfg.title) + '</b><button type="button" class="tool" data-a="undo" disabled>' + esc(T('Undo')) + '</button><button type="button" class="tool" data-a="redo" disabled>' + esc(T('Redo')) + '</button></div>' +
-      '<div class="stage"><canvas tabindex="0" aria-label="' + esc(T('Picture being edited')) + '"></canvas><div class="sel" hidden></div><div class="ann-sel" hidden><span class="h" data-h="a"></span><span class="h" data-h="b"></span></div></div>' +
+      '<div class="stage"><canvas tabindex="0" aria-label="' + esc(T('Picture being edited')) + '"></canvas><div class="sel" hidden></div><div class="ann-sel" hidden><span class="h" data-h="a"></span><span class="h" data-h="b"></span></div>' +
+        '<div class="ed-zoom" role="group" aria-label="' + esc(T('Zoom')) + '"><button type="button" data-z="out" aria-label="' + esc(T('Zoom out')) + '">' + ET.zout + '</button><button type="button" class="ed-zval" data-z="fit"></button><button type="button" data-z="in" aria-label="' + esc(T('Zoom in')) + '">' + ET.zin + '</button></div></div>' +
       (cfg.media || '') +
       '<div class="bar-bot">' +
       '<div class="ed-modes" role="tablist" aria-label="' + esc(T('Editing mode')) + '">' +
@@ -1569,7 +1623,9 @@
       '<div class="ed-panel" data-panel="redact" hidden><div class="ed-row"><span class="ed-lab">' + esc(T('Fill')) + '</span><div class="ed-seg" role="radiogroup" aria-label="' + esc(T('Redaction colour')) + '"><button type="button" role="radio" data-rc="black">' + esc(T('Black')) + '</button><button type="button" role="radio" data-rc="grey">' + esc(T('Grey')) + '</button></div><p class="ed-applied" data-rcount aria-live="polite"></p></div>' +
         '<p class="ed-note2">' + esc(T('Redaction is solid and is saved in the picture itself. Blurring is not offered, because it can leave identifiers readable.')) + '</p></div>' +
       '<div class="ed-panel" data-panel="annotate" hidden><div class="ed-tools ann-tools" role="toolbar" aria-label="' + esc(T('Annotation tools')) + '">' + tb('text', T('Text'), T('Add your own text'), 'data-at="text"') + tb('label', T('Label'), T('Add a clinical label'), 'data-at="label"') + tb('arrow', T('Arrow'), T('Draw an arrow'), 'data-at="arrow"') + tb('dot', T('Dot'), T('Place a pointer dot'), 'data-at="dot"') + tb('circle', T('Circle'), T('Draw a circle'), 'data-at="circle"') + tb('box', T('Box'), T('Draw a box'), 'data-at="rect"') + tb('picto', T('Pictogram'), T('Add a pictogram'), 'data-at="picto"') + '</div>' +
-        '<div class="ed-row ed-opts"><div class="ed-swatches" role="radiogroup" aria-label="' + esc(T('Colour')) + '">' + Object.keys(EDT.COLOURS).map(function (c) { return '<button type="button" role="radio" class="sw" data-col="' + c + '" style="--sw:' + EDT.COLOURS[c] + '" aria-label="' + esc(T(COLOUR_NAMES[c])) + '"></button>'; }).join('') + '</div><div class="ed-seg" role="radiogroup" aria-label="' + esc(T('Size')) + '">' + [['s', 'S', 'Small'], ['m', 'M', 'Medium'], ['l', 'L', 'Large']].map(function (z) { return '<button type="button" role="radio" data-sz="' + z[0] + '" aria-label="' + esc(T(z[2])) + '">' + z[1] + '</button>'; }).join('') + '</div></div>' +
+        '<div class="ed-row ed-opts"><div class="ed-swatches" role="radiogroup" aria-label="' + esc(T('Colour')) + '">' + Object.keys(EDT.COLOURS).map(function (c) { return '<button type="button" role="radio" class="sw" data-col="' + c + '" style="--sw:' + EDT.COLOURS[c] + '" aria-label="' + esc(T(COLOUR_NAMES[c])) + '"></button>'; }).join('') + '</div>' +
+          '<div class="ed-size"><div class="ed-szhead"><label for="edsz">' + esc(T('Annotation size')) + '</label><span class="ed-szfor" id="edszfor" data-szfor></span></div>' +
+          '<div class="ed-szrow"><span class="sz-a" aria-hidden="true">A</span><input type="range" id="edsz" data-szr min="' + EDT.SCALE.min + '" max="' + EDT.SCALE.max + '" step="' + EDT.SCALE.step + '" value="' + EDP.scale + '" aria-describedby="edszfor"><span class="sz-a big" aria-hidden="true">A</span><button type="button" class="ed-szval" data-szreset></button></div></div></div>' +
         '<div class="ed-selbar" hidden><p class="ed-applied" data-selname aria-live="polite"></p><div class="ed-selacts"><button type="button" class="tool" data-sa="edit">' + esc(T('Edit text')) + '</button><button type="button" class="tool" data-sa="bg">' + esc(T('Background')) + '</button><button type="button" class="tool" data-sa="turn">' + esc(T('Turn')) + '</button><button type="button" class="tool" data-sa="flip">' + esc(T('Mirror')) + '</button><button type="button" class="tool" data-sa="del">' + esc(T('Delete')) + '</button><button type="button" class="tool apply" data-sa="done">' + esc(T('Done')) + '</button></div>' +
         (clip ? '<div class="ed-seg ed-when" role="radiogroup" aria-label="' + esc(T('When it shows')) + '"><button type="button" role="radio" data-when="all">' + esc(T('Whole clip')) + '</button><button type="button" role="radio" data-when="from">' + esc(T('From here')) + '</button><button type="button" role="radio" data-when="until">' + esc(T('Until here')) + '</button></div><p class="ed-note2" data-whentext></p>' : '') + '</div>' +
         '<div class="ann-list" data-annlist></div></div>' +
@@ -1585,7 +1641,7 @@
     var snap = function () { return JSON.stringify(st); };
     var change = function () { undo.push(snap()); if (undo.length > 60) undo.shift(); redo = []; };
     var size = function () { return EDT.outSize(st.crop, st.orient, 1); };
-    var paint = function () { cfg.paint(cv, st); drawSel(); };
+    var paint = function () { var w0 = cv.width, h0 = cv.height; cfg.paint(cv, st); if (cv.width !== w0 || cv.height !== h0) fitView(); drawSel(); };
     // While a finger drags, the picture is redrawn at most once a frame (a full 2048 px repaint per pointer event is wasted).
     var paintRaf = 0;
     var paintSoon = function () { if (paintRaf) return; paintRaf = requestAnimationFrame(function () { paintRaf = 0; paint(); }); };
@@ -1604,7 +1660,7 @@
       $('[data-rcount]', el).textContent = nr ? T('{n} areas redacted', { n: nr }) : '';
       $$('[data-rc]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.rc === EDP.redact)); });
       $$('[data-col]', el).forEach(function (b) { var a = st.ann[sel]; b.setAttribute('aria-checked', String(b.dataset.col === (a ? a.color : EDP.color))); });
-      $$('[data-sz]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.sz === EDP.size)); });
+      showSize();
       $$('[data-at]', el).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.at === tool)); });
       var a = st.ann[sel], sb = $('.ed-selbar', el);
       sb.hidden = !a;
@@ -1648,7 +1704,7 @@
       var t = cfg.time(), i = EDT.hit(mctx, st.ann, W, H, p.x, p.y, t);
       if (i >= 0 && (!tool || tool === 'text' || tool === 'label' || tool === 'picto')) { sel = i; drag = { kind: 'move', start: p, orig: JSON.stringify(st.ann[i]), before: snap() }; redraw(); return; }
       var nx = p.x / W, ny = p.y / H;
-      if (tool === 'dot') { change(); st.ann.push(newAnn({ type: 'dot', x: nx, y: ny })); sel = st.ann.length - 1; redraw(); return; }
+      if (tool === 'dot') { drag = { kind: 'dot', before: snap() }; st.ann.push(newAnn({ type: 'dot', x: nx, y: ny })); sel = st.ann.length - 1; redraw(); return; }
       if (tool === 'arrow' || tool === 'circle' || tool === 'rect') { drag = { kind: 'draw', start: p, before: snap() }; st.ann.push(newAnn(tool === 'arrow' ? { type: 'arrow', x: nx, y: ny, x2: nx, y2: ny } : { type: tool, x: nx, y: ny, w: 0, h: 0 })); sel = st.ann.length - 1; redraw(); return; }
       if (sel >= 0) { sel = -1; redraw(); }
     });
@@ -1680,6 +1736,7 @@
         return;
       }
       var a = st.ann[sel];
+      if (d.kind === 'dot') { undo.push(d.before); if (undo.length > 60) undo.shift(); redo = []; }
       if (d.kind === 'draw') {
         var small = !a || (a.type === 'arrow' ? Math.hypot((a.x2 - a.x) * cv.width, (a.y2 - a.y) * cv.height) < 12 : a.w * cv.width < 10 || a.h * cv.height < 10);
         if (small) { st.ann.pop(); sel = -1; } else { undo.push(d.before); redo = []; }
@@ -1706,30 +1763,34 @@
         ev.preventDefault(); ev.stopPropagation(); try { h.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ }
         var a = st.ann[sel]; if (!a) return;
         var before = snap(), orig = JSON.parse(JSON.stringify(a)), which = h.dataset.h, p0 = at(ev), d0 = Math.hypot(p0.x - a.x * cv.width, p0.y - a.y * cv.height);
+        // A pinch that starts while a handle is held puts the annotation back as it was.
+        handleAbort = function () { Object.assign(a, orig); h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); handleAbort = null; };
         var move = function (e2) {
           var p = at(e2), W = cv.width, H = cv.height, m = Math.min(W, H);
           if (a.type === 'arrow') { if (which === 'a') { a.x = p.x / W; a.y = p.y / H; } else { a.x2 = p.x / W; a.y2 = p.y / H; } }
           else if (a.type === 'circle' || a.type === 'rect') { a.w = Math.max(0.02, p.x / W - a.x); a.h = Math.max(0.02, p.y / H - a.y); }
           else {
             // Text, dots and pictograms keep their centre; the handle scales them from where the drag began.
-            var dist = Math.hypot(p.x - a.x * W, p.y - a.y * H), lo = a.type === 'picto' ? 0.08 : 0.02, hi = a.type === 'picto' ? 0.6 : 0.2;
-            a.size = Math.max(lo, Math.min(hi, (orig.size || 0.058) * dist / Math.max(4, d0)));
+            var dist = Math.hypot(p.x - a.x * W, p.y - a.y * H), lo = EDT.sizeFor(a.type, EDT.SCALE.min), hi = EDT.sizeFor(a.type, EDT.SCALE.max);
+            a.size = Math.max(lo, Math.min(hi, EDT.sizeOf(orig) * dist / Math.max(4, d0)));
+            showSize();
           }
           paintSoon();
         };
-        var up = function () { h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); if (JSON.stringify(a) !== JSON.stringify(orig)) { undo.push(before); redo = []; } redraw(); };
+        var up = function () { handleAbort = null; h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); if (JSON.stringify(a) !== JSON.stringify(orig)) { undo.push(before); redo = []; } redraw(); };
         h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
       });
     });
     // Keyboard: arrows move the selected annotation, Delete removes it, Escape lets go of it.
     cv.addEventListener('keydown', function (e) {
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '0')) { e.preventDefault(); return e.key === '0' ? fitView(true) : zoomBy(e.key === '-' ? 1 / ZSTEP : ZSTEP); }
       var a = st.ann[sel]; if (!a || cfg.locked()) return;
       var step = e.shiftKey ? 0.05 : 0.01, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
       if (d) { e.preventDefault(); change(); a.x = Math.max(0, Math.min(1, a.x + d[0])); a.y = Math.max(0, Math.min(1, a.y + d[1])); if (a.type === 'arrow') { a.x2 += d[0]; a.y2 += d[1]; } redraw(); }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); change(); st.ann.splice(sel, 1); sel = -1; redraw(); }
     });
     var newAnn = function (o) {
-      var a = Object.assign({ color: EDP.color, size: o.type === 'picto' ? 0.24 : EDT.SIZES[EDP.size] }, o);
+      var a = Object.assign({ color: EDP.color, size: EDT.sizeFor(o.type, EDP.scale) }, o);
       if (a.type === 'text') a.bg = a.bg || EDP.bg;
       return a;
     };
@@ -1784,6 +1845,7 @@
       var t = ev.target.closest('button'); if (!t || t.disabled || pop.contains(t)) return;
       var d = t.dataset;
       if (d.a === 'cancel') return cfg.close(null);
+      if (d.z) return d.z === 'fit' ? fitView(true) : zoomBy(d.z === 'in' ? ZSTEP : 1 / ZSTEP);
       if (cfg.locked()) return; // the tools wait while a clip is being prepared or a photo saved
       if (d.tab) return setMode(d.tab);
       // Undo, redo and reset can bring back a covered or cropped-out area: the declaration is asked for again.
@@ -1793,7 +1855,7 @@
       if (d.a === 'reset') { change(); st = JSON.parse(st0); sel = -1; return redraw(); }
       if (d.a === 'apply' && drag === null) { var s = cropSel; cropSel = null; if (s) { change(); var k = k0(); setFrame(EDT.rectToSrc({ x: s.x / k, y: s.y / k, w: s.w / k, h: s.h / k }, st.crop, st.orient), st.orient); box.hidden = true; applyBtn.hidden = true; } return redraw(); }
       if (d.a === 'trim') { var o = size(), cut = o.h * 0.12; change(); setFrame(EDT.rectToSrc({ x: 0, y: cut, w: o.w, h: o.h - cut }, st.crop, st.orient), st.orient); return redraw(); }
-      if (d.a === 'rotate' || d.a === 'fliph' || d.a === 'flipv') { change(); setFrame(st.crop, orientAfter(st.orient, d.a)); NAT.haptic(); return redraw(); }
+      if (d.a === 'rotate' || d.a === 'fliph' || d.a === 'flipv') { change(); setFrame(st.crop, orientAfter(st.orient, d.a)); NAT.haptic(); fitView(); return redraw(); }
       if (d.a === 'save') return cfg.save(st, el);
       if (d.rc) { EDP.redact = d.rc; return state(); }
       if (d.at) {
@@ -1805,7 +1867,7 @@
         return redraw();
       }
       if (d.col) { EDP.color = d.col; var a0 = st.ann[sel]; if (a0) { change(); a0.color = d.col; } return redraw(); }
-      if (d.sz) { EDP.size = d.sz; var a1 = st.ann[sel]; if (a1 && a1.type !== 'picto' && a1.type !== 'circle' && a1.type !== 'rect' && a1.type !== 'arrow') { change(); a1.size = EDT.SIZES[d.sz]; } return redraw(); }
+      if (d.szreset != null) { setSize(EDT.SCALE.base); return commitSize(); }
       if (d.pick != null) { sel = Number(d.pick); return redraw(); }
       var a = st.ann[sel];
       if (d.sa && a) {
@@ -1824,6 +1886,114 @@
         return redraw();
       }
     });
+    // ---- Annotation size (1.0.13): one slider, a percentage of each type's usual size ----
+    // With an annotation selected it shows and changes that annotation (text size, dot size, a line's thickness, a
+    // pictogram's size); otherwise it sets the size of the next one. One drag of the slider is one step of Undo.
+    var szIn = $('[data-szr]', el), szBefore = null;
+    var SZFOR = { text: T('Selected label: text size'), dot: T('Selected dot: size'), arrow: T('Selected arrow: line thickness'), circle: T('Selected circle: line thickness'), rect: T('Selected box: line thickness'), picto: T('Selected pictogram: size') };
+    function showSize() {
+      var a = st.ann[sel], v = a ? EDT.scaleOf(a) : EDP.scale;
+      if (szBefore === null) szIn.value = EDT.clampScale(v);
+      var out = $('[data-szreset]', el); out.textContent = v + '%';
+      out.setAttribute('aria-label', T('Annotation size {n}%. Tap to return to 100%.', { n: v }));
+      szIn.setAttribute('aria-valuetext', v + '%');
+      szIn.style.setProperty('--fill', (EDT.clampScale(szIn.value) - EDT.SCALE.min) / (EDT.SCALE.max - EDT.SCALE.min) * 100 + '%');
+      $('[data-szfor]', el).textContent = a ? SZFOR[a.type] : T('For new annotations');
+    }
+    function setSize(v) {
+      v = EDT.clampScale(v); EDP.scale = v;
+      var a = st.ann[sel];
+      if (a) { if (szBefore === null) szBefore = snap(); a.size = EDT.sizeFor(a.type, v); paintSoon(); }
+      showSize();
+    }
+    function commitSize() {
+      if (szBefore !== null && szBefore !== snap()) { undo.push(szBefore); if (undo.length > 60) undo.shift(); redo = []; }
+      szBefore = null; redraw();
+    }
+    szIn.addEventListener('input', function () { if (!cfg.locked()) setSize(szIn.value); });
+    szIn.addEventListener('change', function () { if (!cfg.locked()) commitSize(); });
+
+    // ---- Magnification (1.0.13): pinch, the wheel, + and -, and the zoom buttons ----
+    // Screen only. Pointer positions are read back through the enlarged canvas (at() above) and nothing in st depends
+    // on the view, so annotations and redactions keep their place and size in the picture and in the saved file.
+    var ZSTEP = 1.5, view = { z: 1, tx: 0, ty: 0 }, pts = {}, pinch = null, handleAbort = null, viewRaf = 0;
+    var vbox = function () { return { L: cv.offsetLeft, T: cv.offsetTop, w: cv.offsetWidth, h: cv.offsetHeight, SW: stage.clientWidth, SH: stage.clientHeight }; };
+    var spt = function (ev) { var r = stage.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
+    var vcopy = function () { return { z: view.z, tx: view.tx, ty: view.ty }; };
+    function applyView() {
+      viewRaf = 0;
+      var on = view.z > 1.001, n = Math.round(view.z * 10) / 10, zv = $('[data-z=fit]', el), was = el.classList.contains('zoomed');
+      cv.style.transform = on ? 'translate(' + view.tx.toFixed(1) + 'px,' + view.ty.toFixed(1) + 'px) scale(' + view.z.toFixed(4) + ')' : '';
+      el.classList.toggle('zoomed', on);
+      // Said once on the way in and out, in the tip line: magnification is not annotation size.
+      if (on && !was) tip(T('Zoomed in. Zoom changes only your view: annotations keep their size and place in the picture.'));
+      else if (!on && was) tip(TIPS[EDP.mode]);
+      zv.textContent = (n % 1 ? n.toFixed(1) : String(n)) + '×';
+      zv.setAttribute('aria-label', on ? T('Zoom {n} times. Tap to show the whole picture.', { n: n }) : T('Zoom: the whole picture is shown'));
+      $('[data-z=out]', el).disabled = !on; $('[data-z=in]', el).disabled = view.z >= EDT.ZOOM.max - 0.001;
+      drawSel(); if (cropSel) showBox(cropSel);
+    }
+    function setView(v) { view = EDT.clampView(v, vbox()); if (!viewRaf) viewRaf = requestAnimationFrame(applyView); }
+    function fitView(now) { view = { z: 1, tx: 0, ty: 0 }; if (now) { if (viewRaf) cancelAnimationFrame(viewRaf); applyView(); } else if (!viewRaf) viewRaf = requestAnimationFrame(applyView); }
+    function zoomBy(k, p) { p = p || { x: stage.clientWidth / 2, y: stage.clientHeight / 2 }; setView(EDT.pinchView(view, p, p, view.z * k, vbox())); }
+    // A second finger takes back whatever the first one started (a box, a line, a dot, a move, a resize).
+    function abortGesture() {
+      if (handleAbort) handleAbort();
+      var d = drag; drag = null;
+      if (d) {
+        if (d.kind === 'box') { box.hidden = true; applyBtn.hidden = !cropSel; if (cropSel) showBox(cropSel); }
+        else if (d.kind === 'draw' || d.kind === 'dot') { st = JSON.parse(d.before); sel = -1; }
+        else if (d.kind === 'move' && st.ann[sel]) st.ann[sel] = JSON.parse(d.orig);
+      }
+      redraw();
+    }
+    var fingers = function () { return Object.keys(pts).map(function (k) { return pts[k]; }); };
+    var startPinch = function () {
+      var f = fingers();
+      if (f.length >= 2) pinch = { v0: vcopy(), m0: { x: (f[0].x + f[1].x) / 2, y: (f[0].y + f[1].y) / 2 }, d0: Math.max(12, Math.hypot(f[0].x - f[1].x, f[0].y - f[1].y)) };
+      else if (f.length === 1) pinch = { pan: true, v0: vcopy(), p0: f[0] }; // the last finger of a pinch moves the picture
+      else pinch = null;
+    };
+    // Capture phase on the stage, so a second finger is taken before the canvas sees it. Once two fingers are down,
+    // every finger belongs to the gesture until all are lifted: the last one off the glass never draws.
+    stage.addEventListener('pointerdown', function (ev) {
+      if (ev.pointerType === 'mouse' || ev.target.closest('.ed-zoom')) return;
+      pts[ev.pointerId] = spt(ev);
+      if (!pinch && fingers().length < 2) return;
+      ev.stopPropagation(); ev.preventDefault();
+      if (!pinch) abortGesture();
+      startPinch();
+    }, true);
+    stage.addEventListener('pointermove', function (ev) {
+      if (!pts[ev.pointerId]) return;
+      pts[ev.pointerId] = spt(ev);
+      if (!pinch) return;
+      ev.stopPropagation();
+      var f = fingers();
+      if (pinch.pan) { if (f[0]) setView({ z: pinch.v0.z, tx: pinch.v0.tx + f[0].x - pinch.p0.x, ty: pinch.v0.ty + f[0].y - pinch.p0.y }); return; }
+      if (f.length < 2) return;
+      setView(EDT.pinchView(pinch.v0, pinch.m0, { x: (f[0].x + f[1].x) / 2, y: (f[0].y + f[1].y) / 2 }, pinch.v0.z * Math.hypot(f[0].x - f[1].x, f[0].y - f[1].y) / pinch.d0, vbox()));
+    }, true);
+    var lift = function (ev) {
+      if (!pts[ev.pointerId]) return;
+      delete pts[ev.pointerId];
+      if (pinch) { ev.stopPropagation(); startPinch(); }
+    };
+    stage.addEventListener('pointerup', lift, true); stage.addEventListener('pointercancel', lift, true);
+    // A mouse or trackpad: the wheel (or a trackpad pinch, which arrives as a wheel with Ctrl) zooms about the pointer.
+    stage.addEventListener('wheel', function (ev) {
+      ev.preventDefault();
+      zoomBy(Math.exp(-ev.deltaY * (ev.deltaMode ? 0.05 : ev.ctrlKey ? 0.01 : 0.0018)), spt(ev));
+    }, { passive: false });
+    var onResize = function () { setView(view); };
+    // The zoom buttons step aside while a finger or the mouse is on the picture, so they never hide what is being
+    // drawn or covered near the corner.
+    var held = {};
+    stage.addEventListener('pointerdown', function (ev) { if (!ev.target.closest('.ed-zoom')) { held[ev.pointerId] = 1; el.classList.add('touching'); } }, true);
+    var unhold = function (ev) { delete held[ev.pointerId]; if (!Object.keys(held).length) el.classList.remove('touching'); };
+    window.addEventListener('pointerup', unhold, true); window.addEventListener('pointercancel', unhold, true);
+    applyView();
+
     // Escape and the Android back button: close a panel, let go of a selection, then cancel.
     el.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
@@ -1832,7 +2002,7 @@
       if (sel >= 0) { sel = -1; return redraw(); }
       var c = $('[data-a=cancel]', el); if (c) c.click();
     });
-    window.addEventListener('resize', drawSel);
+    window.addEventListener('resize', onResize);
     setTimeout(function () { var f = $('[data-a=cancel]', el); if (f && el.isConnected) f.focus({ preventScroll: true }); }, 30);
     if (document.fonts && document.fonts.load) document.fonts.load('600 40px "DM Sans"').then(function () { if (el.isConnected) paint(); }, function () {});
     setMode('adjust');
@@ -1840,7 +2010,7 @@
       el: el, paint: paint, state: function () { return st; }, refresh: redraw,
       fail: function (msg) { var er = $('[data-err]', el); er.textContent = msg; er.hidden = false; el.classList.remove('working'); save.textContent = cfg.saveLabel; save.disabled = !decl.checked; },
       busy: function (on, label) { el.classList.toggle('working', !!on); save.disabled = !!on || !decl.checked; if (label) save.textContent = label; $('[data-err]', el).hidden = true; },
-      remove: function () { if (paintRaf) cancelAnimationFrame(paintRaf); paintRaf = 0; window.removeEventListener('resize', drawSel); el.remove(); cv.width = 0; cv.height = 0; }
+      remove: function () { if (paintRaf) cancelAnimationFrame(paintRaf); if (viewRaf) cancelAnimationFrame(viewRaf); paintRaf = 0; viewRaf = 0; window.removeEventListener('resize', onResize); window.removeEventListener('pointerup', unhold, true); window.removeEventListener('pointercancel', unhold, true); el.remove(); cv.width = 0; cv.height = 0; }
     };
   }
   // Encodes a canvas as JPEG: 2048 px at quality 0.9 keeps fine text and speckle, stepping down only past the 1.5 MB
@@ -4151,7 +4321,7 @@
     if (ed) { e.preventDefault(); ed.click(); return; }
     if (document.querySelector('.sheet-bg')) { e.preventDefault(); closeSheet(); return; }
     var b = document.querySelector('header.top a.back');
-    if (b) { e.preventDefault(); location.hash = b.getAttribute('href'); return; }
+    if (b) { e.preventDefault(); navBack = b.getAttribute('href'); location.hash = navBack; return; }
     var r = route().name;
     if (S.account ? r !== 'home' : (r === 'login' || r === 'signup' || r === 'reset')) { e.preventDefault(); go(S.account ? '' : 'welcome'); }
   });
