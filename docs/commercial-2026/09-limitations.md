@@ -62,7 +62,10 @@ fix is named.
 3. The ultrasound image in the editor scene is a drawn illustration, not a scan.
 4. No `.srt` subtitle file yet. The short and the vertical advert have burnt-in subtitles; the flagship does not.
 5. Not test-uploaded to LinkedIn or Instagram, which re-encode uploads.
-6. App screens show the 1.0.12 interface of this branch. Later interface changes will make the films slightly dated.
+6. The encodes are tagged full-range (`yuvj420p`, Remotion's default). Most players handle this; it has not been
+   checked on LinkedIn or Instagram. If colours look slightly washed out there, re-render with `--color-space=bt709` (one flag in
+   `scripts/render.mjs`).
+7. App screens show the 1.0.12 interface of this branch. Later interface changes will make the films slightly dated.
 
 ## Commercial research
 

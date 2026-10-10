@@ -94,7 +94,7 @@ working, and the new routes are additions.
 ## 7. Films
 
 Watch and listen to each film, then approve them or ask for changes before anything is posted (`07-videos.md`,
-section 6). Post with the campaign links in `06-campaign-links.md`.
+section 7). Post with the campaign links in `06-campaign-links.md`.
 
 ## 8. External contact (not done)
 

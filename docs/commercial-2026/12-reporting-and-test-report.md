@@ -56,7 +56,7 @@ zero.
 |---|---|---|
 | Baseline before the project (Windows checkout) | `node --import ./test/helpers/register.mjs --test --test-concurrency=1 test/*.test.mjs` | 315 tests: 311 pass, 3 fail (CRLF), 1 skipped |
 | End of project (Windows checkout) | same | 359 tests: 355 pass, 3 fail (the same CRLF cases), 1 skipped |
-| End of project (LF checkout of the final commit) | same, on a clone with `core.autocrlf=false` | See the execution record for the final figure |
+| End of project (LF checkout of commit `60fdf92`) | same, on a clone with `core.autocrlf=false` | 359 tests: 358 pass, 0 fail, 1 skipped |
 
 New test files and what they prove:
 

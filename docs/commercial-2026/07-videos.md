@@ -136,7 +136,41 @@ compositions open in Remotion Studio before the media are regenerated.
 - The short and the vertical advert have burnt-in subtitles for muted playback; the flagship and the 16:9 advert do
   not. No `.srt` file yet: make one from `script.json` before posting the flagship on LinkedIn or YouTube.
 
-## 6. Before publishing (owner's decisions)
+## 6. Delivered files and where to find them
+
+Rendered on 10 October 2026 from commit `60fdf92`. Folder:
+`C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final\` (outside the repository, not committed, not
+uploaded anywhere).
+
+| File | Size | Length | Use |
+|---|---|---|---|
+| `wavelength-flagship-film-1080p.mp4` | 1920 × 1080 | 2:14.6 | LinkedIn, website, YouTube |
+| `wavelength-flagship-film-4k.mp4` | 3840 × 2160 | 2:14.6 | YouTube, presentations, archive |
+| `wavelength-free-logbook-short-1080p.mp4` | 1920 × 1080 | 0:39.3 | LinkedIn feed |
+| `wavelength-free-logbook-short-4k.mp4` | 3840 × 2160 | 0:39.3 | Archive, large screens |
+| `wavelength-free-logbook-short-vertical-1080x1920.mp4` | 1080 × 1920 | 0:39.3 | Instagram Reels and Stories, LinkedIn mobile |
+| `wavelength-tailored-training-ad-1080p.mp4` | 1920 × 1080 | 0:19.1 | LinkedIn feed, conference screens |
+| `wavelength-tailored-training-ad-4k.mp4` | 3840 × 2160 | 0:19.1 | Archive, large screens |
+| `wavelength-tailored-training-ad-vertical-1080x1920.mp4` | 1080 × 1920 | 0:19.1 | Instagram Reels and Stories |
+| `wavelength-sample-1080p.mp4` | 1920 × 1080 | 0:19.3 | Review sample only (two scenes); not for posting |
+| `render-report.json` | | | Per-file loudness before and after mastering, peak, length, render time, bytes |
+
+All files are H.264 video at 30 fps with AAC 48 kHz stereo audio.
+
+Measured from the finished files (decoded again after encoding, `scripts/qa-audio.mjs`; results and loudness graphs in
+`..\wavelength-video-output\qa\final-audio\`):
+
+- -15 LUFS integrated;
+- -1.5 dBFS sample peak, about -1.5 dBTP true peak;
+- no clipped samples.
+
+Frames from the 4K encode are in `..\wavelength-video-output\qa\final-frames\`. They show sharp text, no visible
+banding, and layered scrolling working.
+
+To copy them elsewhere, copy the whole `final` folder. To rebuild them from the source, see section 4. Nothing has
+been posted.
+
+## 7. Before publishing (owner's decisions)
 
 1. Watch and listen to each film; approve or ask for changes (voice, music level, pacing, any line).
 2. Confirm the fictional names and the drawn scan image are acceptable on screen.

@@ -94,6 +94,7 @@ dashboard, departments, review, verification), `migrations/0014` and `0015`, `bu
 |---|---|---|
 | Baseline, before any change | `node --import ./test/helpers/register.mjs --test --test-concurrency=1 test/*.test.mjs` (Git Bash) | 315 tests: 311 pass, 3 fail, 1 skipped |
 | End of project, Windows checkout | same | 359 tests: 355 pass, 3 fail (same CRLF cases), 1 skipped |
+| End of project, LF clone of `60fdf92` | same, `core.autocrlf=false` | 359 tests: 358 pass, 0 fail, 1 skipped |
 
 Notes on the baseline:
 - `npm test` runs 0 tests on Windows: cmd.exe passes the quoted glob `'test/*.test.mjs'` through literally. Run the
@@ -116,6 +117,7 @@ screening, store build, film approval, external contact, directory permissions. 
 |---|---|
 | `e4d7aef` | Business analytics foundation, private dashboard and pathway-specific supervision authority |
 | `c01f74f` | Tailored training website, review states, supervisor directory filters and tests |
-| (this commit) | Films source, dashboard fixes, remaining documents |
+| `60fdf92` | Films source, dashboard fixes, remaining documents |
+| (final commit) | Final test figures, render results and file locations |
 
 Nothing has been pushed (no remote access).

@@ -74,7 +74,7 @@ pipeline CSV in the business dashboard omits names, emails, phone numbers and me
 
 ## 8. Security testing done
 
-Automated (358 tests, all passing on an LF checkout): beacon bot, GPC, DNT and origin refusal; oversized and malformed
+Automated (359 tests on an LF checkout: 358 pass, 1 skipped, 0 fail): beacon bot, GPC, DNT and origin refusal; oversized and malformed
 bodies; caps; Stripe signature, staleness, replay and duplicate handling; dashboard login and role checks; enquiry
 validation, honeypot and origin check; capacity enforcement; directory review identity rules; single-use confirmation
 links; GMC workflow preserved; account deletion removes activity rows.
