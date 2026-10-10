@@ -11,7 +11,7 @@ touched production: there was a local Worker, and the emulator was in airplane m
 | Suite | Result | Notes |
 |---|---|---|
 | Unit and Worker tests (`node --test test/*.test.mjs`) | **325 pass, 0 fail, 1 skipped** of 326 | New: `test/storage-privacy.test.mjs` (6). Skip: the Python backup reader, as before. Run directly: under `npm test` on Windows the glob matches nothing |
-| Same, merged into `wavelength-android-fixes-20261010` (commercial work included) | see `record.md` | Run after the merge on an LF export |
+| Same, merged into `wavelength-android-fixes-20261010` (commercial work included) | **369 pass, 0 fail, 1 skipped** of 370 | Run on an LF export of the merge commit |
 | `tools/e2e-1014.mjs` (P S H C L G A B R F I) | **69 / 69 pass** | New F (typed forms, 12) and I (account isolation, sync after log out and in, 3) |
 | The same I2 check on the **first** 1.0.14 candidate | **fails** ("dirty": true) | The sign-out counter defect, fixed here |
 | `tools/e2e-1014-emulator.mjs` (real Android WebView, foldable, real input) | **22 / 22 pass**, three runs | K F X A G as before; new T, M, L, Y, O |
