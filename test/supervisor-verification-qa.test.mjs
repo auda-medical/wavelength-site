@@ -400,6 +400,19 @@ test('self-approval: recognised, refused without an acknowledgement, recorded, a
   assert.equal((await p.sup.call('/api/app/supervisor')).body.verification.state, 'verified', 'nothing was revoked automatically');
 });
 
+test('SUPERVISOR_SELF_APPROVAL = "refuse": nobody approves themselves, even with an acknowledgement; another administrator can', async () => {
+  mail.length = 0; mode = 'ok';
+  const env = makeEnv({ ...ON, SUPERVISOR_SELF_APPROVAL: 'refuse' });
+  const p = await applicant(env, 'refuse@example.test');
+  assert.match(await page(env, `?app=${p.app.id}`, { reviewer: 'Jordan Example' }), /Another administrator must decide it/);
+  const ack = { self_ack: '1', self_reason: 'FAMUS supervisor certificate and GMC entry checked against the originals.' };
+  assert.equal((await admin(env, { action: 'app_approve', app: p.app.id, scope: ['famus:famus-thoracic'], ...ack }, 'Jordan Example')).m, 'This looks like your own application. Another administrator must decide it.');
+  assert.equal((await admin(env, { action: 'appr_add', learner: p.sid, scope: ['famus:famus-thoracic'], ...ack }, 'J Example')).m, 'This looks like your own application. Another administrator must decide it.');
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM supervisor_approvals WHERE learner_id = ?").bind(p.sid).first()).n, 0, 'nothing written');
+  assert.equal(approvalMails('refuse@example.test').length, 0, 'no email');
+  assert.match((await admin(env, { action: 'app_approve', app: p.app.id, scope: ['famus:famus-thoracic'] }, 'Sam Second')).m, /^Approved until/);
+});
+
 test('self-approvals made before the check existed are found from the approval record', async () => {
   mail.length = 0; mode = 'ok';
   const env = makeEnv(ON);
