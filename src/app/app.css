@@ -953,4 +953,8 @@ html[data-theme="dark"] .card:not(.dark):not(.teal), html[data-theme="dark"] .re
 .gallery .kept-l { position: absolute; left: 4px; bottom: 4px; padding: 3px 8px; border-radius: 999px; background: rgba(5,11,20,.82); color: #fff; font: 600 11.5px var(--sans); }
 .kept-note { border: 1px solid var(--amber-line, #E0A33A); background: var(--amber-bg, rgba(224,163,58,.12)); border-radius: 14px; padding: 12px; margin: 0 0 10px; }
 .kept-note p { margin: 0 0 8px; font-size: 14px; }
+.kept-home .kept-meta { margin: 2px 0 0; }
+/* 1.0.14: what was typed into an unfinished form that cannot be applied, to read and copy. */
+.draft-text dt { font-weight: 600; font-size: 13px; color: var(--muted); margin-top: 10px; }
+.draft-text dd { margin: 2px 0 0; white-space: pre-wrap; -webkit-user-select: text; user-select: text; }
 .kept-home .kept-ic { color: var(--link); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--chip-teal-bg); flex: none; }
