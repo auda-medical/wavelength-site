@@ -44,6 +44,7 @@ import { normOrg } from './org-norm.js';
 import { handleSearch, searchOn } from './search.js';
 import { appEvent, activity, count, forgetLearner } from './metrics.js';
 import { actionsForSignoff } from './verification/pathways.js';
+import { acceptRequest, declineRequest, reviewState, REVIEW_STATES } from './review.js';
 
 import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady, sigKind, withSigKind, splitSigKind } from './app-util.js';
 
@@ -526,11 +527,12 @@ async function signoffInPerson(env, l, req) {
 
 async function signoffList(env, l) {
   const life = await lifecycleReady(env);
-  const { results = [] } = await env.DB.prepare(`SELECT id, method, status, created_at, expires_at, supervisor_name, supervisor_role, supervisor_reg, accreditation, basis, comment, decisions, ratings, signature, signed_at, entry_ids, supervisor_id${life ? ', returned_at, returned_reason, error_at, supervisor_snapshot' : ''} FROM signoffs WHERE learner_id = ? ORDER BY created_at DESC LIMIT 300`).bind(l.id).all();
+  const { results = [] } = await env.DB.prepare(`SELECT id, method, status, created_at, expires_at, supervisor_name, supervisor_role, supervisor_reg, accreditation, basis, comment, decisions, ratings, signature, signed_at, entry_ids, supervisor_id${life ? ', returned_at, returned_reason, error_at, supervisor_snapshot' : ''}${(await reviewCols(env)) ? ', accepted_at, declined_at, decline_reason' : ''} FROM signoffs WHERE learner_id = ? ORDER BY created_at DESC LIMIT 300`).bind(l.id).all();
   return json({ ok: true, signoffs: results.map((r) => {
-    const { supervisor_snapshot: snap, returned_at: ra, returned_reason: rr, error_at: ea, ...rest } = r;
+    const { supervisor_snapshot: snap, returned_at: ra, returned_reason: rr, error_at: ea, accepted_at: acc, declined_at: dec, decline_reason: why, ...rest } = r;
+    const state = reviewState(r);
     const p = life ? publicSnapshot(snap) : null;
-    return { ...rest, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ...splitSigKind(r.ratings), returned: ra ? { at: ra, reason: rr } : null, issuedInError: !!ea, signer: p ? { kind: p.signer, label: p.label } : null };
+    return { ...rest, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ...splitSigKind(r.ratings), returned: ra ? { at: ra, reason: rr, ...(rr === 'declined' && why ? { note: why } : {}) } : null, reviewState: state, reviewLabel: REVIEW_STATES[state], acceptedAt: acc || null, issuedInError: !!ea, signer: p ? { kind: p.signer, label: p.label } : null };
   }) });
 }
 // Returned requests (decision 3): send to another approved supervisor, or to a one-off assessor with a fresh link.
@@ -637,6 +639,10 @@ async function verify(env, url) {
   return json({ ok: true, code: so.id, learner: (check && check.learnerName) || fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand && sk !== 'typed', signatureKind: sk, method: so.method, signedAt: so.signed_at, confirmed: Object.values(dec).filter((x) => x === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })), supervisorCheck: check, ...(so.error_at ? { issuedInError: { on: String(so.error_at).slice(0, 10), notice: 'Wavelength has marked this record as issued in error. It does not count as evidence.' } } : {}) });
 }
 
+// Migration 0015 adds the review columns (worker/review.js).
+const REVIEW_COLS = new WeakMap();
+async function reviewCols(env) { const c = REVIEW_COLS.get(env.DB); if (c !== undefined) return c; let ok = true; try { await env.DB.prepare('SELECT accepted_at FROM signoffs LIMIT 0').all(); } catch { ok = false; } REVIEW_COLS.set(env.DB, ok); return ok; }
+
 // ---------- Router ----------
 // Every /api/app/* request: a request id (X-Request-Id, and in 500 messages), the app version gate, one log line.
 export async function handleApp(req, env, ctx) {
@@ -715,6 +721,8 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'supervise/signoff') return SV.superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, (so, dec, sup) => { const m = notifyLearner(env, so, dec, sup); if (ctx && ctx.waitUntil) ctx.waitUntil(m); });
     if (p === 'supervise/assessment') return SV.superviseAssessmentComplete(env, l, req);
     if (p === 'supervise/assessment/new') return SV.superviseAssessmentNew(env, l, req);
+    if (p === 'supervise/request/accept') return acceptRequest(env, l, req);
+    if (p === 'supervise/request/decline') return declineRequest(env, l, req);
     const sv = await handleSupervisorApply(env, l, req, url, p, ctx);
     if (sv) return sv;
     const pro = await handleProfessional(env, l, req, url, p);

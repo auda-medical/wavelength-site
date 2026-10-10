@@ -25,9 +25,13 @@ export async function metricsReady(env) {
 
 // Per Worker instance and UTC day. Exported for tests.
 export const budget = { day: '', beacons: 0, app: 0, ips: new Map(), seen: new Set() };
-function spend(kind) {
+// A new UTC day resets the counters. Called first by every check, so no count is lost or doubled at the boundary.
+function rollDay() {
   const d = DAY();
   if (budget.day !== d) { budget.day = d; budget.beacons = 0; budget.app = 0; budget.seen.clear(); budget.ips.clear(); }
+}
+function spend(kind) {
+  rollDay();
   const cap = kind === 'beacon' ? LIMITS.beaconsPerDay : LIMITS.appWritesPerDay;
   if (budget[kind === 'beacon' ? 'beacons' : 'app'] >= cap) return false;
   budget[kind === 'beacon' ? 'beacons' : 'app']++;
@@ -35,6 +39,7 @@ function spend(kind) {
 }
 function ipAllowed(ip) {
   if (!ip) return true;
+  rollDay();
   const min = Math.floor(Date.now() / 60e3);
   const e = budget.ips.get(ip);
   if (!e || e.min !== min) { if (budget.ips.size > 5000) budget.ips.clear(); budget.ips.set(ip, { min, n: 1 }); return true; }

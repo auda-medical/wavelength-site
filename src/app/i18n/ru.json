@@ -2379,5 +2379,12 @@
 "What {pathway} asks for, step by step, with the official sources.": "Что требует {pathway}, шаг за шагом, с официальными источниками.",
 "If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "Если вы используете VPN, проверьте, что он подключён. VPN, брандмауэр или сетевое ограничение могут мешать соединению: соблюдайте правила своей организации.",
 "VPN status not available on this phone": "Состояние VPN на этом телефоне недоступно",
-"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Похоже, устройство подключено, но Wavelength не может связаться со своим сервером. Ваши исследования остаются сохранёнными на этом устройстве. Этот телефон не сообщает приложениям, включён ли VPN."
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Похоже, устройство подключено, но Wavelength не может связаться со своим сервером. Ваши исследования остаются сохранёнными на этом устройстве. Этот телефон не сообщает приложениям, включён ли VPN.",
+"Decline this request": "Отклонить этот запрос",
+"It goes back to the learner, who can send it to someone else. Nothing in their logbook changes.": "Запрос вернётся обучающемуся, который сможет отправить его другому специалисту. В его журнале ничего не изменится.",
+"Reason": "Причина",
+"Declined. The request has gone back to the learner.": "Отклонено. Запрос возвращён обучающемуся.",
+"Under review: your supervisor has opened this request.": "На рассмотрении: руководитель открыл этот запрос.",
+"Declined by the supervisor: {note}": "Отклонено руководителем: {note}",
+"Declined by the supervisor.": "Отклонено руководителем."
 }

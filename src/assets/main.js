@@ -147,7 +147,7 @@
   });
 
   // Show form errors passed back in the address (?error=1)
-  if (/[?&]error=1/.test(location.search)) document.querySelectorAll('[data-show-on="error"]').forEach(function (el) { el.hidden = false; });
+  if (/[?&]error=(1|phone)/.test(location.search)) document.querySelectorAll('[data-show-on="error"]').forEach(function (el) { el.hidden = false; });
 
   // Newsletter: Zoho replies with JSON, so post into a hidden frame and move on to our thank-you page
   document.querySelectorAll('form[data-zoho]').forEach(function (form) {

@@ -297,7 +297,7 @@ async function adminRoute(req, env, ctx, url, p, s) {
     if (req.method === 'POST') { await facultyAdminPost(env, req); return redirect('/admin/faculty/'); }
     return page(await facultyAdminHtml(env), 'faculty');
   }
-  if (p === '/admin/departments/enquiries.csv') return csvResponse((await env.DB.prepare('SELECT * FROM department_enquiries ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'role', 'organisation', 'setting', 'training', 'topics', 'group_size', 'timing', 'details', 'contacted'], 'wavelength-department-enquiries');
+  if (p === '/admin/departments/enquiries.csv') return csvResponse((await env.DB.prepare('SELECT * FROM department_enquiries ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'enquiry_type', 'enquiry_class', 'role', 'organisation', 'setting', 'country', 'region', 'location', 'training', 'topics', 'group_size', 'timing', 'budget', 'heard', 'campaign', 'stage', 'quote_pence', 'details', 'contacted'], 'wavelength-training-enquiries');
   if (p === '/admin/departments/') {
     if (req.method === 'POST') { await departmentsAdminPost(env, req); return redirect('/admin/departments/'); }
     return page(await departmentsAdminHtml(env), 'departments');

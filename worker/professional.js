@@ -148,7 +148,7 @@ export function badgesFrom(env, st) {
     out.push({ kind: 'credential', label: `${t.label} verified`, issuer: b.name, credential: t.label, modules: moduleLabels(t, parseList(c.modules)), source: sourceText(c, `the ${b.short} record`), verifiedAt: c.verified_at, expiresOn: c.expires_on, reviewOn: c.review_on, note: 'Issued by ' + b.name + ', not by Wavelength.' });
   }
   const scopes = st.approvals.filter((a) => a.current);
-  if (scopes.length) out.push({ kind: 'wavelength-supervisor', label: 'Wavelength Verified Supervisor', issuer: 'Wavelength', scopes: scopes.map((a) => ({ pathway: a.pathway, module: a.module, label: scopeLabel(a.pathway, a.module), approvedAt: a.approved_at, reviewOn: a.review_on })) });
+  if (scopes.length) out.push({ kind: 'wavelength-supervisor', label: 'Wavelength Verified Supervisor', issuer: 'Wavelength', scopes: scopes.map((a) => ({ pathway: a.pathway, module: a.module, capacity: a.capacity || 'supervisor', capacityLabel: capacityLabel(a.capacity || 'supervisor'), label: scopeLabel(a.pathway, a.module), approvedAt: a.approved_at, reviewOn: a.review_on })) });
   return out;
 }
 
@@ -465,6 +465,8 @@ async function saveDirectory(env, l, d) {
   await env.DB.prepare(`INSERT INTO directory_profiles (learner_id, listed, display_name, profession, specialty, organisation, region, country, contact_email, show_contact, listed_at) VALUES (?,?,?,?,?,?,?,?,?,?, CASE WHEN ? = 1 THEN datetime('now') END)
     ON CONFLICT (learner_id) DO UPDATE SET listed = excluded.listed, display_name = excluded.display_name, profession = excluded.profession, specialty = excluded.specialty, organisation = excluded.organisation, region = excluded.region, country = excluded.country, contact_email = excluded.contact_email, show_contact = excluded.show_contact, updated_at = datetime('now'), listed_at = CASE WHEN excluded.listed = 1 THEN COALESCE(directory_profiles.listed_at, datetime('now')) END`)
     .bind(l.id, listed, v.display_name, v.profession, v.specialty, v.organisation, v.region, v.country, v.contact_email, v.show_contact, listed).run();
+  // Whether they accept new requests through Wavelength (migration 0015). Their own choice; default yes.
+  if (d && d.acceptingRequests !== undefined && await hasAccepting(env)) await env.DB.prepare('UPDATE directory_profiles SET accepting_requests = ? WHERE learner_id = ?').bind(d.acceptingRequests ? 1 : 0, l.id).run();
   await saveOrgId(env, 'directory_profiles', l.id, org, v.organisation, before ? before.organisation : null);
   await logEvent(env, { learnerId: l.id, subjectType: 'directory', subjectId: l.id, action: listed ? 'listed' : 'unlisted', actor: 'learner' });
   return json({ ok: true, listed: !!listed, ...el });
@@ -475,7 +477,8 @@ export async function directorySearch(env, url) {
   if (env.DIRECTORY_PUBLIC !== 'true' || !professionalOn(env)) return json({ ok: false, error: 'The supervisor directory is not open yet.' }, 404);
   if (!(await verificationReady(env))) return json({ ok: false, error: 'The supervisor directory is not open yet.' }, 404);
   const q = (k) => clip(url.searchParams.get(k), 80).toLowerCase();
-  const f = { country: q('country'), region: q('region'), text: q('q'), pathway: q('pathway'), module: q('module'), credential: q('credential'), profession: q('profession') };
+  const f = { country: q('country'), region: q('region'), text: q('q'), pathway: q('pathway'), module: q('module'), credential: q('credential'), profession: q('profession'), role: q('role'), organisation: q('organisation'), accepting: q('accepting') === '1', verification: q('verification') };
+  const acceptCol = await hasAccepting(env);
   const { results = [] } = await env.DB.prepare('SELECT * FROM directory_profiles WHERE listed = 1 ORDER BY updated_at DESC LIMIT 500').all();
   const out = [];
   for (const p of results) {
@@ -492,12 +495,26 @@ export async function directorySearch(env, url) {
     if (f.pathway && !scopes.some((s) => s.startsWith(f.pathway + ':')) && !st.credentials.some((c) => isCurrentCred(c) && String(c.programme || '').toLowerCase() === f.pathway)) continue;
     if (f.module && !scopes.some((s) => s.endsWith(':' + f.module) || (f.pathway && s === `${f.pathway}:*`)) && !st.credentials.some((c) => isCurrentCred(c) && parseList(c.modules).includes(f.module))) continue;
     if (f.credential && !st.credentials.some((c) => isCurrentCred(c) && c.credential_type === f.credential)) continue;
+    // Role: the capacity of a current approval (supervisor, trainer, mentor, local_supervisor) for the module asked about.
+    const current = st.approvals.filter((a) => a.current && (!f.pathway || a.pathway === f.pathway) && (!f.module || a.module === f.module || a.module === '*'));
+    if (f.role && !current.some((a) => (a.capacity || 'supervisor') === f.role)) continue;
+    if (f.organisation && !String(org).toLowerCase().includes(f.organisation)) continue;
+    const accepting = acceptCol ? p.accepting_requests !== 0 : true;
+    if (f.accepting && !accepting) continue;
+    if (f.verification === 'approved' && !st.approvals.some((a) => a.current)) continue;
     const dates = [...st.registrations.filter(isCurrentReg).map((r) => r.last_checked_at || r.verified_at), ...st.credentials.filter(isCurrentCred).map((c) => c.verified_at)].filter(Boolean).sort();
-    out.push({ name, profession: p.profession || (st.registrations.find(isCurrentReg) || {}).profession || '', organisation: org, region: p.region || '', country: p.country || '', specialty: p.specialty || '', badges, lastVerified: dates[dates.length - 1] || null, contact: p.show_contact ? p.contact_email : null });
+    out.push({ name, profession: p.profession || (st.registrations.find(isCurrentReg) || {}).profession || '', organisation: org, region: p.region || '', country: p.country || '', specialty: p.specialty || '', badges, roles: st.approvals.filter((a) => a.current).map((a) => ({ scope: `${a.pathway}:${a.module}`, label: scopeLabel(a.pathway, a.module), capacity: a.capacity || 'supervisor', capacityLabel: capacityLabel(a.capacity || 'supervisor') })), accepting, enrolled: true, lastVerified: dates[dates.length - 1] || null, contact: p.show_contact ? p.contact_email : null });
     if (out.length >= 50) break;
   }
-  return json({ ok: true, supervisors: out });
+  return json({ ok: true, supervisors: out, notice: 'Everyone here chose to be listed and has a Wavelength account. Being listed is not a promise that they can take on new learners: they decide each request.', external: externalDirectories() });
 }
+// The bodies' own directories, linked (never copied). People listed there may not use Wavelength.
+export function externalDirectories() {
+  const seen = new Map();
+  for (const t of CFG.credentialTypes) if (t.directory && t.directory.url && !seen.has(t.directory.url)) seen.set(t.directory.url, { name: t.directory.name, url: t.directory.url, body: (BODY[t.body] || {}).name || t.body, programme: t.programme });
+  return [...seen.values()].map((x) => ({ ...x, note: `Run by ${x.body}. People listed there may not use Wavelength, and Wavelength does not copy or republish this directory.` }));
+}
+async function hasAccepting(env) { try { await env.DB.prepare('SELECT accepting_requests FROM directory_profiles LIMIT 0').all(); return true; } catch { return false; } }
 
 // ---------- Snapshot of supervisor status at the moment of signing ----------
 // Written once, with the signature, and never changed. Later changes to the supervisor's status change what they can

@@ -2317,5 +2317,12 @@
 "What {pathway} asks for, step by step, with the official sources.": "Ce que demande {pathway}, étape par étape, avec les sources officielles.",
 "If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "Si vous utilisez un VPN, vérifiez qu'il est connecté. Un VPN, un pare-feu ou une restriction réseau peut gêner la connexion : respectez les règles de votre organisation.",
 "VPN status not available on this phone": "État du VPN non disponible sur ce téléphone",
-"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Votre appareil semble connecté, mais Wavelength ne parvient pas à joindre son serveur. Vos examens restent enregistrés sur cet appareil. Ce téléphone n'indique pas aux applications si un VPN est actif."
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Votre appareil semble connecté, mais Wavelength ne parvient pas à joindre son serveur. Vos examens restent enregistrés sur cet appareil. Ce téléphone n'indique pas aux applications si un VPN est actif.",
+"Decline this request": "Refuser cette demande",
+"It goes back to the learner, who can send it to someone else. Nothing in their logbook changes.": "La demande retourne à l’apprenant, qui peut l’envoyer à quelqu’un d’autre. Rien ne change dans son carnet.",
+"Reason": "Motif",
+"Declined. The request has gone back to the learner.": "Refusée. La demande est retournée à l’apprenant.",
+"Under review: your supervisor has opened this request.": "En cours d’examen : votre superviseur a ouvert cette demande.",
+"Declined by the supervisor: {note}": "Refusée par le superviseur : {note}",
+"Declined by the supervisor.": "Refusée par le superviseur."
 }

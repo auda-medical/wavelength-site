@@ -480,8 +480,8 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
     const c = await env.DB.prepare('SELECT * FROM credentials WHERE id = ? AND learner_id = ?').bind(sid, learnerId).first();
     if (!c) return back('Credential not found.');
     const t = TYPE[c.credential_type] || { modules: [] };
-    if (!notes) return back('Add notes or a reason.');
     if (action === 'cred_directory_check' || action === 'cred_listing_send') return directoryPost(env, f, action, c, { reviewer, actor, back, ev, decided, ctx });
+    if (!notes) return back('Add notes or a reason.');
     if (action === 'cred_approve') {
       // A credential the body lists in an official directory is verified through the directory check, which also
       // needs identity confirmed separately. Approving from evidence (for example the body's own letter) needs that

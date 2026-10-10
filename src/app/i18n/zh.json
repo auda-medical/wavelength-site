@@ -2286,5 +2286,12 @@
 "What {pathway} asks for, step by step, with the official sources.": "{pathway} 的要求，逐步说明，并附官方来源。",
 "If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "如果您使用 VPN，请检查它是否已连接。VPN、防火墙或网络限制可能影响连接：请遵守您所在机构的规定。",
 "VPN status not available on this phone": "此手机无法提供 VPN 状态",
-"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "您的设备似乎已连接，但 Wavelength 无法连接到其服务器。您的扫查仍保存在此设备上。此手机不会告诉应用是否开启了 VPN。"
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "您的设备似乎已连接，但 Wavelength 无法连接到其服务器。您的扫查仍保存在此设备上。此手机不会告诉应用是否开启了 VPN。",
+"Decline this request": "拒绝此请求",
+"It goes back to the learner, who can send it to someone else. Nothing in their logbook changes.": "请求将退回给学员，学员可以发送给其他人。其日志中的内容不会改变。",
+"Reason": "原因",
+"Declined. The request has gone back to the learner.": "已拒绝。请求已退回给学员。",
+"Under review: your supervisor has opened this request.": "审核中：您的督导已打开此请求。",
+"Declined by the supervisor: {note}": "督导已拒绝：{note}",
+"Declined by the supervisor.": "督导已拒绝。"
 }

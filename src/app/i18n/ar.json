@@ -2441,5 +2441,12 @@
 "What {pathway} asks for, step by step, with the official sources.": "ما يطلبه {pathway}، خطوة بخطوة، مع المصادر الرسمية.",
 "If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "إذا كنت تستخدم VPN، فتحقق من أنه متصل. قد يؤثر VPN أو جدار حماية أو قيد على الشبكة في الاتصال: اتبع قواعد مؤسستك.",
 "VPN status not available on this phone": "حالة VPN غير متاحة على هذا الهاتف",
-"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "يبدو أن جهازك متصل، لكن Wavelength لا يستطيع الوصول إلى خادمه. تبقى فحوصاتك محفوظة على هذا الجهاز. لا يخبر هذا الهاتف التطبيقات بما إذا كان VPN مفعّلًا."
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "يبدو أن جهازك متصل، لكن Wavelength لا يستطيع الوصول إلى خادمه. تبقى فحوصاتك محفوظة على هذا الجهاز. لا يخبر هذا الهاتف التطبيقات بما إذا كان VPN مفعّلًا.",
+"Decline this request": "رفض هذا الطلب",
+"It goes back to the learner, who can send it to someone else. Nothing in their logbook changes.": "يعود الطلب إلى المتدرب، ويمكنه إرساله إلى شخص آخر. لا يتغير شيء في سجله.",
+"Reason": "السبب",
+"Declined. The request has gone back to the learner.": "تم الرفض. عاد الطلب إلى المتدرب.",
+"Under review: your supervisor has opened this request.": "قيد المراجعة: فتح المشرف هذا الطلب.",
+"Declined by the supervisor: {note}": "رفضه المشرف: {note}",
+"Declined by the supervisor.": "رفضه المشرف."
 }

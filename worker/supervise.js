@@ -12,6 +12,7 @@ import { snapshotFor, publicSnapshot, logEvent, SIGNER_LABELS } from './professi
 import { supervisorEligibility, eligibilityError, approvalRequired, applyOn, standingOf, linkState, relationshipStage, signerBlocked, returnRequestsStmts, supervisorUnavailable, NEUTRAL_REFUSAL, areaLabels } from './supervisor-lifecycle.js';
 import { audit, auditStmt } from './audit.js';
 import { actionsForSignoff, actionsForAssessment } from './verification/pathways.js';
+import { reviewState, REVIEW_STATES } from './review.js';
 import { nowIso, parseTs } from './time.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
@@ -69,7 +70,7 @@ const publicRow = (r) => ({
   id: r.id, pathway: r.pathway, module: r.module, kind: r.kind, method: r.method, status: r.status, outcome: r.outcome, assessed_on: r.assessed_on,
   entry_ids: JSON.parse(r.entry_ids || '[]'), data: JSON.parse(r.data || '{}'), expires_at: r.expires_at, supervisor_name: r.supervisor_name,
   supervisor_role: r.supervisor_role, supervisor_reg: r.supervisor_reg, accreditation: r.accreditation, signature: r.signature, signatureKind: r.signature ? sigKind(JSON.parse(r.data || '{}')) : null, signed_at: r.signed_at, created_at: r.created_at,
-  supervisor_id: r.supervisor_id || null, returned: r.returned_at ? { at: r.returned_at, reason: r.returned_reason } : null,
+  supervisor_id: r.supervisor_id || null, returned: r.returned_at ? { at: r.returned_at, reason: r.returned_reason, ...(r.returned_reason === 'declined' && r.decline_reason ? { note: r.decline_reason } : {}) } : null, reviewState: reviewState(r), reviewLabel: REVIEW_STATES[reviewState(r)],
   amends: r.amends || null, superseded_by: r.superseded_by || null, amend_reason: r.amend_reason || null, error_note: r.error_note || null,
   signer: signerLabel(r.supervisor_snapshot),
 });

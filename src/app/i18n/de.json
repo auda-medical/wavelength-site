@@ -2317,5 +2317,12 @@
 "What {pathway} asks for, step by step, with the official sources.": "Was {pathway} verlangt, Schritt für Schritt, mit den offiziellen Quellen.",
 "If you use a VPN, check that it is connected. A VPN, firewall or network restriction may be affecting the connection: follow your organisation's rules.": "Wenn Sie ein VPN nutzen, prüfen Sie, ob es verbunden ist. Ein VPN, eine Firewall oder eine Netzwerkbeschränkung kann die Verbindung beeinträchtigen: Halten Sie sich an die Regeln Ihrer Organisation.",
 "VPN status not available on this phone": "VPN-Status auf diesem Telefon nicht verfügbar",
-"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Ihr Gerät scheint verbunden zu sein, aber Wavelength erreicht seinen Server nicht. Ihre Untersuchungen bleiben auf diesem Gerät gespeichert. Dieses Telefon teilt Apps nicht mit, ob ein VPN aktiv ist."
+"Your device appears connected, but Wavelength can't reach its server. Your scans remain saved on this device. This phone does not tell apps whether a VPN is on.": "Ihr Gerät scheint verbunden zu sein, aber Wavelength erreicht seinen Server nicht. Ihre Untersuchungen bleiben auf diesem Gerät gespeichert. Dieses Telefon teilt Apps nicht mit, ob ein VPN aktiv ist.",
+"Decline this request": "Diese Anfrage ablehnen",
+"It goes back to the learner, who can send it to someone else. Nothing in their logbook changes.": "Sie geht an die lernende Person zurück, die sie an jemand anderen senden kann. Im Logbuch ändert sich nichts.",
+"Reason": "Grund",
+"Declined. The request has gone back to the learner.": "Abgelehnt. Die Anfrage ist an die lernende Person zurückgegangen.",
+"Under review: your supervisor has opened this request.": "In Prüfung: Ihre Supervisorin oder Ihr Supervisor hat diese Anfrage geöffnet.",
+"Declined by the supervisor: {note}": "Von der Supervision abgelehnt: {note}",
+"Declined by the supervisor.": "Von der Supervision abgelehnt."
 }

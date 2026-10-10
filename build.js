@@ -124,7 +124,7 @@ const BOOK_LABEL = anyDates ? 'Book a course' : 'Register interest';
 const NAV = [
   { href: '/courses/', label: 'Courses', match: ['/courses/', '/training/'], children: [
     { href: '/courses/', label: 'Ultrasound courses', short: 'Courses', text: 'Open courses with dates and online booking.' },
-    { href: '/training/', label: 'Training for your department', short: 'For departments', text: 'A closed course or focused sessions for your team.' },
+    { href: '/training/', label: 'Tailored Training', short: 'Tailored', text: 'Training designed around individuals, groups and organisations, in the UK and beyond.' },
   ] },
   ...(posts.length || liveModules.length || liveGuides.length ? [{ href: '/learn/', label: 'Learn', match: ['/learn/', '/elearning/', '/guides/'], children: [
     ...(posts.length ? [{ href: '/learn/', label: 'Wavelength Pearls', short: 'Pearls', text: 'Free five-minute pearls, each with a short test.' }] : []),
@@ -224,7 +224,7 @@ ${body}
         <p class="foot-tag">Point-of-care ultrasound education for emergency and acute clinicians: hands-on courses, free Pearls and Wavelength Academy.</p>
       </div>
       <div><h2>Courses</h2><ul>${openCourses.map((c) => `<li><a href="/courses/${c.slug}/">${esc(c.title)}</a></li>`).join('')}<li><a href="/courses/">All courses</a></li></ul></div>
-      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">For departments</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}${liveGuides.length ? '<li><a href="/guides/">Guides</a></li>' : ''}<li><a href="/pocus-logbook/">POCUS logbook</a></li>${liveGuides.some((g) => g.slug === 'pocus-accreditation') ? '<li><a href="/guides/pocus-accreditation/">Accreditation pathways</a></li>' : ''}<li><a href="/app/get/">Wavelength app</a></li><li><a href="/verify/">Verify a certificate or sign-off</a></li><li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
+      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">Tailored training</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}${liveGuides.length ? '<li><a href="/guides/">Guides</a></li>' : ''}<li><a href="/pocus-logbook/">POCUS logbook</a></li>${liveGuides.some((g) => g.slug === 'pocus-accreditation') ? '<li><a href="/guides/pocus-accreditation/">Accreditation pathways</a></li>' : ''}<li><a href="/app/get/">Wavelength app</a></li><li><a href="/verify/">Verify a certificate or sign-off</a></li><li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li></ul>${socialIcons()}</div>
     </div>
     <div class="bottom">
@@ -548,11 +548,12 @@ pages['/'] = layout({
     <div class="rise">${mark({ size: 96, cls: 'hero-mark', draw: true, ring: '#F7F5F0' })}</div>
     <p class="eyebrow rise">Point-of-care ultrasound education</p>
     <h1 class="split-words">Tune in. <em>Gain clarity.</em></h1>
-    <p class="lede rise">Hands-on courses, free five-minute Pearls and certified e-learning for emergency and acute clinicians. Mapped to the RCEM curriculum and led by an emergency medicine consultant who has scanned since 2008 and taught ultrasound since 2010.</p>
+    <p class="lede rise">Hands-on courses, tailored training, a free ultrasound logbook, five-minute Pearls and certified e-learning for emergency and acute clinicians. Mapped to the RCEM curriculum and led by an emergency medicine consultant who has scanned since 2008 and taught ultrasound since 2010.</p>
     <div class="hero-ctas rise">
-      <a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">Explore the core course ${arrow}</a>
-      <a class="btn btn-ghost light" href="/courses/core-emergency-ultrasound/#dates">${nextDate ? 'Next date: ' + fmtDate(nextDate.d.date, { day: 'numeric', month: 'long' }) : 'Register interest'}</a>
+      <a class="btn btn-teal cta-caps" href="/courses/" data-m="home-hero-courses">Explore our courses ${arrow}</a>
+      <a class="btn btn-ghost light cta-caps" href="/app/get/" data-m="home-hero-logbook">Start your free logbook</a>
     </div>
+    ${nextDate ? `<p class="rise" style="margin-top:14px;color:#B9C4D0;font-size:15px">Next core course: <a class="text-link" style="color:var(--teal-l)" href="/courses/core-emergency-ultrasound/#dates">${fmtDate(nextDate.d.date, { day: 'numeric', month: 'long', year: 'numeric' })}</a></p>` : ''}
     <div class="hero-meta rise">
       <div><b>RCEM curriculum</b>Core emergency applications, mapped</div>
       <div><b>FAMUS-accredited instructors</b>Senior clinicians, years of experience</div>
@@ -583,6 +584,17 @@ pages['/'] = layout({
   </div>
 </section>
 
+<section class="section on-dark" style="background:var(--navy)" id="free-logbook">
+  <div class="wrap split">
+    <div><p class="eyebrow reveal" style="color:var(--teal-l)">The Wavelength logbook</p><h2 class="statement reveal" data-d="1" style="margin-top:22px;color:var(--cream)">Your ultrasound logbook. <span style="color:var(--teal-l)">Free to use. Designed for real clinical practice.</span></h2></div>
+    <div class="reveal" data-d="2">
+      <p class="lede" style="color:#D5DDE6">Scan when you work. Log when it suits you. Connect with your supervisors and see who is verified. Track your progress.</p>
+      <ul class="checklist" style="margin-top:20px;color:#D5DDE6">${['Log scans from a photo or an upload, online or offline', 'Send scans to your supervisor to review when they are free, or sign off in person', 'Track RCEM, FAMUS and FUSIC targets, or editable international frameworks', 'Export a QR-verified portfolio for your e-portfolio or appraisal'].map((x) => `<li>${tick}<span>${esc(x)}</span></li>`).join('')}</ul>
+      <div class="hero-ctas" style="margin-top:26px"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="home-logbook-start">Start your free logbook ${arrow}</a><a class="btn btn-ghost light" href="/pocus-logbook/#supervision" data-m="home-logbook-how">How supervision works</a></div>
+    </div>
+  </div>
+</section>
+
 <section class="section sand">
   <div class="wrap">
     <div class="section-head"><p class="eyebrow reveal">Ways to learn</p><h2 class="reveal" data-d="1">Ultrasound education, on the probe and online.</h2></div>
@@ -591,7 +603,6 @@ pages['/'] = layout({
       ${posts.length ? `<a class="pillar reveal" data-d="1" href="/learn/" style="text-decoration:none;color:inherit"><div class="num">Pearls</div><h3>Five-minute techniques</h3><p>${posts.length} free Wavelength Pearls, one view or pitfall at a time, each with a short test.</p><span class="text-link">Read the Pearls</span></a>` : ''}
       ${liveModules.length ? `<a class="pillar reveal" data-d="2" href="/elearning/" style="text-decoration:none;color:inherit"><div class="num">Academy</div><h3>Certified e-learning</h3><p>Free modules with lessons, clinical cases, an assessment and a CPD certificate anyone can verify online.</p><span class="text-link">Start a module</span></a>` : ''}
     </div>
-    <a class="bank-link reveal" href="/pocus-logbook/" style="margin-top:28px;background:var(--navy)"><span><span class="eyebrow" style="color:var(--teal-l)">The Wavelength app</span><strong>Your ultrasound logbook: log scans from a photo or an upload, get signed off the same day, track the verified UK pathways (RCEM, FAMUS and FUSIC) and editable international frameworks (EUSEM, ACEM, CPoCUS and ACEP), get assessed, and send QR-verified evidence to your portfolio. In nine languages. Free.</strong></span>${arrow}</a>
     ${hasAccreditationHub() ? `<a class="bank-link reveal" href="/guides/pocus-accreditation/" style="background:var(--teal-ink)"><span><span class="eyebrow" style="color:var(--cream)">Free accreditation guides</span><strong>RCEM sign-off, FAMUS and FUSIC step by step, with international pathways compared.</strong></span>${arrow}</a>` : ''}
     ${liveModules.length ? `<div class="ac-verify reveal" style="margin-top:28px"><div><h3>Certificates you can prove</h3><p>Every Academy certificate shows your name, CPD hours and a unique code. Your educational supervisor, appraiser or employer checks it online in seconds.</p></div><a class="btn btn-ghost" href="/elearning/verify/">Verify a certificate ${arrow}</a></div>` : ''}
   </div>
@@ -602,6 +613,16 @@ pages['/'] = layout({
     <div class="section-head"><p class="eyebrow reveal">The course</p><h2 class="reveal" data-d="1">Start with the core.</h2></div>
     ${courseCard(core)}
     <p class="reveal" style="margin-top:36px;color:var(--slate)">Specialist courses follow. <a class="text-link" href="${mailto(site.enquiriesEmail, 'Specialist courses: keep me informed')}">Ask to hear first</a>.</p>
+  </div>
+</section>
+
+<section class="section sand" id="tailored">
+  <div class="wrap split">
+    <div><p class="eyebrow reveal">Tailored training</p><h2 class="display reveal" data-d="1" style="font-size:clamp(36px,4.6vw,58px);margin-top:20px">Looking for ultrasound training suited to your needs?</h2></div>
+    <div class="reveal" data-d="2">
+      <p class="lede">Explore tailored teaching for individuals, groups and organisations, with flexible location options by arrangement.</p>
+      <div class="hero-ctas" style="margin-top:24px"><a class="btn btn-teal cta-caps" href="/courses/" data-m="home-tailored-courses">Explore our courses ${arrow}</a><a class="btn btn-ghost cta-caps" href="/training/" data-m="home-tailored-enquire">Enquire about tailored training</a></div>
+    </div>
   </div>
 </section>
 
@@ -683,7 +704,7 @@ function directorBlock() {
     { q: 'What is a POCUS course?', a: 'A point-of-care ultrasound (POCUS) course teaches clinicians to perform and interpret focused bedside scans that answer a clinical question, such as free fluid in trauma or an aortic aneurysm. Wavelength courses are hands-on: most of the day is spent scanning healthy models, simulators and vascular phantoms under supervision.' },
     { q: 'Are Wavelength courses accredited?', a: 'The Core Emergency Ultrasound course is mapped to the RCEM curriculum. It is not RCEM, FAMUS or FUSIC accredited. It is taught by FAMUS-accredited instructors and RCEM-approved ultrasound supervisors, and you receive a certificate of attendance for your portfolio and appraisal.' },
     { q: 'Do I need a course for RCEM sign-off?', a: 'No. Since the 2021 curriculum RCEM no longer requires a course. A course is one source of learning evidence alongside e-learning, departmental teaching, your logbook, reflections and workplace-based assessments.' },
-    { q: `Where are the courses held?`, a: `${venues.length ? `The next open course is at ${venues[0]}. ` : ''}Departments and deaneries can also book a course for their own team at their own site.` },
+    { q: `Where are the courses held?`, a: `${venues.length ? `The next open course is at ${venues[0]}. ` : ''}Individuals, groups and organisations can also ask for tailored training, with locations agreed individually.` },
   ];
   pages['/courses/'] = layout({
     title: 'Point-of-care ultrasound courses',
@@ -697,7 +718,7 @@ function directorBlock() {
     ],
     body: `${pageHero({ eyebrow: 'Courses', title: 'Ultrasound courses', lede: 'Start with the core course. Specialist courses follow, each built on the same small-group, hands-on approach.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Courses' }] })}
 <section class="section sand"><div class="wrap" style="display:grid;gap:32px">${openCourses.map((c) => courseCard(c, 'h2')).join('')}
-  <div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">Training for your department</h2><p>Run the core course or focused sessions for your team only, at your site, on dates that fit your rota.</p></div><a class="btn btn-teal" href="/training/">Ask for a proposal ${arrow}</a></div>
+  <div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">Tailored ultrasound training</h2><p>Teaching designed around your objectives, for individuals, groups and organisations, with flexible locations by arrangement. UK and international enquiries welcome.</p></div><a class="btn btn-teal cta-caps" href="/training/" data-m="courses-tailored">Enquire about tailored training ${arrow}</a></div>
   <div class="empty-dates reveal"><div><h2 class="display" style="font-size:34px;margin-bottom:8px">Specialist courses</h2><p>Further courses are in development. Tell us what you want to learn and we will let you know first.</p></div><a class="btn" href="${mailto(site.enquiriesEmail, 'Specialist courses: keep me informed')}">Keep me informed ${arrow}</a></div>
 </div></section>
 <section class="section"><div class="wrap split">
@@ -879,81 +900,111 @@ pages['/faculty/join/'] = layout({
 </div></section>`,
 });
 const TRAINING_FAQS = [
-  { q: 'Where does the training take place?', a: 'At your education centre or simulation suite, or at a venue we arrange near you. We need a room for teaching and space for scanning stations.' },
-  { q: 'Do we need to provide ultrasound machines?', a: 'We agree machines and scanning models with you when we plan the day. Teaching on the machines your team uses every shift helps learning transfer to practice.' },
-  { q: 'How much does it cost?', a: 'We quote a fixed price for the group, based on the format, the number of delegates and the faculty needed. We invoice your trust, deanery or department.' },
-  { q: 'Is the course accredited?', a: 'The core course is mapped to the RCEM curriculum. It is taught by FAMUS-accredited instructors and RCEM-approved ultrasound supervisors. Each delegate receives a certificate of attendance for their portfolio and appraisal.' },
-  { q: 'Can delegates of different grades attend together?', a: 'Yes. Mixed groups of doctors, advanced clinical practitioners and physician associates work well. Tell us the mix and we set the stations to match.' },
-  { q: 'How far ahead should we book?', a: 'Three months ahead gives time to plan rotas and study leave. Ask anyway if you need sooner, as we can sometimes fit a shorter lead time.' },
+  { q: 'Do you offer ultrasound training outside the UK?', a: 'Wavelength is based in the UK, and we welcome international training enquiries. Overseas programmes are considered individually, depending on the training requirements, location, equipment, faculty availability and practical arrangements. Please contact us with your requirements to discuss the available options.' },
+  { q: 'Can I enquire as an individual?', a: 'Yes. Individuals, small groups, clinical teams and organisations are all welcome to enquire. Tell us what you want to learn and we will suggest the most suitable option, which may be one of our open courses or a tailored session where that can be arranged.' },
+  { q: 'How is a tailored programme priced?', a: 'Each enquiry is assessed on its merits. Where we can help, we send a bespoke proposal and a quotation based on the format, the number of participants, the faculty needed, equipment, venue and any travel. There is no obligation.' },
+  { q: 'How many participants can you teach?', a: 'It depends on the format. Our hands-on teaching keeps to one instructor for every four or five participants, so larger groups need more faculty. Tell us your numbers and we will plan around them.' },
+  { q: 'Where does the training take place?', a: 'At a location agreed with you: your hospital, clinic or education centre, or a venue we arrange. Locations and arrangements are agreed individually, taking into account travel logistics and availability. We need a room for teaching and space for scanning stations.' },
+  { q: 'Do we need to provide ultrasound machines?', a: 'We agree machines and scanning models with you when we plan the training. Teaching on the machines your team uses every shift helps learning transfer to practice, and we can discuss alternatives where that is not possible.' },
+  { q: 'Which ultrasound modules can you cover?', a: 'Tell us the applications you are interested in. We confirm what we can offer, and who will teach it, in the proposal. Our open core course is mapped to the RCEM curriculum; nerve blocks are planned as a separate course.' },
+  { q: 'Is the training accredited?', a: 'The core course is mapped to the RCEM curriculum. It is taught by FAMUS-accredited instructors and RCEM-approved ultrasound supervisors. It is not RCEM, FAMUS or FUSIC accredited. Each participant receives a certificate of attendance for their portfolio and appraisal.' },
+  { q: 'How far ahead should we enquire?', a: 'Three months ahead gives time to plan rotas, study leave and travel. Ask anyway if you need sooner, as we can sometimes fit a shorter lead time.' },
 ];
-// Training for your department: in-house courses for departments and trusts. Enquiries go to worker/departments.js.
-pages['/training/'] = layout({
-  title: 'Training for your department | Point-of-care ultrasound for your team',
-  seoTitle: 'POCUS training for your emergency department',
-  pathname: '/training/',
-  description: 'Point-of-care ultrasound training for your emergency department, urgent treatment centre or acute unit: the core course or focused sessions for your team, on dates that fit your rota.',
-  jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Training for your department', href: '/training/' }])],
-  body: `${pageHero({ eyebrow: 'For departments and trusts', title: 'Training for your department.', lede: 'Bring Wavelength to your team. We run the core course or focused scanning sessions for your staff only, at your education centre or a venue we arrange, on dates that fit your rota.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Training for your department' }], extra: `<div class="hero-ctas rise"><a class="btn btn-teal" href="#enquire">Ask for a proposal ${arrow}</a><a class="btn btn-ghost light" href="#options">See the options</a></div>` })}
-<section class="section" id="options"><div class="wrap">
-  <div class="section-head"><p class="eyebrow reveal">What we offer</p><h2 class="reveal" data-d="1">Built around your team.</h2></div>
+// Tailored Ultrasound Training (/training/, the URL is kept): individuals, groups and organisations, in the UK and
+// internationally. Enquiries go to worker/departments.js; options live in worker/department-form.json.
+{
+  const opts = (xs) => xs.map((x) => `<option>${esc(x)}</option>`).join('');
+  pages['/training/'] = layout({
+    title: 'Tailored Ultrasound Training',
+    seoTitle: 'Tailored ultrasound training, UK and international',
+    pathname: '/training/',
+    description: 'Tailored, expert-led ultrasound training for individuals, groups and organisations: focused practical sessions to bespoke programmes, with UK and international enquiries welcome.',
+    jsonld: [
+      breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Tailored Ultrasound Training', href: '/training/' }]),
+      { '@context': 'https://schema.org', '@type': 'Service', name: 'Tailored ultrasound training', serviceType: 'Point-of-care ultrasound training', url: url('/training/'), provider: { '@id': url('/#org') }, audience: { '@type': 'Audience', audienceType: 'Individual healthcare professionals, groups, clinical teams, hospitals, private clinics, healthcare organisations and training institutions' }, areaServed: { '@type': 'Country', name: 'United Kingdom' }, description: 'Expert-led ultrasound training designed around the learner’s objectives. Locations and arrangements are agreed individually; international enquiries are welcome and assessed individually.' },
+      faqLd(TRAINING_FAQS),
+    ],
+    body: `${pageHero({ eyebrow: 'Tailored Ultrasound Training', title: 'Ultrasound Training Tailored to Your Needs', lede: 'From focused practical sessions to bespoke ultrasound training programmes, Wavelength offers expert-led teaching designed around your learning objectives. Whether you are enquiring as an individual, a small group or an organisation, we welcome the opportunity to discuss your requirements.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Tailored Ultrasound Training' }], extra: `<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="#enquire" data-m="training-hero-enquire">Enquire about tailored training ${arrow}</a><a class="btn btn-ghost light cta-caps" href="/courses/" data-m="training-hero-courses">Explore our courses</a></div>` })}
+<section class="section"><div class="wrap split">
+  <div><p class="eyebrow reveal">Who we teach</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">Training for individuals, <span>groups and organisations.</span></h2></div>
+  <div class="reveal" data-d="2">
+    <p class="lede">We welcome enquiries from anyone who wants to build practical point-of-care ultrasound skills with experienced clinical teachers.</p>
+    <ul class="tt-audience">${['Individual healthcare professionals', 'Doctors', 'Ultrasound practitioners', 'Small groups', 'Clinical teams', 'Hospitals', 'Private clinics', 'Healthcare organisations', 'Training institutions', 'Other professional groups'].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+  </div>
+</div></section>
+<section class="section sand" id="options"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">Ways we can help</p><h2 class="reveal" data-d="1">Built around your objectives.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:680px">What we can offer depends on your objectives, numbers and location. We confirm the format, faculty and modules in a proposal before anything is booked.</p></div>
   <div class="pillars">
-    <div class="pillar reveal"><div class="num">01</div><h3>The core course, for your team</h3><p>Our full-day core emergency ultrasound course, mapped to the RCEM curriculum, run for your staff only. Your team learns together and leaves with a shared standard.</p></div>
-    <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>Focused sessions</h3><p>Shorter, hands-on sessions on the scans your department needs most, such as lung, focused cardiac or proximal DVT. Ideal for a teaching day or a new service.</p></div>
-    <div class="pillar reveal" data-d="2"><div class="num">03</div><h3>Regional and deanery groups</h3><p>Courses for trainees, advanced clinical practitioners or physician associates across a region, with one point of contact and one invoice.</p></div>
+    <div class="pillar reveal"><div class="num">01</div><h3>Focused practical sessions</h3><p>Hands-on teaching on the scans you need most, such as lung, focused cardiac or proximal DVT, for an individual, a small group or a team.</p></div>
+    <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>A course for your group</h3><p>Our full-day core emergency ultrasound course, mapped to the RCEM curriculum, run for your group only, on dates agreed with you.</p></div>
+    <div class="pillar reveal" data-d="2"><div class="num">03</div><h3>Bespoke programmes</h3><p>A programme over several sessions, for a new service, a regional training group or an organisation building ultrasound capability.</p></div>
+  </div>
+</div></section>
+<section class="section" id="international"><div class="wrap split">
+  <div><p class="eyebrow reveal">UK and international</p><h2 class="display reveal" data-d="1" style="font-size:clamp(36px,4.8vw,58px);margin-top:20px">UK and International Training Enquiries</h2></div>
+  <div class="tt-intl reveal" data-d="2">
+    <p class="lede">Wavelength is a UK-based ultrasound education provider offering tailored training for individuals, groups and organisations.</p>
+    <p class="lede">We welcome enquiries from across the UK and internationally.</p>
+    <p class="lede">Training programmes, locations and arrangements are agreed individually, taking into account your learning objectives, group size, equipment requirements, travel logistics and availability.</p>
+    <p class="lede">Each enquiry is assessed on its merits, with a bespoke proposal and quotation provided where appropriate.</p>
   </div>
 </div></section>
 <section class="section sand"><div class="wrap split">
-  <div><p class="eyebrow reveal">Every booking includes</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,56px);margin-top:20px">The same standard as our open courses.</h2></div>
+  <div><p class="eyebrow reveal">Every programme</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,56px);margin-top:20px">The same standard as our open courses.</h2></div>
   <ul class="checklist reveal" data-d="1">${[
     'Teaching by FAMUS-accredited instructors and RCEM-approved ultrasound supervisors',
-    'One instructor to every four or five delegates, with most of the day on the probe',
-    'Content mapped to the RCEM curriculum and matched to your department',
-    'Free Wavelength Academy modules for your team before and after the day, with a certificate for each module passed',
-    'A certificate of attendance for every delegate, and an attendance and feedback summary for your education lead',
-    'A fixed quote for the group and an invoice to your trust, deanery or department',
+    'One instructor to every four or five participants, with most of the time on the probe',
+    'Content matched to your objectives; our core course is mapped to the RCEM curriculum',
+    'Free Wavelength Academy modules before and after, with a certificate for each module passed',
+    'The free Wavelength logbook for logging supervised scans and getting them signed off',
+    'A certificate of attendance for every participant, and a written proposal and quotation before you commit',
   ].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
 </div></section>
 <section class="section"><div class="wrap">
-  <div class="section-head"><p class="eyebrow reveal">How it works</p><h2 class="reveal" data-d="1">From enquiry to teaching day.</h2></div>
+  <div class="section-head"><p class="eyebrow reveal">How it works</p><h2 class="reveal" data-d="1">From enquiry to teaching.</h2></div>
   <ol class="ac-steps">${[
-    ['Tell us what you need', 'Your team, its experience, the scans you want and your preferred dates. The form below takes two minutes.'],
-    ['Agree a plan', 'We reply within five working days with a programme, faculty numbers and a fixed quote.'],
-    ['Set up the day', 'We agree the venue, ultrasound machines and scanning models with you, then send joining instructions to your delegates.'],
-    ['Teach and follow up', 'We run the day, issue certificates, and send your summary with suggested Academy modules for your team.'],
+    ['Tell us what you need', 'Who the training is for, what you want to learn, how many people, where and when. The form below takes a few minutes.'],
+    ['Receive a proposal', 'We reply within five working days. Where we can help, we send a proposal with the format, faculty and a quotation.'],
+    ['Agree the arrangements', 'We agree the location, ultrasound machines, scanning models and any travel with you, then send joining instructions.'],
+    ['Teach and follow up', 'We run the training, issue certificates and suggest Academy modules and logbook targets to keep skills growing.'],
   ].map(([h, t], i) => `<li class="reveal" data-d="${i}"><span class="ac-step-n">${i + 1}</span><h3>${h}</h3><p>${t}</p></li>`).join('')}</ol>
 </div></section>
 <section class="section sand" id="enquire"><div class="wrap split">
   <div>
-    <p class="eyebrow reveal">Ask for a proposal</p>
-    <h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,56px);margin:20px 0 24px">Tell us about your team.</h2>
+    <p class="eyebrow reveal">Enquire about tailored training</p>
+    <h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,56px);margin:20px 0 24px">Tell us what you need.</h2>
     <p class="lede reveal" data-d="2">There is no obligation. We read every enquiry and reply within five working days.</p>
-    <aside class="callout reveal" style="margin-top:36px"><p class="callout-title">Questions first?</p><p>Email <a class="text-link" href="${mailto(site.enquiriesEmail, 'Training for our department')}">${site.enquiriesEmail}</a> and we reply within two working days.</p></aside>
+    <aside class="callout reveal" style="margin-top:36px"><p class="callout-title">Questions first?</p><p>Email <a class="text-link" href="${mailto(site.enquiriesEmail, 'Tailored ultrasound training')}">${site.enquiriesEmail}</a> and we reply within two working days.</p></aside>
   </div>
-  <form class="form" method="post" action="/api/training/enquire">
-    <p class="form-error" data-show-on="error" hidden>Please complete the required fields and tick the privacy box.</p>
+  <form class="form" method="post" action="/api/training/enquire" data-m-form="training">
+    <p class="form-error" data-show-on="error" hidden>Please complete the required fields, check your phone number and tick the privacy box.</p>
     <div class="sub-row"><label>First name<input name="first_name" autocomplete="given-name" required maxlength="80"></label><label>Last name<input name="last_name" autocomplete="family-name" required maxlength="80"></label></div>
-    <div class="sub-row"><label>Work email<input name="email" type="email" autocomplete="email" required maxlength="160"></label><label>Phone (optional)<input name="phone" type="tel" autocomplete="tel" maxlength="40"></label></div>
-    <div class="sub-row"><label>Your role<select name="role"><option value="">Choose one</option>${DEPT_FORM.roles.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label><label>Setting<select name="setting"><option value="">Choose one</option>${DEPT_FORM.settings.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label></div>
-    <label>Trust, hospital or organisation<input name="organisation" autocomplete="organization" required maxlength="200"></label>
-    <fieldset class="vol-dates"><legend>What are you looking for?</legend>${boxes('training', DEPT_FORM.training)}</fieldset>
-    <fieldset class="vol-dates"><legend>Scans your team wants to learn (optional)</legend>${boxes('topics', DEPT_FORM.topics)}</fieldset>
-    <div class="sub-row"><label>Number of staff<select name="group_size" required><option value="">Choose one</option>${DEPT_FORM.sizes.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label><label>Preferred dates (optional)<input name="timing" maxlength="200" placeholder="For example, March 2027, weekdays"></label></div>
-    <label>Anything else we should know (optional)<textarea name="details" maxlength="3000" rows="5" placeholder="Your team's experience, the machines you have, a service you are setting up, or a budget to work to."></textarea></label>
+    <div class="sub-row"><label>Email<input name="email" type="email" autocomplete="email" required maxlength="160"></label><label>Phone (optional)<input name="phone" type="tel" autocomplete="tel" maxlength="40" inputmode="tel"><span class="hint">Include the country code if you are outside the UK</span></label></div>
+    <div class="sub-row"><label>I am enquiring for<select name="enquiry_type" required><option value="">Choose one</option>${opts(DEPT_FORM.types.map((t) => t.label))}</select></label><label>Your professional role<select name="role"><option value="">Choose one</option>${opts(DEPT_FORM.rolesShown)}</select></label></div>
+    <div class="sub-row"><label>Organisation (if applicable)<input name="organisation" autocomplete="organization" maxlength="200"></label><label>Clinical setting (optional)<select name="setting"><option value="">Choose one</option>${opts(DEPT_FORM.settings)}</select></label></div>
+    <div class="sub-row"><label>Country<select name="country" required autocomplete="country-name">${DEPT_FORM.countries.map((c, i) => `<option${i === 0 ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label><label>Preferred training location (optional)<input name="location" maxlength="200" placeholder="For example, your hospital, a city, or flexible"></label></div>
+    <fieldset class="vol-dates"><legend>What are you looking for?</legend>${boxes('training', DEPT_FORM.trainingShown)}</fieldset>
+    <fieldset class="vol-dates"><legend>Ultrasound modules you are interested in (optional)</legend>${boxes('topics', DEPT_FORM.topicsShown)}<p class="form-note" style="margin:8px 0 0">We confirm which modules we can offer, and who will teach them, in our proposal.</p></fieldset>
+    <div class="sub-row"><label>Approximate number of participants<select name="group_size" required><option value="">Choose one</option>${opts(DEPT_FORM.sizesShown)}</select></label><label>Preferred dates (optional)<input name="timing" maxlength="200" placeholder="For example, March 2027, weekdays"></label></div>
+    <div class="sub-row"><label>Budget range (optional)<select name="budget"><option value="">Prefer not to say</option>${opts(DEPT_FORM.budgets)}</select></label><label>How did you hear about us? (optional)<select name="heard"><option value="">Choose one</option>${opts(DEPT_FORM.heard)}</select></label></div>
+    <label>Additional requirements (optional)<textarea name="details" maxlength="3000" rows="5" placeholder="Your learning objectives, experience, the machines you have, a service you are setting up, or anything else we should know."></textarea></label>
+    <input type="hidden" name="campaign" value="">
     <label class="ac-hp" aria-hidden="true">Leave blank<input name="wl_trap" tabindex="-1" autocomplete="off"></label>
     <label class="consent"><input type="checkbox" name="confirm_privacy" value="yes" required><span>Wavelength stores my details to answer this enquiry, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
-    <div><button class="btn btn-teal" type="submit">Send my enquiry ${arrow}</button></div>
+    <div><button class="btn btn-teal cta-caps" type="submit">Send my enquiry ${arrow}</button></div>
   </form>
 </div></section>
 <section class="section"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal">Questions</p><h2 class="reveal" data-d="1">Before you ask.</h2></div>
   ${faqHtml(TRAINING_FAQS)}
 </div></section>`,
-});
+  });
+}
 pages['/training/thanks/'] = layout({
   title: 'Enquiry received',
   pathname: '/training/thanks/',
   noindex: true,
-  body: `${pageHero({ eyebrow: 'Training for your department', title: 'Thank you.', lede: 'We have your enquiry. A member of the faculty replies within five working days with a plan and a quote.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Training for your department', href: '/training/' }, { label: 'Thank you' }], extra: '<div class="hero-ctas rise"><a class="btn btn-teal" href="/elearning/">Explore the Academy</a><a class="btn btn-ghost light" href="/">Home</a></div>' })}`,
+  body: `${pageHero({ eyebrow: 'Tailored Ultrasound Training', title: 'Thank you.', lede: 'We have your enquiry. A member of the team replies within five working days, with a proposal and quotation where we can help.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Tailored Ultrasound Training', href: '/training/' }, { label: 'Thank you' }], extra: '<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="/courses/">Explore our courses</a><a class="btn btn-ghost light cta-caps" href="/app/get/">Start your free logbook</a></div>' })}`,
 });
 pages['/faculty/join/thanks/'] = layout({
   title: 'Application received',
@@ -994,7 +1045,7 @@ ${ctaBand()}`,
 pages['/contact/'] = layout({
   title: 'Contact | Ultrasound course bookings',
   pathname: '/contact/',
-  description: 'Contact Wavelength about ultrasound course bookings, invoices for trusts and deaneries, group bookings and faculty roles.',
+  description: 'Contact Wavelength about ultrasound course bookings, tailored training for individuals, groups and organisations, invoices and faculty roles.',
   jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Contact', href: '/contact/' }])],
   body: `${pageHero({ eyebrow: 'Contact', title: 'Get in touch.', lede: 'Questions about a course, an invoice for your trust, a group booking or joining the faculty. We reply within two working days.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Contact' }] })}
 <section class="section">
@@ -1003,7 +1054,7 @@ pages['/contact/'] = layout({
       <a class="contact-card reveal" href="mailto:${site.bookingsEmail}"><p class="eyebrow">Bookings and invoices</p><h2>${site.bookingsEmail}</h2><p>Places, payments, invoices and transfers.</p><span class="text-link">Email bookings</span></a>
       <a class="contact-card reveal" data-d="1" href="mailto:${site.enquiriesEmail}"><p class="eyebrow">General enquiries</p><h2>${site.enquiriesEmail}</h2><p>Course content, group bookings, faculty and partnerships.</p><span class="text-link">Email us</span></a>
     </div>
-    <div class="empty-dates reveal" style="margin-top:40px"><div><h3>Training for your team?</h3><p>We run the core course or focused sessions for departments, trusts and deaneries.</p></div><a class="btn btn-teal" href="/training/">Ask for a proposal ${arrow}</a></div>
+    <div class="empty-dates reveal" style="margin-top:40px"><div><h3>Tailored ultrasound training</h3><p>For individuals, groups and organisations, in the UK and internationally. Tell us what you need and we send a proposal.</p></div><a class="btn btn-teal cta-caps" href="/training/" data-m="contact-tailored">Enquire about tailored training ${arrow}</a></div>
     <div class="empty-dates reveal" style="margin-top:40px"><div><h3>Want to teach with us?</h3><p>Tell us about your ultrasound experience and credentials, and we will be in touch.</p></div><a class="btn" href="/faculty/join/">Apply to join the faculty ${arrow}</a></div>
   </div>
 </section>
@@ -1762,14 +1813,29 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
       title: 'Your portfolio, tailored to <em>your accrediting body.</em>',
       lede: 'For supported UK pathways, Wavelength arranges your scans, assessments and sign-offs around published portfolio requirements. International trackers provide editable starting frameworks that you can adapt to your local requirements. Export as PDF, Excel or CSV with a QR-verified summary.',
       crumbs: [{ label: 'Home', href: '/' }, { label: 'POCUS logbook' }],
-      extra: `<div class="hero-ctas rise"><a class="btn btn-teal" href="/app/get/">Get the free app ${arrow}</a><a class="btn btn-ghost light" href="/app/">Open in your browser</a></div>
+      extra: `<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="logbook-hero-start">Start your free logbook ${arrow}</a><a class="btn btn-ghost light" href="/app/" data-m="logbook-hero-browser">Open in your browser</a></div>
       <div class="hero-meta rise"><div><b>Free</b>Logbook, sign-off and exports</div><div><b>${PATHWAYS.filter((p) => p.region === 'UK').length} UK pathways</b>Plus editable international frameworks</div><div><b>Nine languages</b>Exports in English</div><div><b>Photos stay on your phone</b>Only the written record syncs</div></div>`,
     })}
 <section class="section"><div class="wrap split">
   <div><p class="eyebrow reveal">What it is</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">A free POCUS logbook that builds <span>your portfolio as you scan.</span></h2></div>
   <div class="reveal" data-d="2">
     <p class="lede">Wavelength is a point-of-care ultrasound logbook for doctors, advanced clinical practitioners, physician associates, nurses and other clinicians learning bedside ultrasound. You record each scan on your phone, your supervisor signs it off, assessments sit beside the scans they cover, and your progress against your pathway updates as you go.</p>
-    <p class="lede" style="margin-top:18px">When you are ready, you export a portfolio your supervisor, ARCP panel or accrediting body can check online. It is free, works offline, and runs in your browser or from your home screen on iPhone and Android.</p>
+    <p class="lede" style="margin-top:18px">When you are ready, you export a portfolio your supervisor, ARCP panel or accrediting body can check online. It is free to use, works offline, and runs in your browser or from your home screen on iPhone and Android.</p>
+  </div>
+</div></section>
+<section class="section sand" id="supervision"><div class="wrap split">
+  <div><p class="eyebrow reveal">Scanning on a busy shift</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">Ultrasound training shouldn't stop <span>when your supervisor isn't available.</span></h2>
+    <p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">You scan when the patient needs it. Your supervisor may be on a different shift, in resus, or at another site. Paper sheets go missing, review never quite happens, and the logbook falls behind.</p></div>
+  <div class="reveal" data-d="2">
+    <ul class="checklist">${[
+      ['Log when it suits you', 'Record the scan during the shift or afterwards, from a photo or an upload, with the findings and how you were supervised. It saves on your phone even without signal.'],
+      ['Choose the right supervisor', 'Invite the supervisors you work with. The app shows whether each one is a Wavelength Verified Supervisor, and for which pathway modules.'],
+      ['Send for review', 'Send scans to a linked supervisor’s dashboard, or a secure link to anyone who supervised you. They review when they are free, from their own phone.'],
+      ['Get feedback', 'Your supervisor confirms each scan or queries it with a comment, rates image quality and accuracy if they wish, and can record a structured assessment.'],
+      ['See your progress', 'Every sign-off and assessment updates your pathway targets, so you always know what is left.'],
+    ].map(([h, t]) => `<li>${tick}<span><b>${esc(h)}.</b> ${esc(t)}</span></li>`).join('')}</ul>
+    <p class="source" style="margin-top:18px">Remote review of a written record and images does not replace directly supervised scanning, observed procedures or the assessments your pathway requires, and a supervisor decides what they review and when. Sign-off in Wavelength records your supervisor’s decision; accreditation stays with your accrediting body.</p>
+    <p style="margin-top:22px"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="logbook-story-start">Start your free logbook ${arrow}</a></p>
   </div>
 </div></section>
 <section class="section sand"><div class="wrap">
@@ -1824,20 +1890,23 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
 const legal = {
   '/privacy/': {
     title: 'Privacy notice',
-    updated: '2026-10-06',
+    updated: '2026-10-10',
     body: `<p>This notice explains how ${site.company}, trading as Wavelength ("we"), collects and uses your personal data. We are the data controller for the data described here${site.registeredOffice ? `. Our registered office is ${site.registeredOffice}` : ''}${site.icoNumber ? ` and are registered with the Information Commissioner's Office under number ${site.icoNumber}` : ''}.</p>
 <h2>What we collect</h2><ul><li>Your name, email address, phone number, job title, grade and workplace when you book or contact us, and your GMC, NMC or HCPC number if you choose to give it.</li><li>Your first name, email address and role when you subscribe to our newsletter.</li><li>Payment details, which Stripe processes on our behalf. We never see or store your full card number.</li><li>Dietary or access requirements you choose to tell us, so we can run the day safely.</li><li>Your name, contact details, role, organisation and availability when you volunteer as a scanning model.</li><li>Your title, name, email address, role and workplace when you register for Wavelength Academy, with your assessment answers, scores, certificates and any feedback you give.</li><li>If you use the Wavelength app: your account details, a securely hashed password, the pathways and targets you choose, the written entries in your scan logbook, and supervisor sign-offs (the supervisor's name, role, any registration number, email and signature they give).</li></ul>
 <h2>Why we use it</h2><ul><li>To manage your booking, send joining instructions and issue your certificate (contract).</li><li>To keep financial records as the law requires (legal obligation).</li><li>To send you our newsletter, where you have subscribed (consent).</li><li>To arrange volunteer scanning sessions, where you have signed up as a volunteer.</li><li>To run Wavelength Academy: mark your assessments, and issue, email and verify your certificates (contract, providing the learning you signed up for).</li><li>To tell delegates who have booked with us about similar future courses, unless they opted out when booking or later (our legitimate interests, under the soft opt-in rule in the Privacy and Electronic Communications Regulations).</li></ul>
 <h2>Our newsletter</h2><p>When you subscribe, we send you an email asking you to confirm. We add you to the list only after you click the confirmation link. Each newsletter carries an unsubscribe link, and you can also unsubscribe by emailing <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. We use your role to send you content relevant to your practice. Our newsletter service records whether you open an email and which links you click, so we can see which content helps clinicians most. We never sell or share your details for others' marketing.</p>
 <h2>Volunteer scanning models</h2><p>We use volunteers' details to arrange scanning sessions on our courses (our legitimate interests in running the course, and your agreement to take part). We do not ask for health information. Scans on our courses are for teaching, not diagnosis. If faculty notice something unexpected, they tell you privately and advise you to see your GP, and we do not record it. We keep volunteer details for up to two years after your last session, or until you ask us to delete them.</p>
-<h2>Department training enquiries</h2><p>If you ask about training for your department, we store your name, work contact details, role, organisation and the details of your enquiry. We use them only to answer your enquiry and plan any training you book (legitimate interests). We keep enquiries for two years, then delete them, unless they lead to a booking, when we keep them with our booking records.</p><h2>Faculty applications</h2><p>If you apply to teach with us, we store your name, contact details, professional registration number if you give it, and the ultrasound experience and credentials you describe. We use them only to consider your application and contact you about faculty work (legitimate interests). We keep applications for two years, then delete them, unless you join the faculty or ask us to delete them sooner.</p>
+<h2>Tailored training enquiries</h2><p>If you ask about tailored training, we store your name, contact details, professional role, who the training is for, any organisation, your country and preferred location, the training and modules you are interested in, participant numbers, preferred dates, any budget range and how you heard about us, with the details you write. If you arrived from a link in one of our posts or emails, we also store that link's campaign label (for example 2026-11-flagship-film), which says nothing about you. We use them only to answer your enquiry, prepare a proposal and plan any training you book, and to see which of our activities lead to enquiries (legitimate interests). We keep enquiries for two years, then delete them, unless they lead to a booking, when we keep them with our booking records.</p><h2>Faculty applications</h2><p>If you apply to teach with us, we store your name, contact details, professional registration number if you give it, and the ultrasound experience and credentials you describe. We use them only to consider your application and contact you about faculty work (legitimate interests). We keep applications for two years, then delete them, unless you join the faculty or ask us to delete them sooner.</p>
 <h2>Wavelength Academy</h2><p>Registration for Academy modules is free. Joining our newsletter is optional: tick the box if you want it, and leave at any time without losing access to your certificates. We email your certificate through Zoho ZeptoMail when you pass. Each certificate carries a code. Anyone who has the code, such as an employer or appraiser you share it with, can see the name, module, CPD hours and date on our verification page. Your score stays private to you. We keep Academy records for six years after your last activity, so certificates stay verifiable, unless you ask us to delete them sooner.</p>
 <h2>Wavelength app and logbook</h2><p>We store your account and the written entries in your logbook so they sync between your devices and your supervisor can sign them off (contract, providing the service you signed up for). <b>We never see your scan photos.</b> They stay on your device and in backup files you save to your own storage, such as iCloud Drive, Google Drive or OneDrive, which you control. If you choose to include images or short clips (up to 10 seconds, with sound removed) in a sign-off link, your phone encrypts them before upload and the key travels only inside the link, so we store files we cannot open. We hold them only until your supervisor signs, you cancel the request or 14 days pass, whichever comes first, then delete them. Our basis is legitimate interests: making remote sign-off reliable. We assessed this feature in a data protection impact assessment. The logbook must not contain patient-identifiable information. You are responsible for what you enter and photograph, as set out in the <a class="text-link" href="/app-terms/">logbook terms of use</a>. When a supervisor completes a sign-off link, we email you the number of scans signed or queried and the sign-off code, never findings, unless you turn these emails off in the app. When a supervisor signs off scans, we keep their details with the sign-off so anyone with the sign-off code can confirm it: the code shows the learner's name, supervisor's name and role, the date and the scan types and dates, never findings or images. When you choose to add a verified summary to an export, we store a snapshot of your progress (your name, grade or role, organisation, the period, scan counts per pathway and module, supervised and signed-off counts, and sign-off codes) so anyone with its code can check it. It holds no findings, reflections or images. You can withdraw a summary in the app at any time, after which its code shows as withdrawn. We keep logbook data while your account is open. When an assessor completes a structured assessment for you, we keep the assessment (pathway module, type, domain ratings, outcome, written feedback, the assessor's name, role, stated accreditation and signature) so it counts towards your targets and anyone with its code can confirm the type, outcome, date and assessor, never the feedback. If you link a supervisor to your account, they see your progress and the written entries in your logbook, never your photos or clips, and the sign-off and assessment requests you send them, until you or they remove the link (legitimate interests: supporting supervised training you asked for). A supervisor's ratings of image quality and diagnostic accuracy are kept with the sign-off. Short clips you record stay on your device like photos. When you save a scan, your phone stores a fingerprint (a SHA-256 hash) of each image and clip with the written entry, never the image itself, so a sign-off covers the images your supervisor saw. A supervisor who cannot sign on a touch screen may type their name instead, and the record says it was typed. You can export it at any time and delete your account from the app, which deletes your logbook, sign-offs, assessments, supervisor links and verified summaries.</p>
 <h2>Supervisor verification</h2><p>If you apply in the app to become a Wavelength Verified Supervisor, we store your application: your name and email, your professional registration (the regulator and number), your ultrasound experience in broad bands, the areas you ask to supervise, any credentials, evidence files or written explanation you give, and our decision. We use them to decide, renew and, where needed, end your approval, and to show whether a signer was approved when they signed (legitimate interests: making supervised sign-off trustworthy for learners, their supervisors and the bodies that review their portfolios). We check registrations by hand against each regulator's public register; we do not scrape registers or make automated decisions about you. Only the Wavelength verification team sees your evidence files, and we delete them 30 days after the decision. Applications left unfinished for 90 days are deleted. Approval lasts up to 12 months. We email you before it ends and when its status changes. Learners you supervise see your name, the areas you are approved for and whether your approval is current. Public verification pages show only whether the signer was a Wavelength Verified Supervisor, a Wavelength account holder not approved at the time, or self-declared, never registration numbers. Each sign-off and assessment keeps a record of what was true when it was signed, which does not change if your approval later ends. We keep a pseudonymised record of approval decisions for six years, a security log of administrative actions for two years and email delivery records for one year. People who sign without an approved account are recorded as they declared themselves (name, role and any registration number they type), not as checked by us.</p>
 <h2>Who we share it with</h2><p>Stripe for payments, Zoho for our email, newsletter and mailing list, and Cloudflare for our website. Each acts under contract as our processor and protects your data. We do not sell your data.</p>
 <h2>Where your data is processed</h2><p>We store your data with processors in the UK and the European Economic Area where we can. Some of them, such as Stripe and Cloudflare, also process data in the United States and other countries. Where data leaves the UK or the EEA, it is protected by the UK International Data Transfer Addendum or the EU Standard Contractual Clauses in our processors' contracts, or by the UK-US data bridge and the EU-US Data Privacy Framework where the processor is certified under them.</p>
 <h2>Automated marking</h2><p>Wavelength Academy marks assessments automatically against a fixed answer key and issues a certificate when you reach the pass mark. This has no legal or similar effect on you. If you think a result is wrong, email us and a member of faculty will review it.</p>
-<h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies. The private volunteer area sets one login cookie, which it needs to work, and removes it when you log out or after 12 hours. Wavelength Academy and the Wavelength app share one login cookie to keep you signed in, for up to 180 days or until you log out. The app stores your logbook, photos and settings in your browser's storage on your device so it works offline. Academy lesson pages remember which lessons you have opened in your browser's storage, on your device only. Cloudflare, which protects this website, sets a short-lived security cookie on some visits to tell people from automated traffic. All of these are strictly necessary to run the service you ask for, so UK and EU law does not require a cookie consent banner. If we ever add analytics or marketing cookies, we will ask for your consent first. Stripe sets its own cookies on its payment pages, under Stripe's privacy policy.</p>
+<h2>Measuring how the website and app are used</h2><p>To improve the website and the app, we count how they are used, in aggregate only. When a page loads, your browser sends us the page address, the website that linked to it (the site name only) and any campaign tags in the link. Our server adds your country from your internet address and the broad type of device (phone, tablet or computer) from your browser, then adds one to daily totals. We store no cookies or identifiers for this, keep no record of your internet address, never recognise you on a later visit and never follow you to other websites. If you arrived from one of our tagged links, the link's campaign label is kept in your browser for that tab only, so an enquiry or booking in the same visit can be credited to the post that led to it. We do not share these figures with anyone. In the app, our server counts completed actions, such as accounts created or sign-offs completed, and records the days each account uses the app, so we can see whether people keep finding it useful; we keep those daily records for 13 months, then keep only totals, and we delete them when you delete your account. None of this ever includes scan findings, images or anything you write. Our legal basis is our legitimate interest in improving our services; for the website this relies on the exception in the Privacy and Electronic Communications Regulations for statistics that improve a website, so it needs no consent banner, but you can object at any time: <button type="button" class="btn btn-ghost small" data-measure-toggle aria-pressed="true">Turn off measurement on this device</button> <span data-measure-state class="small"></span> Your browser's Global Privacy Control or Do Not Track setting is also respected. Turning measurement off stores one setting in your browser so we can remember your choice.</p>
+<h2>Course bookings and payments</h2><p>When you book through Stripe, Stripe tells our server that a payment for a course date succeeded, was refunded or was cancelled, with the amount and Stripe's own references. We record that in our booking records without your name or email address, which stay with Stripe and in our email. We use the records to count places, run the course and keep the financial records the law requires.</p>
+<h2>Checking supervisor credentials</h2><p>If you ask us to verify a credential that a professional body publishes in its own directory (such as the Society for Acute Medicine's FAMUS supervisor directory or the Intensive Care Society's FUSIC directory), a member of our team looks you up in that directory by hand and records what it shows. Because a matching name is not proof of identity, we may also email the address that directory lists for you, asking you to confirm that the Wavelength account is yours; we store that address only in a scrambled (hashed) form. We never copy or republish these directories. Being listed in a body's directory, or verified by us, does not mean that body endorses Wavelength.</p>
+<h2>Cookies</h2><p>This website uses no analytics, tracking or advertising cookies. The private volunteer area sets one login cookie, which it needs to work, and removes it when you log out or after 12 hours. Wavelength Academy and the Wavelength app share one login cookie to keep you signed in, for up to 180 days or until you log out. The app stores your logbook, photos and settings in your browser's storage on your device so it works offline. Academy lesson pages remember which lessons you have opened in your browser's storage, on your device only. Cloudflare, which protects this website, sets a short-lived security cookie on some visits to tell people from automated traffic. All of these are strictly necessary to run the service you ask for, so UK and EU law does not require a cookie consent banner. The measurement described above sets no cookies. If we ever add analytics or marketing cookies, we will ask for your consent first. Stripe sets its own cookies on its payment pages, under Stripe's privacy policy.</p>
 <h2>How long we keep it</h2><p>Booking and attendance records for six years, to meet accounting rules and to confirm attendance for appraisal or revalidation. Newsletter details until you unsubscribe. After you unsubscribe, we keep your email address on a suppression list so we do not email you again.</p>
 <h2>Your rights</h2><p>You have the right to access, correct or delete your data, to object to or restrict its use, to withdraw consent at any time, and to data portability. Email <a class="text-link" href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a>. If you are unhappy with our response, you can complain to the Information Commissioner's Office at ico.org.uk. If you live in the European Union or the European Economic Area, you can also complain to the data protection authority in your country. We reply to requests within one month.</p>`,
   },
@@ -2046,6 +2115,11 @@ ${body}
     ${liveModules.length ? pill('03', t('home', 'wayAcademy'), t('home', 'wayAcademyText'), '/elearning/', t('home', 'wayAcademyLink'), 2) : ''}
     ${pill('04', t('home', 'wayCourses'), t('home', 'wayCoursesText'), '/courses/', t('home', 'wayCoursesLink'), 3)}
   </div>
+</div></section>
+<section class="section" id="tailored"><div class="wrap split">
+  <div><p class="eyebrow reveal">${esc(t('home', 'tailoredEyebrow'))}</p><h2 class="display reveal" data-d="1" style="font-size:clamp(34px,4.4vw,54px);margin-top:20px">${esc(t('home', 'tailoredTitle'))}</h2></div>
+  <div class="reveal" data-d="2"><p class="lede">${esc(t('home', 'tailoredText'))}</p><p class="small" style="color:var(--slate);margin-top:10px">${esc(t('home', 'tailoredLanguage'))}</p>
+    <div class="hero-ctas" style="margin-top:22px"><a class="btn btn-teal cta-caps" href="/training/" hreflang="en" data-m="intl-home-tailored">${esc(t('home', 'tailoredLink'))} ${arrow}</a><a class="btn btn-ghost cta-caps" href="/courses/" hreflang="en" data-m="intl-home-courses">${esc(t('home', 'tailoredCourses'))}</a></div></div>
 </div></section>
 <section class="section"><div class="wrap split">
   <div><p class="eyebrow reveal">${esc(t('home', 'pathEyebrow'))}</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">${esc(t('home', 'pathTitle'))}</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">${esc(t('home', 'pathIntro'))}</p></div>
