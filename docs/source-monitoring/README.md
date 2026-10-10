@@ -63,7 +63,7 @@ Status: **built and tested; ready for deployment approval.** Directory sync stay
 | `b2e8814` | Merge of the release branch (`7f2c249`: "Verified on" is the UK date) |
 | `66eed61` | Free-plan CPU fit (one source per run), `last_outcome`, accepting a held fall, Android/iPhone patch, app browser check |
 | `b87bbcf` | Objections, retention limits for directory data |
-| (this commit) | Documents, app check of autocomplete, CLAUDE.md |
+| `373379f` | Documents, app patch with directory search, app check of autocomplete, CLAUDE.md |
 
 New: `worker/monitor/` (`run.js`, `extract.js`, `classify.js`, `directory.js`, `api.js`, `admin.js`, `claims-admin.js`, `sources.json`), `data/monitor-sources.json`, `migrations/0016_source_monitoring.sql`, `test/source-monitor.test.mjs`, `tools/e2e-monitor.mjs`, `tools/e2e-app-guides.mjs`, `tools/i18n/batch-source-monitor.json`, `docs/source-monitoring/`.
 
