@@ -759,7 +759,7 @@
   // Called on every address change, before the new screen is drawn: the page still shows the screen being left.
   function navArrive(from, to) {
     var m = $('main', app);
-    if (m) navMem[navKey(from)] = { hash: from, y: window.pageYOffset, open: $$('details', m).map(function (d) { return d.open; }) };
+    if (m) navMem[navKey(from)] = { hash: from, y: window.pageYOffset, at: navAnchor(m), open: $$('details', m).map(function (d) { return d.open; }) };
     navTrail[navTrail.length - 1] = from; // its own address may have changed in place (a filter, a search)
     var key = navKey(to), i = -1, j;
     for (j = navTrail.length - 2; j >= 0; j--) if (navKey(navTrail[j]) === key) { i = j; break; }
@@ -773,9 +773,28 @@
     // The back arrow names the bare screen; the filters and search it was left with come back with it.
     if (mem && mem.hash !== to && to.indexOf('?') < 0 && mem.hash.indexOf('?') >= 0) history.replaceState(null, '', mem.hash);
     navTrail[i] = location.hash;
-    if (mem) navRestore = { key: key, y: mem.y, open: mem.open, until: Date.now() + 2000 };
+    if (mem) navRestore = { key: key, y: mem.y, at: mem.at, open: mem.open, until: Date.now() + 2000 };
     return true;
   }
+  // The element at the top of the visible screen (just under the header), as its place in the screen's markup, and
+  // how far down the screen it is. Restoring puts that element back at that height, so a banner shown above the
+  // list on one visit and not the other (the connection banner appears a moment after a screen is drawn) does not
+  // move the list. Never a banner itself: the next point down is tried.
+  function navAnchor(m) {
+    var head = $('header.top'), hb = head ? head.getBoundingClientRect().bottom : 0;
+    for (var dy = 12; dy < 260; dy += 60) {
+      var el = document.elementFromPoint(window.innerWidth / 2, Math.min(window.innerHeight - 1, hb + dy));
+      if (!el || !m.contains(el) || el === m || el.closest('[data-syncbanner], .upd')) continue;
+      var path = [];
+      for (var n = el; n && n !== m; n = n.parentElement) path.unshift(Array.prototype.indexOf.call(n.parentElement.children, n));
+      return { path: path, kind: navKind(el), top: el.getBoundingClientRect().top };
+    }
+    return null;
+  }
+  // The same element on the redrawn screen (same place in the markup, same kind), or null while it is not there yet.
+  function navFind(m, at) { var n = m; for (var i = 0; n && i < at.path.length; i++) n = n.children[at.path[i]]; return n && n !== m && navKind(n) === at.kind ? n : null; }
+  // An element's tag and classes, without the passing classes of the reveal animation.
+  function navKind(el) { return el.tagName + '.' + String(el.getAttribute('class') || '').replace(/\b(rv|in)\b/g, '').replace(/\s+/g, ' ').trim(); }
   // Puts back open sections and the scroll position. If the content is not all there yet (still loading), it scrolls as
   // far as it can and finishes when the content arrives; the learner's own touch, wheel or key cancels it.
   function applyRestore() {
@@ -785,8 +804,9 @@
     var ds = $$('details', m);
     (r.open || []).forEach(function (o, i) { if (o && ds[i] && !ds[i].open) ds[i].open = true; });
     var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    window.scrollTo(0, Math.min(r.y, max));
-    if (max >= r.y - 1) navRestore = null;
+    var el = r.at ? navFind(m, r.at) : null, y = el ? Math.round(window.pageYOffset + el.getBoundingClientRect().top - r.at.top) : r.y;
+    window.scrollTo(0, Math.max(0, Math.min(y, max)));
+    if (max >= y - 1) navRestore = null;
   }
   ['touchstart', 'wheel', 'keydown'].forEach(function (t) { window.addEventListener(t, function () { navRestore = null; }, { passive: true, capture: true }); });
   // The header's back arrow is a back step, not a new visit.

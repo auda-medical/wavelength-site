@@ -395,6 +395,19 @@ if (want('N')) {
   await go(page, '#/progress'); await sleep(300);
   await page.evaluate(() => { location.hash = '#/guides'; }); await page.waitForSelector('a.guide-card'); await sleep(300);
   record('N6', 'Opening Guides afresh (not going back) starts at the top', await page.evaluate(() => Math.round(scrollY)) === 0, '');
+  // N13 the connection banner was showing above the list when the learner left it (it appears a moment after a screen
+  // is drawn, so on the redrawn list it is not there yet): on return the same guide card is at the same height on the
+  // screen, not shifted by the banner's height. This is what the emulator showed before restoring by content.
+  const onScreen = () => page.evaluate(() => { const hb = document.querySelector('header.top').getBoundingClientRect().bottom; const a = [...document.querySelectorAll('a.guide-card')].find((e) => e.getBoundingClientRect().bottom > hb + 4); return { key: a.getAttribute('href'), top: Math.round(a.getBoundingClientRect().top), banner: !!document.querySelector('[data-syncbanner]:not([hidden])') }; });
+  await scrollTo(page, Math.round(listH / 2));
+  await page.evaluate(() => { const b = document.querySelector('[data-syncbanner]'); b.innerHTML = '<p style="margin:0;padding:18px">Offline. Nothing waiting to sync.</p>'; b.hidden = false; window.scrollBy(0, b.getBoundingClientRect().height); });
+  await sleep(300);
+  const before13 = await onScreen();
+  await openCard(page, before13.key === last ? midCard : last);
+  await backArrow(page); await page.waitForSelector('a.guide-card'); await sleep(900);
+  const after13 = await onScreen();
+  record('N13', 'A banner shown when the list was left and not on return does not shift the list: the same guide is at the same height', after13.key === before13.key && Math.abs(after13.top - before13.top) <= 3 && before13.banner && !after13.banner, `before ${JSON.stringify(before13)}, after ${JSON.stringify(after13)}`);
+  net.offline = false;
   await ctx.close();
 
   // The logbook: a long list (300 scans), with a search, a type filter and a sign-off filter.
