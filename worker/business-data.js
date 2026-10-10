@@ -204,7 +204,12 @@ export async function verificationStats(env, rd, r) {
 
 export async function bookingRows(env, rd) {
   if (!rd.bookings) return null;
-  return (await env.DB.prepare('SELECT * FROM bookings ORDER BY course_date DESC, id DESC LIMIT 2000').all()).results || [];
+  // Live bookings only: Stripe test-mode bookings never reach any money figure (see testBookings).
+  return (await env.DB.prepare('SELECT * FROM bookings WHERE livemode = 1 ORDER BY course_date DESC, id DESC LIMIT 2000').all()).results || [];
+}
+export async function testBookings(env, rd) {
+  if (!rd.bookings) return 0;
+  return ((await env.DB.prepare('SELECT COUNT(*) AS n FROM bookings WHERE livemode = 0').first()) || {}).n || 0;
 }
 export async function ledgerRows(env, rd, from, to) {
   if (!rd.ledger) return null;

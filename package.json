@@ -5,7 +5,7 @@
   "description": "Wavelength ultrasound courses website",
   "scripts": {
     "build": "node build.js",
-    "test": "node --import ./test/helpers/register.mjs --test --test-concurrency=1 'test/*.test.mjs'"
+    "test": "node --import ./test/helpers/register.mjs --test --test-concurrency=1 \"test/*.test.mjs\""
   },
   "engines": { "node": ">=18" }
 }

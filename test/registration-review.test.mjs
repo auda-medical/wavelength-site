@@ -274,7 +274,7 @@ test('12. an applicant sees "How supervisor verification works" before applying 
   const app = readFileSync(new URL('../src/app/app.js', import.meta.url), 'utf8');
   const how = app.slice(app.indexOf('function svHow()'), app.indexOf('\n', app.indexOf('function svHow()')));
   for (const t of ['How supervisor verification works', 'professional registration where applicable', 'ultrasound qualifications, credentials or supporting evidence', 'specific areas you want to supervise', 'Approval is scope-specific: holding one credential does not approve every ultrasound area.', 'We may ask for further evidence.', 'Supervisor status is reviewed periodically.', 'Wavelength verification is not accreditation or endorsement by an external professional body.']) assert.ok(how.includes(t), t);
-  assert.match(app, /if \(step === 'about'\) \{\n\s+body = \(a\.kind === 'renewal' \? '' : svHow\(\)\)/, 'first step of a new application');
+  assert.match(app, /if \(step === 'about'\) \{\r?\n\s+body = \(a\.kind === 'renewal' \? '' : svHow\(\)\)/, 'first step of a new application');
   assert.match(app, /st === 'none' && P\.canApplyAgain\) acts \+= svHow\(\)/, 'status page before applying');
   const { strings } = JSON.parse(readFileSync(new URL('../tools/i18n/strings.json', import.meta.url), 'utf8'));
   assert.ok(strings.includes('How supervisor verification works') && strings.includes('What does Wavelength Verified mean?'), 'listed for translation');

@@ -10,7 +10,7 @@ import { handleApp } from '../worker/app.js';
 import { hashPassword } from '../worker/app-util.js';
 import { beaconRows, classify, normPath, deviceOf, budget, LIMITS, signupReason, appRows, rollup } from '../worker/metrics.js';
 import { verifyStripe, signStripe, courseFor, estimateFee } from '../worker/bookings.js';
-import { pnl, parseRange, perHour, funnel, enquiryStats, ledgerDay, ledgerRows, takenIn } from '../worker/business-data.js';
+import { pnl, parseRange, perHour, funnel, enquiryStats, ledgerDay, ledgerRows, takenIn, bookingRows, testBookings } from '../worker/business-data.js';
 import { campaignUrl, priority } from '../worker/business.js';
 import SITE from '../worker/site-data.json' with { type: 'json' };
 
@@ -278,6 +278,19 @@ test('Stripe webhook: one paid booking per session, repeated and duplicated even
   await hook(env, { id: 'evt_fail', type: 'checkout.session.async_payment_failed', data: { object: { id: 'cs_unpaid' } } });
   assert.equal((await env.DB.prepare("SELECT status FROM bookings WHERE stripe_session = 'cs_unpaid'").first()).status, 'cancelled');
   assert.equal((await env.DB.prepare('SELECT COUNT(*) AS n FROM stripe_events').first()).n, 7);
+});
+
+test('Stripe test-mode events are kept as test bookings and never reach any money figure', async () => {
+  const env = makeEnv({ STRIPE_WEBHOOK_SECRET: SECRET });
+  await hook(env, { ...session('live1'), livemode: true });
+  await hook(env, { ...session('test1', { cs: 'test1' }), livemode: false });
+  const all = (await env.DB.prepare('SELECT stripe_session, livemode, note FROM bookings ORDER BY id').all()).results;
+  assert.deepEqual(all.map((b) => [b.livemode, b.note]), [[1, all[0].note], [0, 'Stripe test mode: not counted']]);
+  const rows = await bookingRows(env, { bookings: true });
+  assert.equal(rows.length, 1, 'only the live booking feeds revenue, places and bookings taken');
+  assert.equal(rows[0].livemode, 1);
+  assert.equal(await testBookings(env, { bookings: true }), 1);
+  assert.equal(takenIn(rows, '2000-01-01', '2999-12-31').pence, 37500);
 });
 
 test('course matching: by Payment Link id first, never guessed between two dates at the same price', () => {

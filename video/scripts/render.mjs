@@ -3,25 +3,40 @@
 // For each composition: render H.264 MP4 at the composition size (and 3840 x 2160 for the 16:9 films), decode the
 // soundtrack, measure integrated loudness (BS.1770), apply gain to -15 LUFS, limit peaks to -1.5 dBFS with a 5 ms
 // look-ahead, and re-mux with the video stream copied (no second video encode). Writes a JSON report beside the files.
-//   node scripts/render.mjs [Composition,...] [--no4k]
+//   node scripts/render.mjs [Composition,...] [--no4k] [--v2]
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1')), '..');
-const OUT = process.env.WL_VIDEO_OUT || path.resolve(ROOT, '..', '..', 'wavelength-video-output', 'final');
-fs.mkdirSync(OUT, { recursive: true });
 const args = process.argv.slice(2);
+const V2 = args.includes('--v2'); // version 2 compositions, written to final-v2 (version 1 files are never touched)
+const OUT = process.env.WL_VIDEO_OUT || path.resolve(ROOT, '..', '..', 'wavelength-video-output', V2 ? 'final-v2' : 'final');
+fs.mkdirSync(OUT, { recursive: true });
 const no4k = args.includes('--no4k');
 const pick = (args.find((a) => !a.startsWith('--')) || '').split(',').filter(Boolean);
-const JOBS = [
+const JOBS_V1 = [
   { id: 'Flagship', name: 'wavelength-flagship-film', k4: true },
   { id: 'Short', name: 'wavelength-free-logbook-short', k4: true },
   { id: 'ShortVertical', name: 'wavelength-free-logbook-short-vertical' },
   { id: 'Ad', name: 'wavelength-tailored-training-ad', k4: true },
   { id: 'AdVertical', name: 'wavelength-tailored-training-ad-vertical' },
   { id: 'Sample', name: 'wavelength-sample' },
-].filter((j) => !pick.length || pick.includes(j.id));
+];
+const JOBS_V2 = [
+  { id: 'V2Sample', name: 'wavelength-v2-sample' },
+  { id: 'V2Flagship', name: 'wavelength-flagship-film-v2', k4: true },
+  { id: 'V2FlagshipCaptioned', name: 'wavelength-flagship-film-v2-captioned' },
+  { id: 'V2Short', name: 'wavelength-free-logbook-short-v2' },
+  { id: 'V2ShortVertical', name: 'wavelength-free-logbook-short-v2-vertical' },
+  { id: 'V2ShortCaptioned', name: 'wavelength-free-logbook-short-v2-captioned' },
+  { id: 'V2ShortVerticalCaptioned', name: 'wavelength-free-logbook-short-v2-vertical-captioned' },
+  { id: 'V2Ad', name: 'wavelength-tailored-training-ad-v2' },
+  { id: 'V2AdVertical', name: 'wavelength-tailored-training-ad-v2-vertical' },
+  { id: 'V2AdCaptioned', name: 'wavelength-tailored-training-ad-v2-captioned' },
+  { id: 'V2AdVerticalCaptioned', name: 'wavelength-tailored-training-ad-v2-vertical-captioned' },
+];
+const JOBS = (V2 ? JOBS_V2 : JOBS_V1).filter((j) => !pick.length || pick.includes(j.id));
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const run = (a) => execFileSync(npx, a, { stdio: ['ignore', 'inherit', 'inherit'], shell: process.platform === 'win32', cwd: ROOT });
 const q = (s) => (process.platform === 'win32' ? `"${s}"` : s);
@@ -65,7 +80,7 @@ function limit(L, R, rate, ceilDb = -1.5) {
 const report = [];
 for (const j of JOBS) {
   for (const k4 of [false, ...(j.k4 && !no4k ? [true] : [])]) {
-    const tag = k4 ? '-4k' : (j.id.endsWith('Vertical') ? '-1080x1920' : '-1080p');
+    const tag = k4 ? '-4k' : (j.id.includes('Vertical') ? '-1080x1920' : '-1080p');
     const raw = path.join(OUT, `${j.name}${tag}.raw.mp4`), fin = path.join(OUT, `${j.name}${tag}.mp4`), wav = path.join(OUT, `${j.name}${tag}.wav`), mwav = path.join(OUT, `${j.name}${tag}.master.wav`);
     const t0 = Date.now();
     run(['remotion', 'render', 'src/index.jsx', j.id, q(raw), '--codec=h264', '--crf=' + (k4 ? 18 : 16), '--audio-bitrate=320k', '--log=error', ...(k4 ? ['--scale=2'] : [])]);
@@ -80,7 +95,7 @@ for (const j of JOBS) {
     writeWav(mwav, L, R, rate);
     run(['remotion', 'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', q(raw), '-i', q(mwav), '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '320k', '-movflags', '+faststart', q(fin)]);
     for (const f of [raw, wav, mwav]) fs.rmSync(f, { force: true });
-    const r = { file: path.basename(fin), composition: j.id, size: k4 ? '3840x2160' : j.id.endsWith('Vertical') ? '1080x1920' : '1920x1080', loudnessBefore: Math.round(before * 10) / 10, loudnessAfter: Math.round(after * 10) / 10, samplePeakDBFS: Math.round(20 * Math.log10(peak) * 10) / 10, seconds: Math.round(L.length / rate * 100) / 100, renderSeconds: Math.round((Date.now() - t0) / 1000), bytes: fs.statSync(fin).size };
+    const r = { file: path.basename(fin), composition: j.id, size: k4 ? '3840x2160' : j.id.includes('Vertical') ? '1080x1920' : '1920x1080', loudnessBefore: Math.round(before * 10) / 10, loudnessAfter: Math.round(after * 10) / 10, samplePeakDBFS: Math.round(20 * Math.log10(peak) * 10) / 10, seconds: Math.round(L.length / rate * 100) / 100, renderSeconds: Math.round((Date.now() - t0) / 1000), bytes: fs.statSync(fin).size };
     report.push(r);
     console.log(JSON.stringify(r));
   }

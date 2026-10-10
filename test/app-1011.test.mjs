@@ -106,7 +106,7 @@ test('review: a clip recorder is released on every path and an empty clip is ref
   assert.match(ed, /busyRec = null; chunks = \[\]; release\(\);/);
   assert.match(ed, /if \(got < 0\.5\)/);
   assert.match(ed, /locked: function \(\) \{ return !!busyRec; \}/, 'no redactions drawn mid-recording');
-  assert.match(APP, /if \(cfg\.locked\(\)\) return;\n      ev\.preventDefault\(\); try \{ cv\.setPointerCapture/);
+  assert.match(APP, /if \(cfg\.locked\(\)\) return;\r?\n      ev\.preventDefault\(\); try \{ cv\.setPointerCapture/);
 });
 test('review: the Android plugin seeds the networks under a VPN before it reports anything', () => {
   const plug = readFileSync(new URL('../mobile/android/app/src/main/java/uk/co/thewavelength/app/NetworkPlugin.java', import.meta.url), 'utf8');

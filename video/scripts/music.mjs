@@ -13,7 +13,7 @@ const midi = (n) => 440 * Math.pow(2, (n - 69) / 12);
 const CHORDS = [[50, 57, 61, 64, 66, 69], [47, 54, 57, 62, 64, 66], [43, 50, 54, 57, 62, 66], [45, 52, 57, 59, 64, 69]];
 const TONIC = [50, 57, 62, 64, 66, 69, 74];
 
-function writeWav(file, L, R) {
+export function writeWav(file, L, R) {
   const n = L.length, buf = Buffer.alloc(44 + n * 4);
   buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 4, 4); buf.write('WAVE', 8); buf.write('fmt ', 12);
   buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(2, 22); buf.writeUInt32LE(RATE, 24); buf.writeUInt32LE(RATE * 4, 28); buf.writeUInt16LE(4, 32); buf.writeUInt16LE(16, 34);
@@ -131,16 +131,16 @@ function sfx() {
   { const [l, r] = make(2.4); for (let i = 0; i < l.length; i++) { const t = i / RATE; let v = 0; for (const n of [62, 66, 69, 74]) v += Math.sin(2 * Math.PI * midi(n) * t) * 0.06; const env = Math.pow(t / 2.4, 2.2) * Math.min(1, (2.4 - t) * 12); l[i] = v * env; r[i] = v * env; } const RL = reverb(l, { mix: 0.4 }), RR = reverb(r, { mix: 0.4, size: 1.05 }); writeWav(path.join(ROOT, 'public/audio/sfx/swell.wav'), RL, RR); }
 }
 
+// Version 1 tracks: written only when this script is run directly (version 2 imports compose and writeWav).
 const TRACKS = {
   flagship: { seconds: 142, sections: [{ at: 0, pulse: false, energy: 0.35 }, { at: 24, pulse: true, energy: 0.55 }, { at: 98, pulse: true, energy: 0.7 }, { at: 112, pulse: true, energy: 0.85 }] },
   short: { seconds: 46, bpm: 84, sections: [{ at: 0, pulse: false, energy: 0.5 }, { at: 4, pulse: true, energy: 0.75 }, { at: 32, pulse: true, energy: 0.9 }] },
   ad: { seconds: 24, bpm: 80, sections: [{ at: 0, pulse: false, energy: 0.55 }, { at: 3, pulse: true, energy: 0.8 }] },
   sample: { seconds: 22, sections: [{ at: 0, pulse: true, energy: 0.6 }] },
 };
-for (const [name, o] of Object.entries(TRACKS)) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) for (const [name, o] of Object.entries(TRACKS)) {
   const [L, R] = compose(o.seconds, o);
   writeWav(path.join(ROOT, `public/audio/music/${name}.wav`), L, R);
   console.log('music', name, o.seconds, 's');
 }
-sfx();
-console.log('sfx whoosh, tap, swell');
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) { sfx(); console.log('sfx whoosh, tap, swell'); }

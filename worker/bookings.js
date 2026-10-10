@@ -64,17 +64,17 @@ export function courseFor(session, courses = SITE.courses || []) {
 }
 export const campaignOf = (ref) => String(ref || '').replace(/^wl[-_]/, '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60);
 
-async function onSession(env, s, paid) {
+async function onSession(env, s, paid, live = true) {
   const c = courseFor(s);
   const gross = Number(s.amount_total) || 0;
   const discount = (s.total_details && Number(s.total_details.amount_discount)) || 0;
   const status = paid ? 'paid' : 'pending';
-  const note = c.how === 'price' ? 'Course matched by price' : c.how === 'unassigned' ? 'Assign the course date' : '';
-  await env.DB.prepare(`INSERT INTO bookings (course_slug, course_date, source, status, places, currency, gross_pence, discount_pence, fee_pence, fee_estimated, stripe_session, stripe_payment_intent, stripe_payment_link, campaign, paid_at, note)
-    VALUES (?, ?, 'stripe', ?, 1, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+  const note = !live ? 'Stripe test mode: not counted' : c.how === 'price' ? 'Course matched by price' : c.how === 'unassigned' ? 'Assign the course date' : '';
+  await env.DB.prepare(`INSERT INTO bookings (course_slug, course_date, source, status, places, currency, gross_pence, discount_pence, fee_pence, fee_estimated, stripe_session, stripe_payment_intent, stripe_payment_link, campaign, paid_at, note, livemode)
+    VALUES (?, ?, 'stripe', ?, 1, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (stripe_session) DO UPDATE SET status = CASE WHEN bookings.status IN ('refunded','part_refunded','cancelled') THEN bookings.status WHEN excluded.status = 'paid' THEN 'paid' ELSE bookings.status END,
       paid_at = COALESCE(bookings.paid_at, excluded.paid_at), stripe_payment_intent = COALESCE(bookings.stripe_payment_intent, excluded.stripe_payment_intent), updated_at = datetime('now')`)
-    .bind(c.slug, c.date, status, String(s.currency || 'gbp').toLowerCase(), gross, discount, estimateFee(gross), String(s.id), s.payment_intent ? String(s.payment_intent) : null, s.payment_link ? String(s.payment_link) : null, campaignOf(s.client_reference_id), paid ? new Date().toISOString() : null, note).run();
+    .bind(c.slug, c.date, status, String(s.currency || 'gbp').toLowerCase(), gross, discount, estimateFee(gross), String(s.id), s.payment_intent ? String(s.payment_intent) : null, s.payment_link ? String(s.payment_link) : null, campaignOf(s.client_reference_id), paid ? new Date().toISOString() : null, note, live ? 1 : 0).run();
   return paid ? 'paid' : 'pending';
 }
 
@@ -92,9 +92,11 @@ export async function handleStripe(req, env) {
   const seen = await env.DB.prepare('SELECT outcome FROM stripe_events WHERE id = ?').bind(String(evt.id)).first();
   if (seen) return Response.json({ received: true, duplicate: true });
   const o = (evt.data && evt.data.object) || {};
+  // A test-mode event (a test endpoint pointed at this site) is recorded as a test booking, never as revenue.
+  const live = evt.livemode !== false;
   let outcome = 'ignored';
-  if (evt.type === 'checkout.session.completed' && o.mode !== 'subscription') outcome = await onSession(env, o, o.payment_status === 'paid' || o.payment_status === 'no_payment_required');
-  else if (evt.type === 'checkout.session.async_payment_succeeded') outcome = await onSession(env, o, true);
+  if (evt.type === 'checkout.session.completed' && o.mode !== 'subscription') outcome = await onSession(env, o, o.payment_status === 'paid' || o.payment_status === 'no_payment_required', live);
+  else if (evt.type === 'checkout.session.async_payment_succeeded') outcome = await onSession(env, o, true, live);
   else if (evt.type === 'checkout.session.async_payment_failed' || evt.type === 'checkout.session.expired') {
     const r = await env.DB.prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE stripe_session = ? AND status = 'pending'").bind(String(o.id)).run();
     outcome = r.meta && r.meta.changes ? 'cancelled' : 'ignored';

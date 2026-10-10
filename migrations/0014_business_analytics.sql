@@ -49,7 +49,9 @@ CREATE TABLE IF NOT EXISTS bookings (
   refunded_at TEXT,
   cancelled_at TEXT,
   reference TEXT NOT NULL DEFAULT '',
-  note TEXT NOT NULL DEFAULT ''
+  note TEXT NOT NULL DEFAULT '',
+  -- 0 for a Stripe test-mode event (evt.livemode false): kept for checking the set-up, never counted as revenue.
+  livemode INTEGER NOT NULL DEFAULT 1
 );
 CREATE INDEX IF NOT EXISTS bookings_course ON bookings (course_slug, course_date);
 CREATE INDEX IF NOT EXISTS bookings_pi ON bookings (stripe_payment_intent);

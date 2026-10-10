@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "notes": "Version 2 narration. Narration tells the story; on-screen copy (\"screen\") reinforces one idea per scene and never repeats the spoken sentence. Acronyms (RCEM, FAMUS, FUSIC) appear on screen only: the narration names the specialties instead (see docs/commercial-2026/13-pronunciation-glossary.md). \"say\" is the text sent to the speech model when it differs from the caption text.",
+  "films": {
+    "flagship": [
+      { "id": "n01", "scene": "problem", "text": "Three in the morning. You've scanned a patient, and the finding matters. But your supervisor is in the resuscitation room, and the chance to review it slips away.", "screen": ["EMERGENCY DEPARTMENT · 03:12", "Awaiting sign-off", "Scanned. Still unsigned."] },
+      { "id": "n02", "scene": "brand", "text": "Wavelength is an ultrasound logbook that fits around your shifts.", "screen": ["WAVELENGTH", "Designed for real clinical practice"] },
+      { "id": "n03", "scene": "log", "text": "Choose the application, record your findings and how you were supervised, and add an image once you've removed any identifiers. It even works offline.", "screen": ["Log it in moments", "Application", "Findings", "Supervision", "Image"] },
+      { "id": "n04", "scene": "pathways", "text": "Select the pathways you're working towards, in emergency medicine, acute medicine or intensive care, and every target is tracked for you.", "screen": ["RCEM", "FAMUS", "FUSIC", "International frameworks"] },
+      { "id": "n05", "scene": "supervisors", "text": "When you need a sign-off, you can see which supervisors Wavelength has verified, and for which modules.", "screen": ["Verified for named modules"] },
+      { "id": "n06", "scene": "review", "text": "Send the request in seconds. Your supervisor reviews it on their own phone, between cases or after the shift, and confirms each scan or asks a question. Bedside supervision and observed assessments still happen in person, where your pathway requires them.", "screen": ["Reviewed when they're free", "Trainee", "Supervisor"] },
+      { "id": "n07", "scene": "progress", "text": "Each sign-off moves your progress forward. And when it's time, you can export a portfolio that reviewers can check online, in seconds.", "screen": ["Progress you can prove"] },
+      { "id": "n08", "scene": "free", "text": "Logging, sign-off and progress tracking are all included, at no cost to you.", "screen": ["YOUR ULTRASOUND LOGBOOK. FREE."] },
+      { "id": "n09", "scene": "education", "text": "And when you're ready to go further, our hands-on courses and tailored training bring expert teaching to individuals, groups and departments, with flexible locations by arrangement.", "screen": ["Training built around you", "HANDS-ON COURSES", "TAILORED TRAINING"] },
+      { "id": "n10", "scene": "end", "text": "Wavelength. Tune in. Gain clarity.", "screen": ["WAVELENGTH", "Tune In · Gain Clarity", "thewavelength.co.uk", "START YOUR FREE LOGBOOK", "EXPLORE OUR COURSES"] }
+    ],
+    "short": [
+      { "id": "s01", "scene": "hook", "text": "Scanned on shift, but no one free to sign it off?", "screen": ["Awaiting sign-off"] },
+      { "id": "s02", "scene": "free", "text": "Wavelength keeps your scans, sign-offs and progress in one place, at no cost to you.", "screen": ["YOUR ULTRASOUND LOGBOOK. FREE."] },
+      { "id": "s03", "scene": "log", "text": "Log a scan in moments,", "screen": ["Application", "Findings", "Supervision"] },
+      { "id": "s04", "scene": "review", "text": "send it to your supervisor to review when they're free,", "screen": ["Reviewed when they're free"] },
+      { "id": "s05", "scene": "progress", "text": "and watch your targets fill.", "screen": ["Progress you can prove"] },
+      { "id": "s06", "scene": "education", "text": "And our hands-on courses and tailored training are there when you're ready to go further.", "screen": ["HANDS-ON COURSES", "TAILORED TRAINING"] },
+      { "id": "s07", "scene": "end", "text": "Start your free logbook today.", "screen": ["START YOUR FREE LOGBOOK", "thewavelength.co.uk"] }
+    ],
+    "ad": [
+      { "id": "a01", "scene": "headline", "text": "Ultrasound training, tailored to your needs, with flexible locations by arrangement.", "screen": ["Training built around you"] },
+      { "id": "a02", "scene": "offer", "text": "Hands-on courses and expert-led teaching, for individuals, groups and organisations. UK and international enquiries are welcome.", "screen": ["HANDS-ON COURSES", "TAILORED TRAINING", "UK & INTERNATIONAL"] },
+      { "id": "a03", "scene": "end", "text": "Wavelength. Tune in. Gain clarity.", "screen": ["EXPLORE OUR COURSES", "ENQUIRE ABOUT TAILORED TRAINING"] }
+    ]
+  }
+}

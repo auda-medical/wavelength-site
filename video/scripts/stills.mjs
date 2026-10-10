@@ -11,14 +11,15 @@ const [id, outDir, list = '0'] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
 
 // Scene starts for scene:offset, computed as src/timeline.js does (that module imports JSON, so it is mirrored here).
-const T = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio/timings.json')));
-const S = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/script.json')));
+const V2 = (process.argv[2] || '').startsWith('V2');
+const T = JSON.parse(fs.readFileSync(path.join(ROOT, V2 ? 'public/audio-v2/timings.json' : 'public/audio/timings.json')));
+const S = JSON.parse(fs.readFileSync(path.join(ROOT, V2 ? 'src/v2/script.json' : 'src/script.json')));
 function sceneStarts(film, plan) {
   let at = 0; const out = {};
   for (const p of plan) {
     const line = (S.films[film] || []).find((l) => l.scene === p.scene) || {};
-    const t = T[`${film}/${line.id}`] || { seconds: 0 };
-    const lead = p.lead ?? 0.7, tail = p.tail ?? 0.9;
+    const t = T[`${film}/${line.id}`] || { seconds: V2 && line.text ? line.text.split(/\s+/).length / 147 * 60 : 0 };
+    const lead = p.lead ?? (V2 ? 0.4 : 0.7), tail = p.tail ?? (V2 ? 0.6 : 0.9);
     const dur = Math.round(Math.max(p.min || 0, t.seconds ? t.seconds + lead + tail : 0) * 30);
     out[p.scene] = { from: at, voice: at + Math.round(lead * 30) };
     at += dur - (p.overlap ? Math.round(p.overlap * 30) : 0);
@@ -29,11 +30,14 @@ const PLAN = {
   Flagship: ['flagship', 'Flagship.jsx'],
   Short: ['short', 'Short.jsx'], ShortVertical: ['short', 'Short.jsx'],
   Ad: ['ad', 'Ad.jsx'], AdVertical: ['ad', 'Ad.jsx'],
+  V2Flagship: ['flagship', 'v2/Flagship2.jsx'], V2FlagshipCaptioned: ['flagship', 'v2/Flagship2.jsx'],
+  V2Short: ['short', 'v2/Short2.jsx'], V2ShortVertical: ['short', 'v2/Short2.jsx'], V2ShortCaptioned: ['short', 'v2/Short2.jsx'], V2ShortVerticalCaptioned: ['short', 'v2/Short2.jsx'],
+  V2Ad: ['ad', 'v2/Ad2.jsx'], V2AdVertical: ['ad', 'v2/Ad2.jsx'], V2AdCaptioned: ['ad', 'v2/Ad2.jsx'], V2AdVerticalCaptioned: ['ad', 'v2/Ad2.jsx'],
 };
 let starts = {};
 if (PLAN[id]) {
   const src = fs.readFileSync(path.join(ROOT, 'src', PLAN[id][1]), 'utf8');
-  const m = src.match(/[A-Z]+_PLAN = (\[[\s\S]*?\]);/);
+  const m = src.match(/[A-Z0-9]+_PLAN = (\[[\s\S]*?\]);/);
   const plan = Function(`return ${m[1]}`)();
   starts = sceneStarts(PLAN[id][0], plan);
 }

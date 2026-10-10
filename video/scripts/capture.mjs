@@ -194,6 +194,9 @@ if (want('web')) {
   for (const [name, url] of [['web-home', '/'], ['web-training', '/training/'], ['web-courses', '/courses/'], ['web-logbook', '/pocus-logbook/']]) {
     await page.goto(w.base + url); await sleep(1500);
     await page.evaluate(() => { document.documentElement.classList.remove('js'); document.querySelectorAll('.reveal,.rise').forEach((e) => { e.style.opacity = 1; e.style.transform = 'none'; }); });
+    // Lazy images below the fold are never fetched in a still capture (they showed as grey blocks): load them all.
+    await page.evaluate(async () => { const imgs = [...document.images]; imgs.forEach((i) => { i.loading = 'eager'; }); await Promise.all(imgs.map((i) => (i.complete && i.naturalWidth ? null : new Promise((r) => { i.onload = i.onerror = r; setTimeout(r, 4000); })))); });
+    await sleep(400);
     await shot(page, name, {});
   }
   await page.goto(w.base + '/training/#international'); await sleep(1200);
