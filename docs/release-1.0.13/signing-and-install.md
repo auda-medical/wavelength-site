@@ -3,6 +3,10 @@
 The same procedure as every release since 1.0.8 (`WINDOWS_SIGNING_GUIDE.md` in Downloads), with this release's names.
 Claude built the unsigned files; signing stays with you, on this PC, with passwords typed at hidden prompts.
 
+**The quick way:** run `C:\WavelengthSigning\sign-wavelength-1.0.13.ps1` in Windows PowerShell
+(`powershell -ExecutionPolicy Bypass -File C:\WavelengthSigning\sign-wavelength-1.0.13.ps1`). It does steps 1 to 5
+below, with the same hidden prompts, and stops at the first check that fails.
+
 **Rules**
 - Windows PowerShell, one block at a time, the **same window** from step 2 to step 4 (the passwords live only in it).
 - Never paste a password, the keystore or its contents anywhere. Closing the window erases the passwords.

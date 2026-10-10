@@ -47,6 +47,11 @@ No Worker, database or Cloudflare change. Nothing to deploy for the Android app 
   the sign-off filter as they were (in 1.0.12 all three were cleared).
 - Opening a screen afresh (a tab, a link) still starts at the top.
 
+## Known issue (priority before public release)
+
+On a slow connection, text typed into Create account in the first moments after opening the app can be cleared
+when the app's start-up check answers. The same in 1.0.12. To be fixed before any public release.
+
 ## Unchanged
 
 Redaction, the identifier declaration before "Use this image", the identifier check on typed labels, clip

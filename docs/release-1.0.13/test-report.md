@@ -58,10 +58,12 @@ ms with the CPU slowed 4×).
 
 ## Found, not changed (outside this release)
 
-- **Sign-up typing can be cleared on a slow start.** While the app's first server check is still running, the start
+- **PRIORITY before public release. Sign-up typing can be cleared on a slow start.** While the app's first server check is still running, the start
   screen can be left for Create account; when the check answers, the screen is drawn again and typed text is lost.
-  The same in 1.0.12. Only on a slow connection, before the first screen has settled. Suggested for 1.0.14: when the
-  answer arrives, leave an auth screen the learner has already moved to alone.
+  The same in 1.0.12. Only on a slow connection, before the first screen has settled. Owner's decision (10 October
+  2026): fix before any public release (Google Play production or open testing); 1.0.13 is for the owner's own
+  phone and internal testing. Fix: when the start-up answer arrives, leave an auth screen the learner has already
+  moved to alone (do not re-render it), and test it with a delayed /api/app/me.
 - `tools/e2e-native.mjs` waited for `#app .auth`, which also matches the start screen, so it raced that check;
   fixed in the tool.
 

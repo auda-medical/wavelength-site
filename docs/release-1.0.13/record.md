@@ -30,4 +30,22 @@ Local stand-in for the issue #2 start and handoff comments (the GitHub account i
   `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStoreType=Windows-ROOT` (that session only).
 - Emulator-only test builds (never for a phone) are in the session scratchpad: a debug build with WebView debugging,
   and copies signed with a throwaway key "CN=Emulator test only".
-- For 1.0.14: sign-up typing can be cleared on a slow start (see `test-report.md`).
+
+## Priority before public release
+
+- **Sign-up typing can be cleared on a slow start** (also in 1.0.12; `test-report.md`). On a slow connection, text
+  typed into Create account before the app's start-up check (`/api/app/me`, `boot()` in app.js) answers is lost when
+  that answer re-draws the screen. Owner's decision, 10 October 2026: fix before any public release (Google Play
+  production or open testing). 1.0.13 (19) is for the owner's phone and internal testing only.
+
+## Signing (10 October 2026)
+
+- Owner approved local signing and verification of the tested 1.0.13 (19) files only. Script:
+  `C:\WavelengthSigning\sign-wavelength-1.0.13.ps1` (the steps of `signing-and-install.md` with every check
+  automated; hidden password prompts; passwords only in that PowerShell process's environment, removed at the end;
+  never overwrites). Rehearsed end to end with the throwaway emulator key (outputs deleted afterwards); refuses to
+  overwrite. Run by the owner, who types the password; nothing is installed or uploaded.
+- Working tree status before signing: clean (0 files changed). The 93 files listed earlier differed from the committed
+  files only in line endings (Windows endings in the working copy, LF in the repository) because the repository's
+  shared config has `core.autocrlf=false` while the system default is `true`; contents identical. Not modified or
+  reset.
