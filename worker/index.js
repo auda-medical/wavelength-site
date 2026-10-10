@@ -317,9 +317,16 @@ async function adminRoute(req, env, ctx, url, p, s) {
       // With Access on, the verified email replaces the typed reviewer name as the actor.
       if (accessEmail) f.set('reviewer', accessEmail);
       const r = await supervisorsAdminPost(env, f, accessEmail ? 'access' : s.admin_username, ctx);
-      return redirect(`/admin/supervisors/?${r.app ? `app=${r.app}&` : r.id ? `id=${r.id}&` : ''}${r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`);
+      // The reviewer's name is typed once a session: remembered for the supervisor console only (it is a name, never
+      // a credential; the admin login still decides who gets in).
+      const who = accessEmail ? '' : String(f.get('reviewer') || '').replace(/[\u0000-\u001f;,]/g, ' ').trim().slice(0, 80);
+      return redirect(`/admin/supervisors/?${r.app ? `app=${r.app}&` : r.id ? `id=${r.id}&` : ''}${r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`,
+        who ? { 'Set-Cookie': `wl_reviewer=${encodeURIComponent(who)}; Path=/admin/supervisors/; Max-Age=43200; HttpOnly; Secure; SameSite=Strict` } : {});
     }
-    return page(await supervisorsAdminHtml(env, url, s.admin_username), 'supervisors');
+    const remembered = (/(?:^|;\s*)wl_reviewer=([^;]*)/.exec(req.headers.get('Cookie') || '') || [])[1];
+    let reviewer = '';
+    try { reviewer = remembered ? decodeURIComponent(remembered).slice(0, 80) : ''; } catch { reviewer = ''; }
+    return page(await supervisorsAdminHtml(env, url, s.admin_username, { reviewer, access: accessEmail }), 'supervisors');
   }
   if (p === '/admin/organisations/') {
     if (req.method === 'POST') {

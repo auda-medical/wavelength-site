@@ -1738,5 +1738,22 @@
 "Keep at least one module for each credential you hold.": "Mantenga al menos un módulo en cada acreditación que tenga.",
 "Keep at least one module.": "Mantenga al menos un módulo.",
 "That claim was not found.": "No se encontró esa solicitud.",
-"This credential can no longer be changed.": "Esta acreditación ya no se puede modificar."
+"This credential can no longer be changed.": "Esta acreditación ya no se puede modificar.",
+"Also in progress": "También en curso",
+"Approved modules": "Módulos aprobados",
+"Approved until": "Aprobado hasta",
+"Credential being checked: {label}": "Credencial en comprobación: {label}",
+"Credentials and approved scope confirmed by Wavelength.": "Credenciales y ámbito aprobado confirmados por Wavelength.",
+"Credentials relied on": "Credenciales en que se basa",
+"Expires {date}": "Caduca el {date}",
+"Further application under review": "Otra solicitud en revisión",
+"More info": "Más información",
+"No expiry recorded": "Sin fecha de caducidad registrada",
+"This is Wavelength’s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other body.": "Es la verificación propia de Wavelength. No es una acreditación ni un respaldo del RCEM, FAMUS, FUSIC, el GMC ni ningún otro organismo.",
+"Unsent application draft": "Borrador de solicitud sin enviar",
+"Verified Supervisor": "Supervisor verificado",
+"Verified on": "Verificado el",
+"Verified role": "Función verificada",
+"Your current approval is not affected.": "Su aprobación actual no se ve afectada.",
+"{pathway} pathway": "Itinerario {pathway}"
 }

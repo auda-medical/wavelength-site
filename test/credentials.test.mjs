@@ -97,7 +97,9 @@ test('manual review: evidence, then admin approval, rejection, revocation and re
   assert.match(file.headers.get('Content-Disposition'), /^attachment/);
   assert.match(file.headers.get('Content-Security-Policy'), /sandbox/);
   assert.equal(new TextDecoder().decode(await file.arrayBuffer()), new TextDecoder().decode(PDF));
-  assert.match((await admin(env, { action: 'cred_approve', learner: lid, sid: id, modules: 'core' })).m, /notes/);
+  // A note is optional (supervisor QA, October 2026): the method, modules, dates, evidence and reviewer are recorded.
+  assert.equal((await admin(env, { action: 'cred_approve', learner: lid, sid: id, modules: 'core', method: 'manual_evidence', evidence: ev.id })).m, 'Credential approved.');
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM verification_events WHERE subject_type = 'credential' AND action = 'admin_approved' AND actor LIKE 'admin:%'").first()).n, 1);
   assert.equal((await admin(env, { action: 'cred_approve', learner: lid, sid: id, modules: 'core', method: 'manual_evidence', evidence: ev.id, review_on: '2099-01-01', notes: 'Letter from clinical director' })).m, 'Credential approved.');
   let o = (await c.call('/api/app/professional')).body;
   assert.equal(o.credentials[0].status, 'verified');
@@ -109,7 +111,7 @@ test('manual review: evidence, then admin approval, rejection, revocation and re
   assert.equal((await admin(env, { action: 'cred_reinstate', learner: lid, sid: id, notes: 'Returned' })).m, 'Credential reinstated.');
   assert.equal((await c.call('/api/app/professional')).body.credentials[0].status, 'verified');
   const actions = (await env.DB.prepare("SELECT action, actor, evidence_id, scope FROM verification_events WHERE subject_type = 'credential' AND actor LIKE 'admin:%' ORDER BY id").all()).results;
-  assert.deepEqual(actions.map((a) => a.action), ['admin_approved', 'admin_revoked', 'admin_reinstated']);
+  assert.deepEqual(actions.map((a) => a.action), ['admin_approved', 'admin_approved', 'admin_revoked', 'admin_reinstated'], 'approved without a note, then again with one');
   assert.ok(actions.every((a) => a.actor === 'admin:wavelength:Firas'));
   assert.equal(actions[0].evidence_id, ev.id);
   assert.equal(actions[0].scope, 'core');
@@ -125,7 +127,7 @@ test('supervisor approval is scoped: approved for FAMUS Thoracic is not approved
   await claimCred(c, 'famus-supervisor', ['thoracic']);
   const lid = await idOf(env, 'scope@x.co');
   assert.match((await admin(env, { action: 'appr_add', learner: lid, notes: 'FAMUS directory' })).m, /Tick at least one/);
-  assert.equal((await admin(env, { action: 'appr_add', learner: lid, scope: ['famus:famus-thoracic', 'famus:famus-dvt'], notes: 'FAMUS directory' })).m, '2 scopes approved.');
+  assert.match((await admin(env, { action: 'appr_add', learner: lid, scope: ['famus:famus-thoracic', 'famus:famus-dvt'], notes: 'FAMUS directory' })).m, /^2 scopes approved\. Approval email: /);
   const o = (await c.call('/api/app/professional')).body;
   const wl = o.badges.find((b) => b.kind === 'wavelength-supervisor');
   assert.deepEqual(wl.scopes.map((s) => s.label).sort(), ['FAMUS DVT', 'FAMUS Thoracic']);

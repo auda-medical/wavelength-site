@@ -1770,5 +1770,22 @@
 "Keep at least one module for each credential you hold.": "Оставьте хотя бы один модуль для каждой вашей квалификации.",
 "Keep at least one module.": "Оставьте хотя бы один модуль.",
 "That claim was not found.": "Эта заявка не найдена.",
-"This credential can no longer be changed.": "Эту квалификацию больше нельзя изменить."
+"This credential can no longer be changed.": "Эту квалификацию больше нельзя изменить.",
+"Also in progress": "Также в процессе",
+"Approved modules": "Одобренные модули",
+"Approved until": "Одобрено до",
+"Credential being checked: {label}": "Квалификация на проверке: {label}",
+"Credentials and approved scope confirmed by Wavelength.": "Квалификация и одобренная область подтверждены Wavelength.",
+"Credentials relied on": "Учтённая квалификация",
+"Expires {date}": "Истекает {date}",
+"Further application under review": "Дополнительная заявка на рассмотрении",
+"More info": "Подробнее",
+"No expiry recorded": "Срок действия не указан",
+"This is Wavelength’s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other body.": "Это собственная проверка Wavelength. Это не аккредитация и не одобрение RCEM, FAMUS, FUSIC, GMC или другой организации.",
+"Unsent application draft": "Неотправленный черновик заявки",
+"Verified Supervisor": "Проверенный супервизор",
+"Verified on": "Дата проверки",
+"Verified role": "Подтверждённая роль",
+"Your current approval is not affected.": "Ваше текущее одобрение не меняется.",
+"{pathway} pathway": "Программа {pathway}"
 }

@@ -9,7 +9,7 @@ import { buildSummary, signedAssessments } from './evidence.js';
 import { sendMail, learner as learnerOf } from './academy.js';
 import { mustVerify, sendVerification } from './email-verify.js';
 import { snapshotFor, publicSnapshot, logEvent, SIGNER_LABELS } from './professional.js';
-import { supervisorEligibility, eligibilityError, approvalRequired, applyOn, standingOf, linkState, signerBlocked, returnRequestsStmts, supervisorUnavailable, NEUTRAL_REFUSAL, areaLabels } from './supervisor-lifecycle.js';
+import { supervisorEligibility, eligibilityError, approvalRequired, applyOn, standingOf, linkState, signerBlocked, returnRequestsStmts, supervisorUnavailable, NEUTRAL_REFUSAL, areaLabels, verificationOf } from './supervisor-lifecycle.js';
 import { audit, auditStmt } from './audit.js';
 import { nowIso, parseTs } from './time.js';
 
@@ -310,7 +310,11 @@ export async function supervisorLinks(env, l) {
   for (const r of mine.results || []) {
     const st = life ? linkState(r, await standing(r.supervisor_id), enforced) : { state: r.status === 'active' ? 'not_verified' : 'invited', label: r.status === 'active' ? 'Not yet verified by Wavelength' : 'Invitation sent' };
     // A supervisor found through search never had their address typed by the learner: it is not shown.
-    supervisors.push({ id: r.id, email: r.via === 'search' ? null : r.supervisor_email, status: r.status, state: st.state, stateLabel: st.label, areas: st.areas || [], renewal: !!st.renewal, name: r.first_name ? fullName(r) : '', role: r.role || '', since: r.accepted_at || r.created_at, via: r.via || 'email' });
+    // What the learner may see of the supervisor's verification, from the one authoritative reading: verified now or
+    // not, and for which pathways, modules and roles. Only while the link is active with a current approval
+    // (linkState 'active'), so a pending or ended link never shows approval detail.
+    const verification = life && r.supervisor_id && st.state === 'active' ? await verificationOf(env, r.supervisor_id, 'learner', await standing(r.supervisor_id)) : null;
+    supervisors.push({ id: r.id, email: r.via === 'search' ? null : r.supervisor_email, status: r.status, state: st.state, stateLabel: st.label, areas: st.areas || [], renewal: !!st.renewal, name: r.first_name ? fullName(r) : '', role: r.role || '', since: r.accepted_at || r.created_at, via: r.via || 'email', verification });
   }
   const me = life ? await standing(l.id) : null;
   return json({
@@ -318,7 +322,7 @@ export async function supervisorLinks(env, l) {
     supervisors,
     invites: (invites.results || []).map((r) => ({ id: r.id, learner: fullName(r), role: r.role || '', organisation: r.organisation || '', at: r.created_at, claimed: !!r.claimed_at, via: r.via || 'email' })),
     learners: (learners.results || []).map((r) => ({ id: r.id, linkId: r.link_id, name: fullName(r), role: profileOf(r).grade || r.role || '', organisation: r.organisation || '', pathways: profileOf(r).pathways || [], pending: pc[r.id] || 0, since: r.accepted_at, available: !enforced || !!(me && me.current.length) })),
-    me: me ? { standing: me.standing, areas: areaLabels(me.current), enforced, apply: applyOn(env) } : { standing: 'none', areas: [], enforced: false, apply: false },
+    me: me ? { standing: me.standing, areas: areaLabels(me.current), enforced, apply: applyOn(env), verification: await verificationOf(env, l.id, 'self', me) } : { standing: 'none', areas: [], enforced: false, apply: false },
   });
 }
 async function supervisedLearner(env, l, learnerId) {

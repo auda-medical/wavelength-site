@@ -108,11 +108,23 @@ export function render(kind, d) {
       paragraphs: [hi, 'The Wavelength team has looked at your supervisor application and needs a little more information before deciding.', d.note ? `What we need: ${d.note}` : null, 'Add it in the app and send your application again. You do not need to start again.', `Questions: ${SUPPORT}.`],
       button: { href: `${APP}/supervisor/apply`, label: 'Update your application' },
     }),
+    // Sent only after the approval is saved (it is queued in the same D1 batch). groups: one line per approved
+    // pathway and role (worker/verification/status.js groupLine), from the approval rows just written. Rows queued
+    // before October 2026 carry areas instead.
     app_approved: () => ({
-      subject: d.renewal ? 'Your Wavelength supervisor status has been renewed' : 'Your Wavelength supervisor status has been approved',
-      heading: d.renewal ? 'Supervisor status renewed' : 'Supervisor status approved',
-      paragraphs: [hi, d.renewal ? 'Your Wavelength supervisor renewal has been approved.' : 'Your application has been approved. You are now a Wavelength-approved supervisor.', d.areas && d.areas.length ? `Approved by Wavelength to supervise: ${list(d.areas)}.` : null, d.reviewOn ? `Your approval runs until ${longDate(d.reviewOn)}. We will remind you to renew from 60 days before.` : null, d.learners && d.learners.length ? `${list(d.learners)} ${d.learners.length === 1 ? 'is' : 'are'} waiting: your supervision is now active.` : null, 'This approval is given by Wavelength. It is not an accreditation by RCEM, FAMUS, FUSIC or any other body.'],
-      button: { href: `${APP}/supervise`, label: 'Open your supervisor dashboard' },
+      subject: d.renewal ? 'Wavelength | Supervisor Verification Renewed' : 'Wavelength | Supervisor Verification Approved',
+      heading: d.renewal ? 'Supervisor verification renewed' : 'Supervisor verification approved',
+      paragraphs: [hi,
+        d.renewal ? 'Your supervisor verification has been renewed by Wavelength.' : 'Your supervisor verification has been approved by Wavelength.',
+        ...(d.groups && d.groups.length ? [`Your approved ${d.groups.length === 1 ? 'pathway and modules are' : 'pathways and modules are'}:`, ...d.groups.map((g) => `${g}.`)] : d.areas && d.areas.length ? [`Approved to supervise: ${list(d.areas)}.`] : []),
+        d.reviewOn ? `Your approval runs until ${longDate(d.reviewOn)}. We will remind you to renew from 60 days before.` : null,
+        d.learners && d.learners.length ? `${list(d.learners)} ${d.learners.length === 1 ? 'is' : 'are'} waiting: your supervision is now active.` : null,
+        'Your verified status is available in your Wavelength profile, under Me, Wavelength supervisor.',
+        'You may review eligible supervision requests in accordance with the relevant training requirements.',
+        'This is Wavelength’s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other body.',
+        'Thank you for supporting ultrasound education.',
+        'Wavelength · Tune In · Gain Clarity'],
+      button: { href: `${APP}/supervisor`, label: 'Open your Wavelength profile' },
     }),
     app_rejected: () => ({
       subject: 'Update on your Wavelength supervisor application',

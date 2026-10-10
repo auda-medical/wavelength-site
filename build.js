@@ -1562,7 +1562,8 @@ pages['/admin/'] = layout({
   pathname: '/admin/',
   noindex: true,
   body: `${adminHero('Admin console.', 'Private to the Wavelength team. Volunteers and learners never see these pages.')}
-<section class="section"><div class="wrap"><div id="admin-root"></div></div></section>`,
+<section class="section"><div class="wrap"><div id="admin-root"></div></div></section>
+<script>document.addEventListener('submit',function(e){var f=e.target;if(!f||!f.classList||!f.classList.contains('sv-form')||e.defaultPrevented)return;if(f.dataset.sent){e.preventDefault();return;}f.dataset.sent='1';var b=f.querySelector('button[type=submit]');if(b){b.disabled=true;b.setAttribute('aria-busy','true');b.textContent='Saving…';}});</script>`,
 });
 pages['/admin/login/'] = layout({
   title: 'Admin login',

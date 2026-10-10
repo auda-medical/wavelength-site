@@ -1802,5 +1802,22 @@
 "Keep at least one module for each credential you hold.": "احتفظ بوحدة واحدة على الأقل لكل شهادة تحملها.",
 "Keep at least one module.": "احتفظ بوحدة واحدة على الأقل.",
 "That claim was not found.": "لم يُعثر على هذا الطلب.",
-"This credential can no longer be changed.": "لم يعد بالإمكان تغيير هذه الشهادة."
+"This credential can no longer be changed.": "لم يعد بالإمكان تغيير هذه الشهادة.",
+"Also in progress": "قيد الإجراء أيضًا",
+"Approved modules": "الوحدات الموافَق عليها",
+"Approved until": "موافَق عليه حتى",
+"Credential being checked: {label}": "مؤهل قيد التحقق: {label}",
+"Credentials and approved scope confirmed by Wavelength.": "أكّدت Wavelength المؤهلات ونطاق الموافقة.",
+"Credentials relied on": "المؤهلات المعتمَد عليها",
+"Expires {date}": "تنتهي في {date}",
+"Further application under review": "طلب إضافي قيد المراجعة",
+"More info": "مزيد من المعلومات",
+"No expiry recorded": "لا يوجد تاريخ انتهاء مسجَّل",
+"This is Wavelength’s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other body.": "هذا توثيق خاص بـ Wavelength. وهو ليس اعتمادًا أو تأييدًا من RCEM أو FAMUS أو FUSIC أو GMC أو أي جهة أخرى.",
+"Unsent application draft": "مسودة طلب غير مرسَلة",
+"Verified Supervisor": "مشرف موثَّق",
+"Verified on": "تاريخ التوثيق",
+"Verified role": "الدور الموثَّق",
+"Your current approval is not affected.": "لا يتأثر اعتمادك الحالي.",
+"{pathway} pathway": "مسار {pathway}"
 }

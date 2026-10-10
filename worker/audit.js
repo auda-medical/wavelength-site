@@ -3,7 +3,7 @@
 // clinical text, tokens, passwords, email addresses or registration numbers. Unknown meta keys are dropped.
 import { nowIso } from './time.js';
 
-const META_KEYS = new Set(['fields', 'count', 'counts', 'scope', 'scopes', 'code', 'kind', 'status', 'from', 'to', 'reason', 'grounds', 'basis', 'method', 'application', 'link', 'links', 'returned', 'version', 'oneOffPermitted', 'mayReapply', 'renewal', 'days', 'job', 'outcome', 'route', 'via', 'amends', 'exempt', 'requests', 'notified', 'evidence', 'pseudonym', 'previous', 'searchable', 'organisation', 'request', 'into', 'alias', 'aliasAdded', 'limit', 'day', 'rotated', 'keepThisDevice', 'existing', 'template']);
+const META_KEYS = new Set(['fields', 'count', 'counts', 'scope', 'scopes', 'code', 'kind', 'status', 'from', 'to', 'reason', 'grounds', 'basis', 'method', 'application', 'link', 'links', 'returned', 'version', 'oneOffPermitted', 'mayReapply', 'renewal', 'days', 'job', 'outcome', 'route', 'via', 'amends', 'exempt', 'requests', 'notified', 'evidence', 'pseudonym', 'previous', 'searchable', 'organisation', 'request', 'into', 'alias', 'aliasAdded', 'limit', 'day', 'rotated', 'keepThisDevice', 'existing', 'template', 'capacity', 'credentials', 'selfApproval', 'hasNote']);
 function cleanMeta(meta) {
   const out = {};
   for (const [k, v] of Object.entries(meta || {})) {

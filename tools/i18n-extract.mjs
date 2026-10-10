@@ -27,7 +27,7 @@ lb.destinations.forEach((d) => { add(d.label); d.steps.forEach(add); });
 // Label maps in app.js passed to T() through a variable (supervisor standing, lapse reasons, wizard steps, signers).
 {
   const s = fs.readFileSync('src/app/app.js', 'utf8');
-  for (const m of s.matchAll(/var (?:SV_STANDING|SV_LAPSE|SV_REASONS|SV_STEP_LABEL|SIGNER_TEXT) = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/var (?:SV_STANDING|SV_LAPSE|SV_REASONS|SV_STEP_LABEL|SIGNER_TEXT|VS_STATE) = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
 }
 // Labels the Worker sends for display: link states, organisation kinds, the search badge, the review time.
 for (const f of ['worker/supervisor-lifecycle.js', 'worker/organisations.js', 'worker/search.js', 'worker/supervisor-apply.js']) {

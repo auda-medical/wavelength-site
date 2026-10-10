@@ -13,6 +13,7 @@ import { currentStatus, scopeLabel, logEvent, PURGE_EVIDENCE_DAYS, recheckDue } 
 import { queueStmt, deliver, deliverLater } from './notify.js';
 import { auditStmt, audit } from './audit.js';
 import { nowIso, ukDate, addDays, daysBetween, parseTs } from './time.js';
+import { verificationView } from './verification/status.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
 export const AREAS = LOGBOOK.supervisionAreas || [];
@@ -59,7 +60,7 @@ export async function standingOf(env, learnerId, st = null) {
   if (!(await lifecycleReady(env))) return { standing: 'none', current: [] };
   st = st || await currentStatus(env, learnerId);
   const current = st.approvals.filter((a) => a.current);
-  const open = await env.DB.prepare("SELECT id, kind, status FROM supervisor_applications WHERE learner_id = ? AND status IN ('draft', 'submitted', 'more_info') ORDER BY id DESC LIMIT 1").bind(learnerId).first();
+  const open = await env.DB.prepare("SELECT id, kind, status, submitted_at, created_at, updated_at, requested_areas, requested_pathways FROM supervisor_applications WHERE learner_id = ? AND status IN ('draft', 'submitted', 'more_info') ORDER BY id DESC LIMIT 1").bind(learnerId).first();
   let standing;
   if (current.length) standing = current.every((a) => a.grace) ? 'renewal_review' : 'active';
   else if (st.approvals.length) standing = 'paused';
@@ -71,6 +72,15 @@ export async function standingOf(env, learnerId, st = null) {
   }
   const lapse = !current.length && st.approvals.length ? (st.approvals.find((a) => a.lapse) || {}).lapse || 'review' : null;
   return { standing, current, lapse, open: open || null, block: st.block, status: st };
+}
+
+// The one authoritative verification view (worker/verification/status.js) for a person, read for an audience: 'self',
+// 'learner' or 'admin'. s: a standingOf() result already read in this request. Null before migration 0012.
+export async function verificationOf(env, learnerId, audience = 'self', s = null) {
+  if (!learnerId || !(await lifecycleReady(env))) return null;
+  s = s && s.status ? s : await standingOf(env, learnerId);
+  const last = await env.DB.prepare("SELECT id, kind, status, decided_at FROM supervisor_applications WHERE learner_id = ? AND status IN ('approved', 'rejected', 'withdrawn') ORDER BY id DESC LIMIT 1").bind(learnerId).first();
+  return verificationView(s.status, s, { open: s.open, last, audience });
 }
 
 // ---------- Eligibility: every supervisor action asks this, on the server, at request time ----------

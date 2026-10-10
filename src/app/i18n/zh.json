@@ -1722,5 +1722,22 @@
 "Keep at least one module for each credential you hold.": "您持有的每项资质至少保留一个模块。",
 "Keep at least one module.": "至少保留一个模块。",
 "That claim was not found.": "未找到该申报。",
-"This credential can no longer be changed.": "此资质已无法更改。"
+"This credential can no longer be changed.": "此资质已无法更改。",
+"Also in progress": "另有进行中事项",
+"Approved modules": "获批模块",
+"Approved until": "批准有效期至",
+"Credential being checked: {label}": "资质审核中：{label}",
+"Credentials and approved scope confirmed by Wavelength.": "资质和获批范围已由 Wavelength 确认。",
+"Credentials relied on": "所依据的资质",
+"Expires {date}": "{date} 到期",
+"Further application under review": "另一份申请审核中",
+"More info": "更多信息",
+"No expiry recorded": "未记录到期日",
+"This is Wavelength’s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other body.": "这是 Wavelength 自己的认证，并非 RCEM、FAMUS、FUSIC、GMC 或任何其他机构的认证或背书。",
+"Unsent application draft": "未提交的申请草稿",
+"Verified Supervisor": "已认证督导",
+"Verified on": "认证日期",
+"Verified role": "认证角色",
+"Your current approval is not affected.": "您当前的批准不受影响。",
+"{pathway} pathway": "{pathway} 路径"
 }
