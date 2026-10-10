@@ -352,6 +352,26 @@ test('without an email token the approval is saved and the email waits as failed
   assert.deepEqual([row.status, row.last_error], ['failed', 'email sending is not set up']);
 });
 
+test('a failed save writes no approval, queues no email and leaves the application as it was', async () => {
+  mail.length = 0; mode = 'ok';
+  const env = makeEnv(ON);
+  const p = await applicant(env, 'dbfail@example.test');
+  mail.length = 0;
+  const real = env.DB.batch.bind(env.DB);
+  env.DB.batch = async () => { throw new Error('D1_ERROR: simulated failure'); };
+  const r = await admin(env, { action: 'app_approve', app: p.app.id, scope: ['famus:famus-thoracic'] });
+  env.DB.batch = real;
+  assert.equal(r.m, 'Could not save the approval. Nothing was changed and no email was sent. Please try again.');
+  assert.equal((await env.DB.prepare('SELECT status, decided_at FROM supervisor_applications WHERE id = ?').bind(p.app.id).first()).status, 'submitted');
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM supervisor_approvals WHERE learner_id = ?").bind(p.sid).first()).n, 0);
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM notification_log WHERE kind = 'app_approved'").first()).n, 0);
+  await settle();
+  assert.equal(approvalMails('dbfail@example.test').length, 0);
+  // Trying again works, once.
+  assert.match((await admin(env, { action: 'app_approve', app: p.app.id, scope: ['famus:famus-thoracic'] })).m, /^Approved until/);
+  assert.equal(approvalMails('dbfail@example.test').length, 1);
+});
+
 test('duplicates: repeat clicks, a second administrator and two requests at once queue one email and one approval', async () => {
   mail.length = 0; mode = 'ok';
   const env = makeEnv(ON);
@@ -447,6 +467,8 @@ test('the verification view: precedence, grouping and the learner audience', () 
   assert.deepEqual(Object.keys(lv).sort(), ['approved', 'reviewOn', 'state', 'v', 'verified']);
   assert.equal(verificationView(st(), { standing: 'revoked' }, { audience: 'learner' }).state, 'not_verified');
   assert.equal(groupLine(approvedGroups([ap('famus', '*')])[0]), 'FAMUS pathway, supervisor: all FAMUS modules');
+  assert.equal(groupLine(approvedGroups([ap('eusem2', 'eusem2-chest'), ap('eusem2', 'eusem2-ocular'), ap('eusem2', 'eusem2-proc')])[0]), 'EUSEM advanced pathway, supervisor: Chest, advanced; Ocular, advanced; Procedures, advanced', 'names holding commas are kept apart');
+  assert.equal(groupLine(approvedGroups([ap('eusem', 'eusem-chest'), ap('eusem', 'eusem-ocular')])[0]), 'EUSEM pathway, supervisor: Chest: heart and lung; Ocular');
   assert.equal(groupLine(approvedGroups([ap('fusic', 'fusic-heart', { capacity: 'mentor' }), ap('fusic', 'fusic-lung', { capacity: 'mentor' }), ap('fusic', 'fusic-dvt', { capacity: 'mentor' })])[0]), 'FUSIC pathway, mentor: Heart, Lung and DVT');
 });
 
