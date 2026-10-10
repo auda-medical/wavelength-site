@@ -74,3 +74,45 @@ when GitHub is back.
   - the signed files in `C:\WavelengthSigning\signed`;
   - the 93 line-ending-only files in `wavelength-android-fixes`.
 - Nothing has been installed on the phone or uploaded.
+
+## Data-protection and draft-recovery review (10 October 2026, owner's request before signing)
+
+- Start:
+  - Task: keep unfinished scan forms; audit where unredacted media are stored and what can copy them off the phone
+    (manifest, backup rules, device transfer, WebView storage, deletion, log out, retention); privacy notice and DPIA
+    implications; retest everything; rebuild.
+  - Same branch and worktree.
+- Areas changed:
+  - App: `src/app/app.js`, `src/app/native.js`, `src/app/app.css`, the eight translations, `tools/i18n/strings.json`.
+  - Native: `MainActivity.java`, new `WLChromeClient.java` and `CapturePlugin.java`, `res/xml/file_paths.xml`.
+  - Tests: `test/storage-privacy.test.mjs`, `test/native-network.test.mjs`, `tools/e2e-1014.mjs` (F, I),
+    `tools/e2e-1014-emulator.mjs` (T, M, L, Y, O), `tools/e2e-1014-upgrade-emulator.mjs`.
+  - Website text and store notes: `build.js` (privacy notice, logbook terms), `mobile/STORE.md`.
+  - Records: `CLAUDE.md`, this folder.
+- Found and fixed:
+  - **Typed scan forms were lost** when Android ended the app.
+  - **Clips recorded through Wavelength were saved by the camera app in the phone's gallery** (since clips shipped).
+  - **"Take photo" originals stayed in the app's shared-storage folder**, never deleted (since 1.0.8).
+  - **The first 1.0.14 candidate dropped sync answers** after logging out and in without a restart.
+  - **The kept card was missing straight after logging in.**
+  - Details are in `data-protection-review.md` and `fixes-and-causes.md` sections 10 to 13.
+- Proved on the emulator:
+  - Cloud backup refused; device-to-device transfer copies nothing (an A/B test against a control build without the
+    rules, which did copy the photos).
+  - Another app's user id is denied.
+  - The camera writes only to private storage.
+  - A capture is recovered after Android ends the app.
+  - The in-place update from 1.0.13 keeps a scan, its photo and its unsynced state.
+- Version: still 1.0.14 (20). The first candidate was never signed or installed. It is kept, read-only, in
+  `superseded-candidate-1` beside the new files, and must not be signed.
+- New unsigned checksums:
+  - APK `bcdcbc2a190680fd88732c06e26c25f0a765d5475441c3ccdf218b7c671c698e`
+  - AAB `4d9e9d316d8b9801306f6460fc2fba2bb1480d12caf7cc871a83a541b80f58bc`
+- The signing script was updated and rehearsed with the emulator key; the rehearsal files were deleted.
+- Owner decisions and actions:
+  - Deploy the privacy notice and terms text (website, from `main`) with the release.
+  - Add and sign DPIA Amendment 2 (draft in `data-protection-review.md` §5).
+  - Check the Fold7 gallery for clips recorded through Wavelength (checklist 1.19).
+  - Choose what to do with leftover photos at the first start (checklist 1.15).
+- No deploy, no production database change, nothing pushed, nothing signed or installed.
+

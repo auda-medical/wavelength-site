@@ -9,7 +9,7 @@ exception) before the next.
 2. **Build the bundle** with the release's version: `WL_APP_VERSION=… WL_VERSION_CODE=… node mobile/scripts/build-www.mjs`.
    Then start the local Worker (`node --import ./test/helpers/register.mjs tools/dev-worker.mjs 8787`) and the site
    server (`… tools/dev-worker.mjs 8792 --site`). Restart both after every build.
-3. **This release's browser checks:** `node tools/e2e-1014.mjs <out>`.
+3. **This release's browser checks:** `node tools/e2e-1014.mjs <out>` (sections P S H C L G A B R F I).
    - Run them on the new bundle (all pass), then on the previous release's APK assets (`BUNDLE=<unzipped>/assets/public`).
    - The second run shows each fixed defect failing before the fix.
 4. **Earlier browser checks:**
@@ -23,7 +23,10 @@ exception) before the next.
      the 1.0.14 slider), and record it in the test report.
 5. **Emulator** (foldable AVD `wlfold`, airplane mode):
    - Make an emulator-only debug build with WebView debugging switched on in a scratch copy, then switched off again.
-   - Run `node tools/e2e-1014-emulator.mjs <out>` three times in a row.
+   - Run `node tools/e2e-1014-emulator.mjs <out>` three times in a row (needs a rootable `google_apis` image for the
+     backup, device-transfer and other-app checks; `adb root` first).
+   - Run `node tools/e2e-1014-upgrade-emulator.mjs <out> <previous debug apk> <new debug apk>`: an in-place update
+     carrying a scan, a photo and an unsynced state.
    - Then install the previous release and the new one, both signed with the throwaway key, as an update, and check the
      first-install time is unchanged.
 6. **Release build checks:**
@@ -39,7 +42,11 @@ The suites that cover each risk area:
 
 | Risk | Covered by |
 |---|---|
-| Loss of photos or clips | e2e-1014 P, emulator K F X, checklist 1 |
+| Loss of photos or clips | e2e-1014 P, emulator K F X M3, checklist 1 |
+| Loss of typed scans | e2e-1014 F, emulator T1, upgrade U3, checklist 1.16 to 1.17 |
+| Unredacted media outside the app | emulator M1 M2 L1, unit test storage-privacy, checklist 1.13 to 1.15 |
+| Backup and device transfer | emulator Y1 Y2, unit test storage-privacy |
+| Account isolation and sign-out | e2e-1014 I, emulator O1 |
 | Scan data and sync | e2e-1010, e2e-offline, e2e-upgrade, unit tests |
 | Sign-off, assessment, supervision | unit tests, e2e-1012 |
 | Backup and restore | e2e-1014 B, unit tests (format), checklist 0.1 and 5.4 |

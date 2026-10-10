@@ -207,10 +207,14 @@ if (want('P')) {
   await page.evaluate(() => { history.replaceState(null, '', '#/'); }); await page.reload(); await page.waitForSelector('nav.tabs'); await sleep(1500);
   await page.click('[data-kepthome] a'); await page.waitForSelector('[data-addearlier]'); await page.click('[data-addearlier]'); await sleep(500);
   const addedNote = await text(page, '[data-earlier]');
-  await page.click('label[for=t0]'); await page.waitForSelector('#gal .kept');
+  // The note appears only while the application is still to be chosen. Since the review, an earlier step's typed form is
+  // itself kept, and Review continues it with its application chosen, so Images are already showing.
+  const restShown = await page.evaluate(() => !document.querySelector('#rest').hidden);
+  if (!restShown) await page.click('label[for=t0]');
+  await page.waitForSelector('#gal .kept');
   await page.click('#gal .kept'); await page.waitForSelector('.editor canvas'); await sleep(600); await page.click('.editor [data-tab=annotate]');
   const back16 = await chips(page);
-  record('P16', 'Wavelength closed with the editor open (after the app was paused): the photo and its dot come back', dk.length === 1 && dk[0].ann === 1 && back16.join() === 'Dot' && /under Images once you choose/.test(addedNote || ''), JSON.stringify({ kept: dk, back: back16, addedNote }));
+  record('P16', 'Wavelength closed with the editor open (after the app was paused): the photo and its dot come back', dk.length === 1 && dk[0].ann === 1 && back16.join() === 'Dot' && (restShown || /under Images once you choose/.test(addedNote || '')), JSON.stringify({ restShown, kept: dk, back: back16, addedNote }));
   await page.click('.editor [data-a=cancel]'); await page.click('.editor [data-cf=discard]'); await sleep(300);
   // P17 re-editing a saved photo: Back with changes asks Discard changes (no Keep for later); the saved photo stays.
   await go(page, '#/log'); await sleep(500);
