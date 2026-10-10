@@ -5,7 +5,7 @@ The store apps are native Capacitor 8 apps with the logbook packaged inside them
 Native features, worth naming in review notes and the listing:
 - Works offline: open the app, log scans and see progress with no connection; changes sync when the phone is back online.
 - App lock with fingerprint or face (Me > Settings > Security), asked at launch and after 90 seconds in the background.
-- Camera and video capture hand-off for scan images and clips, photo library picker, all images kept in on-device storage.
+- Camera and video capture hand-off for scan images and clips, photo library picker, all images kept in on-device storage. Android (1.0.14): the camera app writes each capture into the app's private storage (`files/wl-captures`), never the gallery or shared storage, and the app removes it once its own copy is kept. Unfinished photos, clips and typed scans are kept on the device only, until saved or discarded (not collected: never leave the phone).
 - Native share sheet and file saving for PDF, Excel, CSV and backup exports; certificates save and share as PDF.
 - Android back button, haptic feedback, system bars in brand navy, in-app browser for website links.
 
