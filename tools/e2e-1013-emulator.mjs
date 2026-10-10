@@ -55,20 +55,25 @@ const dev = await page.evaluate(() => ({ dpr: devicePixelRatio, w: innerWidth, h
 console.log('WebView:', ua.match(/Chrome\/[\d.]+/)[0], JSON.stringify(dev));
 // Screen pixels of a CSS point. Where the WebView sits on the screen is measured once with a real tap on a blank
 // overlay (the status and navigation bars may or may not overlap it).
+// Before real input: the app's window must have the focus (the emulator's System UI sometimes shows a "not
+// responding" dialog under software rendering, which takes the input instead).
+const appFocused = async () => { for (let i = 0; i < 10; i++) { const w = adb('shell', 'dumpsys', 'window'); if (/mCurrentFocus=.*uk\.co\.thewavelength\.app/.test(w)) return true; if (/mCurrentFocus=.*Not Responding/.test(w)) adb('shell', 'input', 'keyevent', 'KEYCODE_ENTER'); await sleep(1500); } return false; };
 const CAL = { x: 540, y: 420 };
-// A spot on the Home screen with nothing to tap (the greeting), listened for at the window, then nothing else is done.
-await page.evaluate(() => { window.__calp = null; window.addEventListener('pointerdown', (e) => { if (!window.__calp) window.__calp = { x: e.clientX, y: e.clientY }; }, { capture: true, once: true }); });
+// A transparent cover over the whole page takes the calibration tap, so it cannot press anything (the header logo,
+// for one, opens the website in the in-app browser).
+await page.evaluate(() => { window.__calp = null; const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:transparent'; d.addEventListener('pointerdown', (e) => { window.__calp = { x: e.clientX, y: e.clientY }; e.preventDefault(); e.stopPropagation(); }, true); d.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => d.remove(), 50); }, true); document.documentElement.appendChild(d); });
+await appFocused();
 adb('shell', 'input', 'tap', String(CAL.x), String(CAL.y)); await sleep(1000);
 const calp = await page.evaluate(() => window.__calp || null);
 if (!calp) throw new Error('calibration tap not seen');
 const off = { x: CAL.x - calp.x * dev.dpr, y: CAL.y - calp.y * dev.dpr };
 console.log('WebView offset on screen (px):', JSON.stringify(off));
 const scr = (x, y) => [String(Math.round(x * dev.dpr + off.x)), String(Math.round(y * dev.dpr + off.y))];
-const tapReal = async (x, y) => { adb('shell', 'input', 'tap', ...scr(x, y)); await sleep(500); };
-const swipeReal = async (a, b, ms = 400) => { adb('shell', 'input', 'swipe', ...scr(a.x, a.y), ...scr(b.x, b.y), String(ms)); await sleep(600); };
-const backKey = async () => { adb('shell', 'input', 'keyevent', 'KEYCODE_BACK'); await sleep(900); };
+const tapReal = async (x, y) => { await appFocused(); adb('shell', 'input', 'tap', ...scr(x, y)); await sleep(500); };
+const swipeReal = async (a, b, ms = 400) => { await appFocused(); adb('shell', 'input', 'swipe', ...scr(a.x, a.y), ...scr(b.x, b.y), String(ms)); await sleep(600); };
+const backKey = async () => { await appFocused(); adb('shell', 'input', 'keyevent', 'KEYCODE_BACK'); await sleep(900); };
 // The system back gesture: a swipe in from the left edge, mid-screen.
-const backGesture = async () => { const W = dev.w * dev.dpr, H = dev.h * dev.dpr; adb('shell', 'input', 'swipe', '2', String(Math.round(H / 2)), String(Math.round(W * 0.45)), String(Math.round(H / 2)), '250'); await sleep(1000); };
+const backGesture = async () => { await appFocused(); const W = dev.w * dev.dpr, H = dev.h * dev.dpr; adb('shell', 'input', 'swipe', '2', String(Math.round(H / 2)), String(Math.round(W * 0.45)), String(Math.round(H / 2)), '250'); await sleep(1000); };
 
 // ---------- A synthetic signed-in learner with 300 scans, on the phone only ----------
 const ACC = { id: 990013, email: 'emulator.test@example.com', name: 'Emulator Test', firstName: 'Emulator', lastName: 'Test', declarationAt: Date.now(), profile: { pathways: ['rcem'], grade: 'ST4', onboarded: true }, emailStatus: 'verified' };
@@ -96,6 +101,12 @@ async function roundTrip(id, label, how, at) {
   const left = await scrollTo(at); const seen = await anchor('a.guide-card');
   const card = await page.evaluate(() => { const c = [...document.querySelectorAll('a.guide-card')].filter((a) => { const r = a.getBoundingClientRect(); return r.top > 70 && r.bottom < innerHeight - 80; }).pop(); const r = c.getBoundingClientRect(); return { href: c.getAttribute('href'), x: r.left + r.width / 2, y: r.top + Math.min(40, r.height / 2) }; });
   await tapReal(card.x, card.y);
+  // The emulator's own System UI sometimes stops answering under software rendering, and its dialog takes the tap:
+  // dismiss it and tap once more. (Emulator only; nothing to do with the app.)
+  if (!(await page.waitForFunction((h) => location.hash === h, card.href, { timeout: 3000 }).catch(() => false))) {
+    if (/mCurrentFocus.*Not Responding/.test(adb('shell', 'dumpsys', 'window'))) { adb('shell', 'input', 'keyevent', 'KEYCODE_ENTER'); await sleep(1500); }
+    await tapReal(card.x, card.y);
+  }
   await page.waitForFunction((h) => location.hash === h, card.href, { timeout: 8000 }).catch(() => {});
   await sleep(800);
   const opened = await page.evaluate(() => location.hash);
@@ -111,7 +122,7 @@ await roundTrip('E2', 'Guides: the Android back gesture (real edge swipe) return
 shot('E2-guides-after-back-gesture');
 await roundTrip('E3', 'Guides: the app\'s back arrow (real tap) returns to the same place', async () => { const b = await page.evaluate(() => { const r = document.querySelector('header.top a.back').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }); await tapReal(b.x, b.y); }, maxY);
 let held = 0; const ys = [];
-for (let i = 0; i < 4; i++) { const before = results.length; await roundTrip('E4.' + i, 'repeat', i % 2 ? backGesture : backKey, maxY); if (results[before].pass) held++; ys.push(results[before].detail.match(/back at (\d+)/)[1]); results.pop(); }
+for (let i = 0; i < 4; i++) { const before = results.length; await roundTrip('E4.' + i, 'repeat', i % 2 ? backGesture : backKey, maxY); if (results[before].pass) held++; ys.push(results[before].detail.replace(/^.*after: /, '')); results.pop(); }
 record('E4', 'Guides: four more round trips (button and gesture in turn), the position holds every time', held === 4, ys.join(', '));
 
 // ---------- Logbook: search and filters kept, by the back button and gesture ----------
