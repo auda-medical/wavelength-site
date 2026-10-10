@@ -1,5 +1,7 @@
 # Wavelength sonar logo sound: nine auditions and three finalists (10 October 2026)
 
+Followed by the final comparison with a subtle reflection: `20-logo-sound-final-comparison.md`.
+
 Fero's decisions (10 October 2026):
 - **Music:** Candidate A (Uplifting modern technology) is the soundtrack for all three version 4 films.
 - **Logo sound:** a new sonar-inspired logo sound is to be chosen from nine original candidates.

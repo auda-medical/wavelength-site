@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { RATE, readWav, writeWav, lufs, truePeak, limiter, scale } from './music-v4/engine.mjs';
+import { RATE, readWav, writeWav, lufs, truePeak, limiter, scale, biq, filt } from './music-v4/engine.mjs';
 import { timeline4, cues, SUBSETS, FPS, SETTLE } from '../src/v4/plans.js';
 import { momentaryMax } from './sonar-v4.mjs';
 
@@ -29,7 +29,13 @@ const AS = (args.find((a) => a.startsWith('--as=')) || '').slice(5) || null;
 // voice's integrated loudness. Used for the sonar comparisons so every logo sound, including the earlier two-note
 // reference, plays at the same perceived level. Without it, the earlier version 4 rule applies.
 const MOMENTARY = args.includes('--level=momentary');
-const SONAR = fs.existsSync(path.join(ROOT, 'public/audio-v4/sonar/sonar.json')) ? JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio-v4/sonar/sonar.json'), 'utf8')) : {};
+// --room: for about 0.8 s around each logo settle the music makes a little room for the logo sound and its reflection:
+// a narrow, gentle cut (-6 dB, Q 2) centred on the logo's arrival pitch and a 1.5 dB overall dip, crossfaded over
+// 150 ms. The music never drops out. Applied the same way to every logo option, so comparisons stay fair.
+const ROOM = args.includes('--room');
+const readMeta = (dir, file) => { const f = path.join(ROOT, 'public/audio-v4', dir, file); return fs.existsSync(f) ? Object.fromEntries(Object.entries(JSON.parse(fs.readFileSync(f, 'utf8'))).map(([k, v]) => [k, { ...v, dir }])) : {}; };
+// Logo sounds that can replace the original two-note file: the sonar auditions and the final signature options.
+const SONAR = { ...readMeta('sonar', 'sonar.json'), ...readMeta('signature', 'signature.json') };
 const T = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio-v4/timings.json'), 'utf8'));
 const S = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/v4/script.json'), 'utf8'));
 export const MIX = { speechToMusic: 15, lift: 6, down: 0.35, up: 0.9, minGap: 1.0, logoBelowVoice: 5, logoMomentaryBelowVoice: 1, target: -15, ceilingTP: -1.0 };
@@ -73,11 +79,22 @@ export function mixFilm(film, cand) {
     if (SONAR[logoKind]) {
       // A sonar candidate: the same quiet air movement as before under the pullback, and the sound's hit on the settle.
       place(path.join(ROOT, `public/audio-v4/sonar/air-${name === 'reveal' ? 'full' : 'short'}.wav`), settle - fileSettle);
-      place(path.join(ROOT, `public/audio-v4/sonar/${logoKind}.wav`), settle - SONAR[logoKind].hit, Math.pow(10, 6 / 20));
+      place(path.join(ROOT, `public/audio-v4/${SONAR[logoKind].dir}/${logoKind}.wav`), settle - SONAR[logoKind].hit, Math.pow(10, 6 / 20));
     } else place(path.join(ROOT, `public/audio-v4/sfx/${name}${logoKind === 'single' ? '-single' : ''}.wav`), settle - fileSettle);
   };
   if (tl.byScene.brand) logo('reveal', tl.byScene.brand.from, SETTLE.full, 2.0);
   if (tl.byScene.end) logo('reveal-short', tl.byScene.end.from, SETTLE.short, 1.1);
+  if (ROOM) {
+    const f = (SONAR[logoKind] && SONAR[logoKind].pitch) || 880; // the original two-note signature arrives on A5
+    const settles = [tl.byScene.brand && (tl.byScene.brand.from + SETTLE.full) / FPS, tl.byScene.end && (tl.byScene.end.from + SETTLE.short) / FPS].filter((x) => x != null);
+    const fL = filt(Float32Array.from(mL), biq('peak', f, 2, -6)), fR = filt(Float32Array.from(mR), biq('peak', f, 2, -6));
+    const dip = Math.pow(10, -1.5 / 20), x = 0.15;
+    for (let i = 0; i < n; i++) {
+      const t = i / RATE; let w = 0;
+      for (const s of settles) { const a = s - 0.1, b = s + 0.7; if (t > a - x && t < b + x) w = Math.max(w, t < a ? smooth((t - (a - x)) / x) : t <= b ? 1 : 1 - smooth((t - b) / x)); }
+      if (w > 0) { mL[i] = mL[i] * (1 - w) + fL[i] * dip * w; mR[i] = mR[i] * (1 - w) + fR[i] * dip * w; }
+    }
+  }
   // Levels: voice to -18 LUFS (speech only), music so its level under speech is MIX.speechToMusic below the voice.
   const vL = lufs(voice, voice); const gv = Math.pow(10, (-18 - vL) / 20); for (let i = 0; i < n; i++) voice[i] *= gv;
   const env = new Float32Array(n);

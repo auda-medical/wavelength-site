@@ -30,7 +30,7 @@ changed. No external contact has been made. No paid service has been used.
 |---|---|
 | **Narration voice** | Version 3 uses the voice Fero chose (audition 4, Qwen3-TTS, synthetic). Listen for warmth and rhythm: flagship lines f04 and f12 and two short-film lines are brisker than the 140 to 155 words-a-minute aim. Check "Directly supervised scans" (transcribes as "supervise") |
 | FAMUS and FUSIC pronunciation | Confirm how they should be spoken (the narration avoids them until then) |
-| **Films version 4: approve the logo sound** | Music chosen (Candidate A). Listen to the nine sonar sounds and the three finalists in the film (Watch the films.cmd, then the version 4 link; `19-sonar-logo-sound.md`); then the full version 4 films are rendered |
+| **Films version 4: choose the permanent logo sound** | Music chosen (Candidate A). Final comparison: four options, dry and with a subtle reflection, standalone and in the film (Watch the films.cmd, then "Final logo-sound comparison"; `20-logo-sound-final-comparison.md`); then the full version 4 films are rendered |
 | Films version 3 overall | Watch the sample, then each film: the rota story, the logo reveal and its sound, pacing, illustrations, claims (`16-videos-v3.md` section 7). Version 2 stays as a fallback |
 | Privacy notice wording | Review the new sections before the deploy |
 | Translations of new home sections | A native-speaker review before promoting a language |

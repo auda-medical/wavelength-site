@@ -108,6 +108,12 @@ Entries are added at each milestone. Newest at the bottom.
   - three finalists (C3, A1, C1) and the two-note reference were placed in the real logo animation;
   - output: `19-sonar-logo-sound.md`, `wavelength-video-output\comparison-v4\sonar\`;
   - final renders wait for approval of the logo sound.
+- Final logo-sound comparison (Fero's brief, same evening):
+  - four options (original two-note, refined two-note, C1 sweep, sonar-musical hybrid);
+  - options 2 to 4 dry and with a subtle reflection (150 ms, about 18 dB under);
+  - the music makes a little room around each settle instead of the logo being made louder;
+  - output: `20-logo-sound-final-comparison.md`, `wavelength-video-output\comparison-v4\signature\`;
+  - awaiting Fero's selection.
 
 ## Decisions and assumptions
 

@@ -1,0 +1,58 @@
+{
+ "settles": {
+  "brand": 10.3,
+  "end": 19.633333333333333
+ },
+ "narration": {
+  "brand": 10.8,
+  "end": 20.033333333333335
+ },
+ "results": {
+  "signature": {
+   "brandLogoOverMusic": 6.9,
+   "endLogoOverMusic": 5.4
+  },
+  "S2d": {
+   "brandLogoOverMusic": 7.6,
+   "endLogoOverMusic": 5.8
+  },
+  "S2e": {
+   "brandLogoOverMusic": 7.7,
+   "brandReflectionOverMusic": -6,
+   "brandReflectionOverMusicInBand": 13.8,
+   "brandVoiceOverReflection": 41.6,
+   "endLogoOverMusic": 5.9,
+   "endReflectionOverMusic": -10.8,
+   "endReflectionOverMusicInBand": 8,
+   "endVoiceOverReflection": 47.1
+  },
+  "S3d": {
+   "brandLogoOverMusic": 7.9,
+   "endLogoOverMusic": 6
+  },
+  "S3e": {
+   "brandLogoOverMusic": 7.9,
+   "brandReflectionOverMusic": -6.1,
+   "brandReflectionOverMusicInBand": 13.7,
+   "brandVoiceOverReflection": 50.5,
+   "endLogoOverMusic": 6.1,
+   "endReflectionOverMusic": -11,
+   "endReflectionOverMusicInBand": 7.8,
+   "endVoiceOverReflection": 59.1
+  },
+  "S4d": {
+   "brandLogoOverMusic": 6,
+   "endLogoOverMusic": 4.1
+  },
+  "S4e": {
+   "brandLogoOverMusic": 5.9,
+   "brandReflectionOverMusic": -5.8,
+   "brandReflectionOverMusicInBand": 18.1,
+   "brandVoiceOverReflection": 43.1,
+   "endLogoOverMusic": 4,
+   "endReflectionOverMusic": -10.6,
+   "endReflectionOverMusicInBand": 10.3,
+   "endVoiceOverReflection": 48
+  }
+ }
+}

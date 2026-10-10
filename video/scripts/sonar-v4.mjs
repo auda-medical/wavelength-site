@@ -20,7 +20,7 @@ const note = (n) => 440 * Math.pow(2, (n - 69) / 12);
 
 // One voice: pitch glide f0 -> f1 over glide s (ease-out), partials [ratio, amp, decay factor], optional slow beating
 // (a second oscillator detuned by `beat` Hz, the rounded "underwater" quality of sonar), optional FM transient.
-function voice(buf, t0, { f0, f1 = f0, glide = 0, glideShape = 'out', attack = 0.004, T60 = 0.6, partials = [[1, 1, 1]], beat = 0, beatAmp = 0.5, fm = null, gain = 1, pan = 0, swell = 0 }) {
+export function voice(buf, t0, { f0, f1 = f0, glide = 0, glideShape = 'out', attack = 0.004, T60 = 0.6, partials = [[1, 1, 1]], beat = 0, beatAmp = 0.5, fm = null, gain = 1, pan = 0, swell = 0 }) {
   const [L, R] = buf, s0 = Math.round(t0 * RATE), len = Math.round((T60 * 1.3 + swell) * RATE);
   const gl = Math.cos((pan + 1) * Math.PI / 4) * Math.SQRT2, gr = Math.sin((pan + 1) * Math.PI / 4) * Math.SQRT2;
   let ph = 0, ph2 = 0;
@@ -51,7 +51,7 @@ function echo(buf, { delay, gain, lp = 2400, repeats = 1, pan = 0.25 }) {
   const gl = Math.cos((pan + 1) * Math.PI / 4) * Math.SQRT2, gr = Math.sin((pan + 1) * Math.PI / 4) * Math.SQRT2;
   for (let r = 1; r <= repeats; r++) { const g = gain * Math.pow(0.5, r - 1); for (let i = 0; i + d * r < L.length; i++) { L[i + d * r] += m[i] * g * gl; R[i + d * r] += m[i] * g * gr; } }
 }
-function room(buf, mix = 0.12) {
+export function room(buf, mix = 0.12) {
   const [L, R] = buf, [rl, rr] = reverb(Float32Array.from(L), Float32Array.from(R), { room: 0.55, damp: 0.55, pre: 0.006 });
   filt(rl, biq('hp', 350)); filt(rr, biq('hp', 350));
   for (let i = 0; i < L.length; i++) { L[i] += rl[i] * mix; R[i] += rr[i] * mix; }
