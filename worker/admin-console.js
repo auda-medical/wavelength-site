@@ -9,6 +9,7 @@ export const SECTIONS = [
   { id: 'academy', label: 'Academy', about: 'Learners, certificates, attempts, feedback and exports.' },
   { id: 'supervisors', label: 'Supervisor verification', about: 'Applications, renewals, credential claims, people and the email outbox.' },
   { id: 'organisations', label: 'Organisations', about: 'The organisation directory, aliases, merges and requests.' },
+  { id: 'sources', label: 'Source monitoring', about: 'Daily checks of official guidance and authorised supervisor directories, and changes waiting for review.' },
   { id: 'faculty', label: 'Faculty applications', about: 'Teach with us applications.' },
   { id: 'departments', label: 'Department enquiries', about: 'Training enquiries from departments.' },
   { id: 'newsletter', label: 'Newsletter', about: 'Zoho Campaigns connection, the weekly send and the send log.' },

@@ -1,0 +1,19 @@
+{
+  "_note": "Monitored sources (October 2026). Guide sources are added automatically from each guide's '## Sources' section by build.js; the entries here add sources that are not in a guide, and the rules set how each is checked. mode: auto (checked daily), manual (an automated check is not permitted or not possible: shown as 'checked by hand'), not_authorised (a supervisor directory: off until the body gives written permission; see docs/source-monitoring/permissions.md). Nothing here is personal data.",
+  "rules": [
+    { "match": "escardio.org", "mode": "manual", "why": "ESC terms forbid substantive extraction or automated collection." },
+    { "match": "cpocus.ca", "mode": "auto", "why": "Public page. The split between areas is members only and is not checked." },
+    { "match": "/events/", "mode": "auto", "why": "Event pages expire; an unavailable result is expected after the event." }
+  ],
+  "sources": [
+    { "id": "dir:famus", "kind": "directory", "body": "SAM", "name": "FAMUS directory of supervisors", "url": "https://www.acutemedicine.org.uk/famus/supervisors-and-mentors/", "adapter": "famus_html", "mode": "not_authorised", "pathways": ["famus"], "why": "Personal data published with each supervisor's consent for the Society's own directory. No API, feed or reuse terms. Needs SAM's written permission (docs/source-monitoring/permissions.md)." },
+    { "id": "dir:fusic", "kind": "directory", "body": "ICS", "name": "FUSIC TMS directory (trainers, mentors and supervisors)", "url": "https://ics.ac.uk/learning/fusic/fusic-tms-directory.html", "adapter": "feed_json", "mode": "not_authorised", "pathways": ["fusic"], "why": "Personal data, 1,173 entries behind a hospital search. No API, feed or reuse terms; robots.txt sets no content signal. Needs ICS's written permission and, ideally, a feed." },
+    { "id": "dir:bse", "kind": "directory", "body": "BSE", "name": "BSE accredited members", "url": "https://www.bsecho.org/Public/Public/Accreditation/Personal-accred/Accredited-members.aspx", "adapter": "feed_json", "mode": "not_authorised", "pathways": [], "why": "Personal data. Ask BSE before any automated lookup." },
+    { "id": "g:esicm-edec", "kind": "guidance", "body": "ESICM", "name": "EDEC, European Diploma in Advanced Critical Care Echocardiography", "url": "https://www.esicm.org/education/diploma/edec-2/", "guides": [], "pathways": [] },
+    { "id": "g:eacvi-certified", "kind": "guidance", "body": "ESC", "name": "EACVI certified healthcare professionals in imaging", "url": "https://www.escardio.org/Education/Career-Development/Certification/certified-healthcare-professionals-in-imaging", "guides": [], "pathways": [] },
+    { "id": "g:acem-p733", "kind": "guidance", "body": "ACEM", "name": "ACEM P733 Recommendations for Health Service Credentialing: EM Ultrasonography", "url": "https://policy.acem.org.au/index.php/policies-menu/p733-recommendations-for-health-service-credentialing-em-ultrasonography", "pathways": ["acem"] },
+    { "id": "g:acep-guidelines", "kind": "guidance", "body": "ACEP", "name": "ACEP Ultrasound Guidelines", "url": "https://www.acep.org/siteassets/sites/acep/media/ultrasound/pointofcareultrasound-guidelines.pdf", "pathways": ["acep"] },
+    { "id": "g:cpocus-core", "kind": "guidance", "body": "CPoCUS", "name": "CPoCUS Acute Care CORE", "url": "https://cpocus.ca/acute-care-core/", "pathways": ["cpocus"] },
+    { "id": "g:eusem-us", "kind": "guidance", "body": "EUSEM", "name": "EUSEM Ultrasound Section", "url": "https://eusem.org/sections-and-committees/sections/ultrasound-section", "pathways": ["eusem", "eusem2"] }
+  ]
+}

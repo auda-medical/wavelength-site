@@ -11,6 +11,8 @@ import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
 import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
 import { zohoConnectUrl, zohoCallback, zohoSubscribe, scheduledNewsletter, newsletterAdminHtml, newsletterAdminPost } from './newsletter.js';
 import { supervisorsAdminHtml, supervisorsAdminPost, evidenceFile } from './supervisors-admin.js';
+import { monitorRun } from './monitor/run.js';
+import { sourcesAdminHtml, sourcesAdminPost } from './monitor/admin.js';
 import { dailyLifecycle } from './supervisor-lifecycle.js';
 import { organisationsAdminHtml, organisationsAdminPost } from './organisations.js';
 import { adminAccess, allowed } from './access.js';
@@ -307,6 +309,15 @@ async function adminRoute(req, env, ctx, url, p, s) {
     return page(await newsletterAdminHtml(env, url.searchParams.get('m') || ''), 'newsletter');
   }
 
+  if (p === '/admin/sources/') {
+    if (req.method === 'POST') {
+      const f = await req.formData();
+      if (accessEmail) f.set('reviewer', accessEmail);
+      const r = await sourcesAdminPost(env, f, accessEmail ? 'access' : s.admin_username, ctx);
+      return redirect(`/admin/sources/?${r.change ? `change=${encodeURIComponent(r.change)}&` : r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`);
+    }
+    return page(await sourcesAdminHtml(env, url), 'sources');
+  }
   if (p === '/admin/supervisors/evidence/') {
     const file = await evidenceFile(env, url.searchParams.get('id'), accessEmail ? `access:${accessEmail}` : s.admin_username);
     return file ? withHeaders(file) : redirect('/admin/supervisors/');
@@ -340,8 +351,9 @@ async function adminRoute(req, env, ctx, url, p, s) {
 
 export default {
   async scheduled(event, env, ctx) {
-    // One cron, one job (worker/cron.js): 15 5 * * * runs the daily supervisor job, the two Tuesday crons the newsletter.
-    runScheduled(event, env, ctx, { dailyLifecycle, scheduledNewsletter });
+    // One cron, one job (worker/cron.js): 15 5 * * * runs the daily supervisor job, the two Tuesday crons the newsletter,
+    // 7 * * * * the source monitoring.
+    runScheduled(event, env, ctx, { dailyLifecycle, scheduledNewsletter, monitorRun });
   },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);

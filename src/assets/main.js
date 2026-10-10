@@ -425,3 +425,32 @@
 // Language menu: close when tapping elsewhere or pressing Escape.
 document.addEventListener('click', function (e) { document.querySelectorAll('.lang-menu[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); }); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape') document.querySelectorAll('.lang-menu[open]').forEach(function (d) { d.removeAttribute('open'); }); });
+
+// Guide source status (source monitoring, October 2026). The server says when every official source behind the guide
+// was last checked successfully, and whether one changed and is awaiting review. Nothing is shown until it answers:
+// the page never claims a check it cannot confirm, and the guide itself never waits for this.
+(function () {
+  var el = document.querySelector('[data-source-checked]');
+  if (!el || !window.fetch) return;
+  var slug = el.getAttribute('data-source-checked');
+  var M = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  // UK dates from the server's YYYY-MM-DD, without passing through the device's time zone.
+  var uk = function (d) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); return m ? Number(m[3]) + ' ' + M[Number(m[2]) - 1] + ' ' + m[1] : ''; };
+  fetch('/api/app/sources/guide/' + encodeURIComponent(slug), { headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (res) {
+    if (!res || !res.ok || !res.guide) return;
+    var g = res.guide;
+    if (g.sources.automatic) {
+      el.textContent = g.checkedOn ? 'Source checked: ' + uk(g.checkedOn) + (g.noChangeLatest ? '. No changes detected during the latest check.' : '') : 'Official sources not yet checked automatically.';
+      el.hidden = false;
+    }
+    var box = document.querySelector('[data-source-notice="' + slug + '"]');
+    if (box && g.pendingReview && g.pendingReview.length) {
+      var p = g.pendingReview[0];
+      box.innerHTML = '';
+      var t = document.createElement('p');
+      t.textContent = 'An official source for this guide changed on ' + uk(p.detectedOn) + '. This Wavelength summary is being reviewed. Until then, check the original guidance: ';
+      var a = document.createElement('a'); a.href = p.url; a.rel = 'noopener'; a.target = '_blank'; a.textContent = p.source || 'official guidance';
+      t.appendChild(a); box.appendChild(t); box.hidden = false;
+    }
+  }).catch(function () { /* no status: the guide reads as before */ });
+})();

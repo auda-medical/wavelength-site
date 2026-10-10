@@ -91,7 +91,7 @@ export function rolesFor(settingValue, email) {
 // The role a path needs. The console home lists only the sections a person's roles open, so any role reaches it.
 export function roleForPath(path) {
   if (path === '/admin/') return 'any';
-  if (path.startsWith('/admin/supervisors/') || path.startsWith('/admin/organisations/')) return 'verifier';
+  if (path.startsWith('/admin/supervisors/') || path.startsWith('/admin/organisations/') || path.startsWith('/admin/sources/')) return 'verifier';
   if (path.startsWith('/admin/academy/')) return 'academy';
   if (path.startsWith('/admin/newsletter/')) return 'newsletter';
   return 'owner';

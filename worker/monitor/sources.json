@@ -1,0 +1,742 @@
+{
+ "guides": [
+  {
+   "slug": "pocus-accreditation",
+   "title": "POCUS accreditation, pathway by pathway",
+   "href": "/guides/pocus-accreditation/",
+   "draft": false,
+   "reviewed": null,
+   "updated": "2026-10-05",
+   "contentVersion": "ef7f4233ad81e780",
+   "sources": [
+    "g:38187a981e48",
+    "g:50f2134f87a3",
+    "g:5e2f7962ecbf",
+    "g:f92d726b14bb",
+    "g:eusem-us",
+    "g:acem-p733",
+    "g:cpocus-core",
+    "g:acep-guidelines"
+   ]
+  },
+  {
+   "slug": "rcem-ultrasound-sign-off",
+   "title": "The RCEM ultrasound sign-off pathway",
+   "href": "/guides/rcem-ultrasound-sign-off/",
+   "draft": false,
+   "reviewed": "2026-10-04",
+   "updated": "2026-10-05",
+   "contentVersion": "41ca8b4c10db0269",
+   "sources": [
+    "g:38187a981e48",
+    "g:50f2134f87a3",
+    "g:d01226e577ba",
+    "g:cb195aed79d9",
+    "g:8c62b3ed0de4",
+    "g:a8fd0ffe43b8"
+   ]
+  },
+  {
+   "slug": "ultrasound-logbook",
+   "title": "How to keep an ultrasound logbook",
+   "href": "/guides/ultrasound-logbook/",
+   "draft": false,
+   "reviewed": "2026-10-04",
+   "updated": "2026-10-04",
+   "contentVersion": "531829dc7636e016",
+   "sources": [
+    "g:38187a981e48",
+    "g:50f2134f87a3",
+    "g:20ee0421f11f",
+    "g:5e2f7962ecbf",
+    "g:13e3c9be560e",
+    "g:849a75d32cfd",
+    "g:72e381cfe3d4",
+    "g:c8bcea201e1c"
+   ]
+  },
+  {
+   "slug": "famus-accreditation",
+   "title": "FAMUS accreditation, step by step",
+   "href": "/guides/famus-accreditation/",
+   "draft": false,
+   "reviewed": "2026-10-04",
+   "updated": "2026-10-05",
+   "contentVersion": "f81a1d5e3a0c33e0",
+   "sources": [
+    "g:5e2f7962ecbf",
+    "g:aa0067173e88",
+    "g:c7c862b86b19",
+    "g:08091376e8be",
+    "g:20ee0421f11f",
+    "g:42e834307295",
+    "g:3a9960f0f8f7",
+    "g:577b357cc1b8",
+    "g:b33f93c82eb6"
+   ]
+  },
+  {
+   "slug": "fusic-accreditation",
+   "title": "FUSIC accreditation, step by step",
+   "href": "/guides/fusic-accreditation/",
+   "draft": false,
+   "reviewed": "2026-10-04",
+   "updated": "2026-10-05",
+   "contentVersion": "90b24daba05b9f4d",
+   "sources": [
+    "g:f92d726b14bb",
+    "g:72e381cfe3d4",
+    "g:079f8141dc6d",
+    "g:13e3c9be560e",
+    "g:8220a0127972",
+    "g:849a75d32cfd",
+    "g:ab8584cfc6c2",
+    "g:14f5f5f118b2",
+    "g:42fd76ca3edd",
+    "g:e6590b96d94b",
+    "g:0cca24cd3c80",
+    "g:557d1c20f74e",
+    "g:7398ea6be41a",
+    "g:e65461234f12",
+    "g:bca82e006163"
+   ]
+  }
+ ],
+ "sources": [
+  {
+   "id": "dir:bse",
+   "kind": "directory",
+   "body": "BSE",
+   "name": "BSE accredited members",
+   "url": "https://www.bsecho.org/Public/Public/Accreditation/Personal-accred/Accredited-members.aspx",
+   "mode": "not_authorised",
+   "adapter": "feed_json",
+   "guides": [],
+   "pathways": [],
+   "why": "Personal data. Ask BSE before any automated lookup."
+  },
+  {
+   "id": "dir:famus",
+   "kind": "directory",
+   "body": "SAM",
+   "name": "FAMUS directory of supervisors",
+   "url": "https://www.acutemedicine.org.uk/famus/supervisors-and-mentors/",
+   "mode": "not_authorised",
+   "adapter": "famus_html",
+   "guides": [],
+   "pathways": [
+    "famus"
+   ],
+   "why": "Personal data published with each supervisor's consent for the Society's own directory. No API, feed or reuse terms. Needs SAM's written permission (docs/source-monitoring/permissions.md)."
+  },
+  {
+   "id": "dir:fusic",
+   "kind": "directory",
+   "body": "ICS",
+   "name": "FUSIC TMS directory (trainers, mentors and supervisors)",
+   "url": "https://ics.ac.uk/learning/fusic/fusic-tms-directory.html",
+   "mode": "not_authorised",
+   "adapter": "feed_json",
+   "guides": [],
+   "pathways": [
+    "fusic"
+   ],
+   "why": "Personal data, 1,173 entries behind a hospital search. No API, feed or reuse terms; robots.txt sets no content signal. Needs ICS's written permission and, ideally, a feed."
+  },
+  {
+   "id": "g:079f8141dc6d",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC Heart",
+   "url": "https://ics.ac.uk/product/fusic-heart.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:08091376e8be",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "SAM: FAMUS thoracic module",
+   "url": "https://www.acutemedicine.org.uk/famus/thoracic-module/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:0cca24cd3c80",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC Vascular",
+   "url": "https://ics.ac.uk/product/fusic-vascular.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:13e3c9be560e",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC Heart training pack (Intensive Care Society)",
+   "url": "https://ics.ac.uk/asset/68C9E1E9%2DF1D6%2D4E9B%2DB63971AC2DB41DD1/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "ultrasound-logbook",
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:14f5f5f118b2",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC Abdomen: training pack (2025, v11)",
+   "url": "https://ics.ac.uk/asset/D7A8D6ED%2DE473%2D4C61%2DB3A396E3BD15A07B/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:20ee0421f11f",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "FAMUS curriculum pack: thoracic module (Society for Acute Medicine)",
+   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-thoracic-v1.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "ultrasound-logbook",
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:38187a981e48",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM: Ultrasound education and training, 2021 curriculum",
+   "url": "https://rcem.ac.uk/ultrasound/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation",
+    "rcem-ultrasound-sign-off",
+    "ultrasound-logbook"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:3a9960f0f8f7",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "SAM: FAMUS DVT module",
+   "url": "https://www.acutemedicine.org.uk/famus/dvt-module/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:42e834307295",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "SAM: FAMUS abdominal/renal module",
+   "url": "https://www.acutemedicine.org.uk/famus/abdominal-renal-module/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:42fd76ca3edd",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC DVT",
+   "url": "https://ics.ac.uk/product/fusic-dvt.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:50f2134f87a3",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM Point of Care Ultrasound Curriculum 2021, Appendix 3",
+   "url": "https://rcemcurriculum.co.uk/wp-content/uploads/2021/06/Appendix-3-PoCUS-for-2021-RCEM-curriculum.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation",
+    "rcem-ultrasound-sign-off",
+    "ultrasound-logbook"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:557d1c20f74e",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC Vascular: training pack (2026, v1)",
+   "url": "https://ics.ac.uk/asset/57FBDE91%2D95B6%2D44C9%2D89FBE7BA577CD952/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:577b357cc1b8",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "SAM: FAMUS lumbar puncture module",
+   "url": "https://www.acutemedicine.org.uk/famus/lumbar-puncture-module/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:5e2f7962ecbf",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "SAM: FAMUS, how to accredit",
+   "url": "https://www.acutemedicine.org.uk/famus/how-to-accredit/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation",
+    "ultrasound-logbook",
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:72e381cfe3d4",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC FAQs",
+   "url": "https://ics.ac.uk/learning/fusic/fusic-faqs.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "ultrasound-logbook",
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:7398ea6be41a",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC HD",
+   "url": "https://ics.ac.uk/product/fusic-hd.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:8220a0127972",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC Lung",
+   "url": "https://ics.ac.uk/product/fusic-lung.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:849a75d32cfd",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC Lung training pack (Intensive Care Society)",
+   "url": "https://ics.ac.uk/asset/DFBC4B66%2D9292%2D42C6%2DA9D21CB8B658A556/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "ultrasound-logbook",
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:8c62b3ed0de4",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM Curriculum 2021, version 1.5, updated 6 August 2025",
+   "url": "https://rcem.ac.uk/wp-content/uploads/2025/08/RCEM-Emergency-Medicine-Training-Curriculum-%E2%80%93-2025-Update-v1.5-Final.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "rcem-ultrasound-sign-off"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:a8fd0ffe43b8",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM: Training curriculum changes (2025 update)",
+   "url": "https://rcem.ac.uk/college-news/rcem-training-curriculum-changes-are-coming/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "rcem-ultrasound-sign-off"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:aa0067173e88",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "SAM: FAMUS frequently asked questions",
+   "url": "https://www.acutemedicine.org.uk/famus/faqs/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:ab8584cfc6c2",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC Abdomen",
+   "url": "https://ics.ac.uk/product/fusic-abdomen.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:acem-p733",
+   "kind": "guidance",
+   "body": "ACEM",
+   "name": "ACEM P733 Recommendations for Health Service Credentialing: EM Ultrasonography",
+   "url": "https://policy.acem.org.au/index.php/policies-menu/p733-recommendations-for-health-service-credentialing-em-ultrasonography",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation"
+   ],
+   "pathways": [
+    "acem"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:acep-guidelines",
+   "kind": "guidance",
+   "body": "ACEP",
+   "name": "ACEP Ultrasound Guidelines",
+   "url": "https://www.acep.org/siteassets/sites/acep/media/ultrasound/pointofcareultrasound-guidelines.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation"
+   ],
+   "pathways": [
+    "acep"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:b33f93c82eb6",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "SAM: FAMUS peripheral access module",
+   "url": "https://www.acutemedicine.org.uk/famus/peripheral-access-module/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:bca82e006163",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "Become a FUSIC trainer or mentor",
+   "url": "https://ics.ac.uk/learning/fusic/fusic-trainer.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:c7c862b86b19",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "SAM: FAMUS theory module",
+   "url": "https://www.acutemedicine.org.uk/famus/theory-module/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:c8bcea201e1c",
+   "kind": "guidance",
+   "body": "RCR",
+   "name": "BMUS and RCR: Recommendations for specialists practising ultrasound independently of radiology departments (2023)",
+   "url": "https://www.rcr.ac.uk/news-policy/latest-updates/recommendations-for-specialists-practising-ultrasound-independently-of-radiology-departments-safety-governance-and-education/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "ultrasound-logbook"
+   ],
+   "pathways": [],
+   "why": null
+  },
+  {
+   "id": "g:cb195aed79d9",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM Governance and Administration entrustment scale (September 2022)",
+   "url": "https://rcem.ac.uk/wp-content/uploads/2022/09/Governance_and_Administration_Entrustment_Scale_Sept_22.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "rcem-ultrasound-sign-off"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:cpocus-core",
+   "kind": "guidance",
+   "body": "CPoCUS",
+   "name": "CPoCUS Acute Care CORE",
+   "url": "https://cpocus.ca/acute-care-core/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation"
+   ],
+   "pathways": [
+    "cpocus"
+   ],
+   "why": "Public page. The split between areas is members only and is not checked."
+  },
+  {
+   "id": "g:d01226e577ba",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM SLO6 PoCUS Competence Entrustment Scale: guidance for education and training (August 2022)",
+   "url": "https://rcem.ac.uk/wp-content/uploads/2022/08/SLO6_POCUS_Ultrasound_Competence_Entrustment_Scale_Aug_2022.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "rcem-ultrasound-sign-off"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:e65461234f12",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC HD: HD summative assessment, November 2025",
+   "url": "https://ics.ac.uk/learning/events/fusic-hd-summative-assessment-november-2025.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": "Event pages expire; an unavailable result is expected after the event."
+  },
+  {
+   "id": "g:e6590b96d94b",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC DVT: training pack (2026, v1)",
+   "url": "https://ics.ac.uk/asset/BEAA5DF0%2DFD47%2D4E83%2D9ED28E72533D2EB6/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:eacvi-certified",
+   "kind": "guidance",
+   "body": "ESC",
+   "name": "EACVI certified healthcare professionals in imaging",
+   "url": "https://www.escardio.org/Education/Career-Development/Certification/certified-healthcare-professionals-in-imaging",
+   "mode": "manual",
+   "adapter": "page",
+   "guides": [],
+   "pathways": [],
+   "why": "ESC terms forbid substantive extraction or automated collection."
+  },
+  {
+   "id": "g:esicm-edec",
+   "kind": "guidance",
+   "body": "ESICM",
+   "name": "EDEC, European Diploma in Advanced Critical Care Echocardiography",
+   "url": "https://www.esicm.org/education/diploma/edec-2/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [],
+   "pathways": [],
+   "why": null
+  },
+  {
+   "id": "g:eusem-us",
+   "kind": "guidance",
+   "body": "EUSEM",
+   "name": "EUSEM Ultrasound Section",
+   "url": "https://eusem.org/sections-and-committees/sections/ultrasound-section",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation"
+   ],
+   "pathways": [
+    "eusem",
+    "eusem2"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:f92d726b14bb",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "Intensive Care Society: FUSIC",
+   "url": "https://ics.ac.uk/learning/fusic.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation",
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": null
+  }
+ ],
+ "version": "630a864af90d563e"
+}

@@ -37,11 +37,57 @@ const guides = (fs.existsSync(GUIDES_DIR) ? fs.readdirSync(GUIDES_DIR) : [])
   .map((f) => {
     const { meta, html } = md.parse(fs.readFileSync(path.join(GUIDES_DIR, f), 'utf8'));
     const toc = [...html.matchAll(/<h2 id="([^"]+)">(.*?)<\/h2>/g)].map((m) => ({ id: m[1], label: m[2].replace(/<[^>]+>/g, '') }));
-    return { ...meta, slug: meta.slug || f.replace(/\.md$/, ''), html, toc, date: String(meta.date || ''), order: Number(meta.order || 99) };
+    return { ...meta, file: f, slug: meta.slug || f.replace(/\.md$/, ''), html, toc, date: String(meta.date || ''), order: Number(meta.order || 99) };
   })
   .filter((g) => g.date <= new Date().toISOString().slice(0, 10))
   .sort((a, b) => a.order - b.order);
 const liveGuides = guides.filter((g) => g.draft !== true);
+// Source monitoring (October 2026): every authoritative source a guide cites in its '## Sources' section, plus the
+// sources in data/monitor-sources.json (directories, other accreditation bodies, pathway documents), written to
+// worker/monitor/sources.json for the Worker's daily checks. Each guide also gets a content version (a hash of its
+// Markdown), so the server can tell an app whose bundled copy is older than the website's.
+{
+  const crypto = require('crypto');
+  const REG = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/monitor-sources.json'), 'utf8'));
+  const idFor = (u) => 'g:' + crypto.createHash('sha256').update(u).digest('hex').slice(0, 12);
+  const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+  const BODY = { 'rcem.ac.uk': 'RCEM', 'rcemcurriculum.co.uk': 'RCEM', 'acutemedicine.org.uk': 'SAM', 'ics.ac.uk': 'ICS', 'eusem.org': 'EUSEM', 'policy.acem.org.au': 'ACEM', 'cpocus.ca': 'CPoCUS', 'acep.org': 'ACEP', 'rcr.ac.uk': 'RCR', 'esicm.org': 'ESICM', 'escardio.org': 'ESC', 'bsecho.org': 'BSE' };
+  const byUrl = new Map();
+  for (const s of REG.sources) byUrl.set(s.url, { guides: [], pathways: [], ...s });
+  const meta = [];
+  for (const g of guides) {
+    const raw = fs.readFileSync(path.join(GUIDES_DIR, g.file), 'utf8');
+    const i = g.html.search(/<h2 id="sources">/), j = i < 0 ? -1 : g.html.indexOf('<h2', i + 4);
+    const block = i < 0 ? '' : g.html.slice(i, j < 0 ? undefined : j);
+    const urls = [...new Set([...block.matchAll(/href="(https:\/\/[^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&')))];
+    const ids = [];
+    for (const u of urls) {
+      if (!byUrl.has(u)) {
+        // The link's own text names the document; a second link in the same list item is named after the first
+        // ("FUSIC Heart: training pack (2025, v13)").
+        const esc2 = u.replace(/&/g, '&amp;').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const li = (block.match(new RegExp(`<li>(?:(?!</li>).)*?href="${esc2}"(?:(?!</li>).)*</li>`)) || [''])[0];
+        const texts = [...li.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+        const own = (li.match(new RegExp(`href="${esc2}"[^>]*>([^<]+)</a>`)) || [])[1];
+        const label = own ? (texts[0] && texts[0] !== own.replace(/&amp;/g, '&') ? `${texts[0]}: ${own.replace(/&amp;/g, '&')}` : own.replace(/&amp;/g, '&')) : null;
+        byUrl.set(u, { id: idFor(u), kind: 'guidance', body: BODY[host(u)] || host(u), name: label ? label.replace(/&amp;/g, '&') : `${BODY[host(u)] || host(u)}: ${new URL(u).pathname.split('/').filter(Boolean).pop() || 'home'}`, url: u, guides: [], pathways: [] });
+      }
+      const s = byUrl.get(u);
+      if (!s.guides.includes(g.slug)) s.guides.push(g.slug);
+      if (g.pathway && g.pathway !== 'all' && !s.pathways.includes(g.pathway)) s.pathways.push(g.pathway);
+      ids.push(s.id);
+    }
+    meta.push({ slug: g.slug, title: g.title, href: `/guides/${g.slug}/`, draft: g.draft === true, reviewed: g.reviewed ? String(g.reviewed) : null, updated: [g.reviewed, g.updated, g.date].filter(Boolean).map(String).sort().pop() || null, contentVersion: crypto.createHash('sha256').update(raw).digest('hex').slice(0, 16), sources: ids });
+  }
+  const sources = [...byUrl.values()].map((s) => {
+    const rule = (REG.rules || []).find((r) => s.url.includes(r.match));
+    return { id: s.id, kind: s.kind || 'guidance', body: s.body || BODY[host(s.url)] || host(s.url), name: s.name, url: s.url, mode: s.mode || (rule && rule.mode) || 'auto', adapter: s.adapter || 'page', guides: s.guides, pathways: s.pathways || [], why: s.why || (rule && rule.why) || null };
+  }).sort((a, b) => a.id.localeCompare(b.id));
+  const out = { guides: meta, sources };
+  out.version = crypto.createHash('sha256').update(JSON.stringify(out)).digest('hex').slice(0, 16);
+  fs.mkdirSync(path.join(ROOT, 'worker/monitor'), { recursive: true });
+  fs.writeFileSync(path.join(ROOT, 'worker/monitor/sources.json'), JSON.stringify(out, null, 1) + '\n');
+}
 // One-page summaries of the pathway guides: content/guides/at-a-glance/<guide slug>.md, built at /guides/<slug>/at-a-glance/.
 // Each prints to one A4 page with a QR code back to the full guide. node tools/glance-pdf.mjs writes the matching PDFs to
 // src/assets/guides/ and records a hash of each source, so a PDF is only offered while it matches the current text.
@@ -1157,6 +1203,14 @@ ${subscribeBand('Pathway changes, <em>in your inbox.</em>')}`,
   const GUIDE_TOPICS = { rcem: ['heart', 'abdomen', 'lung'], famus: ['lung', 'abdomen', 'heart'], fusic: ['heart', 'lung', 'abdomen'] };
   const topicCard = (t) => { const n = posts.filter((p) => p.draft !== true && topicOf(p.category) === t).length; return `<a class="post-card reveal" href="${topicHref(t)}"><p class="eyebrow">Wavelength Pearls</p><h3>${esc(t.heading || t.label)}</h3><p>${esc(t.intro)}</p><span class="meta">${n} free pearls, each with a short test</span></a>`; };
   const courseLearnCard = (c) => { const next = upcoming(c)[0]; return `<a class="post-card reveal" href="/courses/${c.slug}/"><p class="eyebrow">Hands-on course</p><h3>${esc(c.title)}</h3><p>${esc(c.short)}</p><span class="meta">Mapped to the RCEM curriculum${next ? ` · Next: ${fmtDate(next.date, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}</span></a>`; };
+  // Three dates that mean three different things (source monitoring, October 2026). The two the build knows are
+  // written here; "Source checked" comes only from the server (src/assets/main.js reads /api/app/sources/guide/<slug>),
+  // so a page never claims a check that did not happen, and without the server it simply says nothing about checks.
+  const guideDates = (g) => {
+    const fmt = (d) => fmtDate(d, { day: 'numeric', month: 'long', year: 'numeric' });
+    const updated = [g.reviewed, g.updated, g.date].filter(Boolean).map(String).sort().pop();
+    return `<p class="guide-dates rise">${g.reviewed ? `<span>Last clinically reviewed: ${fmt(g.reviewed)}</span>` : ''}${updated ? `<span>Guidance last updated: ${fmt(updated)}</span>` : ''}<span data-source-checked="${g.slug}" hidden></span></p><div class="source-notice" data-source-notice="${g.slug}" role="status" hidden></div>`;
+  };
   for (const g of guides) {
     const href = `/guides/${g.slug}/`;
     const isDirector = !g.author || g.author === site.director.name;
@@ -1178,7 +1232,7 @@ ${subscribeBand('Pathway changes, <em>in your inbox.</em>')}`,
         { '@context': 'https://schema.org', '@type': 'Article', headline: g.seoTitle || g.title, alternativeHeadline: g.title, description: g.summary, datePublished: g.date, dateModified: [checked || g.date, g.updated].filter(Boolean).map(String).sort().pop(), author: { '@type': 'Person', name: g.author || site.director.name, ...(isDirector ? { '@id': url('/faculty/#director'), jobTitle: site.director.title, url: url('/faculty/') } : {}) }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), isAccessibleForFree: true, inLanguage: 'en-GB', ...(gl ? { hasPart: { '@type': 'WebPage', name: gl.title, url: url(glanceHref(gl)) } } : {}) },
         breadcrumbLd([...gCrumbs(), { label: g.title, href }]),
       ],
-      body: `${pageHero({ eyebrow: (g.eyebrow || 'Guide') + (g.draft === true ? ' · Draft, not published' : ''), title: esc(g.title), lede: esc(g.summary || ''), crumbs: gCrumbs([{ label: g.short || g.title }]), extra: `<p class="byline rise">${isDirector ? `<a href="/faculty/">${esc(g.author || site.director.name)}</a>` : esc(g.author)}${checked ? ` · Checked against official sources ${fmtDate(checked, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''} · ${readMins(g.html)} min read</p>${gl ? `<div class="hero-ctas rise" style="margin-top:28px"><a class="btn btn-ghost light" href="${glanceHref(gl)}">One-page summary</a></div>` : ''}` })}
+      body: `${pageHero({ eyebrow: (g.eyebrow || 'Guide') + (g.draft === true ? ' · Draft, not published' : ''), title: esc(g.title), lede: esc(g.summary || ''), crumbs: gCrumbs([{ label: g.short || g.title }]), extra: `<p class="byline rise">${isDirector ? `<a href="/faculty/">${esc(g.author || site.director.name)}</a>` : esc(g.author)} · ${readMins(g.html)} min read</p>${guideDates(g)}${gl ? `<div class="hero-ctas rise" style="margin-top:28px"><a class="btn btn-ghost light" href="${glanceHref(gl)}">One-page summary</a></div>` : ''}` })}
 <section class="section"><div class="wrap guide-wrap">${g.toc.length > 2 ? `<nav class="guide-toc reveal" aria-label="Contents"><p class="eyebrow">Contents</p><ol>${g.toc.map((t) => `<li><a href="#${t.id}">${t.label}</a></li>`).join('')}</ol>${gl ? `<p class="guide-toc-extra"><a class="text-link" href="${glanceHref(gl)}">One-page summary</a></p>` : ''}${g.slug !== 'pocus-accreditation' && hasAccreditationHub() ? `<p class="guide-toc-extra"><a class="text-link" href="/guides/pocus-accreditation/">Compare all pathways</a></p>` : ''}</nav>` : ''}<article class="prose post guide reveal">${g.html}</article></div>
 <div class="wrap"><div class="post-cta reveal"><div><h3>${esc(cta[0])}</h3><p>${esc(cta[1])}</p></div><a class="btn btn-teal" href="/pocus-logbook/${g.pathway && g.pathway !== 'all' ? `#pathway-${g.pathway}` : ''}">See the POCUS logbook ${arrow}</a></div></div>
 </section>

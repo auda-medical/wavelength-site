@@ -177,6 +177,18 @@ export function render(kind, d) {
       paragraphs: [hi, `${d.supervisor} is no longer available for new supervision through Wavelength.`, 'Sign-offs and assessments they completed while active stay in your portfolio.', d.returned ? `${d.returned} open ${d.returned === 1 ? 'request has' : 'requests have'} come back to you. In the app you can send ${d.returned === 1 ? 'it' : 'them'} to another approved supervisor or to a one-off assessor, or cancel ${d.returned === 1 ? 'it' : 'them'}. Nothing needs re-entering.` : null, 'Please arrange another suitable supervisor.'],
       button: { href: `${APP}/supervisors`, label: 'Open your supervisors' },
     }),
+    // Source monitoring (worker/monitor/run.js): only when something needs a person, never for routine checks.
+    monitor_summary: () => ({
+      subject: 'Wavelength | Source monitoring: review needed',
+      heading: 'Source monitoring',
+      paragraphs: [
+        (d.items || []).length ? `${d.items.length} change${d.items.length === 1 ? '' : 's'} to review:` : null,
+        ...(d.items || []).slice(0, 15).map((i) => `${i.name} (${i.classification.replace(/_/g, ' ')}): ${i.summary}`),
+        (d.failing || []).length ? `Failing repeatedly: ${(d.failing || []).map((f) => `${f.name} (${f.failures} failures in a row)`).join('; ')}.` : null,
+        'No Wavelength guide has been changed. Review each item and update the guide through the normal release if needed. This email holds no personal details.',
+      ],
+      button: { href: `${SITE}/admin/sources/`, label: 'Open source monitoring' },
+    }),
     signup_exists: () => ({
       subject: 'Someone tried to create a Wavelength account with your email',
       heading: 'You already have an account',

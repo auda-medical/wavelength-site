@@ -7,7 +7,7 @@ import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { makeEnv } from './helpers/env.mjs';
-import { DAILY_CRON, NEWSLETTER_CRONS, jobFor, runScheduled } from '../worker/cron.js';
+import { DAILY_CRON, NEWSLETTER_CRONS, MONITOR_CRON, jobFor, runScheduled } from '../worker/cron.js';
 import worker from '../worker/index.js';
 
 const wranglerCrons = () => JSON.parse(readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, '')).triggers.crons;
@@ -28,9 +28,11 @@ test('every cron maps to exactly one job', () => {
   for (const other of ['15 5 * * 2', '30 6 * * *', '* * * * *', '', undefined, null]) assert.equal(jobFor(other), null, String(other));
 });
 
-test('wrangler.jsonc carries exactly the three crons, each routed', () => {
+test('wrangler.jsonc carries exactly the four crons, each routed (the hourly source monitoring added October 2026)', () => {
   const crons = wranglerCrons();
-  assert.deepEqual(crons, ['30 6 * * 2', '30 7 * * 2', '15 5 * * *']);
+  assert.deepEqual(crons, ['30 6 * * 2', '30 7 * * 2', '15 5 * * *', '7 * * * *']);
+  assert.ok(crons.length <= 5, 'the Workers free plan allows five cron triggers per account');
+  assert.deepEqual(crons.filter((c) => jobFor(c) === 'source-monitor'), [MONITOR_CRON]);
   assert.equal(new Set(crons).size, crons.length, 'no duplicates');
   for (const c of crons) assert.ok(jobFor(c), `cron ${c} has a job`);
   assert.deepEqual(crons.filter((c) => jobFor(c) === 'supervisor-daily'), [DAILY_CRON]);
@@ -50,6 +52,19 @@ test('the daily cron runs only dailyLifecycle; each Tuesday cron only scheduledN
   const { calls, jobs } = spies(); const c = collectingCtx();
   runScheduled({ cron: DAILY_CRON }, {}, c, jobs); await c.done();
   assert.deepEqual(calls, []);
+});
+
+test('the hourly monitoring cron runs only monitorRun, and the existing crons never run it', async () => {
+  const env = { DB: {} };
+  for (const [cron, expected] of [[MONITOR_CRON, ['monitorRun:cron']], [DAILY_CRON, ['dailyLifecycle']], ['30 6 * * 2', ['scheduledNewsletter']]]) {
+    const calls = []; const c = collectingCtx();
+    runScheduled({ cron }, env, c, { dailyLifecycle: async () => { calls.push('dailyLifecycle'); }, scheduledNewsletter: async () => { calls.push('scheduledNewsletter'); }, monitorRun: async (e, ctx, o) => { calls.push(`monitorRun:${o.trigger}`); } });
+    await c.done();
+    assert.deepEqual(calls, expected, `cron ${cron}`);
+  }
+  // A Worker built without the monitor (older entry) ignores the cron instead of failing.
+  const c = collectingCtx();
+  assert.equal(runScheduled({ cron: MONITOR_CRON }, env, c, { dailyLifecycle: async () => {}, scheduledNewsletter: async () => {} }), null);
 });
 
 test('a failing job is caught and does not reject the scheduled event', async () => {

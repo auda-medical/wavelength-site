@@ -29,6 +29,7 @@ import DATA from './academy-data.json';
 import { createEvidence, listEvidence, withdrawEvidence, verifyEvidence } from './evidence.js';
 import * as SV from './supervise.js';
 import { emailVerifyOn, sendVerification, issueToken, sendTokenEmail, resend as resendEmail, verifyToken, newNonce } from './email-verify.js';
+import { handleMonitorPublic, handleMonitorApp } from './monitor/api.js';
 import { handleProfessional, directorySearch, deleteProfessional, snapshotFor, publicSnapshot, entrySnapshot, professionalOn } from './professional.js';
 import { handleSupervisorApply } from './supervisor-apply.js';
 import { approvalRequired, applyOn, standingOf, signerBlocked, NEUTRAL_REFUSAL } from './supervisor-lifecycle.js';
@@ -696,6 +697,8 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'supervisors/remove') return SV.supervisorRemove(env, l, req);
     if (p === 'supervisors/accept') return SV.supervisorAccept(env, l, req);
     if (p === 'supervisors/accept-invite') return SV.supervisorAcceptInvite(env, l, req);
+    const lst = await handleMonitorApp(env, l, req, url, p, body);
+    if (lst) return lst;
     if (p === 'email/resend') return resendEmail(env, l);
     if (p === 'supervise/signoff') return SV.superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, (so, dec, sup) => { const m = notifyLearner(env, so, dec, sup); if (ctx && ctx.waitUntil) ctx.waitUntil(m); });
     if (p === 'supervise/assessment') return SV.superviseAssessmentComplete(env, l, req);
@@ -711,6 +714,9 @@ async function routeApp(req, env, ctx, url, p) {
   if (p === 'verify') return verify(env, url);
   if (p === 'assessment/view') return SV.assessmentView(env, url);
   if (p === 'directory') return directorySearch(env, url);
+  // Guide source status (public, for the website and the apps): worker/monitor/api.js.
+  const mon = await handleMonitorPublic(env, req, url, p, ctx);
+  if (mon) return mon;
   if (p === 'organisations' || p.startsWith('organisations/')) return handleOrganisations(env, req, url, p, null, ctx, body);
   const l = await learner(env, req);
   if (p === 'me') return l && l.password_hash ? me(env, l, req) : json({ ok: false, auth: false, academy: !!l, ...versionInfo(env, req) });
@@ -720,6 +726,8 @@ async function routeApp(req, env, ctx, url, p) {
   if (p === 'evidence') return listEvidence(env, l, json);
   if (p === 'assessments') return SV.assessmentList(env, l);
   if (p === 'supervisors') return SV.supervisorLinks(env, l);
+  const lst = await handleMonitorApp(env, l, req, url, p, body);
+  if (lst) return lst;
   if (p === 'supervise/learner') return SV.superviseLearner(env, l, url);
   if (p === 'supervise/signoff') return SV.superviseSignoffView(env, l, url);
   const found = await handleSearch(env, l, req, url, p, ctx, body);
