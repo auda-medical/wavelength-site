@@ -1,7 +1,8 @@
 // Browser check of guide source status in the phone apps (October 2026): an Android-line app build (DIST, with the
 // android-integration source-status patch) against this branch's Worker. The guide shows its own review and update
 // dates at once, "Source checked" only from the server, a pending-review notice with the original's link, and offline
-// the stored status labelled with the day it arrived. Synthetic sources, local only.
+// the stored status labelled with the day it arrived. Also the official-directory name search on the same bundle (learner
+// invitation and supervisor application). Synthetic sources and people, local only.
 // Run: DIST=<patched Android-line dist> node --import ./test/helpers/register.mjs tools/e2e-app-guides.mjs <outdir>
 import http from 'node:http';
 import fs from 'node:fs';
@@ -24,11 +25,14 @@ const pages = new Map();
 const BODY = '<p>Accreditation requires a logbook of 50 supervised scans, reviewed by a mentor.</p><p>Training should be completed within 12 months of the first logbook scan.</p><p>The triggered assessment is conducted by a supervisor once the logbook is complete.</p><p>Candidates are encouraged to attend a recognised course.</p>';
 const page = (b, t) => `<html><head><title>${t}</title></head><body><main><h1>${t}</h1>${b}</main></body></html>`;
 for (const s of SOURCES.sources.filter((x) => x.mode === 'auto')) pages.set(s.url, page(BODY, s.name));
-const MONITOR_FETCH = async (url) => (pages.has(url) ? new Response(pages.get(url), { headers: { 'Content-Type': 'text/html' } }) : new Response('nf', { status: 404 }));
+const DIR = SOURCES.sources.find((s) => s.id === 'dir:fusic').url;
+const person = (name, organisation, modules, role) => ({ name, organisation, roles: modules.map((m) => ({ role, module: m })) });
+pages.set(DIR, JSON.stringify({ entries: [person('Sam Patel', 'Westfield Royal Infirmary', ['fusic-heart'], 'mentor'), person('Sam Patel', 'Eastbridge University Hospital', ['fusic-lung'], 'trainer'), person('Jo Rivers', 'Northtown General Hospital', ['fusic-lung', 'fusic-dvt'], 'trainer')] }));
+const MONITOR_FETCH = async (url) => (pages.has(url) ? new Response(pages.get(url), { headers: { 'Content-Type': url === DIR ? 'application/json' : 'text/html' } }) : new Response('nf', { status: 404 }));
 const DIST = path.resolve(process.env.DIST || 'dist');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const ASSETS = { fetch: async (req) => { const u = new URL(req.url || req); let f = path.join(DIST, decodeURIComponent(u.pathname)); if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, 'index.html'); if (!f.startsWith(DIST) || !fs.existsSync(f)) return new Response('Not found', { status: 404 }); return new Response(fs.readFileSync(f), { headers: { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' } }); } };
-const env = makeEnv({ ASSETS, MONITOR_FETCH, MONITOR_ON_DEMAND: 'false' });
+const env = makeEnv({ ASSETS, MONITOR_FETCH, MONITOR_ON_DEMAND: 'false', DIRECTORY_SYNC: 'true', SUPERVISOR_APPLY: 'true' });
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost'); const chunks = []; for await (const c of req) chunks.push(c);
@@ -44,6 +48,10 @@ const BASE = `http://localhost:${server.address().port}`;
 await seedSources(env);
 const learner = await verifiedAccount(env, 'casey.guides@example.test', { firstName: 'Casey', lastName: 'Trainee' });
 await learner.call('/api/app/profile', { profile: { pathways: ['fusic'], onboarded: true, grade: 'ST3' }, declaration: true });
+const sup = await verifiedAccount(env, 'jo.guides@example.test', { firstName: 'Jo', lastName: 'Rivers' });
+await sup.call('/api/app/profile', { profile: { pathways: ['fusic'], onboarded: true, grade: 'Consultant', supervisor: true }, declaration: true });
+await env.DB.prepare("UPDATE monitor_sources SET mode = 'auto', adapter = 'fixture', status = 'never' WHERE id = 'dir:fusic'").run(); // as if ICS had agreed
+await monitorRun(env, wctx, { trigger: 'manual', ids: ['dir:fusic'], force: true });
 
 const M = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const short = (d) => { const [y, m, dd] = d.split('-').map(Number); return new RegExp(`${dd} (${M[m - 1].slice(0, 3)}|${M[m - 1]}) ${y}`); };
@@ -86,6 +94,38 @@ check(/An official source for this guide changed on/.test(note) && /being review
 check((await pg.locator('[data-srcnotice] a').getAttribute('href')) === heart.url, 'app guide: links to the original');
 check(!(await pg.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)), 'app guide: no horizontal overflow');
 await pg.screenshot({ path: path.join(out, 'app-guide-change.png') });
+// Official-directory name search in the same bundle: the learner's invitation.
+await pg.goto(`${BASE}/app/#/supervisors`, { waitUntil: 'domcontentloaded' });
+await pg.waitForSelector('[data-listing="svfind2"]:not([hidden])', { timeout: 15000 });
+const box = pg.locator('#svfind2');
+check((await box.getAttribute('role')) === 'combobox', 'app search: combobox');
+await box.fill('sam pat');
+await pg.waitForSelector('#svfind2-list li');
+const items = await pg.locator('#svfind2-list li').allInnerTexts();
+check(items.length === 2 && items.some((x) => /Westfield/.test(x)) && items.some((x) => /Eastbridge/.test(x)) && !items.join(' ').includes('@'), 'app search: two Sam Patels by hospital, no contact details');
+check((await pg.locator('#svfind2-list li').first().boundingBox()).height >= 44, 'app search: 44 px options');
+await pg.screenshot({ path: path.join(out, 'app-search.png') });
+await pg.locator('#svfind2-list li').nth(1).tap();
+await pg.waitForSelector('#svpicked p');
+check(/Selected: Sam Patel/.test(await pg.locator('#svpicked').innerText()) && await pg.evaluate(() => document.activeElement && document.activeElement.id === 'se2'), 'app search: picked, focus on the email field');
+check(!(await pg.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)), 'app search: no horizontal overflow');
+// The supervisor's application: "Is this you?", a claim only.
+const cx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-GB', hasTouch: true });
+{ const [n2, ...v2] = sup.cookie.split('='); await cx2.addCookies([{ name: n2, value: v2.join('='), domain: 'localhost', path: '/' }]); }
+const p2 = await cx2.newPage();
+p2.on('pageerror', (e) => errors.push(String(e)));
+await sup.call('/api/app/supervisor/application', { role: 'Consultant' });
+await p2.goto(`${BASE}/app/#/supervisor/apply/experience`, { waitUntil: 'domcontentloaded' });
+await p2.waitForSelector('[data-listing="svlst"]:not([hidden])', { timeout: 15000 });
+await p2.locator('#svlst').fill('jo riv');
+await p2.waitForSelector('#svlst-list li');
+await p2.locator('#svlst-list li').first().tap();
+await p2.waitForSelector('[data-claim]');
+await p2.locator('[data-claim]').tap();
+await p2.waitForSelector('#svclaim .ok');
+check(/will confirm it is you/.test(await p2.locator('#svclaim').innerText()), 'app application: claim recorded, confirmation pending');
+check((await env.DB.prepare("SELECT status FROM directory_links").first()).status === 'claimed', 'app application: a claim only');
+await p2.screenshot({ path: path.join(out, 'app-claim.png') });
 await browser.close(); server.close();
 console.log(errors.length ? `\n${errors.length} problem(s):\n${errors.join('\n')}` : '\nApp guide checks passed.');
 process.exit(errors.length ? 1 : 0);

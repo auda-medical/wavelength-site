@@ -37,10 +37,31 @@ index 0000000..9878736
 +  else root.WLSources = api;
 +})(typeof window !== 'undefined' ? window : this);
 diff --git a/src/app/app.js b/src/app/app.js
-index 4b6e35e..705afba 100644
+index 4b6e35e..77a61ec 100644
 --- a/src/app/app.js
 +++ b/src/app/app.js
-@@ -3367,7 +3367,7 @@
+@@ -3244,7 +3244,7 @@
+     mount(shell({ title: T('Your supervisors'), back: 'me' },
+       '<div class="card dark"><h3>' + esc(T('Link your supervisors')) + '</h3><p class="muted small">' + esc(T('A linked supervisor sees your progress and your written scan records in their own Wavelength app, never your images. Send sign-off and assessment requests straight to their dashboard. Remove a supervisor at any time.')) + '</p></div>' +
+       (S.me && S.me.supervisor && S.me.supervisor.search ? '<form id="svsf" class="card" role="search"><div class="field"><label for="svq">' + esc(T('Find a Wavelength Verified Supervisor')) + '</label><input id="svq" type="search" autocomplete="off" minlength="3" placeholder="' + esc(T('Name, at least 3 letters')) + '" aria-describedby="svq-h"><p class="hint" id="svq-h">' + esc(T('Shows only supervisors approved by Wavelength who chose to be found.')) + '</p></div><div id="svres" aria-live="polite"></div></form><p class="small muted" style="margin:-4px 0 12px">' + esc(T('Can\'t find them? Invite a supervisor by email.')) + '</p>' : '') +
+-      '<form id="addf" class="card"><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off" aria-describedby="se2-h"><p class="hint" id="se2-h">' + esc(T('They may need checks and Wavelength approval before they can provide verified supervision. Their status shows as pending until then.')) + '</p></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
++      '<form id="addf" class="card">' + listingBox('svfind2', T('Find your supervisor in an official directory (optional)'), T('Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.')) + '<div id="svpicked"></div><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off" aria-describedby="se2-h"><p class="hint" id="se2-h">' + esc(T('They may need checks and Wavelength approval before they can provide verified supervision. Their status shows as pending until then.')) + '</p></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
+       inviteExplain() +
+       (!S.links ? '<p class="muted small" role="status">' + esc(T('Checking…')) + '</p>' : (L2.supervisors || []).length ? '<h2 class="sec">' + esc(T('Linked and invited')) + '</h2>' + L2.supervisors.map(function (s) {
+         var stage = stageOf(s), g = STAGE[stage];
+@@ -3255,6 +3255,11 @@
+     if (!S.links) loadLinks();
+     returnedRequests();
+     bindSupSearch();
++    // Picking a listed supervisor fills in who they are; the invitation still goes to the email the learner types.
++    bindListing('svfind2', function (r) {
++      $('#svpicked').innerHTML = '<p class="small" role="status">' + esc(T('Selected: {name}', { name: [r.name, r.organisation].filter(Boolean).join(', ') })) + (r.onWavelength ? ' · ' + esc(T('On Wavelength')) : '') + '<br>' + esc(listingRoles(r.roles)) + '<br><span class="muted">' + esc(T('Being listed is not Wavelength approval. Enter their email below to invite them.')) + '</span></p>';
++      $('#se2').focus();
++    });
+     $('#addf').addEventListener('submit', function (ev) {
+       ev.preventDefault(); var b = $('button', this), err = $('.err', this); busy(b, true);
+       api('/api/app/supervisors/add', { email: $('#se2').value }).then(function (res) {
+@@ -3367,7 +3372,7 @@
    }
    function guideFor(pid) { return GUIDE_FOR[pid] || 'pocus-accreditation'; }
    function guideCard(g, lead) {
@@ -49,7 +70,7 @@ index 4b6e35e..705afba 100644
    }
    function viewGuides(r) {
      if (r.arg === 'supervisor-verification') return viewGuideSupervision();
-@@ -3401,11 +3401,14 @@
+@@ -3401,11 +3406,14 @@
        if (!g) { mount(shell({ title: T('Guide'), back: 'guides' }, '<div class="card"><p class="small">' + esc(T('This guide is not in this version of the app.')) + '</p><div class="btns"><a class="btn" href="#/guides">' + esc(T('All guides')) + '</a></div></div>')); return; }
        var age = g.reviewed ? daysBetween(g.reviewed, today()) : null;
        var notice = '<aside class="guide-note" role="note"><p><b>' + esc(T('Wavelength\'s guide, not an official document.')) + '</b> ' + esc(T('Requirements are set by the bodies named, and can change after this copy was made. Check the current official guidance before you rely on it, and follow your supervisor and local rules.')) + '</p>' +
@@ -66,7 +87,7 @@ index 4b6e35e..705afba 100644
        }
        var toc = (g.toc || []).length ? '<details class="card guide-toc"><summary>' + esc(T('Contents')) + '</summary><ol>' + g.toc.map(function (t) { return '<li><button type="button" class="link" data-goto="' + esc(t.id) + '">' + esc(t.label) + '</button></li>'; }).join('') + '</ol></details>' : '';
        var src = (g.sources || []).length ? '<section class="card guide-src"><h3>' + esc(T('Official sources')) + '</h3><p class="small muted">' + esc(T('Open the current version from the organisation itself:')) + '</p><ul lang="en" dir="ltr">' + g.sources.map(function (x) { return '<li><a href="' + esc(x.url) + '">' + esc(x.label) + '</a></li>'; }).join('') + '</ul></section>' : '';
-@@ -3416,11 +3419,43 @@
+@@ -3416,11 +3424,43 @@
          '<div class="btns"><a class="btn ghost block" href="/guides/' + esc(slug) + '/">' + esc(T('Open on the Wavelength website')) + '</a></div>'));
        var main = $('main', app);
        guideLinks(main, G);
@@ -110,6 +131,109 @@ index 4b6e35e..705afba 100644
    // Supervisor search: results come only from current approvals whose holder opted in (worker/search.js). The ref is
    // opaque; a request creates an invitation the supervisor accepts on their dashboard.
    function bindSupSearch() {
+@@ -3773,7 +3813,8 @@
+       }
+       if (step === 'experience') {
+         var held = P.credentials || [];
+-        body = '<p class="small">' + esc(T('Ultrasound credentials you hold (optional). They are issued by the named bodies, not by Wavelength, and listing them does not imply their endorsement.')) + '</p>' +
++        body = listingBox('svlst', T('Find your listing in an official directory (optional)'), T('FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.')) + '<div id="svclaim"></div>' +
++          '<p class="small">' + esc(T('Ultrasound credentials you hold (optional). They are issued by the named bodies, not by Wavelength, and listing them does not imply their endorsement.')) + '</p>' +
+           held.map(function (c) {
+             var t = svEditable(cfg, c), on = a.credentialIds.indexOf(c.id) >= 0 ? ' checked' : '';
+             if (!t) return '<label class="pathcard"><input type="checkbox" name="credId" value="' + c.id + '"' + on + '><div><b>' + esc(T(c.label)) + '</b><span>' + esc(c.issuer + ((c.moduleLabels || []).length ? ' · ' + c.moduleLabels.map(T).join(', ') : '')) + '</span> ' + verifyChip(c.status) + '</div></label>';
+@@ -3839,6 +3880,51 @@
+       });
+     }).catch(function () { toast(T('Could not load. Check your connection.')); });
+   }
++  // ---------- Official directory search (name autocomplete, October 2026) ----------
++  // Searches the official supervisor directories Wavelength may use (worker/monitor/api.js), from three letters, as
++  // a labelled combobox: arrows move, Enter picks, Escape closes, every option is a 44 px target. Results show name,
++  // organisation, directory and listed roles, never contact details. When directory search is off the box is not
++  // shown and manual entry stays the route.
++  var ROLE_WORD = { supervisor: 'Supervisor', trainer: 'Trainer', mentor: 'Mentor' };
++  function listingRoles(roles) {
++    var by = {};
++    // Module names as the logbook names them ("Lung", "DVT"), translated; the raw id only if a module is unknown.
++    (roles || []).forEach(function (r) { var pw = PATHS[String(r.module).split('-')[0]], mod = pw && (pw.modules || []).filter(function (x) { return x.id === r.module; })[0]; (by[r.role] = by[r.role] || []).push(mod ? T(mod.label) : r.module); });
++    return Object.keys(by).map(function (k) { return T(ROLE_WORD[k] || k) + ': ' + by[k].join(', '); }).join(' · ');
++  }
++  function listingBox(id, label, hint) {
++    return '<div class="field listing" data-listing="' + id + '" hidden><label for="' + id + '">' + esc(label) + '</label><input id="' + id + '" type="search" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + id + '-list" aria-describedby="' + id + '-h" placeholder="' + esc(T('Name, at least 3 letters')) + '"><p class="hint" id="' + id + '-h">' + esc(hint) + '</p><ul class="listing-list" id="' + id + '-list" role="listbox" hidden></ul><p class="small muted" data-listing-note aria-live="polite"></p></div>';
++  }
++  function bindListing(id, onPick, opts) {
++    var wrap = $('[data-listing="' + id + '"]'); if (!wrap) return;
++    var input = $('#' + id), list = $('#' + id + '-list'), note = $('[data-listing-note]', wrap), timer = 0, items = [], active = -1, seq = 0;
++    var close = function () { list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); active = -1; };
++    var mark = function (i) { active = i; $$('li', list).forEach(function (li, j) { li.setAttribute('aria-selected', j === i ? 'true' : 'false'); }); if (i >= 0) input.setAttribute('aria-activedescendant', id + '-o' + i); };
++    var pick = function (i) { var it = items[i]; if (!it) return; close(); input.value = it.name; onPick(it); };
++    var show = function (res) {
++      items = res.results || [];
++      note.textContent = items.length ? T(res.note || '') : input.value.trim().length >= 3 ? T('No listing found. Check the spelling, or enter the details by hand.') : '';
++      list.innerHTML = items.map(function (r, i) { return '<li role="option" id="' + id + '-o' + i + '" aria-selected="false" data-i="' + i + '"><b>' + esc(r.name) + '</b>' + (r.onWavelength ? ' <span class="chip green">' + esc(T('On Wavelength')) + '</span>' : '') + '<span class="small muted">' + esc([r.organisation, r.source].filter(Boolean).join(' · ')) + '</span><span class="small">' + esc(listingRoles(r.roles)) + '</span></li>'; }).join('');
++      list.hidden = !items.length; input.setAttribute('aria-expanded', items.length ? 'true' : 'false'); mark(-1);
++      $$('li', list).forEach(function (li) { li.onmousedown = function (e) { e.preventDefault(); }; li.onclick = function () { pick(Number(li.dataset.i)); }; });
++    };
++    input.addEventListener('input', function () {
++      clearTimeout(timer);
++      var q = input.value.trim();
++      if (q.replace(/\s/g, '').length < 3) { close(); note.textContent = ''; return; }
++      timer = setTimeout(function () { var my = ++seq; api('/api/app/listings/search?q=' + encodeURIComponent(q) + (opts && opts.pathway ? '&pathway=' + encodeURIComponent(opts.pathway) : '')).then(function (res) { if (my === seq && res.ok) show(res); }).catch(function () { note.textContent = T('Could not search. Check your connection, or enter the details by hand.'); }); }, 250);
++    });
++    input.addEventListener('keydown', function (e) {
++      if (list.hidden) return;
++      if (e.key === 'ArrowDown') { e.preventDefault(); mark(Math.min(items.length - 1, active + 1)); }
++      else if (e.key === 'ArrowUp') { e.preventDefault(); mark(Math.max(0, active - 1)); }
++      else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(active); }
++      else if (e.key === 'Escape') { e.preventDefault(); close(); }
++    });
++    input.addEventListener('blur', function () { setTimeout(close, 150); });
++    // Shown only when the server says directory search is available.
++    api('/api/app/listings/search?q=').then(function (res) { if (res.ok && res.available) wrap.hidden = false; }).catch(function () { /* stays hidden: manual entry */ });
++  }
+   function svYesNo(name, label, v) {
+     return '<div class="field"><span class="lab">' + esc(label) + '</span><div class="seg"><input type="radio" name="' + name + '" id="' + name + 'y" value="yes"' + (v === true ? ' checked' : '') + '><label for="' + name + 'y">' + esc(T('Yes')) + '</label><input type="radio" name="' + name + '" id="' + name + 'n" value="no"' + (v === false ? ' checked' : '') + '><label for="' + name + 'n">' + esc(T('No')) + '</label></div></div>';
+   }
+@@ -3851,6 +3937,25 @@
+       rg.onchange = setReg; setReg();
+     }
+     if (step === 'experience') $$('input[name=credType]').forEach(function (x) { x.onchange = function () { $('.mods[data-for="' + x.value + '"]').hidden = !x.checked; }; });
++    // "This listing is me": a claim the Wavelength team confirms before it counts. The credentials the listing shows
++    // are ticked for the applicant, who can still change them.
++    if (step === 'experience') bindListing('svlst', function (r) {
++      var box = $('#svclaim');
++      box.innerHTML = '<div class="card"><p class="small"><b>' + esc(T('Is this you?')) + '</b> ' + esc([r.name, r.organisation, r.source].filter(Boolean).join(' · ')) + '<br>' + esc(listingRoles(r.roles)) + '</p><div class="btns"><button type="button" class="btn teal sm" data-claim>' + esc(T('This is me')) + '</button><button type="button" class="btn ghost sm" data-noclaim>' + esc(T('Not me')) + '</button></div></div>';
++      $('[data-noclaim]', box).onclick = function () { box.innerHTML = ''; $('#svlst').value = ''; $('#svlst').focus(); };
++      $('[data-claim]', box).onclick = function () {
++        var b = $('[data-claim]', box); busy(b, true);
++        api('/api/app/listings/claim', { ref: r.ref }).then(function (res) {
++          if (!res.ok) { busy(b, false); toast(res.error, 5000); return; }
++          (res.credentials || []).forEach(function (c) {
++            var t = $('input[name=credType][value="' + c.type + '"]');
++            if (t && !t.checked) { t.checked = true; $('.mods[data-for="' + c.type + '"]').hidden = false; }
++            c.modules.forEach(function (m) { var x = $('input[name="mod-' + c.type + '"][value="' + m + '"]'); if (x) x.checked = true; });
++          });
++          box.innerHTML = '<div class="ok" role="status">' + esc(T(res.message)) + '</div>';
++        }).catch(function () { busy(b, false); toast(T('Could not save. Check your connection.')); });
++      };
++    });
+     if (step === 'experience') $$('.mods[data-held] input').forEach(function (x) { x.addEventListener('change', function () { var id = x.closest('.mods').dataset.held, box = $('input[name=credId][value="' + id + '"]'); if (box) box.checked = true; }); });
+     if (step === 'evidence') {
+       var sj = $('#sj'), cnt = function () { $('#sjc').textContent = T('{n} characters', { n: sj.value.length }) + (a.evidence.length ? '' : ' · ' + T('at least 80 without documents')); };
+diff --git a/src/app/app.css b/src/app/app.css
+index cb09357..6b93fce 100644
+--- a/src/app/app.css
++++ b/src/app/app.css
+@@ -958,3 +958,10 @@ html[data-theme="dark"] .card:not(.dark):not(.teal), html[data-theme="dark"] .re
+ .draft-text dt { font-weight: 600; font-size: 13px; color: var(--muted); margin-top: 10px; }
+ .draft-text dd { margin: 2px 0 0; white-space: pre-wrap; -webkit-user-select: text; user-select: text; }
+ .kept-home .kept-ic { color: var(--link); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--chip-teal-bg); flex: none; }
++
++/* Official directory search (October 2026): a combobox list under the field */
++.listing { position: relative; }
++.listing-list { list-style: none; margin: 6px 0 0; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: 0 8px 24px rgba(10,21,38,.12); max-height: 320px; overflow: auto; }
++.listing-list li { display: grid; gap: 2px; padding: 10px 12px; min-height: 44px; border-radius: 9px; cursor: pointer; }
++.listing-list li[aria-selected="true"], .listing-list li:hover { background: var(--sand); }
++.listing-list li .chip { justify-self: start; }
 diff --git a/src/app/index.html b/src/app/index.html
 index 6cf9aa4..ebd352f 100644
 --- a/src/app/index.html
@@ -135,7 +259,7 @@ index 2546376..6bb268f 100644
  self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('wl-') && k !== 'wl-' + VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
  self.addEventListener('fetch', (e) => {
 diff --git a/src/app/i18n/ar.json b/src/app/i18n/ar.json
-index 6070529..baebda2 100644
+index 6070529..576825c 100644
 --- a/src/app/i18n/ar.json
 +++ b/src/app/i18n/ar.json
 @@ -2522,7 +2522,14 @@
@@ -154,7 +278,7 @@ index 6070529..baebda2 100644
  "An unfinished scan was kept on this phone: {what}.": "تم الاحتفاظ بفحص غير مكتمل على هذا الهاتف: {what}.",
  "Application not chosen": "لم يتم اختيار التطبيق",
  "Continue it": "متابعته",
-@@ -2557,8 +2564,44 @@
+@@ -2557,8 +2564,65 @@
  "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "احتفظت فحوصك بنسخها الخاصة عند حفظها، لذا هذه بقايا. ليست في معرضك، لكن قد يتمكن حاسوب متصل بكابل من رؤية ذلك المجلد.",
  "under 0.1 MB": "أقل من 0.1 ميغابايت",
  "{what}, not saved in your logbook yet.": "{what}، غير محفوظ في سجلك بعد.",
@@ -202,11 +326,32 @@ index 6070529..baebda2 100644
 +"Official sources not yet checked automatically.": "لم تُفحص المصادر الرسمية تلقائيًا بعد.",
 +"Shown from this device's last connection, {date}.": "معروض من آخر اتصال لهذا الجهاز، {date}.",
 +"Source checked: {date}": "تم فحص المصدر: {date}",
-+"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "يحتوي الموقع على إصدار أحدث من هذا الدليل مقارنة بالنسخة في التطبيق. افتحه على موقع Wavelength أو حدّث التطبيق."
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "يحتوي الموقع على إصدار أحدث من هذا الدليل مقارنة بالنسخة في التطبيق. افتحه على موقع Wavelength أو حدّث التطبيق.",
++"Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.": "تم بالفعل تأكيد حساب آخر على أنه هذا الشخص المدرج. راسل hello@thewavelength.co.uk إن كنت أنت.",
++"Being listed is not Wavelength approval. Enter their email below to invite them.": "الإدراج في الدليل ليس اعتمادًا من Wavelength. أدخل بريده الإلكتروني أدناه لدعوته.",
++"Could not search. Check your connection, or enter the details by hand.": "تعذّر البحث. تحقق من اتصالك أو أدخل البيانات يدويًا.",
++"FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.": "دليلا FAMUS وFUSIC حيث يُسمح لـ Wavelength باستخدامهما. لست مدرجًا، أو لا يوجد دليل لمسارك (مثل RCEM)؟ حدّد مؤهلاتك أدناه أو صِف خبرتك.",
++"Find your listing in an official directory (optional)": "ابحث عن إدراجك في دليل رسمي (اختياري)",
++"Find your supervisor in an official directory (optional)": "ابحث عن مشرفك في دليل رسمي (اختياري)",
++"From official directories, checked daily. Being listed is not Wavelength approval.": "من أدلة رسمية تُفحص يوميًا. الإدراج ليس اعتمادًا من Wavelength.",
++"Is this you?": "هل هذا أنت؟",
++"Mentor": "مرشد",
++"No listing found. Check the spelling, or enter the details by hand.": "لم يُعثر على إدراج. تحقق من التهجئة أو أدخل البيانات يدويًا.",
++"No such guide.": "لا يوجد دليل بهذا الاسم.",
++"Not me": "ليس أنا",
++"Official directory matching is not switched on yet. Add your credential and evidence instead.": "مطابقة الأدلة الرسمية غير مفعّلة بعد. أضف مؤهلك وأدلتك بدلًا من ذلك.",
++"Official directory search is not switched on yet. Enter your supervisor by hand.": "البحث في الأدلة الرسمية غير مفعّل بعد. أدخل مشرفك يدويًا.",
++"On Wavelength": "على Wavelength",
++"Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.": "ابحث بالاسم ثم أدخل بريده الإلكتروني لدعوته: لا يعرض Wavelength بيانات الاتصال من الأدلة أبدًا.",
++"Selected: {name}": "المحدد: {name}",
++"Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": "شكرًا لك. سيتأكد فريق Wavelength من أنك الشخص نفسه قبل احتساب الإدراج في توثيقك.",
++"That listing was not found. It may have changed: search again.": "لم يُعثر على هذا الإدراج. ربما تغيّر: ابحث مرة أخرى.",
++"This is me": "هذا أنا",
++"Trainer": "مدرّب"
 +}
 \ No newline at end of file
 diff --git a/src/app/i18n/de.json b/src/app/i18n/de.json
-index 27276c7..09ba421 100644
+index 27276c7..a37f27a 100644
 --- a/src/app/i18n/de.json
 +++ b/src/app/i18n/de.json
 @@ -2398,7 +2398,10 @@
@@ -221,7 +366,7 @@ index 27276c7..09ba421 100644
  "An unfinished scan was kept on this phone: {what}.": "Ein unfertiger Scan wurde auf diesem Telefon behalten: {what}.",
  "Application not chosen": "Anwendung nicht gewählt",
  "Continue it": "Fortsetzen",
-@@ -2433,8 +2436,28 @@
+@@ -2433,8 +2436,49 @@
  "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Ihre Scans haben beim Speichern eigene Kopien behalten, dies sind also Reste. Sie sind nicht in Ihrer Galerie, aber ein per Kabel verbundener Computer kann diesen Ordner möglicherweise sehen.",
  "under 0.1 MB": "unter 0,1 MB",
  "{what}, not saved in your logbook yet.": "{what}, noch nicht in Ihrem Logbuch gespeichert.",
@@ -253,11 +398,32 @@ index 27276c7..09ba421 100644
 +"Official sources not yet checked automatically.": "Offizielle Quellen noch nicht automatisch geprüft.",
 +"Shown from this device's last connection, {date}.": "Angezeigt vom letzten Verbindungsstand dieses Geräts, {date}.",
 +"Source checked: {date}": "Quelle geprüft: {date}",
-+"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Auf der Website gibt es eine neuere Fassung dieses Leitfadens als in dieser App. Öffnen Sie sie auf der Wavelength-Website oder aktualisieren Sie die App."
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Auf der Website gibt es eine neuere Fassung dieses Leitfadens als in dieser App. Öffnen Sie sie auf der Wavelength-Website oder aktualisieren Sie die App.",
++"Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.": "Ein anderes Konto wurde bereits als diese Person bestätigt. Schreiben Sie an hello@thewavelength.co.uk, wenn Sie das sind.",
++"Being listed is not Wavelength approval. Enter their email below to invite them.": "Ein Eintrag im Verzeichnis ist keine Freigabe durch Wavelength. Geben Sie unten die E-Mail-Adresse ein, um die Person einzuladen.",
++"Could not search. Check your connection, or enter the details by hand.": "Suche nicht möglich. Prüfen Sie die Verbindung oder geben Sie die Angaben von Hand ein.",
++"FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.": "FAMUS- und FUSIC-Verzeichnisse, soweit Wavelength sie nutzen darf. Nicht verzeichnet oder kein Verzeichnis für Ihren Pfad (zum Beispiel RCEM)? Kreuzen Sie unten Ihre Nachweise an oder beschreiben Sie Ihre Erfahrung.",
++"Find your listing in an official directory (optional)": "Ihren Eintrag in einem offiziellen Verzeichnis suchen (optional)",
++"Find your supervisor in an official directory (optional)": "Ihren Supervisor in einem offiziellen Verzeichnis suchen (optional)",
++"From official directories, checked daily. Being listed is not Wavelength approval.": "Aus offiziellen Verzeichnissen, täglich geprüft. Ein Eintrag ist keine Freigabe durch Wavelength.",
++"Is this you?": "Sind das Sie?",
++"Mentor": "Mentor",
++"No listing found. Check the spelling, or enter the details by hand.": "Kein Eintrag gefunden. Prüfen Sie die Schreibweise oder geben Sie die Angaben von Hand ein.",
++"No such guide.": "Diesen Leitfaden gibt es nicht.",
++"Not me": "Nicht ich",
++"Official directory matching is not switched on yet. Add your credential and evidence instead.": "Der Abgleich mit offiziellen Verzeichnissen ist noch nicht eingeschaltet. Fügen Sie stattdessen Ihren Nachweis und Belege hinzu.",
++"Official directory search is not switched on yet. Enter your supervisor by hand.": "Die Suche in offiziellen Verzeichnissen ist noch nicht eingeschaltet. Geben Sie Ihren Supervisor von Hand ein.",
++"On Wavelength": "Bei Wavelength",
++"Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.": "Suchen Sie nach dem Namen und geben Sie dann die E-Mail-Adresse ein: Wavelength zeigt nie Kontaktdaten aus Verzeichnissen.",
++"Selected: {name}": "Ausgewählt: {name}",
++"Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": "Danke. Das Wavelength-Team bestätigt, dass Sie es sind, bevor der Eintrag für Ihre Verifizierung zählt.",
++"That listing was not found. It may have changed: search again.": "Dieser Eintrag wurde nicht gefunden. Er hat sich vielleicht geändert: Suchen Sie erneut.",
++"This is me": "Das bin ich",
++"Trainer": "Trainer"
 +}
 \ No newline at end of file
 diff --git a/src/app/i18n/es.json b/src/app/i18n/es.json
-index 931c33e..634d256 100644
+index 931c33e..f22358d 100644
 --- a/src/app/i18n/es.json
 +++ b/src/app/i18n/es.json
 @@ -2398,7 +2398,10 @@
@@ -272,7 +438,7 @@ index 931c33e..634d256 100644
  "An unfinished scan was kept on this phone: {what}.": "Se guardó en este teléfono una exploración sin terminar: {what}.",
  "Application not chosen": "Aplicación no elegida",
  "Continue it": "Continuarla",
-@@ -2433,8 +2436,28 @@
+@@ -2433,8 +2436,49 @@
  "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Tus exploraciones guardaron sus propias copias al guardarlas, así que estas son sobrantes. No están en tu galería, pero un ordenador conectado por cable podría ver esa carpeta.",
  "under 0.1 MB": "menos de 0,1 MB",
  "{what}, not saved in your logbook yet.": "{what}, aún no guardado en tu registro.",
@@ -304,11 +470,32 @@ index 931c33e..634d256 100644
 +"Official sources not yet checked automatically.": "Fuentes oficiales aún no comprobadas automáticamente.",
 +"Shown from this device's last connection, {date}.": "Mostrado según la última conexión de este dispositivo, el {date}.",
 +"Source checked: {date}": "Fuente comprobada: {date}",
-+"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "La web tiene una versión más reciente de esta guía que la copia de la aplicación. Ábrala en la web de Wavelength o actualice la aplicación."
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "La web tiene una versión más reciente de esta guía que la copia de la aplicación. Ábrala en la web de Wavelength o actualice la aplicación.",
++"Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.": "Otra cuenta ya se ha confirmado como esta persona. Escriba a hello@thewavelength.co.uk si es usted.",
++"Being listed is not Wavelength approval. Enter their email below to invite them.": "Figurar en un directorio no es una aprobación de Wavelength. Escriba su correo abajo para invitarle.",
++"Could not search. Check your connection, or enter the details by hand.": "No se pudo buscar. Compruebe su conexión o introduzca los datos a mano.",
++"FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.": "Directorios FAMUS y FUSIC, cuando Wavelength puede usarlos. ¿No figura, o su itinerario no tiene directorio (por ejemplo, RCEM)? Marque sus credenciales abajo o describa su experiencia.",
++"Find your listing in an official directory (optional)": "Busque su ficha en un directorio oficial (opcional)",
++"Find your supervisor in an official directory (optional)": "Busque a su supervisor en un directorio oficial (opcional)",
++"From official directories, checked daily. Being listed is not Wavelength approval.": "De directorios oficiales, comprobados a diario. Figurar en un directorio no es una aprobación de Wavelength.",
++"Is this you?": "¿Es usted?",
++"Mentor": "Mentor",
++"No listing found. Check the spelling, or enter the details by hand.": "No se ha encontrado ninguna ficha. Compruebe la ortografía o introduzca los datos a mano.",
++"No such guide.": "Esa guía no existe.",
++"Not me": "No soy yo",
++"Official directory matching is not switched on yet. Add your credential and evidence instead.": "La coincidencia con directorios oficiales aún no está activada. Añada su credencial y sus pruebas.",
++"Official directory search is not switched on yet. Enter your supervisor by hand.": "La búsqueda en directorios oficiales aún no está activada. Introduzca a su supervisor a mano.",
++"On Wavelength": "En Wavelength",
++"Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.": "Busque por nombre y luego escriba su correo para invitarle: Wavelength nunca muestra los datos de contacto de los directorios.",
++"Selected: {name}": "Seleccionado: {name}",
++"Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": "Gracias. El equipo de Wavelength confirmará que es usted antes de que la ficha cuente para su verificación.",
++"That listing was not found. It may have changed: search again.": "No se encontró esa ficha. Puede haber cambiado: busque de nuevo.",
++"This is me": "Soy yo",
++"Trainer": "Formador"
 +}
 \ No newline at end of file
 diff --git a/src/app/i18n/fr.json b/src/app/i18n/fr.json
-index d51dcca..16363f1 100644
+index d51dcca..2ffe075 100644
 --- a/src/app/i18n/fr.json
 +++ b/src/app/i18n/fr.json
 @@ -2398,7 +2398,10 @@
@@ -323,7 +510,7 @@ index d51dcca..16363f1 100644
  "An unfinished scan was kept on this phone: {what}.": "Un scan inachevé a été conservé sur ce téléphone : {what}.",
  "Application not chosen": "Application non choisie",
  "Continue it": "Le reprendre",
-@@ -2433,8 +2436,28 @@
+@@ -2433,8 +2436,49 @@
  "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Vos scans ont gardé leurs propres copies lors de l'enregistrement : il s'agit donc de restes. Elles ne sont pas dans votre galerie, mais un ordinateur branché par câble pourrait voir ce dossier.",
  "under 0.1 MB": "moins de 0,1 Mo",
  "{what}, not saved in your logbook yet.": "{what}, pas encore enregistré dans votre carnet.",
@@ -355,11 +542,32 @@ index d51dcca..16363f1 100644
 +"Official sources not yet checked automatically.": "Sources officielles pas encore vérifiées automatiquement.",
 +"Shown from this device's last connection, {date}.": "Affiché d'après la dernière connexion de cet appareil, le {date}.",
 +"Source checked: {date}": "Source vérifiée : {date}",
-+"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Le site propose une version plus récente de ce guide que la copie de l'application. Ouvrez-le sur le site Wavelength ou mettez à jour l'application."
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Le site propose une version plus récente de ce guide que la copie de l'application. Ouvrez-le sur le site Wavelength ou mettez à jour l'application.",
++"Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.": "Un autre compte a déjà été confirmé comme étant cette personne. Écrivez à hello@thewavelength.co.uk s'il s'agit de vous.",
++"Being listed is not Wavelength approval. Enter their email below to invite them.": "Figurer dans un annuaire ne vaut pas approbation par Wavelength. Saisissez son adresse e-mail ci-dessous pour l'inviter.",
++"Could not search. Check your connection, or enter the details by hand.": "Recherche impossible. Vérifiez votre connexion ou saisissez les informations à la main.",
++"FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.": "Annuaires FAMUS et FUSIC, lorsque Wavelength peut les utiliser. Vous n'y figurez pas, ou votre parcours n'a pas d'annuaire (par exemple le RCEM) ? Cochez vos qualifications ci-dessous ou décrivez votre expérience.",
++"Find your listing in an official directory (optional)": "Trouvez votre fiche dans un annuaire officiel (facultatif)",
++"Find your supervisor in an official directory (optional)": "Trouvez votre superviseur dans un annuaire officiel (facultatif)",
++"From official directories, checked daily. Being listed is not Wavelength approval.": "Issu des annuaires officiels, vérifiés chaque jour. Figurer dans un annuaire ne vaut pas approbation par Wavelength.",
++"Is this you?": "Est-ce vous ?",
++"Mentor": "Mentor",
++"No listing found. Check the spelling, or enter the details by hand.": "Aucune fiche trouvée. Vérifiez l'orthographe ou saisissez les informations à la main.",
++"No such guide.": "Ce guide n'existe pas.",
++"Not me": "Ce n'est pas moi",
++"Official directory matching is not switched on yet. Add your credential and evidence instead.": "La correspondance avec les annuaires officiels n'est pas encore activée. Ajoutez plutôt votre qualification et vos justificatifs.",
++"Official directory search is not switched on yet. Enter your supervisor by hand.": "La recherche dans les annuaires officiels n'est pas encore activée. Saisissez votre superviseur à la main.",
++"On Wavelength": "Sur Wavelength",
++"Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.": "Recherchez par nom, puis saisissez son adresse e-mail pour l'inviter : Wavelength n'affiche jamais les coordonnées des annuaires.",
++"Selected: {name}": "Sélectionné : {name}",
++"Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": "Merci. L'équipe Wavelength confirmera qu'il s'agit bien de vous avant que la fiche compte pour votre vérification.",
++"That listing was not found. It may have changed: search again.": "Cette fiche est introuvable. Elle a peut-être changé : relancez la recherche.",
++"This is me": "C'est moi",
++"Trainer": "Formateur"
 +}
 \ No newline at end of file
 diff --git a/src/app/i18n/it.json b/src/app/i18n/it.json
-index 485c8f7..c445cea 100644
+index 485c8f7..44f4848 100644
 --- a/src/app/i18n/it.json
 +++ b/src/app/i18n/it.json
 @@ -2398,7 +2398,10 @@
@@ -374,7 +582,7 @@ index 485c8f7..c445cea 100644
  "An unfinished scan was kept on this phone: {what}.": "Un'ecografia non finita è stata conservata su questo telefono: {what}.",
  "Application not chosen": "Applicazione non scelta",
  "Continue it": "Riprendila",
-@@ -2433,8 +2436,28 @@
+@@ -2433,8 +2436,49 @@
  "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Le tue ecografie hanno tenuto le proprie copie al salvataggio, quindi queste sono rimanenze. Non sono nella galleria, ma un computer collegato via cavo potrebbe vedere quella cartella.",
  "under 0.1 MB": "meno di 0,1 MB",
  "{what}, not saved in your logbook yet.": "{what}, non ancora salvato nel tuo registro.",
@@ -406,11 +614,32 @@ index 485c8f7..c445cea 100644
 +"Official sources not yet checked automatically.": "Fonti ufficiali non ancora controllate automaticamente.",
 +"Shown from this device's last connection, {date}.": "Mostrato dall'ultima connessione di questo dispositivo, {date}.",
 +"Source checked: {date}": "Fonte controllata: {date}",
-+"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Il sito ha una versione più recente di questa guida rispetto alla copia nell'app. La apra sul sito Wavelength o aggiorni l'app."
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Il sito ha una versione più recente di questa guida rispetto alla copia nell'app. La apra sul sito Wavelength o aggiorni l'app.",
++"Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.": "Un altro account è già stato confermato come questa persona. Scriva a hello@thewavelength.co.uk se si tratta di lei.",
++"Being listed is not Wavelength approval. Enter their email below to invite them.": "Essere in un elenco non equivale all'approvazione di Wavelength. Inserisca qui sotto l'e-mail per invitarla.",
++"Could not search. Check your connection, or enter the details by hand.": "Ricerca non riuscita. Controlli la connessione o inserisca i dati a mano.",
++"FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.": "Elenchi FAMUS e FUSIC, dove Wavelength può usarli. Non è in elenco, o il suo percorso non ha un elenco (per esempio RCEM)? Spunti qui sotto le sue credenziali o descriva la sua esperienza.",
++"Find your listing in an official directory (optional)": "Trovi la sua scheda in un elenco ufficiale (facoltativo)",
++"Find your supervisor in an official directory (optional)": "Trovi il suo supervisore in un elenco ufficiale (facoltativo)",
++"From official directories, checked daily. Being listed is not Wavelength approval.": "Da elenchi ufficiali, controllati ogni giorno. Essere in elenco non equivale all'approvazione di Wavelength.",
++"Is this you?": "È lei?",
++"Mentor": "Mentore",
++"No listing found. Check the spelling, or enter the details by hand.": "Nessuna scheda trovata. Controlli l'ortografia o inserisca i dati a mano.",
++"No such guide.": "Questa guida non esiste.",
++"Not me": "Non sono io",
++"Official directory matching is not switched on yet. Add your credential and evidence instead.": "La corrispondenza con gli elenchi ufficiali non è ancora attiva. Aggiunga invece la credenziale e le prove.",
++"Official directory search is not switched on yet. Enter your supervisor by hand.": "La ricerca negli elenchi ufficiali non è ancora attiva. Inserisca il supervisore a mano.",
++"On Wavelength": "Su Wavelength",
++"Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.": "Cerchi per nome, poi inserisca l'e-mail per invitarlo: Wavelength non mostra mai i recapiti degli elenchi.",
++"Selected: {name}": "Selezionato: {name}",
++"Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": "Grazie. Il team Wavelength confermerà che si tratta di lei prima che la scheda conti per la verifica.",
++"That listing was not found. It may have changed: search again.": "Scheda non trovata. Potrebbe essere cambiata: cerchi di nuovo.",
++"This is me": "Sono io",
++"Trainer": "Formatore"
 +}
 \ No newline at end of file
 diff --git a/src/app/i18n/pl.json b/src/app/i18n/pl.json
-index f3e5566..c1dc136 100644
+index f3e5566..075cd23 100644
 --- a/src/app/i18n/pl.json
 +++ b/src/app/i18n/pl.json
 @@ -2460,7 +2460,12 @@
@@ -427,7 +656,7 @@ index f3e5566..c1dc136 100644
  "An unfinished scan was kept on this phone: {what}.": "Na tym telefonie zachowano niedokończone badanie: {what}.",
  "Application not chosen": "Nie wybrano zastosowania",
  "Continue it": "Kontynuuj",
-@@ -2495,8 +2500,36 @@
+@@ -2495,8 +2500,57 @@
  "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Twoje badania zachowały własne kopie przy zapisie, więc to są pozostałości. Nie ma ich w galerii, ale komputer podłączony kablem może widzieć ten folder.",
  "under 0.1 MB": "poniżej 0,1 MB",
  "{what}, not saved in your logbook yet.": "{what}, jeszcze nie zapisane w dzienniku.",
@@ -467,11 +696,32 @@ index f3e5566..c1dc136 100644
 +"Official sources not yet checked automatically.": "Oficjalne źródła nie zostały jeszcze sprawdzone automatycznie.",
 +"Shown from this device's last connection, {date}.": "Wyświetlono na podstawie ostatniego połączenia tego urządzenia, {date}.",
 +"Source checked: {date}": "Źródło sprawdzone: {date}",
-+"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Strona ma nowszą wersję tego przewodnika niż kopia w aplikacji. Otwórz ją na stronie Wavelength lub zaktualizuj aplikację."
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "Strona ma nowszą wersję tego przewodnika niż kopia w aplikacji. Otwórz ją na stronie Wavelength lub zaktualizuj aplikację.",
++"Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.": "Inne konto zostało już potwierdzone jako ta osoba. Jeśli to Ty, napisz na hello@thewavelength.co.uk.",
++"Being listed is not Wavelength approval. Enter their email below to invite them.": "Obecność w katalogu nie oznacza zatwierdzenia przez Wavelength. Wpisz poniżej adres e-mail, aby wysłać zaproszenie.",
++"Could not search. Check your connection, or enter the details by hand.": "Nie udało się wyszukać. Sprawdź połączenie lub wpisz dane ręcznie.",
++"FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.": "Katalogi FAMUS i FUSIC, tam gdzie Wavelength może z nich korzystać. Nie ma Cię w katalogu albo Twoja ścieżka go nie ma (np. RCEM)? Zaznacz poniżej swoje kwalifikacje lub opisz doświadczenie.",
++"Find your listing in an official directory (optional)": "Znajdź swój wpis w oficjalnym katalogu (opcjonalnie)",
++"Find your supervisor in an official directory (optional)": "Znajdź superwizora w oficjalnym katalogu (opcjonalnie)",
++"From official directories, checked daily. Being listed is not Wavelength approval.": "Z oficjalnych katalogów, sprawdzanych codziennie. Obecność w katalogu nie oznacza zatwierdzenia przez Wavelength.",
++"Is this you?": "Czy to Ty?",
++"Mentor": "Mentor",
++"No listing found. Check the spelling, or enter the details by hand.": "Nie znaleziono wpisu. Sprawdź pisownię lub wpisz dane ręcznie.",
++"No such guide.": "Nie ma takiego przewodnika.",
++"Not me": "To nie ja",
++"Official directory matching is not switched on yet. Add your credential and evidence instead.": "Dopasowanie do oficjalnych katalogów nie jest jeszcze włączone. Dodaj zamiast tego kwalifikację i dowody.",
++"Official directory search is not switched on yet. Enter your supervisor by hand.": "Wyszukiwanie w oficjalnych katalogach nie jest jeszcze włączone. Wpisz superwizora ręcznie.",
++"On Wavelength": "W Wavelength",
++"Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.": "Wyszukaj po nazwisku, a potem wpisz adres e-mail, aby zaprosić: Wavelength nigdy nie pokazuje danych kontaktowych z katalogów.",
++"Selected: {name}": "Wybrano: {name}",
++"Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": "Dziękujemy. Zespół Wavelength potwierdzi, że to Ty, zanim wpis zostanie uwzględniony w weryfikacji.",
++"That listing was not found. It may have changed: search again.": "Nie znaleziono tego wpisu. Mógł się zmienić: wyszukaj ponownie.",
++"This is me": "To ja",
++"Trainer": "Trener"
 +}
 \ No newline at end of file
 diff --git a/src/app/i18n/ru.json b/src/app/i18n/ru.json
-index 516e736..e936fa0 100644
+index 516e736..df36f56 100644
 --- a/src/app/i18n/ru.json
 +++ b/src/app/i18n/ru.json
 @@ -2460,7 +2460,12 @@
@@ -488,7 +738,7 @@ index 516e736..e936fa0 100644
  "An unfinished scan was kept on this phone: {what}.": "На этом телефоне сохранено незавершённое исследование: {what}.",
  "Application not chosen": "Применение не выбрано",
  "Continue it": "Продолжить",
-@@ -2495,8 +2500,36 @@
+@@ -2495,8 +2500,57 @@
  "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "Ваши исследования сохранили собственные копии при сохранении, так что это остатки. Их нет в галерее, но компьютер, подключённый кабелем, может видеть эту папку.",
  "under 0.1 MB": "менее 0,1 МБ",
  "{what}, not saved in your logbook yet.": "{what}, ещё не сохранено в журнале.",
@@ -528,11 +778,32 @@ index 516e736..e936fa0 100644
 +"Official sources not yet checked automatically.": "Официальные источники ещё не проверялись автоматически.",
 +"Shown from this device's last connection, {date}.": "Показано по данным последнего подключения этого устройства, {date}.",
 +"Source checked: {date}": "Источник проверен: {date}",
-+"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "На сайте есть более новая версия этого руководства, чем копия в приложении. Откройте её на сайте Wavelength или обновите приложение."
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "На сайте есть более новая версия этого руководства, чем копия в приложении. Откройте её на сайте Wavelength или обновите приложение.",
++"Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.": "Другая учётная запись уже подтверждена как этот человек. Если это вы, напишите на hello@thewavelength.co.uk.",
++"Being listed is not Wavelength approval. Enter their email below to invite them.": "Наличие в справочнике не означает одобрения Wavelength. Введите ниже адрес электронной почты, чтобы пригласить.",
++"Could not search. Check your connection, or enter the details by hand.": "Не удалось выполнить поиск. Проверьте подключение или введите данные вручную.",
++"FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.": "Справочники FAMUS и FUSIC, если Wavelength разрешено их использовать. Вас нет в справочнике или для вашей программы его нет (например, RCEM)? Отметьте ниже свою квалификацию или опишите опыт.",
++"Find your listing in an official directory (optional)": "Найдите свою запись в официальном справочнике (необязательно)",
++"Find your supervisor in an official directory (optional)": "Найдите своего супервизора в официальном справочнике (необязательно)",
++"From official directories, checked daily. Being listed is not Wavelength approval.": "Из официальных справочников, проверяемых ежедневно. Наличие в справочнике не означает одобрения Wavelength.",
++"Is this you?": "Это вы?",
++"Mentor": "Наставник",
++"No listing found. Check the spelling, or enter the details by hand.": "Запись не найдена. Проверьте написание или введите данные вручную.",
++"No such guide.": "Такого руководства нет.",
++"Not me": "Это не я",
++"Official directory matching is not switched on yet. Add your credential and evidence instead.": "Сопоставление с официальными справочниками ещё не включено. Добавьте вместо этого квалификацию и подтверждения.",
++"Official directory search is not switched on yet. Enter your supervisor by hand.": "Поиск по официальным справочникам ещё не включён. Введите супервизора вручную.",
++"On Wavelength": "В Wavelength",
++"Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.": "Найдите по имени, затем введите адрес электронной почты для приглашения: Wavelength никогда не показывает контакты из справочников.",
++"Selected: {name}": "Выбрано: {name}",
++"Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": "Спасибо. Команда Wavelength подтвердит, что это вы, прежде чем запись будет учтена при проверке.",
++"That listing was not found. It may have changed: search again.": "Эта запись не найдена. Возможно, она изменилась: повторите поиск.",
++"This is me": "Это я",
++"Trainer": "Тренер"
 +}
 \ No newline at end of file
 diff --git a/src/app/i18n/zh.json b/src/app/i18n/zh.json
-index a49a845..88475fa 100644
+index a49a845..ee14a95 100644
 --- a/src/app/i18n/zh.json
 +++ b/src/app/i18n/zh.json
 @@ -2367,7 +2367,9 @@
@@ -546,7 +817,7 @@ index a49a845..88475fa 100644
  "An unfinished scan was kept on this phone: {what}.": "此手机上保留了一项未完成的检查：{what}。",
  "Application not chosen": "未选择应用",
  "Continue it": "继续",
-@@ -2402,8 +2404,24 @@
+@@ -2402,8 +2404,45 @@
  "Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.": "您的检查在保存时已保留各自的副本，因此这些是遗留文件。它们不在图库中，但通过数据线连接的电脑可能看到该文件夹。",
  "under 0.1 MB": "小于 0.1 MB",
  "{what}, not saved in your logbook yet.": "{what}，尚未保存到您的日志。",
@@ -574,7 +845,28 @@ index a49a845..88475fa 100644
 +"Official sources not yet checked automatically.": "官方来源尚未自动检查。",
 +"Shown from this device's last connection, {date}.": "显示的是本设备最近一次联网（{date}）时的信息。",
 +"Source checked: {date}": "来源检查：{date}",
-+"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "网站上有比本应用内副本更新的指南版本。请在 Wavelength 网站上打开，或更新应用。"
++"The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": "网站上有比本应用内副本更新的指南版本。请在 Wavelength 网站上打开，或更新应用。",
++"Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.": "已有其他账户被确认为该名录人员。如果是您本人，请联系 hello@thewavelength.co.uk。",
++"Being listed is not Wavelength approval. Enter their email below to invite them.": "列入名录并不代表获得 Wavelength 批准。请在下方输入其电子邮箱以发出邀请。",
++"Could not search. Check your connection, or enter the details by hand.": "无法搜索。请检查网络连接，或手动填写信息。",
++"FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.": "FAMUS 和 FUSIC 名录（在 Wavelength 获准使用的情况下）。不在名录中，或您的路径没有名录（例如 RCEM）？请在下方勾选您的资质或描述您的经验。",
++"Find your listing in an official directory (optional)": "在官方名录中查找您的条目（可选）",
++"Find your supervisor in an official directory (optional)": "在官方名录中查找您的督导（可选）",
++"From official directories, checked daily. Being listed is not Wavelength approval.": "来自每日检查的官方名录。列入名录并不代表获得 Wavelength 批准。",
++"Is this you?": "这是您吗？",
++"Mentor": "导师",
++"No listing found. Check the spelling, or enter the details by hand.": "未找到条目。请检查拼写，或手动填写信息。",
++"No such guide.": "没有此指南。",
++"Not me": "不是我",
++"Official directory matching is not switched on yet. Add your credential and evidence instead.": "官方名录匹配尚未开启。请改为添加您的资质和证明材料。",
++"Official directory search is not switched on yet. Enter your supervisor by hand.": "官方名录搜索尚未开启。请手动填写您的督导。",
++"On Wavelength": "已在 Wavelength",
++"Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.": "按姓名搜索，然后输入其电子邮箱发出邀请：Wavelength 从不显示名录中的联系方式。",
++"Selected: {name}": "已选择：{name}",
++"Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": "谢谢。在该条目计入您的认证之前，Wavelength 团队会确认是您本人。",
++"That listing was not found. It may have changed: search again.": "未找到该条目。它可能已更改：请重新搜索。",
++"This is me": "是我",
++"Trainer": "培训师"
 +}
 \ No newline at end of file
 diff --git a/tools/i18n/batch-source-status.json b/tools/i18n/batch-source-status.json
@@ -593,8 +885,37 @@ index 0000000..e1dbf2d
 +  "Source checked: {date}": { "fr": "Source vérifiée : {date}", "es": "Fuente comprobada: {date}", "de": "Quelle geprüft: {date}", "it": "Fonte controllata: {date}", "pl": "Źródło sprawdzone: {date}", "ar": "تم فحص المصدر: {date}", "ru": "Источник проверен: {date}", "zh": "来源检查：{date}" },
 +  "The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.": { "fr": "Le site propose une version plus récente de ce guide que la copie de l'application. Ouvrez-le sur le site Wavelength ou mettez à jour l'application.", "es": "La web tiene una versión más reciente de esta guía que la copia de la aplicación. Ábrala en la web de Wavelength o actualice la aplicación.", "de": "Auf der Website gibt es eine neuere Fassung dieses Leitfadens als in dieser App. Öffnen Sie sie auf der Wavelength-Website oder aktualisieren Sie die App.", "it": "Il sito ha una versione più recente di questa guida rispetto alla copia nell'app. La apra sul sito Wavelength o aggiorni l'app.", "pl": "Strona ma nowszą wersję tego przewodnika niż kopia w aplikacji. Otwórz ją na stronie Wavelength lub zaktualizuj aplikację.", "ar": "يحتوي الموقع على إصدار أحدث من هذا الدليل مقارنة بالنسخة في التطبيق. افتحه على موقع Wavelength أو حدّث التطبيق.", "ru": "На сайте есть более новая версия этого руководства, чем копия в приложении. Откройте её на сайте Wavelength или обновите приложение.", "zh": "网站上有比本应用内副本更新的指南版本。请在 Wavelength 网站上打开，或更新应用。" }
 +}
+diff --git a/tools/i18n/batch-source-monitor.json b/tools/i18n/batch-source-monitor.json
+new file mode 100644
+index 0000000..d81af6d
+--- /dev/null
++++ b/tools/i18n/batch-source-monitor.json
+@@ -0,0 +1,23 @@
++{
++  "Another account has already been confirmed as this listed person. Contact hello@thewavelength.co.uk if this is you.": { "fr": "Un autre compte a déjà été confirmé comme étant cette personne. Écrivez à hello@thewavelength.co.uk s'il s'agit de vous.", "es": "Otra cuenta ya se ha confirmado como esta persona. Escriba a hello@thewavelength.co.uk si es usted.", "de": "Ein anderes Konto wurde bereits als diese Person bestätigt. Schreiben Sie an hello@thewavelength.co.uk, wenn Sie das sind.", "it": "Un altro account è già stato confermato come questa persona. Scriva a hello@thewavelength.co.uk se si tratta di lei.", "pl": "Inne konto zostało już potwierdzone jako ta osoba. Jeśli to Ty, napisz na hello@thewavelength.co.uk.", "ar": "تم بالفعل تأكيد حساب آخر على أنه هذا الشخص المدرج. راسل hello@thewavelength.co.uk إن كنت أنت.", "ru": "Другая учётная запись уже подтверждена как этот человек. Если это вы, напишите на hello@thewavelength.co.uk.", "zh": "已有其他账户被确认为该名录人员。如果是您本人，请联系 hello@thewavelength.co.uk。" },
++  "Being listed is not Wavelength approval. Enter their email below to invite them.": { "fr": "Figurer dans un annuaire ne vaut pas approbation par Wavelength. Saisissez son adresse e-mail ci-dessous pour l'inviter.", "es": "Figurar en un directorio no es una aprobación de Wavelength. Escriba su correo abajo para invitarle.", "de": "Ein Eintrag im Verzeichnis ist keine Freigabe durch Wavelength. Geben Sie unten die E-Mail-Adresse ein, um die Person einzuladen.", "it": "Essere in un elenco non equivale all'approvazione di Wavelength. Inserisca qui sotto l'e-mail per invitarla.", "pl": "Obecność w katalogu nie oznacza zatwierdzenia przez Wavelength. Wpisz poniżej adres e-mail, aby wysłać zaproszenie.", "ar": "الإدراج في الدليل ليس اعتمادًا من Wavelength. أدخل بريده الإلكتروني أدناه لدعوته.", "ru": "Наличие в справочнике не означает одобрения Wavelength. Введите ниже адрес электронной почты, чтобы пригласить.", "zh": "列入名录并不代表获得 Wavelength 批准。请在下方输入其电子邮箱以发出邀请。" },
++  "Could not search. Check your connection, or enter the details by hand.": { "fr": "Recherche impossible. Vérifiez votre connexion ou saisissez les informations à la main.", "es": "No se pudo buscar. Compruebe su conexión o introduzca los datos a mano.", "de": "Suche nicht möglich. Prüfen Sie die Verbindung oder geben Sie die Angaben von Hand ein.", "it": "Ricerca non riuscita. Controlli la connessione o inserisca i dati a mano.", "pl": "Nie udało się wyszukać. Sprawdź połączenie lub wpisz dane ręcznie.", "ar": "تعذّر البحث. تحقق من اتصالك أو أدخل البيانات يدويًا.", "ru": "Не удалось выполнить поиск. Проверьте подключение или введите данные вручную.", "zh": "无法搜索。请检查网络连接，或手动填写信息。" },
++  "FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.": { "fr": "Annuaires FAMUS et FUSIC, lorsque Wavelength peut les utiliser. Vous n'y figurez pas, ou votre parcours n'a pas d'annuaire (par exemple le RCEM) ? Cochez vos qualifications ci-dessous ou décrivez votre expérience.", "es": "Directorios FAMUS y FUSIC, cuando Wavelength puede usarlos. ¿No figura, o su itinerario no tiene directorio (por ejemplo, RCEM)? Marque sus credenciales abajo o describa su experiencia.", "de": "FAMUS- und FUSIC-Verzeichnisse, soweit Wavelength sie nutzen darf. Nicht verzeichnet oder kein Verzeichnis für Ihren Pfad (zum Beispiel RCEM)? Kreuzen Sie unten Ihre Nachweise an oder beschreiben Sie Ihre Erfahrung.", "it": "Elenchi FAMUS e FUSIC, dove Wavelength può usarli. Non è in elenco, o il suo percorso non ha un elenco (per esempio RCEM)? Spunti qui sotto le sue credenziali o descriva la sua esperienza.", "pl": "Katalogi FAMUS i FUSIC, tam gdzie Wavelength może z nich korzystać. Nie ma Cię w katalogu albo Twoja ścieżka go nie ma (np. RCEM)? Zaznacz poniżej swoje kwalifikacje lub opisz doświadczenie.", "ar": "دليلا FAMUS وFUSIC حيث يُسمح لـ Wavelength باستخدامهما. لست مدرجًا، أو لا يوجد دليل لمسارك (مثل RCEM)؟ حدّد مؤهلاتك أدناه أو صِف خبرتك.", "ru": "Справочники FAMUS и FUSIC, если Wavelength разрешено их использовать. Вас нет в справочнике или для вашей программы его нет (например, RCEM)? Отметьте ниже свою квалификацию или опишите опыт.", "zh": "FAMUS 和 FUSIC 名录（在 Wavelength 获准使用的情况下）。不在名录中，或您的路径没有名录（例如 RCEM）？请在下方勾选您的资质或描述您的经验。" },
++  "Find your listing in an official directory (optional)": { "fr": "Trouvez votre fiche dans un annuaire officiel (facultatif)", "es": "Busque su ficha en un directorio oficial (opcional)", "de": "Ihren Eintrag in einem offiziellen Verzeichnis suchen (optional)", "it": "Trovi la sua scheda in un elenco ufficiale (facoltativo)", "pl": "Znajdź swój wpis w oficjalnym katalogu (opcjonalnie)", "ar": "ابحث عن إدراجك في دليل رسمي (اختياري)", "ru": "Найдите свою запись в официальном справочнике (необязательно)", "zh": "在官方名录中查找您的条目（可选）" },
++  "Find your supervisor in an official directory (optional)": { "fr": "Trouvez votre superviseur dans un annuaire officiel (facultatif)", "es": "Busque a su supervisor en un directorio oficial (opcional)", "de": "Ihren Supervisor in einem offiziellen Verzeichnis suchen (optional)", "it": "Trovi il suo supervisore in un elenco ufficiale (facoltativo)", "pl": "Znajdź superwizora w oficjalnym katalogu (opcjonalnie)", "ar": "ابحث عن مشرفك في دليل رسمي (اختياري)", "ru": "Найдите своего супервизора в официальном справочнике (необязательно)", "zh": "在官方名录中查找您的督导（可选）" },
++  "From official directories, checked daily. Being listed is not Wavelength approval.": { "fr": "Issu des annuaires officiels, vérifiés chaque jour. Figurer dans un annuaire ne vaut pas approbation par Wavelength.", "es": "De directorios oficiales, comprobados a diario. Figurar en un directorio no es una aprobación de Wavelength.", "de": "Aus offiziellen Verzeichnissen, täglich geprüft. Ein Eintrag ist keine Freigabe durch Wavelength.", "it": "Da elenchi ufficiali, controllati ogni giorno. Essere in elenco non equivale all'approvazione di Wavelength.", "pl": "Z oficjalnych katalogów, sprawdzanych codziennie. Obecność w katalogu nie oznacza zatwierdzenia przez Wavelength.", "ar": "من أدلة رسمية تُفحص يوميًا. الإدراج ليس اعتمادًا من Wavelength.", "ru": "Из официальных справочников, проверяемых ежедневно. Наличие в справочнике не означает одобрения Wavelength.", "zh": "来自每日检查的官方名录。列入名录并不代表获得 Wavelength 批准。" },
++  "Is this you?": { "fr": "Est-ce vous ?", "es": "¿Es usted?", "de": "Sind das Sie?", "it": "È lei?", "pl": "Czy to Ty?", "ar": "هل هذا أنت؟", "ru": "Это вы?", "zh": "这是您吗？" },
++  "Mentor": { "fr": "Mentor", "es": "Mentor", "de": "Mentor", "it": "Mentore", "pl": "Mentor", "ar": "مرشد", "ru": "Наставник", "zh": "导师" },
++  "No listing found. Check the spelling, or enter the details by hand.": { "fr": "Aucune fiche trouvée. Vérifiez l'orthographe ou saisissez les informations à la main.", "es": "No se ha encontrado ninguna ficha. Compruebe la ortografía o introduzca los datos a mano.", "de": "Kein Eintrag gefunden. Prüfen Sie die Schreibweise oder geben Sie die Angaben von Hand ein.", "it": "Nessuna scheda trovata. Controlli l'ortografia o inserisca i dati a mano.", "pl": "Nie znaleziono wpisu. Sprawdź pisownię lub wpisz dane ręcznie.", "ar": "لم يُعثر على إدراج. تحقق من التهجئة أو أدخل البيانات يدويًا.", "ru": "Запись не найдена. Проверьте написание или введите данные вручную.", "zh": "未找到条目。请检查拼写，或手动填写信息。" },
++  "No such guide.": { "fr": "Ce guide n'existe pas.", "es": "Esa guía no existe.", "de": "Diesen Leitfaden gibt es nicht.", "it": "Questa guida non esiste.", "pl": "Nie ma takiego przewodnika.", "ar": "لا يوجد دليل بهذا الاسم.", "ru": "Такого руководства нет.", "zh": "没有此指南。" },
++  "Not me": { "fr": "Ce n'est pas moi", "es": "No soy yo", "de": "Nicht ich", "it": "Non sono io", "pl": "To nie ja", "ar": "ليس أنا", "ru": "Это не я", "zh": "不是我" },
++  "Official directory matching is not switched on yet. Add your credential and evidence instead.": { "fr": "La correspondance avec les annuaires officiels n'est pas encore activée. Ajoutez plutôt votre qualification et vos justificatifs.", "es": "La coincidencia con directorios oficiales aún no está activada. Añada su credencial y sus pruebas.", "de": "Der Abgleich mit offiziellen Verzeichnissen ist noch nicht eingeschaltet. Fügen Sie stattdessen Ihren Nachweis und Belege hinzu.", "it": "La corrispondenza con gli elenchi ufficiali non è ancora attiva. Aggiunga invece la credenziale e le prove.", "pl": "Dopasowanie do oficjalnych katalogów nie jest jeszcze włączone. Dodaj zamiast tego kwalifikację i dowody.", "ar": "مطابقة الأدلة الرسمية غير مفعّلة بعد. أضف مؤهلك وأدلتك بدلًا من ذلك.", "ru": "Сопоставление с официальными справочниками ещё не включено. Добавьте вместо этого квалификацию и подтверждения.", "zh": "官方名录匹配尚未开启。请改为添加您的资质和证明材料。" },
++  "Official directory search is not switched on yet. Enter your supervisor by hand.": { "fr": "La recherche dans les annuaires officiels n'est pas encore activée. Saisissez votre superviseur à la main.", "es": "La búsqueda en directorios oficiales aún no está activada. Introduzca a su supervisor a mano.", "de": "Die Suche in offiziellen Verzeichnissen ist noch nicht eingeschaltet. Geben Sie Ihren Supervisor von Hand ein.", "it": "La ricerca negli elenchi ufficiali non è ancora attiva. Inserisca il supervisore a mano.", "pl": "Wyszukiwanie w oficjalnych katalogach nie jest jeszcze włączone. Wpisz superwizora ręcznie.", "ar": "البحث في الأدلة الرسمية غير مفعّل بعد. أدخل مشرفك يدويًا.", "ru": "Поиск по официальным справочникам ещё не включён. Введите супервизора вручную.", "zh": "官方名录搜索尚未开启。请手动填写您的督导。" },
++  "On Wavelength": { "fr": "Sur Wavelength", "es": "En Wavelength", "de": "Bei Wavelength", "it": "Su Wavelength", "pl": "W Wavelength", "ar": "على Wavelength", "ru": "В Wavelength", "zh": "已在 Wavelength" },
++  "Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.": { "fr": "Recherchez par nom, puis saisissez son adresse e-mail pour l'inviter : Wavelength n'affiche jamais les coordonnées des annuaires.", "es": "Busque por nombre y luego escriba su correo para invitarle: Wavelength nunca muestra los datos de contacto de los directorios.", "de": "Suchen Sie nach dem Namen und geben Sie dann die E-Mail-Adresse ein: Wavelength zeigt nie Kontaktdaten aus Verzeichnissen.", "it": "Cerchi per nome, poi inserisca l'e-mail per invitarlo: Wavelength non mostra mai i recapiti degli elenchi.", "pl": "Wyszukaj po nazwisku, a potem wpisz adres e-mail, aby zaprosić: Wavelength nigdy nie pokazuje danych kontaktowych z katalogów.", "ar": "ابحث بالاسم ثم أدخل بريده الإلكتروني لدعوته: لا يعرض Wavelength بيانات الاتصال من الأدلة أبدًا.", "ru": "Найдите по имени, затем введите адрес электронной почты для приглашения: Wavelength никогда не показывает контакты из справочников.", "zh": "按姓名搜索，然后输入其电子邮箱发出邀请：Wavelength 从不显示名录中的联系方式。" },
++  "Selected: {name}": { "fr": "Sélectionné : {name}", "es": "Seleccionado: {name}", "de": "Ausgewählt: {name}", "it": "Selezionato: {name}", "pl": "Wybrano: {name}", "ar": "المحدد: {name}", "ru": "Выбрано: {name}", "zh": "已选择：{name}" },
++  "Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": { "fr": "Merci. L'équipe Wavelength confirmera qu'il s'agit bien de vous avant que la fiche compte pour votre vérification.", "es": "Gracias. El equipo de Wavelength confirmará que es usted antes de que la ficha cuente para su verificación.", "de": "Danke. Das Wavelength-Team bestätigt, dass Sie es sind, bevor der Eintrag für Ihre Verifizierung zählt.", "it": "Grazie. Il team Wavelength confermerà che si tratta di lei prima che la scheda conti per la verifica.", "pl": "Dziękujemy. Zespół Wavelength potwierdzi, że to Ty, zanim wpis zostanie uwzględniony w weryfikacji.", "ar": "شكرًا لك. سيتأكد فريق Wavelength من أنك الشخص نفسه قبل احتساب الإدراج في توثيقك.", "ru": "Спасибо. Команда Wavelength подтвердит, что это вы, прежде чем запись будет учтена при проверке.", "zh": "谢谢。在该条目计入您的认证之前，Wavelength 团队会确认是您本人。" },
++  "That listing was not found. It may have changed: search again.": { "fr": "Cette fiche est introuvable. Elle a peut-être changé : relancez la recherche.", "es": "No se encontró esa ficha. Puede haber cambiado: busque de nuevo.", "de": "Dieser Eintrag wurde nicht gefunden. Er hat sich vielleicht geändert: Suchen Sie erneut.", "it": "Scheda non trovata. Potrebbe essere cambiata: cerchi di nuovo.", "pl": "Nie znaleziono tego wpisu. Mógł się zmienić: wyszukaj ponownie.", "ar": "لم يُعثر على هذا الإدراج. ربما تغيّر: ابحث مرة أخرى.", "ru": "Эта запись не найдена. Возможно, она изменилась: повторите поиск.", "zh": "未找到该条目。它可能已更改：请重新搜索。" },
++  "This is me": { "fr": "C'est moi", "es": "Soy yo", "de": "Das bin ich", "it": "Sono io", "pl": "To ja", "ar": "هذا أنا", "ru": "Это я", "zh": "是我" },
++  "Trainer": { "fr": "Formateur", "es": "Formador", "de": "Trainer", "it": "Formatore", "pl": "Trener", "ar": "مدرّب", "ru": "Тренер", "zh": "培训师" }
++}
 diff --git a/tools/i18n/strings.json b/tools/i18n/strings.json
-index bf9c6cd..207465d 100644
+index bf9c6cd..908d4b2 100644
 --- a/tools/i18n/strings.json
 +++ b/tools/i18n/strings.json
 @@ -110,6 +110,7 @@
@@ -605,7 +926,15 @@ index bf9c6cd..207465d 100644
    "An unfinished scan was kept on this phone: {what}.",
    "An uppercase letter",
    "Aneurysm",
-@@ -295,7 +296,6 @@
+@@ -221,6 +222,7 @@
+   "Before you log a scan.",
+   "Before you save a photo or clip, crop or cover every identifier on the screen, including names, numbers, dates and the hospital name. The app strips hidden data when it saves.",
+   "Being found",
++  "Being listed is not Wavelength approval. Enter their email below to invite them.",
+   "Below expected",
+   "Bilateral",
+   "Biliary",
+@@ -295,7 +297,6 @@
    "Check the PDF shows the quality-review status your hospital asks for.",
    "Check the numbers your country or department sets, as the compendium leaves these to local programmes.",
    "Check your email.",
@@ -613,7 +942,32 @@ index bf9c6cd..207465d 100644
    "Checked automatically against the register.",
    "Checked {date}.",
    "Checking the passphrase. This takes a few seconds…",
-@@ -730,6 +730,7 @@
+@@ -424,6 +425,7 @@
+   "Could not save on this device: {why}",
+   "Could not save. Check the connection.",
+   "Could not save. Check your connection.",
++  "Could not search. Check your connection, or enter the details by hand.",
+   "Could not search. Check your connection.",
+   "Could not send. Check your connection.",
+   "Could not share the file.",
+@@ -621,6 +623,7 @@
+   "Eye",
+   "FAMUS",
+   "FAMUS accreditation (Society for Acute Medicine)",
++  "FAMUS and FUSIC directories, where Wavelength may use them. Not listed, or no directory for your pathway (for example RCEM)? Tick your credentials below or describe your experience.",
+   "FIB",
+   "FUSIC",
+   "FUSIC accreditation (Intensive Care Society)",
+@@ -639,6 +642,8 @@
+   "Fill",
+   "Final or triggered assessment",
+   "Find a Wavelength Verified Supervisor",
++  "Find your listing in an official directory (optional)",
++  "Find your supervisor in an official directory (optional)",
+   "Finding",
+   "Findings",
+   "Finds every required view in a logical sequence with good probe handling.",
+@@ -730,6 +735,7 @@
    "Grade or role (optional)",
    "Grey",
    "Guidance",
@@ -621,7 +975,15 @@ index bf9c6cd..207465d 100644
    "Guide",
    "Guides",
    "Guides and accreditation",
-@@ -895,6 +896,7 @@
+@@ -842,6 +848,7 @@
+   "Invitations",
+   "Invitations, checks, approval, ending supervision and what happens to your records.",
+   "Invite or choose another supervisor",
++  "Is this you?",
+   "Issued in error.",
+   "It goes back to the learner, who can send it to someone else. Nothing in their logbook changes.",
+   "It holds the key to {n}, so send it only to your supervisor.",
+@@ -895,6 +902,7 @@
    "Last backup file created {date}",
    "Last backup file created {days} ago.",
    "Last checked {date}.",
@@ -629,7 +991,7 @@ index bf9c6cd..207465d 100644
    "Last error",
    "Last name",
    "Last synced",
-@@ -1031,6 +1033,7 @@
+@@ -1031,11 +1039,13 @@
    "No approved supervisor found. Check the spelling, or invite them by email.",
    "No backup file created on this device yet",
    "No backup file has been created on this device yet.",
@@ -637,15 +999,47 @@ index bf9c6cd..207465d 100644
    "No completed assessment matches that code.",
    "No effusion",
    "No evidence summary matches that code.",
-@@ -1117,6 +1120,7 @@
+   "No free fluid",
+   "No learners yet. Ask your trainees to add your email under Me, Your supervisors.",
++  "No listing found. Check the spelling, or enter the details by hand.",
+   "No longer practising in the relevant ultrasound area",
+   "No longer supervising ultrasound",
+   "No longer wish to use Wavelength as a supervisor",
+@@ -1079,6 +1089,7 @@
+   "Not dated: check each organisation's own page",
+   "Not found.",
+   "Not in the list? Keep what you typed; the Wavelength team adds organisations people use.",
++  "Not me",
+   "Not now",
+   "Not observed",
+   "Not on a statutory register",
+@@ -1117,7 +1128,9 @@
    "Official public listing (link)",
    "Official register",
    "Official sources",
 +  "Official sources not yet checked automatically.",
    "Offline",
++  "On Wavelength",
    "On a manikin",
    "On a manikin (2 at most)",
-@@ -1498,6 +1502,7 @@
+   "On a simulation arm",
+@@ -1424,6 +1437,7 @@
+   "Scrotal hernia",
+   "Scrotal soft tissue air and cellulitis",
+   "Search",
++  "Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.",
+   "Search is not available right now.",
+   "Search your logbook",
+   "Security",
+@@ -1440,6 +1454,7 @@
+   "Selected dot: size",
+   "Selected label: text size",
+   "Selected pictogram: size",
++  "Selected: {name}",
+   "Selected: {what}",
+   "Self-declared (not verified by Wavelength)",
+   "Send a request",
+@@ -1498,6 +1513,7 @@
    "Showing",
    "Shown because it is still open against the targets you set for this module.",
    "Shown because it is still open on your {pathway} pathway.",
@@ -653,7 +1047,7 @@ index bf9c6cd..207465d 100644
    "Shows for the whole clip.",
    "Shows from {a} s to the end of the kept clip.",
    "Shows from {a} s to {b} s of the kept clip.",
-@@ -1558,6 +1563,7 @@
+@@ -1558,6 +1574,7 @@
    "Something went wrong. Please try again.",
    "Something went wrong. Supervision has not been ended.",
    "Sonographic Murphy's sign",
@@ -661,7 +1055,7 @@ index bf9c6cd..207465d 100644
    "Specialty",
    "Splenomegaly",
    "Spread seen under fascia",
-@@ -1692,6 +1698,7 @@
+@@ -1692,6 +1709,7 @@
    "The supervisor needs to enter their name and role and tick the confirmation.",
    "The support email includes only the app version, platform and language. The website, privacy policy and terms need an internet connection.",
    "The verified UK pathways, RCEM, FAMUS and FUSIC, plus editable trackers for international pathways and frameworks. One scan can count towards several trackers when it meets their criteria.",
@@ -669,7 +1063,15 @@ index bf9c6cd..207465d 100644
    "Their Wavelength approval is not current at present, so they cannot complete verified supervision through Wavelength. Records they signed earlier keep the status they had when signed.",
    "Their status shows as pending until they accept, and while any checks and Wavelength approval are under way. That is expected.",
    "Then press Retry sync. Wavelength also retries by itself.",
-@@ -1853,7 +1860,6 @@
+@@ -1732,6 +1750,7 @@
+   "This invitation is no longer open.",
+   "This invitation is no longer open. Ask the learner to invite you again.",
+   "This invitation was sent to a different email address. Log in with the address it was sent to.",
++  "This is me",
+   "This is not a Wavelength backup file.",
+   "This is not available yet.",
+   "This is not available yet. Type your organisation and carry on.",
+@@ -1853,7 +1872,6 @@
    "Update Wavelength to keep syncing. Your logbook stays on this phone and you can still read and export it.",
    "Update and send again",
    "Update needed on the server for this view.",
