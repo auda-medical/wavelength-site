@@ -127,13 +127,21 @@ if (want('P')) {
   await page.click('.editor [data-tab=annotate]');
   await page.click('.editor [data-at=text]'); await page.waitForSelector('.editor #edtx');
   await page.fill('.editor #edtx', 'Ao'); await page.focus('.editor #edtx');
-  // P1 Back with the keyboard open (a text field focused): only the keyboard goes.
+  // P1 Back with the keyboard open: only the keyboard goes. The keyboard is played as Android does it, by making the
+  // app's viewport shorter (measured on a real WebView: 796 to 508 px).
+  await page.setViewportSize({ width: 390, height: 540 }); await sleep(300);
   await back(page); await sleep(250);
   const p1 = await page.evaluate(() => ({ editor: !!document.querySelector('.editor'), pop: !document.querySelector('.editor .ed-pop').hidden, focused: document.activeElement && document.activeElement.id, text: (document.querySelector('.editor #edtx') || {}).value }));
+  await page.setViewportSize({ width: 390, height: 844 }); await sleep(300);
   record('P1', 'Back with the keyboard open closes only the keyboard: the editor and the typed text stay', p1.editor && p1.pop && p1.focused !== 'edtx' && p1.text === 'Ao', JSON.stringify(p1));
   await back(page); await sleep(250);
   const p2 = await page.evaluate(() => ({ editor: !!document.querySelector('.editor'), pop: !document.querySelector('.editor .ed-pop').hidden }));
   record('P2', 'The next Back closes the text panel; the editor stays open', p2.editor && !p2.pop, JSON.stringify(p2));
+  // P1b Android closed the keyboard itself (its own first Back) and the field is still focused: one Back now closes the
+  // panel, not a press that seems to do nothing.
+  await page.click('.editor [data-at=text]'); await page.waitForSelector('.editor #edtx'); await page.focus('.editor #edtx'); await sleep(100);
+  await back(page); await sleep(250);
+  record('P1b', 'With the keyboard already closed by Android, the next Back closes the panel at once (no wasted press)', await page.evaluate(() => document.querySelector('.editor .ed-pop').hidden && !!document.querySelector('.editor')), '');
   await page.click('.editor [data-at=text]'); await page.fill('.editor #edtx', 'Ao'); await page.click('.editor .ed-pop button.apply'); await sleep(200);
   await back(page); await sleep(300);
   const conf = await page.evaluate(() => { const c = document.querySelector('.editor .ed-confirm'); return c && !c.hidden ? { title: c.querySelector('h2').textContent, body: c.querySelector('p').textContent, buttons: [...c.querySelectorAll('[data-cf]')].map((b) => b.textContent) } : null; });

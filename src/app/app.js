@@ -1772,6 +1772,15 @@
   function recentColours() { try { return (JSON.parse(edPref('wl-ann-recent', '[]')) || []).map(EDT.hexOf).filter(Boolean).slice(0, 3); } catch (e) { return []; } }
   function useColour(hex) { var r = recentColours().filter(function (c) { return c !== hex; }); r.unshift(hex); edPrefSet('wl-ann-recent', JSON.stringify(r.slice(0, 3))); }
   var curEditor = null; // the open photo or clip editor, for the Android back button and app pauses
+  // 1.0.14: is the on-screen keyboard showing? Android shrinks the app's viewport when it opens (measured on a real
+  // WebView: 796 to 508 px). Android itself closes the keyboard on the first Back, and the field stays focused after,
+  // so a focused field alone does not mean the keyboard is up: Back only closes a keyboard that is really there.
+  var vpBase = { w: 0, h: 0 };
+  function vpNow() { var v = window.visualViewport; return { w: window.innerWidth, h: v ? v.height : window.innerHeight }; }
+  function trackVp() { var n = vpNow(); if (Math.abs(n.w - vpBase.w) > 1) vpBase = n; else if (n.h > vpBase.h) vpBase.h = n.h; }
+  window.addEventListener('resize', trackVp); if (window.visualViewport) window.visualViewport.addEventListener('resize', trackVp); trackVp();
+  function isTextField(el) { return !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'INPUT' && /^(text|search|email|url|tel|number|password|date)$/.test(el.type))); }
+  function keyboardUp() { var n = vpNow(); return isTextField(document.activeElement) && Math.abs(n.w - vpBase.w) <= 1 && vpBase.h - n.h > 120; }
   // cfg: kind ('image' | 'clip'), title, declText, saveLabel, media (clip controls), type (scan type), w and h (source
   // size), state (initial crop, orient, redact, ann), source() (what to draw), time() (clip seconds into the kept
   // selection, or null), locked() (true while a clip is being prepared), onState(), save(state, el), close(value).
@@ -2187,7 +2196,7 @@
     function back() {
       clearTimeout(popFocusT);
       var ae = document.activeElement;
-      if (ae && el.contains(ae) && (ae.tagName === 'TEXTAREA' || ae.isContentEditable || (ae.tagName === 'INPUT' && /^(text|search|email|url|tel|number|password)$/.test(ae.type)))) { ae.blur(); return; }
+      if (el.contains(ae) && keyboardUp()) { ae.blur(); return; } // the keyboard was up: only it goes
       if (!conf.hidden) return hideConfirm();
       if (!pop.hidden) { if (pending === 'colpick') { var x = $('[data-x]', pop); if (x) return x.click(); } return closePop(); }
       leave();
@@ -4605,8 +4614,7 @@
     // before anything is discarded (it never closes and loses the picture on one press).
     if (curEditor) { e.preventDefault(); curEditor.back(); return; }
     // The keyboard is open over a field: Back closes the keyboard and leaves the screen as it is.
-    var ae = document.activeElement;
-    if (ae && (ae.tagName === 'TEXTAREA' || ae.isContentEditable || (ae.tagName === 'INPUT' && /^(text|search|email|url|tel|number|password|date)$/.test(ae.type)))) { e.preventDefault(); ae.blur(); return; }
+    if (keyboardUp()) { e.preventDefault(); document.activeElement.blur(); return; }
     if (document.querySelector('.sheet-bg')) { e.preventDefault(); closeSheet(); return; }
     var b = document.querySelector('header.top a.back');
     if (b) { e.preventDefault(); navBack = b.getAttribute('href'); location.hash = navBack; return; }
