@@ -1,0 +1,715 @@
+diff --git a/src/app/app.js b/src/app/app.js
+index 68a8129..d3534e5 100644
+--- a/src/app/app.js
++++ b/src/app/app.js
+@@ -242,6 +242,7 @@
+   // Each device shows its own status. Logbook entries only; photos and clips stay on this device and are backed up
+   // separately (Back up and restore).
+   var NETR = window.WLNet;
++  var WLV = window.WLVerified; // supervisor verification for display (src/app/verified.js)
+   var SY = { lastOk: 0, lastTry: 0, fail: '', tries: 0, timer: 0, ran: false, err: null };
+   S.net = null; // the phone's network (WLNetwork plugin), or null where only navigator.onLine is known
+   function deviceNet() { return S.net || { known: false, online: navigator.onLine !== false }; }
+@@ -464,7 +465,9 @@
+       SY.fail = ''; SY.ran = true; SY.lastOk = Date.now(); SY.err = null; logAttempt(true, '');
+       // Started offline: the account details and supervisor links could not load then, so fetch them now.
+       if (!S.me) loadMe();
+-      if (!S.links) loadLinks();
++      // Supervisor links carry each supervisor's verification: refreshed with sync at most every five minutes, so an
++      // approval (or a pause) reaches the learner without restarting the app.
++      if (!S.links || linksStale(300e3)) loadLinks();
+       return setKv('lastSyncOk', SY.lastOk);
+     }, function (ex) {
+       if (ex && ex.stale) return;
+@@ -1017,7 +1020,8 @@
+     return '<div class="warn" role="status"><p style="margin:0">' + esc(T('Sign in again to continue synchronising. Your local entries are safe.')) + '</p>' + (a.pending ? '<p class="small" style="margin:6px 0 0">' + esc(N(a.pending, '{n} entry is waiting on this device.', '{n} entries are waiting on this device.')) + '</p>' : '') + '</div>';
+   }
+   function loadMe() { var t0 = Date.now(); return api('/api/app/me', undefined, { timeout: 15000 }).then(function (res) { if (!DIAG.me) { diag('me', String(res._status)); diag('meMs', Date.now() - t0); } if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); } }).catch(function (ex) { if (!DIAG.me) diag('me', ex && ex.timeout ? 'timeout' : 'offline'); /* offline: the cached account stays */ }); }
+-  function loadLinks() { return api('/api/app/supervisors').then(function (res) { if (res.ok) { S.links = res; if (['home', 'me', 'supervise', 'supervisors'].indexOf(route().name) >= 0 && !document.querySelector('.sheet-bg')) render(true); } }).catch(function () { /* offline: try again on the next sync */ }); }
++  function linksStale(ms) { return !S.linksAt || Date.now() - S.linksAt > ms; }
++  function loadLinks() { return api('/api/app/supervisors').then(function (res) { if (res.ok) { S.links = res; S.linksAt = Date.now(); if (['home', 'me', 'supervise', 'supervisors'].indexOf(route().name) >= 0 && !document.querySelector('.sheet-bg')) render(true); } }).catch(function () { /* offline: try again on the next sync */ }); }
+ 
+   // ---------- Onboarding ----------
+   function pathwayPicker(chosen) {
+@@ -2550,7 +2554,7 @@
+     awaiting_professional_verification: ['amber', 'Awaiting professional verification', 'They have applied to be a Wavelength supervisor. The Wavelength team is checking their professional registration.', 'Nothing for you to do. You can keep logging scans while you wait.'],
+     awaiting_approval: ['amber', 'Awaiting Wavelength approval', 'They have applied. The Wavelength team is reviewing their application and the areas they asked to supervise.', 'Nothing for you to do. You can keep logging scans while you wait.'],
+     verifying: ['amber', 'Supervisor verification in progress', 'They have accepted and their supervisor verification is in progress.', 'Nothing for you to do. You can keep logging scans while you wait.'],
+-    approved: ['green', 'Wavelength Verified ✓', 'Approved by Wavelength to supervise the areas listed. This is verification by Wavelength, not accreditation or endorsement by RCEM, FAMUS, FUSIC, a regulator or another body.', ''],
++    approved: ['green', 'Verified Supervisor', 'Credentials and approved scope confirmed by Wavelength.', ''],
+     not_verified: ['', 'Not yet verified by Wavelength', 'They can see your written records and receive your requests. A sign-off from them is recorded as from a Wavelength account not approved as a supervisor. Whether that counts is decided by your programme and its rules, not by Wavelength.', 'They can apply to become a Wavelength Verified Supervisor in their own app.'],
+     paused: ['amber', 'Approval paused', 'Their Wavelength approval is not current at present, so they cannot complete verified supervision through Wavelength. Records they signed earlier keep the status they had when signed.', 'Choose another supervisor for anything urgent.'],
+     unavailable: ['red', 'Not available for supervision through Wavelength at present', 'They cannot supervise through Wavelength at present. Open requests to them come back to you.', 'Please arrange another suitable supervisor.'],
+@@ -2577,12 +2581,15 @@
+       '<form id="addf" class="card"><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off" aria-describedby="se2-h"><p class="hint" id="se2-h">' + esc(T('They may need checks and Wavelength approval before they can provide verified supervision. Their status shows as pending until then.')) + '</p></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
+       inviteExplain() +
+       (!S.links ? '<p class="muted small" role="status">' + esc(T('Checking…')) + '</p>' : (L2.supervisors || []).length ? '<h2 class="sec">' + esc(T('Linked and invited')) + '</h2>' + L2.supervisors.map(function (s) {
+-        var stage = stageOf(s), g = STAGE[stage];
+-        return '<a class="card sv-link" href="#/supervisors/' + s.id + '" aria-label="' + esc((s.name || s.email || T('Supervisor')) + ': ' + T(g[1]) + '. ' + T('Open details')) + '"><div class="row"><div class="grow"><b>' + esc(s.name || s.email || T('Supervisor')) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div>' + stageChip(stage) + '</div>' + ((s.areas || []).length ? approvedList(s.areas, 'margin:6px 0 0') : '') + '<p class="small" style="margin:6px 0 0">' + esc(T(g[2])) + '</p>' + (s.renewal ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('Renewal under review')) + '</p>' : '') + '<span class="small link-more">' + esc(T('Details and options')) + ' ' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</span></a>';
++        // A verified supervisor shows the compact status only; what they are approved for is in their details.
++        var stage = stageOf(s), g = STAGE[stage], vv = WLV.fromLink(s);
++        if (vv.verified) return '<a class="card sv-link" href="#/supervisors/' + s.id + '" aria-label="' + esc((s.name || s.email || T('Supervisor')) + ': ' + T('Verified Supervisor') + '. ' + T('Open details')) + '"><div class="row"><div class="grow"><b>' + esc(s.name || s.email || T('Supervisor')) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div></div>' + verifiedLine() + '<span class="small link-more">' + esc(T('Details and options')) + ' ' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</span></a>';
++        return '<a class="card sv-link" href="#/supervisors/' + s.id + '" aria-label="' + esc((s.name || s.email || T('Supervisor')) + ': ' + T(g[1]) + '. ' + T('Open details')) + '"><div class="row"><div class="grow"><b>' + esc(s.name || s.email || T('Supervisor')) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div>' + stageChip(stage) + '</div><p class="small" style="margin:6px 0 0">' + esc(T(g[2])) + '</p><span class="small link-more">' + esc(T('Details and options')) + ' ' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</span></a>';
+       }).join('') : '<p class="muted small">' + esc(T('No supervisors linked yet.')) + '</p>') +
+       (ended.length ? '<h2 class="sec">' + esc(T('Ended recently')) + '</h2><div class="card">' + ended.map(function (x) { return '<p class="small" style="margin:0 0 6px">' + esc(T('{name}: supervision ended on {date} ({who}).', { name: x.name || T('Supervisor'), date: fmt(x.endedAt), who: x.endedBy === 'you' ? T('ended by you') : x.endedBy === 'them' ? T('ended by the supervisor') : T('ended by Wavelength') })) + '</p>'; }).join('') + '<p class="small muted" style="margin:0">' + esc(T('Your scans and completed sign-offs and assessments are kept. To work with them again, send a new invitation.')) + '</p></div>' : '') +
+       wvExplain() + '<div class="btns">' + guideLink() + '</div><div id="backreqs"></div>'));
+-    if (!S.links) loadLinks();
++    // Opening the list reads the server again if the copy is more than 30 seconds old (it re-renders once loaded).
++    if (!S.links || linksStale(30e3)) loadLinks();
+     returnedRequests();
+     bindSupSearch();
+     $('#addf').addEventListener('submit', function (ev) {
+@@ -2602,14 +2609,15 @@
+       if (!S.links) loadLinks().then(function () { if (route().name === 'supervisors' && route().arg === String(id)) viewSupervisorDetail(id); });
+       return;
+     }
+-    var stage = stageOf(s), g = STAGE[stage], dl = function (k, v) { return v ? '<dt>' + esc(T(k)) + '</dt><dd>' + esc(v) + '</dd>' : ''; };
++    var stage = stageOf(s), g = STAGE[stage], vv = WLV.fromLink(s), dl = function (k, v) { return v ? '<dt>' + esc(T(k)) + '</dt><dd>' + esc(v) + '</dd>' : ''; };
+     mount(shell({ title: s.name || s.email || T('Supervisor'), back: 'supervisors' },
+-      '<div class="card"><div class="row"><div class="grow"><h3>' + esc(s.name || s.email || T('Supervisor')) + '</h3><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div>' + stageChip(stage) + '</div>' +
+-      '<div class="sv-stage"><p class="small"><b>' + esc(T('What this means')) + '</b><br>' + esc(T(g[2])) + '</p>' + (g[3] ? '<p class="small"><b>' + esc(T('Next')) + '</b><br>' + esc(T(g[3])) + '</p>' : '') + '</div>' +
+-      ((s.areas || []).length ? approvedList(s.areas, 'margin:6px 0 0') : '') +
++      (vv.verified ? verifiedCard({ key: 'link' }) : '') +
++      '<div class="card"><div class="row"><div class="grow"><h3>' + esc(s.name || s.email || T('Supervisor')) + '</h3><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div>' + (vv.verified ? '' : stageChip(stage)) + '</div>' +
++      (vv.verified ? '' : '<div class="sv-stage"><p class="small"><b>' + esc(T('What this means')) + '</b><br>' + esc(T(g[2])) + '</p>' + (g[3] ? '<p class="small"><b>' + esc(T('Next')) + '</b><br>' + esc(T(g[3])) + '</p>' : '') + '</div>') +
+       '<div class="detail" style="margin-top:12px"><dl>' + dl('Invited', fmt(s.invitedAt || s.since)) + dl('Accepted', s.acceptedAt ? fmt(s.acceptedAt) : s.status === 'active' ? fmt(s.since) : '') + dl('Requests waiting with them', s.pending ? String(s.pending) : '') + '</dl></div>' +
+       '<div class="btns">' + (s.status === 'active' || !s.email ? '' : '<button class="btn ghost sm" data-resend="' + esc(s.email) + '">' + esc(T('Resend or share')) + '</button>') + guideLink() + '</div></div>' +
+       '<h2 class="sec">' + esc(T('Supervision')) + '</h2><div class="card"><p class="small">' + esc(s.status === 'active' ? T('Removing this supervisor ends your supervision relationship with them through Wavelength.') : T('Removing this supervisor cancels the invitation.')) + '</p><div class="btns"><button class="btn ghost block danger-text" style="color:var(--red)" data-end>' + esc(s.status === 'active' ? T('Remove supervisor') : T('Cancel invitation')) + '</button></div></div>'));
++    bindVerifiedInfo(document, function () { return vv; }, false);
+     var rs = $('[data-resend]'); if (rs) rs.onclick = function () { var to = rs.dataset.resend; busy(rs, true); api('/api/app/supervisors/add', { email: to }).then(function (res) { busy(rs, false); if (!res.ok) { toast(res.error, 5000); return; } inviteSent(to, res); }).catch(function (ex) { busy(rs, false); toast(netFail(ex) ? T('Could not send. Check your connection.') : ex.message); }); };
+     $('[data-end]').onclick = function () { endSupervision({ linkId: s.id, side: 'learner', name: s.name || s.email || T('this supervisor'), active: s.status === 'active', pending: s.pending || 0 }); };
+   }
+@@ -2669,7 +2677,7 @@
+       sec('invite', 'Invitations', ['You invite a supervisor by email from Me, Your supervisors. They get an email from Wavelength with your name on it. The invitation link works for 30 days, and you can resend it or share a message yourself.', 'Hospital and NHS email often files a first message from a new sender as junk, so ask them to check.']) +
+       sec('accept', 'Acceptance', ['Your supervisor accepts in their own Wavelength app, logged in with the email address you invited. Wavelength checks they own that address, through the invitation link or a confirmation email.', 'Until they accept, they show as "Invitation sent". That is normal.']) +
+       sec('review', 'Professional credential review', ['To become a Wavelength Verified Supervisor, your supervisor applies in their app: their role, professional registration, ultrasound experience, evidence or an explanation, and the areas they want to supervise.', 'The Wavelength team checks the professional registration where one applies, and the ultrasound credentials or evidence. Holding a professional registration does not on its own make someone eligible to supervise or assess under a particular programme.']) +
+-      sec('approval', 'Wavelength approval', ['A Wavelength administrator decides each application. Approval covers specific pathway modules only, lasts up to 12 months, and is reviewed at every renewal. Nobody can approve themselves.', 'Wavelength approval is Wavelength\'s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other professional body or regulator.']) +
++      sec('approval', 'Wavelength approval', ['A Wavelength administrator decides each application. Approval covers specific pathway modules only, lasts up to 12 months, and is reviewed at every renewal. An administrator who approves their own supervisor status must record the independent evidence for it, and another administrator is asked to review it.', 'Wavelength approval is Wavelength\'s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other professional body or regulator.']) +
+       sec('pending', 'Pending status', ['While an invitation, an application or a check is under way, your supervisor\'s status shows what stage it has reached, such as "Awaiting professional verification" or "Awaiting Wavelength approval". Pending does not mean anything failed. Wavelength cannot promise how long a review takes.']) +
+       sec('signoff', 'Sign-off eligibility', [req ? 'Sign-off and assessment requests can go to a supervisor\'s dashboard only when they are approved by Wavelength, now, for the scans or module in the request. Otherwise the app explains why and offers another supervisor or a one-off link.' : 'At present a supervisor who has accepted can receive requests on their dashboard before Wavelength approves them. Their sign-offs are recorded as from "a Wavelength account, not approved as a supervisor at the time of signing", and you see them labelled "Not yet verified by Wavelength".', 'You can always send a one-off link to someone outside Wavelength. Those records are marked as self-declared, not verified by Wavelength.', 'Whether a sign-off counts towards your accreditation is decided by your programme and its rules.']) +
+       sec('scans', 'Scans you log while verification is pending', ['Keep logging. Your scans stay in your logbook, on your phone and synced, whatever happens to a supervisor\'s application.', 'You can ask for sign-off later from a supervisor who is then eligible. Wavelength does not promise that earlier scans will count retrospectively: that depends on your programme\'s rules and on your supervisor.']) +
+@@ -2763,7 +2771,10 @@
+         if (my !== seq) return;
+         if (!res.ok) { out.innerHTML = '<p class="small muted">' + esc(res.needVerify ? T('Confirm your email address to search for supervisors.') : res.error || T('Search is not available right now.')) + '</p>'; return; }
+         var rs = res.results || [];
+-        out.innerHTML = rs.length ? rs.map(function (r, i) { return '<div class="sv-result" style="padding:10px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + esc(r.name) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([r.role, r.specialty, r.organisation].filter(Boolean).join(' · ')) + '</p><span class="sv-badge">' + esc(T(r.badge || 'Wavelength Verified Supervisor')) + '</span>' + ((r.areas || []).length ? approvedList(r.areas, 'margin:0') : '') + '</div><button class="btn teal sm" type="button" data-svreq="' + i + '">' + esc(T('Ask to link')) + '</button></div>'; }).join('') : '<p class="small muted">' + esc(T('No approved supervisor found. Check the spelling, or invite them by email.')) + '</p>';
++        // Search shows only supervisors approved now (worker/search.js): the compact status, with what they are
++        // approved for behind More info.
++        out.innerHTML = rs.length ? rs.map(function (r, i) { return '<div class="sv-result" style="padding:10px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + esc(r.name) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([r.role, r.specialty, r.organisation].filter(Boolean).join(' · ')) + '</p>' + verifiedLine() + ' <button type="button" class="vs-more" data-vinfo="' + i + '" aria-haspopup="dialog">' + esc(T('More info')) + '</button></div><button class="btn teal sm" type="button" data-svreq="' + i + '">' + esc(T('Ask to link')) + '</button></div>'; }).join('') : '<p class="small muted">' + esc(T('No approved supervisor found. Check the spelling, or invite them by email.')) + '</p>';
++        bindVerifiedInfo(out, function (i) { var r = rs[Number(i)]; return r ? { state: 'verified', verified: true, approved: r.verification && r.verification.approved ? r.verification.approved : WLV.groupsFromAreas(r.areas), reviewOn: null, pending: [], credentials: [] } : null; }, false);
+         $$('[data-svreq]', out).forEach(function (b) { b.onclick = function () {
+           var r = rs[Number(b.dataset.svreq)]; busy(b, true);
+           api('/api/app/supervisors/request', { ref: r.ref }).then(function (j) {
+@@ -2817,7 +2828,7 @@
+     var L2 = S.links;
+     if (!L2) { mount(shell({ title: T('Supervising'), back: '' }, '<p class="muted">' + esc(T('Loading…')) + '</p>')); loadLinks(); return; }
+     var me = L2.me || {}, cur = me.standing === 'active' || me.standing === 'renewal_review';
+-    var banner = me.enforced && !cur ? '<div class="card dark"><h3>' + esc(T('Wavelength supervisor status')) + ': ' + esc(T(SV_STANDING[me.standing] || me.standing || '')) + '</h3><p class="muted small">' + esc(me.standing === 'applying' ? T('Your application is being reviewed. Your learners can send you requests once you are approved.') : T('You need a current Wavelength supervisor approval to sign off and assess through your dashboard.')) + '</p>' + (me.apply ? '<div class="btns"><a class="btn teal sm" href="#/supervisor">' + esc(me.standing === 'none' ? T('Become a Wavelength supervisor') : T('See your status')) + '</a></div>' : '') + '</div>'
++    var banner = me.enforced && !cur ? '<div class="card"><h3>' + esc(T('Wavelength supervisor status')) + ': ' + esc(T(SV_STANDING[me.standing] || me.standing || '')) + '</h3><p class="muted small">' + esc(me.standing === 'applying' ? T('Your application is being reviewed. Your learners can send you requests once you are approved.') : T('You need a current Wavelength supervisor approval to sign off and assess through your dashboard.')) + '</p>' + (me.apply ? '<div class="btns"><a class="btn teal sm" href="#/supervisor">' + esc(me.standing === 'none' ? T('Become a Wavelength supervisor') : T('See your status')) + '</a></div>' : '') + '</div>'
+       : !me.enforced && me.apply && me.standing === 'none' ? '<div class="card"><p class="small">' + esc(T('You are not yet verified by Wavelength. Learners see you labelled "Not yet verified by Wavelength" until you are approved.')) + '</p><div class="btns"><a class="btn teal sm" href="#/supervisor">' + esc(T('Become a Wavelength supervisor')) + '</a></div></div>' : '';
+     mount(shell({ title: T('Supervising'), back: '' },
+       banner +
+@@ -3004,6 +3015,49 @@
+   // "Approved to supervise:" with the supervisor's CURRENT Wavelength-approved scopes, as the server sends them (never
+   // requested areas or suggested scopes). dark: on the dark status card.
+   function approvedList(areas, style, dark) { return '<p class="small' + (dark ? ' muted' : '') + '" style="' + (style || '') + ';margin-bottom:0"><b>' + esc(T('Approved to supervise:')) + '</b></p><ul class="small sv-scopes' + (dark ? ' muted' : '') + '">' + areas.map(function (x) { return '<li>' + esc(T(x)) + '</li>'; }).join('') + '</ul>'; }
++  // ---------- Verified Supervisor (October 2026 supervisor QA) ----------
++  // One compact status wherever a verified supervisor is shown: a small green check, "Verified Supervisor", one line,
++  // and More info. Pathways, modules, roles and dates live only in More info. The state comes from the server
++  // (worker/verification/status.js) through src/app/verified.js; nothing here decides who is verified.
++  var VS_CHECK = '<svg class="vs-ic" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.4 10.2l2.4 2.4 4.9-5.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
++  var VS_STATE = { pending: 'Application being reviewed', more_info: 'More information needed', paused: 'Paused', expired: 'Expired', withdrawn: 'Ended at your request', revoked: 'Ended by Wavelength', rejected: 'Not a Wavelength supervisor', none: 'Not a Wavelength supervisor' };
++  function verifiedCard(o) {
++    return '<div class="card vs"><div class="vs-row">' + VS_CHECK + '<div class="grow"><h3 class="vs-t">' + esc(T('Verified Supervisor')) + '</h3><p class="vs-s">' + esc(T('Credentials and approved scope confirmed by Wavelength.')) + '</p><button type="button" class="vs-more" data-vinfo="' + esc(o && o.key || '') + '" aria-haspopup="dialog">' + esc(T('More info')) + '</button></div></div></div>';
++  }
++  // The same status on one line, for places that are themselves a link (a supervisor in a list).
++  function verifiedLine() { return '<span class="vs-line">' + VS_CHECK + '<span>' + esc(T('Verified Supervisor')) + '</span></span>'; }
++  // Not verified: the same quiet card, without the check, saying where things stand.
++  function statusCard(v) {
++    var tone = v.state === 'paused' || v.state === 'revoked' ? 'red' : v.state === 'none' || v.state === 'rejected' || v.state === 'withdrawn' || v.state === 'expired' ? '' : 'amber';
++    return '<div class="card vs vs-off"><div class="vs-row"><span class="vs-dot ' + tone + '" aria-hidden="true"></span><div class="grow"><h3 class="vs-t">' + esc(T(VS_STATE[v.state] || 'Not a Wavelength supervisor')) + '</h3></div></div></div>';
++  }
++  function vsGroup(g) {
++    var dl = function (k, val) { return val ? '<dt>' + esc(k) + '</dt><dd>' + val + '</dd>' : ''; };
++    var mods = g.allModules ? esc(T('All modules')) : '<ul class="vi-mods">' + g.modules.map(function (m) { return '<li>' + esc(T(m.label)) + '</li>'; }).join('') + '</ul>';
++    return '<section class="vi-g"><h3>' + esc(T('{pathway} pathway', { pathway: T(g.pathwayLabel || g.pathway) })) + '</h3><dl class="vi-dl">' +
++      dl(T('Verified role'), g.roleLabel ? esc(T(g.roleLabel)) : '') + dl(T('Approved modules'), mods) + dl(T('Verified on'), g.verifiedOn ? esc(fmt(g.verifiedOn)) : '') + dl(T('Approved until'), g.reviewOn ? esc(fmt(g.reviewOn)) : '') + '</dl></section>';
++  }
++  // More info. self: the supervisor's own view, which adds the credentials the approval relies on and anything still
++  // in progress (kept apart from what is approved). A learner sees only what is approved, for what and until when.
++  function verifiedInfoHtml(v, self) {
++    var pend = self ? WLV.pendingShown(v) : [];
++    var PEND = { renewal: 'Renewal under review', application: 'Further application under review', draft: 'Unsent application draft' };
++    return '<h2>' + esc(T('Verified Supervisor')) + '</h2><p class="small muted vi-lead">' + esc(T('Credentials and approved scope confirmed by Wavelength.')) + '</p>' +
++      v.approved.map(vsGroup).join('') +
++      (self && v.credentials.length ? '<section class="vi-g"><h3>' + esc(T('Credentials relied on')) + '</h3><ul class="vi-mods">' + v.credentials.map(function (c) { return '<li>' + esc(T(c.label)) + (c.issuer ? ' <span class="muted">(' + esc(c.issuer) + ')</span>' : '') + '<br><span class="small muted">' + esc(c.expiresOn ? T('Expires {date}', { date: fmt(c.expiresOn) }) : T('No expiry recorded')) + '</span></li>'; }).join('') + '</ul></section>' : '') +
++      (pend.length ? '<section class="vi-g vi-pend"><h3>' + esc(T('Also in progress')) + '</h3><ul class="vi-mods">' + pend.map(function (p) { return '<li>' + esc(p.kind === 'credential' ? T('Credential being checked: {label}', { label: T(p.label || '') }) : T(PEND[p.kind] || 'Further application under review')) + (p.since && p.kind !== 'draft' ? ' <span class="small muted">' + esc(T('Sent {date}.', { date: fmt(p.since) })) + '</span>' : '') + '</li>'; }).join('') + '</ul><p class="small muted">' + esc(T('Your current approval is not affected.')) + '</p></section>' : '') +
++      '<p class="small muted vi-foot">' + esc(T('This is Wavelength’s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other body.')) + '</p>' +
++      '<div class="btns"><button type="button" class="btn ghost block" data-close>' + esc(T('Close')) + '</button></div>';
++  }
++  // Opens More info beside its button where there is room (desktop, an unfolded Fold), as a bottom sheet otherwise.
++  function openVerifiedInfo(btn, v, self) {
++    var html = verifiedInfoHtml(v, self);
++    if (WLV.placement(window.innerWidth, window.innerHeight) === 'sheet') return sheet(html);
++    sheet(html, null, { anchor: btn });
++  }
++  function bindVerifiedInfo(root, find, self) {
++    $$('[data-vinfo]', root).forEach(function (b) { b.onclick = function () { var v = find(b.dataset.vinfo); if (v) openVerifiedInfo(b, v, self); }; });
++  }
+   // What the status means, one tap away wherever supervisor status is shown.
+   function wvExplain() { return '<details class="card wv-explain"><summary>' + esc(T('What does Wavelength Verified mean?')) + '</summary><p class="small">' + esc(T('A Wavelength Verified Supervisor has completed our verification process. We check professional registration where applicable, review relevant qualifications and ultrasound credentials, and approve the supervisor only for the areas of practice supported by that information.')) + '</p><p class="small">' + esc(T('Verification is performed by Wavelength and does not mean that the supervisor has been accredited or endorsed by GMC, RCEM, FAMUS, FUSIC or another professional body.')) + '</p></details>'; }
+   // Before someone applies: what Wavelength looks at, and what approval does and does not mean.
+@@ -3022,19 +3076,24 @@
+     svLoad().then(function (P) {
+       if (route().name !== 'supervisor' || route().arg) return;
+       if (!P.ok) { mount(svShell(T('Wavelength supervisor'), 'me', '<div class="card"><p class="small">' + esc(P.error || T('Supervisor applications are not available yet.')) + '</p></div>')); return; }
+-      var a = P.application, st = P.standing, cur = st === 'active' || st === 'renewal_review';
+-      var chip = cur ? 'green' : st === 'paused' || st === 'revoked' ? 'red' : st === 'none' ? '' : 'amber';
+-      var status = '<div class="card dark"><div class="row"><span style="color:var(--teal-l)">' + I.team + '</span><div class="grow"><h3>' + esc(T(SV_STANDING[st] || st)) + '</h3>' +
+-        (cur && P.areas.length ? approvedList(P.areas, 'margin:6px 0 0', true) : '') +
+-        (P.reviewOn ? '<p class="muted small" style="margin:2px 0 0">' + esc(T('Approved until {date}', { date: fmt(P.reviewOn) })) + '</p>' : '') + '</div></div></div>';
++      // One reading of the records (src/app/verified.js over the server's `verification`): the card, the notes and
++      // the application card below all follow it, so "Verified" and "under review" never describe the same thing.
++      var v = WLV.fromSupervisor(P);
++      var a = P.application, st = P.standing, cur = v.verified;
++      var status = cur ? verifiedCard({ key: 'self' }) : statusCard(v);
+       var notes = '';
+-      if (st === 'renewal_review') { var g = (P.approvals.filter(function (x) { return x.grace; })[0] || {}).graceUntil; notes += '<div class="card"><p class="small">' + esc(T('Your renewal is with the Wavelength team. Your status continues while it is reviewed, up to {date}, as long as nothing else changes.', { date: fmt(g) })) + '</p></div>'; }
++      if (v.state === 'renewal_review') { var g = v.graceUntil || (P.approvals.filter(function (x) { return x.grace; })[0] || {}).graceUntil; notes += '<div class="card"><p class="small">' + esc(T('Your renewal is with the Wavelength team. Your status continues while it is reviewed, up to {date}, as long as nothing else changes.', { date: fmt(g) })) + '</p></div>'; }
+       if (st === 'paused') notes += '<div class="warn">' + esc(T(SV_LAPSE[P.lapse] || 'Something your approval relies on is not current.')) + ' ' + esc(T('While your status is paused you cannot complete supervisor sign-offs or assessments through Wavelength. It resumes on its own once this is put right.')) + '</div>';
+       if (P.blocked) notes += '<div class="warn">' + esc(T("This can't be completed through Wavelength. Contact hello@thewavelength.co.uk.")) + '</div>';
+       if (P.waiting.length) notes += '<div class="card"><p class="small">' + esc(T('{names} asked you to supervise their logbook. Their supervision starts when the Wavelength team approves you.', { names: P.waiting.join(', ') })) + '</p></div>';
+       if (P.previous && P.previous.status === 'rejected' && !a) notes += '<div class="card"><p class="small">' + esc(T('Your last application was not approved.')) + (P.previous.message ? ' ' + esc(P.previous.message) : '') + '</p></div>';
+       var app = '';
+-      if (a) {
++      // A verified supervisor's open application is a separate, genuine item (a renewal, or a further application):
++      // it says so, and that the current approval is not affected. It is never "your application is being reviewed".
++      if (a && cur) {
++        if (a.status === 'submitted') app = '<div class="card"><h3>' + esc(a.kind === 'renewal' ? T('Renewal under review') : T('Further application under review')) + '</h3><p class="small muted">' + esc(T('Sent {date}.', { date: fmt(a.submittedAt) })) + ' ' + esc(T('Your current approval is not affected.')) + '</p><div class="btns"><button class="btn ghost sm" data-svcancel>' + esc((a.kind === 'renewal' ? T('Withdraw renewal') : T('Withdraw application'))) + '</button></div></div>';
++        else app = '<div class="card"><h3>' + esc(a.status === 'more_info' ? T('More information needed') : a.kind === 'renewal' ? T('Renewal in progress') : T('Unsent application draft')) + '</h3>' + (a.moreInfo ? '<p class="small">' + esc(a.moreInfo) + '</p>' : '<p class="small muted">' + esc(T('Your current approval is not affected.')) + '</p>') + '<div class="btns"><a class="btn teal sm" href="#/supervisor/apply">' + esc(a.status === 'more_info' ? T('Update and send again') : T('Continue')) + '</a><button class="btn ghost sm" data-svcancel>' + esc(T('Discard')) + '</button></div></div>';
++      } else if (a) {
+         if (a.status === 'submitted') app = '<div class="card"><h3>' + esc(T('Your supervisor application is being reviewed.')) + '</h3><p class="small muted">' + esc(T('Sent {date}.', { date: fmt(a.submittedAt) })) + '</p><p class="small">' + esc(T(P.config.reviewTime)) + '</p><div class="btns"><button class="btn ghost sm" data-svcancel>' + esc((a.kind === 'renewal' ? T('Withdraw renewal') : T('Withdraw application'))) + '</button></div></div>';
+         else app = '<div class="card"><h3>' + esc(a.status === 'more_info' ? T('More information needed') : (a.kind === 'renewal' ? T('Renewal in progress') : T('Supervisor application in progress'))) + '</h3>' + (a.moreInfo ? '<p class="small">' + esc(a.moreInfo) + '</p>' : '<p class="small muted">' + esc(T('Your answers are saved as you go.')) + '</p>') + '<div class="btns"><a class="btn teal sm" href="#/supervisor/apply">' + esc(a.status === 'more_info' ? T('Update and send again') : T('Continue')) + '</a><button class="btn ghost sm" data-svcancel>' + esc(T('Discard')) + '</button></div></div>';
+       }
+@@ -3048,10 +3107,13 @@
+       }
+       var find = cur && P.searchAvailable ? '<h2 class="sec">' + esc(T('Being found')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="svfind"' + (P.searchableAt ? ' checked' : '') + '><span>' + esc(T('Let learners find me in Wavelength supervisor search')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Logged-in learners would see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Turn this off at any time.')) + '</p><div id="svprev"></div></div>' : '';
+       var stop = cur || st === 'paused' || (a && a.status !== 'draft') ? '<h2 class="sec">' + esc(T('Stop supervising')) + '</h2><div class="card"><a href="#/supervisor/stop">' + esc(T('Stop being a Wavelength supervisor')) + '</a></div>' : '';
++      // Approved pathways and modules live in More info. Only a paused approval keeps its list here, so the person
++      // can see which scopes are waiting for the lapse to be put right.
+       mount(svShell(T('Wavelength supervisor'), 'me', status + notes + app + acts +
+-        (P.approvals.length ? '<h2 class="sec">' + esc(T('Approved scopes')) + '</h2><div class="card">' + P.approvals.map(function (x) { return '<span class="chip ' + (x.current ? 'teal' : 'amber') + '" style="margin:0 6px 6px 0">' + esc(x.label) + '</span>'; }).join('') + '<p class="small muted" style="margin:6px 0 0">' + esc(T('This approval is given by Wavelength. It is not an accreditation by RCEM, FAMUS, FUSIC or any other body.')) + '</p></div>' : '') +
++        (!cur && P.approvals.length ? '<h2 class="sec">' + esc(T('Approved scopes')) + '</h2><div class="card">' + P.approvals.map(function (x) { return '<span class="chip ' + (x.current ? 'teal' : 'amber') + '" style="margin:0 6px 6px 0">' + esc(x.label) + '</span>'; }).join('') + '<p class="small muted" style="margin:6px 0 0">' + esc(T('This approval is given by Wavelength. It is not an accreditation by RCEM, FAMUS, FUSIC or any other body.')) + '</p></div>' : '') +
+         find + stop + wvExplain() + '<div class="btns">' + guideLink() + '</div><p class="small muted" style="margin-top:14px">' + esc(T('Questions: hello@thewavelength.co.uk.')) + '</p>'));
+       bindEmailResend();
++      bindVerifiedInfo(document, function () { return v; }, true);
+       var fb = $('#svfind'); if (fb) fb.onchange = function () {
+         var on = fb.checked; fb.disabled = true;
+         api('/api/app/supervisor/searchable', { on: on }).then(function (res) {
+@@ -3328,11 +3390,14 @@
+   // control that opened them.
+   var sheetOpener = null;
+   var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+-  function sheet(html, bind) {
++  // opts.anchor: open as a pop-up anchored to that element (More info on a wide screen) instead of a bottom sheet.
++  // Same dialog, focus trap, Escape, outside tap and Android back behaviour either way.
++  function sheet(html, bind, opts) {
+     var opener = document.querySelector('.sheet-bg') ? sheetOpener : document.activeElement;
+     closeSheet(true);
+     sheetOpener = opener;
+-    var bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" tabindex="-1"><div class="grab"></div>' + html + '</div>';
++    var pop = opts && opts.anchor;
++    var bg = document.createElement('div'); bg.className = 'sheet-bg' + (pop ? ' pop' : ''); bg.innerHTML = '<div class="sheet' + (pop ? ' pop' : '') + '" role="dialog" aria-modal="true" tabindex="-1">' + (pop ? '' : '<div class="grab"></div>') + html + '</div>';
+     var dlg = bg.firstChild, h2 = dlg.querySelector('h2');
+     if (h2) { h2.id = h2.id || 'sh-' + Date.now().toString(36); dlg.setAttribute('aria-labelledby', h2.id); }
+     bg.addEventListener('click', function (e) { if (e.target === bg || e.target.closest('[data-close]')) { if (e.target.closest('[data-fresh]')) draftImages = []; closeSheet(); } });
+@@ -3346,17 +3411,29 @@
+       else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+     });
+     document.body.appendChild(bg);
++    if (pop) { popAnchor = pop; placePop(); }
+     var first = bg.querySelector('input, button, a');
+     setTimeout(function () { if (first && first.tagName === 'INPUT' && first.type !== 'checkbox' && first.type !== 'radio') first.focus(); else if (bg.isConnected && !dlg.contains(document.activeElement)) dlg.focus(); }, 50);
+     if (bind) bind(bg);
+   }
++  // The pop-up follows its button when the window changes (rotation, folding or unfolding a Fold): it moves, or,
++  // when there is no longer room beside the button, the same content reopens as a bottom sheet.
++  var popAnchor = null;
++  function placePop() {
++    var d = document.querySelector('.sheet.pop');
++    if (!d || !popAnchor || !popAnchor.isConnected) return;
++    if (WLV.placement(window.innerWidth, window.innerHeight) === 'sheet') { var inner = d.innerHTML; popAnchor = null; sheet(inner); return; }
++    var r = popAnchor.getBoundingClientRect(), at = WLV.popoverAt({ left: r.left, top: r.top, bottom: r.bottom, right: r.right }, { w: d.offsetWidth, h: d.offsetHeight }, { w: window.innerWidth, h: window.innerHeight });
++    d.style.left = at.left + 'px'; d.style.top = at.top + 'px'; d.dataset.side = at.side;
++  }
++  window.addEventListener('resize', function () { if (document.querySelector('.sheet.pop')) placePop(); });
+   // Escape closes the open sheet even before focus has moved into it (the sheet takes focus just after it opens).
+   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !e.defaultPrevented && document.querySelector('.sheet-bg') && !document.querySelector('.editor')) { e.preventDefault(); closeSheet(); } });
+   function closeSheet(keepOpener) {
+     // 1.0.11: a closing sheet fades and slides away (160 ms). It stops being a sheet at once (renamed, inert), so
+     // nothing that checks for an open sheet sees it, and a new sheet can open straight away.
+     var had = $$('.sheet-bg'), still = reducedMotion();
+-    had.forEach(function (s) { if (still || keepOpener) { s.remove(); return; } s.className = 'sheet-gone'; s.setAttribute('aria-hidden', 'true'); s.inert = true; var d = s.firstChild; if (d) { d.className = 'sheet-was'; $$('[id]', s).forEach(function (x) { x.removeAttribute('id'); }); } setTimeout(function () { s.remove(); }, 170); });
++    had.forEach(function (s) { if (still || keepOpener || s.classList.contains('pop')) { s.remove(); return; } s.className = 'sheet-gone'; s.setAttribute('aria-hidden', 'true'); s.inert = true; var d = s.firstChild; if (d) { d.className = 'sheet-was'; $$('[id]', s).forEach(function (x) { x.removeAttribute('id'); }); } setTimeout(function () { s.remove(); }, 170); });
+     if (keepOpener || !had.length) return;
+     var o = sheetOpener; sheetOpener = null;
+     if (o && o.isConnected && o.focus) try { o.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }
+diff --git a/src/app/index.html b/src/app/index.html
+index 6cf9aa4..2fe827a 100644
+--- a/src/app/index.html
++++ b/src/app/index.html
+@@ -29,6 +29,7 @@
+ <script src="/app/editor.js?v=__V__"></script>
+ <script src="/app/forms.js?v=__V__"></script>
+ <script src="/app/netstate.js?v=__V__"></script>
++<script src="/app/verified.js?v=__V__"></script>
+ <script src="/app/native.js?v=__V__"></script>
+ <script src="/app/app.js?v=__V__"></script>
+ </body>
+diff --git a/src/app/sw.js b/src/app/sw.js
+index 2546376..f25222c 100644
+--- a/src/app/sw.js
++++ b/src/app/sw.js
+@@ -1,6 +1,6 @@
+ // Wavelength app service worker: the app shell opens offline. API calls always go to the network.
+ const VERSION = '__V__';
+-const SHELL = ['/app/', '/app/app.css?v=__V__', '/app/theme.js?v=__V__', '/app/config.js?v=__V__', '/app/zip.js?v=__V__', '/app/backup.js?v=__V__', '/app/licences.js?v=__V__', '/app/vendor/noble-hashes/argon2.js', '/app/vendor/noble-hashes/blake2.js', '/app/vendor/noble-hashes/_blake.js', '/app/vendor/noble-hashes/_md.js', '/app/vendor/noble-hashes/_u64.js', '/app/vendor/noble-hashes/utils.js', '/app/progress.js?v=__V__', '/app/editor.js?v=__V__', '/app/guides.js?v=__V__', '/app/forms.js?v=__V__', '/app/netstate.js?v=__V__', '/app/native.js?v=__V__', '/app/app.js?v=__V__', '/app/icon-192.png', '/assets/fonts/dm-sans-latin-400-normal.woff2', '/assets/fonts/dm-sans-latin-500-normal.woff2', '/assets/fonts/dm-sans-latin-600-normal.woff2', '/assets/fonts/cormorant-garamond-latin-500-normal.woff2', '/assets/logo-192.png'];
++const SHELL = ['/app/', '/app/app.css?v=__V__', '/app/theme.js?v=__V__', '/app/config.js?v=__V__', '/app/zip.js?v=__V__', '/app/backup.js?v=__V__', '/app/licences.js?v=__V__', '/app/vendor/noble-hashes/argon2.js', '/app/vendor/noble-hashes/blake2.js', '/app/vendor/noble-hashes/_blake.js', '/app/vendor/noble-hashes/_md.js', '/app/vendor/noble-hashes/_u64.js', '/app/vendor/noble-hashes/utils.js', '/app/progress.js?v=__V__', '/app/editor.js?v=__V__', '/app/guides.js?v=__V__', '/app/forms.js?v=__V__', '/app/netstate.js?v=__V__', '/app/verified.js?v=__V__', '/app/native.js?v=__V__', '/app/app.js?v=__V__', '/app/icon-192.png', '/assets/fonts/dm-sans-latin-400-normal.woff2', '/assets/fonts/dm-sans-latin-500-normal.woff2', '/assets/fonts/dm-sans-latin-600-normal.woff2', '/assets/fonts/cormorant-garamond-latin-500-normal.woff2', '/assets/logo-192.png'];
+ self.addEventListener('install', (e) => { e.waitUntil(caches.open('wl-' + VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
+ self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('wl-') && k !== 'wl-' + VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
+ self.addEventListener('fetch', (e) => {
+diff --git a/src/app/verified.js b/src/app/verified.js
+new file mode 100644
+index 0000000..de3ece6
+--- /dev/null
++++ b/src/app/verified.js
+@@ -0,0 +1,93 @@
++// Supervisor verification for display (window.WLVerified, October 2026 supervisor QA), kept apart from app.js so the
++// rules can be tested in Node. The server owns every state (worker/verification/status.js sends `verification`);
++// this file only reads it, and maps the fields an older Worker sends onto the same shape so that nothing claims more
++// than the server said. Strings stay in app.js, which translates them with T().
++//
++// The shape:
++//   { state, verified, approved: [{ pathway, pathwayLabel, role, roleLabel, allModules, modules: [{ id, label }],
++//     verifiedOn, reviewOn, grace }], reviewOn, pending: [{ kind, status, since, label }], credentials, lapse,
++//     blocked, graceUntil }
++// One rule above all: verified is true only when the server says a current approval exists. Pending items are
++// listed beside it, never inside the approved groups.
++(function (root) {
++  'use strict';
++
++  var STATES = ['verified', 'renewal_review', 'paused', 'more_info', 'pending', 'revoked', 'expired', 'withdrawn', 'rejected', 'none', 'not_verified'];
++  function clean(v) {
++    if (!v || typeof v !== 'object' || STATES.indexOf(v.state) < 0) return null;
++    var verified = (v.state === 'verified' || v.state === 'renewal_review') && v.verified === true;
++    return {
++      state: v.state, verified: verified,
++      approved: verified && Array.isArray(v.approved) ? v.approved.filter(function (g) { return g && g.pathway; }) : [],
++      reviewOn: v.reviewOn || null,
++      pending: Array.isArray(v.pending) ? v.pending.filter(function (p) { return p && p.kind; }) : [],
++      credentials: verified && Array.isArray(v.credentials) ? v.credentials : [],
++      lapse: v.lapse || null, blocked: !!v.blocked, graceUntil: v.graceUntil || null
++    };
++  }
++
++  // "Thoracic (FAMUS pathway)" or "All modules (FAMUS pathway)", as 1.0.12 Workers send `areas`, into groups. The
++  // role is not in those labels, so the group says only "approved" (role null).
++  function groupsFromAreas(areas) {
++    var by = {}, order = [];
++    (areas || []).forEach(function (a) {
++      var m = /^(.*) \((.+) pathway\)$/.exec(String(a || ''));
++      var pw = m ? m[2] : '', mod = m ? m[1] : String(a || '');
++      if (!by[pw]) { by[pw] = { pathway: pw || 'other', pathwayLabel: pw, role: null, roleLabel: null, allModules: false, modules: [], verifiedOn: null, reviewOn: null }; order.push(pw); }
++      if (/^All modules$/.test(mod)) by[pw].allModules = true; else by[pw].modules.push({ id: mod, label: mod });
++    });
++    return order.map(function (k) { return by[k]; });
++  }
++
++  // The supervisor's own status screen: GET /api/app/supervisor.
++  function fromSupervisor(P) {
++    if (!P) return null;
++    var v = clean(P.verification);
++    if (v) return v;
++    var st = P.standing, a = P.application;
++    var cur = st === 'active' || st === 'renewal_review';
++    var state = cur ? (st === 'active' ? 'verified' : 'renewal_review') : st === 'applying' ? (a && a.status === 'more_info' ? 'more_info' : a && a.status === 'draft' ? 'none' : 'pending') : st === 'none' ? 'none' : st;
++    if (STATES.indexOf(state) < 0) state = 'none';
++    var pending = [];
++    if (a) pending.push({ kind: a.status === 'draft' ? 'draft' : a.kind === 'renewal' ? 'renewal' : 'application', status: a.status, since: a.submittedAt || null });
++    var approved = [];
++    if (cur) {
++      // 1.0.12 Workers send each approval with a label but not its role: group by pathway.
++      var g = groupsFromAreas(P.areas);
++      approved = g.length ? g : [];
++      var on = (P.approvals || []).filter(function (x) { return x.current; }).map(function (x) { return String(x.lastRenewedAt || x.approvedAt || '').slice(0, 10); }).filter(Boolean).sort();
++      approved.forEach(function (x) { x.verifiedOn = on[on.length - 1] || null; x.reviewOn = P.reviewOn || null; });
++    }
++    return { state: state, verified: cur, approved: approved, reviewOn: cur ? P.reviewOn || null : null, pending: pending, credentials: [], lapse: P.lapse || null, blocked: !!P.blocked, graceUntil: null };
++  }
++
++  // One linked supervisor, from the learner's side: GET /api/app/supervisors. Only the 'approved' stage is verified.
++  function fromLink(s) {
++    if (!s) return null;
++    var v = clean(s.verification);
++    if (v) return v.verified ? v : { state: 'not_verified', verified: false, approved: [], reviewOn: null, pending: [], credentials: [] };
++    var stage = s.stage || (s.state === 'active' ? 'approved' : '');
++    if (stage !== 'approved') return { state: 'not_verified', verified: false, approved: [], reviewOn: null, pending: [], credentials: [] };
++    return { state: s.renewal ? 'renewal_review' : 'verified', verified: true, approved: groupsFromAreas(s.areas), reviewOn: null, pending: [], credentials: [] };
++  }
++
++  // Pending items worth telling a verified supervisor about. A draft they have not sent is theirs to finish or
++  // discard; it is shown, but never as "under review".
++  function pendingShown(v) { return v ? v.pending.filter(function (p) { return p.kind !== 'credential' || v.verified; }) : []; }
++
++  // Where More info opens: an anchored pop-up when there is room beside the button (desktop, an unfolded Fold), a
++  // bottom sheet otherwise (phones, a folded Fold, landscape phones with little height).
++  function placement(w, h) { return w >= 760 && h >= 520 ? 'popover' : 'sheet'; }
++  // The pop-up's position: below the button when it fits, otherwise above, always inside the viewport by 12 px.
++  function popoverAt(rect, size, view) {
++    var gap = 8, edge = 12;
++    var left = Math.min(Math.max(edge, rect.left), Math.max(edge, view.w - size.w - edge));
++    var below = rect.bottom + gap, above = rect.top - gap - size.h;
++    var top = below + size.h <= view.h - edge ? below : above >= edge ? above : Math.max(edge, view.h - size.h - edge);
++    return { left: Math.round(left), top: Math.round(top), side: top >= rect.bottom ? 'below' : 'above' };
++  }
++
++  var api = { clean: clean, fromSupervisor: fromSupervisor, fromLink: fromLink, groupsFromAreas: groupsFromAreas, pendingShown: pendingShown, placement: placement, popoverAt: popoverAt, STATES: STATES };
++  if (typeof module === 'object' && module.exports) module.exports = api;
++  else root.WLVerified = api;
++})(typeof window !== 'undefined' ? window : this);
+diff --git a/test/sync-ack.test.mjs b/test/sync-ack.test.mjs
+index 73594cd..a2bc9c5 100644
+--- a/test/sync-ack.test.mjs
++++ b/test/sync-ack.test.mjs
+@@ -122,7 +122,8 @@ test('Android manifest lets WebView see connectivity changes', () => {
+ test('after an offline start, the first good sync loads the account details and supervisor links', () => {
+   const ok = APP.slice(APP.indexOf("SY.fail = ''; SY.ran = true; SY.lastOk = Date.now();"), APP.indexOf("return setKv('lastSyncOk'"));
+   assert.match(ok, /if \(!S\.me\) loadMe\(\)/);
+-  assert.match(ok, /if \(!S\.links\) loadLinks\(\)/);
++  // October 2026: also when the copy is more than five minutes old, so a supervisor's new verification arrives.
++  assert.match(ok, /if \(!S\.links \|\| linksStale\(300e3\)\) loadLinks\(\)/);
+   const sv = APP.slice(APP.indexOf('function viewSupervisors('), APP.indexOf('function viewSupervisors(') + 5000);
+   assert.match(sv, /!S\.links \? /, 'no "No supervisors linked yet" before the links have loaded');
+ });
+diff --git a/test/verified-view.test.mjs b/test/verified-view.test.mjs
+new file mode 100644
+index 0000000..e240fe0
+--- /dev/null
++++ b/test/verified-view.test.mjs
+@@ -0,0 +1,81 @@
++// The app's reading of supervisor verification (src/app/verified.js, October 2026 supervisor QA): it shows what the
++// server says, maps an older Worker's fields onto the same shape without ever claiming more, and never puts a
++// pending item inside the approved groups. Also where More info opens on phones, a folded or unfolded Galaxy Z Fold7
++// and desktops.
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++
++const SRC = readFileSync(new URL('../src/app/verified.js', import.meta.url), 'utf8');
++const win = {};
++new Function('window', SRC.replace(/\}\)\(typeof window[^;]*;\s*$/, '})(window);'))(win);
++const V = win.WLVerified;
++
++const server = {
++  v: 1, state: 'verified', verified: true, reviewOn: '2027-10-10',
++  approved: [{ pathway: 'famus', pathwayLabel: 'FAMUS', role: 'supervisor', roleLabel: 'Supervisor', allModules: false, modules: [{ id: 'famus-thoracic', label: 'Thoracic' }], verifiedOn: '2026-10-10', reviewOn: '2027-10-10' }],
++  pending: [{ kind: 'renewal', status: 'submitted', since: '2026-10-09' }], credentials: [{ label: 'FAMUS supervisor', issuer: 'Society for Acute Medicine', expiresOn: '2030-01-01' }],
++};
++
++test('the server\'s verification is used as it is', () => {
++  const v = V.fromSupervisor({ verification: server, standing: 'none' });
++  assert.equal(v.verified, true, 'the server wins over a stale standing field');
++  assert.equal(v.approved[0].modules[0].label, 'Thoracic');
++  assert.equal(v.pending[0].kind, 'renewal');
++  assert.equal(v.credentials.length, 1);
++});
++
++test('nothing is verified unless the server says a current approval exists', () => {
++  assert.equal(V.clean({ state: 'verified', verified: false }).verified, false);
++  assert.equal(V.clean({ state: 'pending', verified: true, approved: server.approved }).verified, false);
++  assert.deepEqual(V.clean({ state: 'pending', verified: true, approved: server.approved }).approved, [], 'no approved groups without verification');
++  assert.equal(V.clean({ state: 'something-new' }), null, 'an unknown state is not guessed at');
++});
++
++test('an older Worker (no verification field): standing and areas, mapped without overclaiming', () => {
++  // The production record behind the reported contradiction: approved from the person page, application still open.
++  const P = { standing: 'active', areas: ['Thoracic (FAMUS pathway)', 'Heart (FUSIC pathway)'], reviewOn: '2027-10-10', approvals: [{ current: true, approvedAt: '2026-10-08T10:00:00Z' }], application: { status: 'submitted', kind: 'initial', submittedAt: '2026-10-07T09:00:00Z' } };
++  const v = V.fromSupervisor(P);
++  assert.equal(v.state, 'verified');
++  assert.deepEqual(v.approved.map((g) => [g.pathwayLabel, g.modules.map((m) => m.label), g.role]), [['FAMUS', ['Thoracic'], null], ['FUSIC', ['Heart'], null]], 'the role is not in those labels, so none is invented');
++  assert.deepEqual(v.pending.map((p) => p.kind), ['application'], 'the open application is listed beside the approval, never as the status');
++  assert.equal(V.fromSupervisor({ standing: 'applying', application: { status: 'submitted', kind: 'initial' } }).state, 'pending');
++  assert.equal(V.fromSupervisor({ standing: 'applying', application: { status: 'more_info', kind: 'initial' } }).state, 'more_info');
++  assert.equal(V.fromSupervisor({ standing: 'applying', application: { status: 'draft', kind: 'initial' } }).state, 'none');
++  assert.equal(V.fromSupervisor({ standing: 'paused', approvals: [{ current: false }] }).verified, false);
++  assert.deepEqual(V.groupsFromAreas(['All modules (RCEM pathway)']), [{ pathway: 'RCEM', pathwayLabel: 'RCEM', role: null, roleLabel: null, allModules: true, modules: [], verifiedOn: null, reviewOn: null }]);
++});
++
++test('a linked supervisor: verified only at the approved stage, for whatever the learner is allowed to see', () => {
++  assert.equal(V.fromLink({ stage: 'approved', verification: { ...server, pending: undefined, credentials: undefined } }).verified, true);
++  assert.equal(V.fromLink({ stage: 'approved', verification: { state: 'not_verified', verified: false } }).verified, false);
++  for (const stage of ['awaiting_acceptance', 'awaiting_approval', 'awaiting_professional_verification', 'not_verified', 'unavailable', 'ended']) assert.equal(V.fromLink({ stage, areas: ['Thoracic (FAMUS pathway)'] }).verified, false, stage);
++  const old = V.fromLink({ stage: 'approved', areas: ['Thoracic (FAMUS pathway)'], renewal: true });
++  assert.equal(old.state, 'renewal_review');
++  assert.equal(old.approved[0].modules[0].label, 'Thoracic');
++  assert.deepEqual(V.fromLink({ state: 'active', areas: [] }).approved, [], '1.0.11 state names still map');
++});
++
++test('pending items shown to a verified supervisor; never a credential for someone not verified', () => {
++  const v = V.clean({ ...server, pending: [{ kind: 'credential', label: 'FUSIC trainer' }, { kind: 'renewal' }] });
++  assert.deepEqual(V.pendingShown(v).map((p) => p.kind), ['credential', 'renewal']);
++  assert.deepEqual(V.pendingShown(V.clean({ state: 'pending', verified: false, pending: [{ kind: 'credential' }, { kind: 'application' }] })).map((p) => p.kind), ['application']);
++});
++
++test('More info opens as a bottom sheet on phones and a folded Fold7, beside the button on an unfolded Fold7 and desktops', () => {
++  assert.equal(V.placement(390, 844), 'sheet', 'phone');
++  assert.equal(V.placement(344, 882), 'sheet', 'Fold7 folded (cover screen)');
++  assert.equal(V.placement(884, 1104), 'popover', 'Fold7 unfolded, portrait');
++  assert.equal(V.placement(1104, 884), 'popover', 'Fold7 unfolded, landscape');
++  assert.equal(V.placement(844, 390), 'sheet', 'phone landscape: too little height');
++  assert.equal(V.placement(1440, 900), 'popover', 'desktop');
++});
++
++test('the pop-up stays inside the screen: below the button when it fits, above it otherwise', () => {
++  const view = { w: 1000, h: 700 }, size = { w: 380, h: 300 };
++  assert.deepEqual(V.popoverAt({ left: 100, top: 100, bottom: 140 }, size, view), { left: 100, top: 148, side: 'below' });
++  assert.deepEqual(V.popoverAt({ left: 100, top: 600, bottom: 640 }, size, view), { left: 100, top: 292, side: 'above' });
++  assert.equal(V.popoverAt({ left: 900, top: 100, bottom: 140 }, size, view).left, 1000 - 380 - 12, 'pulled in from the right edge');
++  const tall = V.popoverAt({ left: 10, top: 300, bottom: 340 }, { w: 380, h: 680 }, view);
++  assert.ok(tall.top >= 12 && tall.top + 680 <= 700 - 12 || tall.top === 12, 'never above the top edge');
++});
+diff --git a/tools/i18n-extract.mjs b/tools/i18n-extract.mjs
+index f85d2dc..be2c314 100644
+--- a/tools/i18n-extract.mjs
++++ b/tools/i18n-extract.mjs
+@@ -39,8 +39,10 @@ lb.destinations.forEach((d) => { add(d.label); d.steps.forEach(add); });
+ // Label maps in app.js passed to T() through a variable (supervisor standing, lapse reasons, wizard steps, signers).
+ {
+   const s = fs.readFileSync('src/app/app.js', 'utf8');
+-  for (const m of s.matchAll(/var (?:SV_STANDING|SV_LAPSE|SV_REASONS|SV_STEP_LABEL|SIGNER_TEXT|SVF) = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
++  for (const m of s.matchAll(/var (?:SV_STANDING|SV_LAPSE|SV_REASONS|SV_STEP_LABEL|SIGNER_TEXT|SVF|VS_STATE) = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
+ }
++// Verified roles (data/supervision-policy.json capacities), shown in a verified supervisor's More info.
++for (const c of Object.values(JSON.parse(fs.readFileSync('data/supervision-policy.json', 'utf8')).capacities)) add(c.label);
+ // 1.0.12: relationship stages (var STAGE, one [colour, label, meaning, next] list per stage, over several lines) and
+ // the sections of the in-app guides (sec('id', 'Heading', ['paragraph', ...]) and guide data in app.js).
+ {
+diff --git a/tools/i18n/batch-supervisor-qa.json b/tools/i18n/batch-supervisor-qa.json
+new file mode 100644
+index 0000000..7932a7a
+--- /dev/null
++++ b/tools/i18n/batch-supervisor-qa.json
+@@ -0,0 +1,212 @@
++{
++  "Verified Supervisor": {
++    "fr": "Superviseur vérifié",
++    "es": "Supervisor verificado",
++    "de": "Verifizierter Supervisor",
++    "it": "Supervisore verificato",
++    "pl": "Zweryfikowany superwizor",
++    "ar": "مشرف موثَّق",
++    "ru": "Проверенный супервизор",
++    "zh": "已认证督导"
++  },
++  "Credentials and approved scope confirmed by Wavelength.": {
++    "fr": "Qualifications et périmètre approuvé confirmés par Wavelength.",
++    "es": "Credenciales y ámbito aprobado confirmados por Wavelength.",
++    "de": "Nachweise und genehmigter Umfang von Wavelength bestätigt.",
++    "it": "Credenziali e ambito approvato confermati da Wavelength.",
++    "pl": "Kwalifikacje i zatwierdzony zakres potwierdzone przez Wavelength.",
++    "ar": "أكّدت Wavelength المؤهلات ونطاق الموافقة.",
++    "ru": "Квалификация и одобренная область подтверждены Wavelength.",
++    "zh": "资质和获批范围已由 Wavelength 确认。"
++  },
++  "More info": {
++    "fr": "Plus d'infos",
++    "es": "Más información",
++    "de": "Mehr Infos",
++    "it": "Più info",
++    "pl": "Więcej informacji",
++    "ar": "مزيد من المعلومات",
++    "ru": "Подробнее",
++    "zh": "更多信息"
++  },
++  "Verified role": {
++    "fr": "Rôle vérifié",
++    "es": "Función verificada",
++    "de": "Verifizierte Rolle",
++    "it": "Ruolo verificato",
++    "pl": "Zweryfikowana rola",
++    "ar": "الدور الموثَّق",
++    "ru": "Подтверждённая роль",
++    "zh": "认证角色"
++  },
++  "Approved modules": {
++    "fr": "Modules approuvés",
++    "es": "Módulos aprobados",
++    "de": "Genehmigte Module",
++    "it": "Moduli approvati",
++    "pl": "Zatwierdzone moduły",
++    "ar": "الوحدات الموافَق عليها",
++    "ru": "Одобренные модули",
++    "zh": "获批模块"
++  },
++  "Verified on": {
++    "fr": "Vérifié le",
++    "es": "Verificado el",
++    "de": "Verifiziert am",
++    "it": "Verificato il",
++    "pl": "Zweryfikowano",
++    "ar": "تاريخ التوثيق",
++    "ru": "Дата проверки",
++    "zh": "认证日期"
++  },
++  "Approved until": {
++    "fr": "Approuvé jusqu'au",
++    "es": "Aprobado hasta",
++    "de": "Genehmigt bis",
++    "it": "Approvato fino al",
++    "pl": "Zatwierdzono do",
++    "ar": "موافَق عليه حتى",
++    "ru": "Одобрено до",
++    "zh": "批准有效期至"
++  },
++  "{pathway} pathway": {
++    "fr": "Parcours {pathway}",
++    "es": "Itinerario {pathway}",
++    "de": "{pathway}-Pfad",
++    "it": "Percorso {pathway}",
++    "pl": "Ścieżka {pathway}",
++    "ar": "مسار {pathway}",
++    "ru": "Программа {pathway}",
++    "zh": "{pathway} 路径"
++  },
++  "Credentials relied on": {
++    "fr": "Qualifications retenues",
++    "es": "Credenciales en que se basa",
++    "de": "Zugrunde liegende Nachweise",
++    "it": "Credenziali su cui si basa",
++    "pl": "Kwalifikacje, na których się opiera",
++    "ar": "المؤهلات المعتمَد عليها",
++    "ru": "Учтённая квалификация",
++    "zh": "所依据的资质"
++  },
++  "Expires {date}": {
++    "fr": "Expire le {date}",
++    "es": "Caduca el {date}",
++    "de": "Läuft ab am {date}",
++    "it": "Scade il {date}",
++    "pl": "Wygasa {date}",
++    "ar": "تنتهي في {date}",
++    "ru": "Истекает {date}",
++    "zh": "{date} 到期"
++  },
++  "No expiry recorded": {
++    "fr": "Aucune date d'expiration enregistrée",
++    "es": "Sin fecha de caducidad registrada",
++    "de": "Kein Ablaufdatum erfasst",
++    "it": "Nessuna scadenza registrata",
++    "pl": "Brak zapisanej daty wygaśnięcia",
++    "ar": "لا يوجد تاريخ انتهاء مسجَّل",
++    "ru": "Срок действия не указан",
++    "zh": "未记录到期日"
++  },
++  "Also in progress": {
++    "fr": "Également en cours",
++    "es": "También en curso",
++    "de": "Außerdem in Bearbeitung",
++    "it": "Anche in corso",
++    "pl": "W toku",
++    "ar": "قيد الإجراء أيضًا",
++    "ru": "Также в процессе",
++    "zh": "另有进行中事项"
++  },
++  "Further application under review": {
++    "fr": "Nouvelle candidature en cours d'examen",
++    "es": "Otra solicitud en revisión",
++    "de": "Weiterer Antrag in Prüfung",
++    "it": "Ulteriore domanda in esame",
++    "pl": "Kolejny wniosek w trakcie weryfikacji",
++    "ar": "طلب إضافي قيد المراجعة",
++    "ru": "Дополнительная заявка на рассмотрении",
++    "zh": "另一份申请审核中"
++  },
++  "Unsent application draft": {
++    "fr": "Brouillon de candidature non envoyé",
++    "es": "Borrador de solicitud sin enviar",
++    "de": "Nicht gesendeter Antragsentwurf",
++    "it": "Bozza di domanda non inviata",
++    "pl": "Niewysłany szkic wniosku",
++    "ar": "مسودة طلب غير مرسَلة",
++    "ru": "Неотправленный черновик заявки",
++    "zh": "未提交的申请草稿"
++  },
++  "Your current approval is not affected.": {
++    "fr": "Votre approbation actuelle n'est pas concernée.",
++    "es": "Su aprobación actual no se ve afectada.",
++    "de": "Ihre aktuelle Genehmigung bleibt bestehen.",
++    "it": "La sua approvazione attuale non cambia.",
++    "pl": "Nie ma to wpływu na Twoje obecne zatwierdzenie.",
++    "ar": "لا يتأثر اعتمادك الحالي.",
++    "ru": "Ваше текущее одобрение не меняется.",
++    "zh": "您当前的批准不受影响。"
++  },
++  "Credential being checked: {label}": {
++    "fr": "Qualification en cours de vérification : {label}",
++    "es": "Credencial en comprobación: {label}",
++    "de": "Nachweis wird geprüft: {label}",
++    "it": "Credenziale in verifica: {label}",
++    "pl": "Kwalifikacja w trakcie sprawdzania: {label}",
++    "ar": "مؤهل قيد التحقق: {label}",
++    "ru": "Квалификация на проверке: {label}",
++    "zh": "资质审核中：{label}"
++  },
++  "This is Wavelength’s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other body.": {
++    "fr": "Il s'agit de la vérification propre à Wavelength. Ce n'est ni une accréditation ni une caution du RCEM, de FAMUS, de FUSIC, du GMC ou de tout autre organisme.",
++    "es": "Es la verificación propia de Wavelength. No es una acreditación ni un respaldo del RCEM, FAMUS, FUSIC, el GMC ni ningún otro organismo.",
++    "de": "Dies ist die eigene Verifizierung von Wavelength. Sie ist keine Akkreditierung oder Empfehlung durch RCEM, FAMUS, FUSIC, den GMC oder eine andere Stelle.",
++    "it": "Questa è la verifica di Wavelength. Non è un accreditamento né un'approvazione di RCEM, FAMUS, FUSIC, GMC o di altri enti.",
++    "pl": "To weryfikacja przeprowadzona przez Wavelength. Nie jest to akredytacja ani rekomendacja RCEM, FAMUS, FUSIC, GMC ani żadnego innego podmiotu.",
++    "ar": "هذا توثيق خاص بـ Wavelength. وهو ليس اعتمادًا أو تأييدًا من RCEM أو FAMUS أو FUSIC أو GMC أو أي جهة أخرى.",
++    "ru": "Это собственная проверка Wavelength. Это не аккредитация и не одобрение RCEM, FAMUS, FUSIC, GMC или другой организации.",
++    "zh": "这是 Wavelength 自己的认证，并非 RCEM、FAMUS、FUSIC、GMC 或任何其他机构的认证或背书。"
++  },
++  "Trainer": {
++    "fr": "Formateur",
++    "es": "Formador",
++    "de": "Trainer",
++    "it": "Formatore",
++    "pl": "Trener",
++    "ar": "مدرّب",
++    "ru": "Тренер",
++    "zh": "培训师"
++  },
++  "Mentor": {
++    "fr": "Mentor",
++    "es": "Mentor",
++    "de": "Mentor",
++    "it": "Mentore",
++    "pl": "Mentor",
++    "ar": "مرشد",
++    "ru": "Наставник",
++    "zh": "导师"
++  },
++  "Locally approved supervisor": {
++    "fr": "Superviseur approuvé localement",
++    "es": "Supervisor aprobado localmente",
++    "de": "Lokal genehmigter Supervisor",
++    "it": "Supervisore approvato localmente",
++    "pl": "Superwizor zatwierdzony lokalnie",
++    "ar": "مشرف معتمَد محليًا",
++    "ru": "Супервизор, утверждённый на месте",
++    "zh": "本地认可的督导"
++  },
++  "A Wavelength administrator decides each application. Approval covers specific pathway modules only, lasts up to 12 months, and is reviewed at every renewal. An administrator who approves their own supervisor status must record the independent evidence for it, and another administrator is asked to review it.": {
++    "fr": "Un administrateur de Wavelength statue sur chaque candidature. L'approbation ne couvre que des modules précis d'un parcours, dure au plus 12 mois et est réexaminée à chaque renouvellement. Un administrateur qui approuve son propre statut de superviseur doit consigner les preuves indépendantes qui le justifient, et un autre administrateur est invité à le réexaminer.",
++    "es": "Un administrador de Wavelength decide cada solicitud. La aprobación cubre solo módulos concretos de un itinerario, dura como máximo 12 meses y se revisa en cada renovación. Un administrador que aprueba su propio estado de supervisor debe registrar las pruebas independientes que lo respaldan, y se pide a otro administrador que lo revise.",
++    "de": "Ein Wavelength-Administrator entscheidet über jeden Antrag. Die Genehmigung gilt nur für bestimmte Module eines Pfads, höchstens 12 Monate, und wird bei jeder Verlängerung geprüft. Wer als Administrator den eigenen Supervisor-Status genehmigt, muss die unabhängigen Nachweise dafür festhalten, und ein anderer Administrator wird um Prüfung gebeten.",
++    "it": "Un amministratore di Wavelength decide ogni domanda. L'approvazione riguarda solo moduli specifici di un percorso, dura al massimo 12 mesi ed è riesaminata a ogni rinnovo. Un amministratore che approva il proprio stato di supervisore deve registrare le prove indipendenti che lo giustificano, e a un altro amministratore viene chiesto di riesaminarlo.",
++    "pl": "Każdy wniosek rozpatruje administrator Wavelength. Zatwierdzenie obejmuje tylko określone moduły ścieżki, trwa najwyżej 12 miesięcy i jest weryfikowane przy każdym odnowieniu. Administrator, który zatwierdza własny status superwizora, musi zapisać niezależne dowody, a inny administrator jest proszony o jego weryfikację.",
++    "ar": "يبتّ أحد مسؤولي Wavelength في كل طلب. تغطي الموافقة وحدات محددة من المسار فقط، وتدوم 12 شهرًا كحد أقصى، وتُراجَع عند كل تجديد. على المسؤول الذي يوافق على صفته كمشرف أن يسجّل الأدلة المستقلة التي تدعم ذلك، ويُطلب من مسؤول آخر مراجعتها.",
++    "ru": "Каждую заявку рассматривает администратор Wavelength. Одобрение распространяется только на определённые модули программы, действует не более 12 месяцев и пересматривается при каждом продлении. Администратор, одобряющий собственный статус супервизора, должен указать независимые доказательства, и другого администратора просят это проверить.",
++    "zh": "每份申请由 Wavelength 管理员决定。批准仅涵盖路径中的特定模块，有效期最长 12 个月，每次续期时都会复核。管理员如批准自己的督导身份，必须记录支持该决定的独立证据，并由另一位管理员复核。"
++  }
++}
+\ No newline at end of file
