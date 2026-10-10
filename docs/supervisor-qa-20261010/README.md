@@ -267,3 +267,13 @@ On the phone (Fold7 checklist), check:
 7. Check `ZEPTOMAIL_TOKEN` and the ZeptoMail log (Zoho CPaaS, EU) for the original approval email.
 8. Optional: have a native speaker review the new translations.
 9. Not requested and not done: switching on `SUPERVISOR_APPROVAL_REQUIRED` (module-specific enforcement of sign-off). It remains the owner's separate decision.
+
+## 12. Update: production release package (10 October 2026, later)
+- The production-compatible version of this fix is on branch `wavelength-supervisor-prod-20261010` (worktree `wavelength-supervisor-prod`), built on the deployed `2dfd55e`. It contains no commercial or 1.0.9 to 1.0.14 code: 222 tests, all passing.
+- Its report, runbook, rollback and confirmed production findings are in `docs/supervisor-verification-release/README.md` on that branch. They replace the "not confirmed" notes in sections 1 and 2 above: the person-page route was used on 10 October at 18:03 UTC, and no approval email was generated.
+- `android-integration/worker-android-line.patch` (this folder) carries this branch's Worker fix for the Android line's own Worker, which includes the 1.0.12 stages and the commercial work. It applies cleanly to `5329d8d`: 405 tests, 404 passing.
+- New on this branch:
+  - optional `SUPERVISOR_SELF_APPROVAL = "refuse"`;
+  - security tests (`test/supervisor-verification-security.test.mjs`);
+  - a failed-save test;
+  - semicolons in the email for module names that hold commas.
