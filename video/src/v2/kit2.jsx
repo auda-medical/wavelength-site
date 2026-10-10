@@ -18,6 +18,8 @@ export const prog = (f, a, b, e = easeOut) => interpolate(f, [a, b], [0, 1], { .
 // Scene timing shared with the copy inside it: text enters only after the scene has faded in (minAt) and leaves before
 // the next scene starts (outAt), so text from two scenes never stacks during a cross-dissolve.
 export const SceneCtx = createContext({ minAt: 0, outAt: null });
+// Copy colours. Versions 2 and 3 use the dark defaults; version 4 provides the light palette (src/v4/look.jsx).
+export const ThemeCtx = createContext({ text: C.cream, eyebrow: C.tealL });
 // For a scene component's own elements (it renders the SceneFade, so it sits outside that context): the same exit.
 export const outOf = (f, s) => (s.overlap ? 1 - prog(f, s.dur - Math.round(s.overlap * 30) - 16, s.dur - Math.round(s.overlap * 30) - 6, easeIO) : 1);
 export function useOut() { const { outAt } = useContext(SceneCtx); const f = useCurrentFrame(); return outAt == null ? 1 : 1 - prog(f, outAt, outAt + 10, easeIO); }
@@ -34,8 +36,8 @@ export function Line({ children, at = 0, out = null, dur = 12, style = {}, id = 
     <div data-box={role} data-id={id} style={{ transform: `translateY(${(1 - p) * 105 - q * 30}%)`, opacity: Math.min(1, p * 1.6) * (1 - q), ...style }}>{children}</div>
   </div>;
 }
-export const Eyebrow2 = ({ children, at, out, style = {}, id }) => <Line at={at} out={out} id={id} style={{ fontFamily: SANS, fontWeight: 600, fontSize: 22, letterSpacing: '0.24em', textTransform: 'uppercase', color: C.tealL, ...style }}>{children}</Line>;
-export const Head = ({ children, at, out, size = 84, style = {}, id }) => <Line at={at} out={out} id={id} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: size, lineHeight: 1.04, color: C.cream, ...style }}>{children}</Line>;
+export const Eyebrow2 = ({ children, at, out, style = {}, id }) => <Line at={at} out={out} id={id} style={{ fontFamily: SANS, fontWeight: 600, fontSize: 22, letterSpacing: '0.24em', textTransform: 'uppercase', color: useContext(ThemeCtx).eyebrow, ...style }}>{children}</Line>;
+export const Head = ({ children, at, out, size = 84, style = {}, id }) => <Line at={at} out={out} id={id} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: size, lineHeight: 1.04, color: useContext(ThemeCtx).text, ...style }}>{children}</Line>;
 
 // Camera: keys [{ at, dur, s, fx, fy, tx, ty }] put stage point (fx, fy) at screen point (tx, ty) at scale s. Each key's
 // move starts at `at` and takes `dur` frames (default 24), eased in and out. Everything inside moves together.
@@ -53,10 +55,10 @@ export function Focus({ keys, children }) {
 }
 
 // A phone (the version 1 frame and layered screens) that declares itself to the collision check.
-export function Device({ x, y, k, states, rotY = 0, opacity = 1, id = 'phone' }) {
+export function Device({ x, y, k, states, rotY = 0, opacity = 1, id = 'phone', shadow = true }) {
   const W = (390 + 26) * k, H = (844 + 26) * k;
   return <div data-box="device" data-id={id} style={{ position: 'absolute', left: x, top: y, width: W, height: H, opacity }}>
-    <Phone k={k} x={0} y={0} rotY={rotY} states={states} />
+    <Phone k={k} x={0} y={0} rotY={rotY} states={states} shadow={shadow} />
   </div>;
 }
 // Stage coordinates of a point on a Device's screen (CSS px of the 390 x 844 capture).

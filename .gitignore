@@ -9,3 +9,4 @@ video/public/captures/*.png
 video/public/audio/**/*.wav
 video/public/audio-v2/**/*.wav
 video/public/audio-v3/**/*.wav
+video/public/audio-v4/**/*.wav

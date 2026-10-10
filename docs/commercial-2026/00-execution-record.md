@@ -96,6 +96,14 @@ Entries are added at each milestone. Newest at the bottom.
   (recommendations in `17-logo-motion-and-sound-recommendations.md`; app and website not modified).
 - Output: `16-videos-v3.md`, renders in `wavelength-video-output\final-v3\`.
 
+### Films version 4 (10 October 2026, evening)
+- Fero's feedback: version 3 felt gloomy (dark navy pictures, organ-like bass). Version 4 in `video/src/v4/`:
+  brighter, warmer pictures with the same story and app demonstration; three original music candidates; a shorter
+  logo sound; f09 retaken ("Directly supervised" now transcribes correctly); mixing outside Remotion with stems.
+- Comparison stage only: the full films wait for a human choice of music. Versions 1 to 3 preserved and checked.
+- The version 3 capture metadata, discarded from the working tree by mistake, was restored exactly and committed.
+- Output: `18-videos-v4.md`; files in `wavelength-video-output\comparison-v4\`.
+
 ## Decisions and assumptions
 
 Listed in full in each phase document. The main ones:

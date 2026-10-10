@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const V3 = process.argv.includes('--v3'); // version 3 narration lives in public/audio-v3
-const AUD = V3 ? 'audio-v3' : 'audio-v2';
+const AUD = process.argv.includes('--v4') ? 'audio-v4' : V3 ? 'audio-v3' : 'audio-v2'; // version 4 in public/audio-v4
 const BASE = path.join(ROOT, 'public', AUD);
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const films = args.length ? args : fs.readdirSync(path.join(BASE, 'raw'));

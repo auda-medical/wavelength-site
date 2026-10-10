@@ -96,7 +96,7 @@ export function Phone({ states, k = 1.08, x = 0, y = 0, rotY = 0, rotX = 0, scal
   const f = useCurrentFrame();
   const W = 390 * k, H = 844 * k, B = 13 * k, R = 58 * k;
   return <div style={{ position: 'absolute', left: x, top: y, width: W + 2 * B, height: H + 2 * B, transform: `perspective(2600px) rotateY(${rotY}deg) rotateX(${rotX}deg) scale(${scale})`, opacity, transformStyle: 'preserve-3d' }}>
-    {shadow ? <div style={{ position: 'absolute', inset: 0, borderRadius: R + B, boxShadow: '0 60px 120px rgba(0,0,0,.55), 0 18px 40px rgba(0,0,0,.35)' }} /> : null}
+    {shadow ? <div style={{ position: 'absolute', inset: 0, borderRadius: R + B, boxShadow: typeof shadow === 'string' ? shadow : '0 60px 120px rgba(0,0,0,.55), 0 18px 40px rgba(0,0,0,.35)' }} /> : null}
     <div style={{ position: 'absolute', inset: 0, borderRadius: R + B, background: 'linear-gradient(145deg, #3a4656 0%, #151b24 38%, #0b0f15 62%, #2a3442 100%)', padding: B }}>
       <div style={{ position: 'absolute', inset: 1.5, borderRadius: R + B - 1.5, border: '1px solid rgba(255,255,255,.14)' }} />
       <div style={{ position: 'relative', width: W, height: H, borderRadius: R, overflow: 'hidden', background: '#fff' }}>

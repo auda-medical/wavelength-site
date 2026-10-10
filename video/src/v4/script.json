@@ -1,0 +1,210 @@
+{
+ "version": 3,
+ "notes": "Version 3. Central message: the scan is done; a suitable supervisor isn't on your shift; your logbook shouldn't have to wait. Narration tells the story; 'screen' lists the short on-screen ideas (never the spoken sentence). Accreditation-neutral: no acronyms are spoken (see docs/commercial-2026/13-pronunciation-glossary.md). 'say' is what the voice model reads when it differs from the caption text.",
+ "films": {
+  "flagship": [
+   {
+    "id": "f01",
+    "scene": "scan",
+    "text": "You've completed an ultrasound scan, during a busy night shift.",
+    "screen": [
+     "NIGHT SHIFT · 03:12",
+     "THE SCAN IS DONE."
+    ]
+   },
+   {
+    "id": "f02",
+    "scene": "rota",
+    "text": "But the right supervisor isn't always there. They might be working different days, different shifts, or at another hospital.",
+    "screen": [
+     "DIFFERENT SHIFTS",
+     "Your supervisor isn't on your shift."
+    ]
+   },
+   {
+    "id": "f03",
+    "scene": "wait",
+    "text": "And before you know it, another week has passed. Your scans shouldn't be forgotten, simply because your rotas don't match.",
+    "screen": [
+     "+ 7 DAYS",
+     "Your logbook shouldn't have to wait."
+    ]
+   },
+   {
+    "id": "f04",
+    "scene": "brand",
+    "text": "Wavelength helps you record each scan while it's fresh. Then arrange the right review, without you both needing to be there at the same time.",
+    "screen": [
+     "WAVELENGTH",
+     "Designed for real clinical practice"
+    ],
+    "say": "Wavelength helps you record each scan, while it's fresh. Then arrange the right review, without you both needing to be there, at the same time."
+   },
+   {
+    "id": "f05",
+    "scene": "log",
+    "text": "Open your logbook and choose the scan. Record your findings and how you were supervised, add an image once identifiers are removed, and it can count towards your chosen pathway.",
+    "screen": [
+     "LOG YOUR SCAN",
+     "Application",
+     "Findings",
+     "Supervision",
+     "Image",
+     "Pathway"
+    ]
+   },
+   {
+    "id": "f06",
+    "scene": "verified",
+    "text": "Then choose a supervisor Wavelength has verified. We check their registration where it applies, review their ultrasound credentials, and approve them only for specific areas.",
+    "screen": [
+     "VERIFIED FOR SPECIFIC AREAS"
+    ]
+   },
+   {
+    "id": "f07",
+    "scene": "request",
+    "text": "Send your review request in a few taps. It waits on your supervisor's dashboard.",
+    "screen": [
+     "REQUEST REVIEW",
+     "YOUR SHIFT · TUE 03:40"
+    ]
+   },
+   {
+    "id": "f08",
+    "scene": "review",
+    "text": "When they're next available, on another shift or at another site, they review each scan, rate the images, add feedback, and sign.",
+    "screen": [
+     "REVIEW WHEN AVAILABLE",
+     "THEIR SHIFT · THU 14:20"
+    ]
+   },
+   {
+    "id": "f09",
+    "scene": "outcome",
+    "text": "You see the outcome in your logbook, with a code anyone can verify. Directly supervised scans and formal assessments still follow your pathway's rules.",
+    "screen": [
+     "SIGNED OFF",
+     "Direct supervision and formal assessments follow your pathway's rules."
+    ]
+   },
+   {
+    "id": "f10",
+    "scene": "progress",
+    "text": "Every review moves your training forward, and your evidence stays organised, ready to export for your portfolio.",
+    "screen": [
+     "TRACK YOUR PROGRESS"
+    ]
+   },
+   {
+    "id": "f11",
+    "scene": "free",
+    "text": "Recording scans, requesting reviews and tracking your progress are all part of the free logbook.",
+    "screen": [
+     "YOUR ULTRASOUND LOGBOOK. FREE."
+    ]
+   },
+   {
+    "id": "f12",
+    "scene": "education",
+    "text": "And when you're ready to build your skills, our hands-on courses and tailored training are here to help.",
+    "screen": [
+     "HANDS-ON COURSES",
+     "TAILORED TRAINING"
+    ],
+    "say": "And when you're ready to build your skills, our hands-on courses, and tailored training, are here to help."
+   },
+   {
+    "id": "f13",
+    "scene": "end",
+    "text": "Wavelength. Tune in. Gain clarity.",
+    "screen": [
+     "START YOUR FREE LOGBOOK",
+     "EXPLORE OUR COURSES",
+     "thewavelength.co.uk"
+    ]
+   }
+  ],
+  "short": [
+   {
+    "id": "s01",
+    "scene": "hook",
+    "text": "Scanned on a night shift, but your supervisor works days?",
+    "screen": [
+     "DIFFERENT SHIFTS"
+    ]
+   },
+   {
+    "id": "s02",
+    "scene": "log",
+    "text": "With Wavelength, you log the scan while it's fresh,",
+    "screen": [
+     "LOG YOUR SCAN"
+    ]
+   },
+   {
+    "id": "s03",
+    "scene": "request",
+    "text": "send a review request to a verified supervisor,",
+    "screen": [
+     "REQUEST REVIEW"
+    ]
+   },
+   {
+    "id": "s04",
+    "scene": "review",
+    "text": "and they review it when they're next available.",
+    "screen": [
+     "REVIEW WHEN AVAILABLE"
+    ]
+   },
+   {
+    "id": "s05",
+    "scene": "free",
+    "text": "Your scans, your reviews and your progress, all in one place, and it costs nothing to use.",
+    "screen": [
+     "YOUR ULTRASOUND LOGBOOK. FREE."
+    ]
+   },
+   {
+    "id": "s06",
+    "scene": "end",
+    "text": "Start your free logbook today.",
+    "screen": [
+     "START YOUR FREE LOGBOOK",
+     "thewavelength.co.uk"
+    ]
+   }
+  ],
+  "ad": [
+   {
+    "id": "a01",
+    "scene": "headline",
+    "text": "Ultrasound training, tailored to your needs, with flexible locations by arrangement.",
+    "screen": [
+     "Training built around you."
+    ]
+   },
+   {
+    "id": "a02",
+    "scene": "offer",
+    "text": "Hands-on courses and expert-led teaching, for individuals and groups. UK and international enquiries are welcome.",
+    "screen": [
+     "HANDS-ON COURSES",
+     "EXPERT-LED TEACHING",
+     "TAILORED TRAINING"
+    ]
+   },
+   {
+    "id": "a03",
+    "scene": "end",
+    "text": "Wavelength. Tune in. Gain clarity.",
+    "screen": [
+     "EXPLORE OUR COURSES",
+     "ENQUIRE ABOUT TAILORED TRAINING",
+     "thewavelength.co.uk"
+    ]
+   }
+  ]
+ }
+}

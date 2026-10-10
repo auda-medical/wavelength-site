@@ -28,6 +28,14 @@ development sessions; nothing in the app, store builds or website was modified o
   - The films are mastered to -15 LUFS.
 - **Viewer control:** the films are ordinary video files, so the normal player controls mute and unmute them.
 
+### Version 4 update (10 October 2026)
+Fero found the version 3 bell too long. Version 4 (`video/scripts/sfx-v4.mjs`, details in `18-videos-v4.md`):
+- **Sound:** a shorter, warmer, soft-edged tone with a natural decay of about 0.7 s. Two notes, D5 rising to A5, the
+  second exactly on the settle, with a single-note alternative for comparison.
+- **Colours:** on light backgrounds the reveal uses the website's light-background logo colours (ring navy, wave
+  #2A7F8A), checked pixel-identical.
+- **Unchanged:** the app and website recommendations below still apply. Sound stays in the films only.
+
 ## 2. Website (recommendation for the website session)
 
 | Topic | Today | Recommendation |

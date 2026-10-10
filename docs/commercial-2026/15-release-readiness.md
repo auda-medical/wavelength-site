@@ -21,6 +21,7 @@ changed. No external contact has been made. No paid service has been used.
 | Films version 3: layout | Collision check of all ten compositions (2,280 frames, every sixth): no overlaps; the shift line is protected like a card |
 | Films version 3: logo reveal | Final frame compared with the website's own SVG markup: 0 of 36,100 pixels differ |
 | Films version 3: narration text | Every line transcribed against the script; the flagship soundtrack transcribes as written (one word to check by ear, below) |
+| Films version 4 (comparison stage) | Three music candidates on matched samples: -15.1 LUFS, true peak at or below -1.49 dBTP after encoding, speech 15 dB over music; no layout overlaps (2,140 frames); light logo pixel-identical to the website; versions 2 and 3 still render identically (`18-videos-v4.md`) |
 | Films version 3: technical | -15.2 to -15.4 LUFS, peaks at or below -1.3 dBFS, no clipping (measured after encoding); flagship 1:50, short 0:30, advert 0:21 |
 
 ## 2. Completed but awaiting human review
@@ -29,6 +30,7 @@ changed. No external contact has been made. No paid service has been used.
 |---|---|
 | **Narration voice** | Version 3 uses the voice Fero chose (audition 4, Qwen3-TTS, synthetic). Listen for warmth and rhythm: flagship lines f04 and f12 and two short-film lines are brisker than the 140 to 155 words-a-minute aim. Check "Directly supervised scans" (transcribes as "supervise") |
 | FAMUS and FUSIC pronunciation | Confirm how they should be spoken (the narration avoids them until then) |
+| **Films version 4: choose the music** | Open the comparison page (Watch the films.cmd, then the version 4 link), rate the three candidates and the two logo sounds, ideally with a few clinicians; then the full version 4 films are rendered |
 | Films version 3 overall | Watch the sample, then each film: the rota story, the logo reveal and its sound, pacing, illustrations, claims (`16-videos-v3.md` section 7). Version 2 stays as a fallback |
 | Privacy notice wording | Review the new sections before the deploy |
 | Translations of new home sections | A native-speaker review before promoting a language |
@@ -72,7 +74,8 @@ From `08-commercial-strategy.md` and the opportunity register (estimates, not re
 
 | What | Where |
 |---|---|
-| **Version 3 films (current), captions** | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final-v3\` (captions in `final-v3\captions\`; start with `wavelength-v3-sample-1080p.mp4`; the logo reveal previews are there too) |
+| **Version 4 comparison (current)** | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\comparison-v4\` (samples A, B, C, logo previews, soundtracks, evaluation page); evidence in `v4-qa\` |
+| **Version 3 films, captions** | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final-v3\` (captions in `final-v3\captions\`; start with `wavelength-v3-sample-1080p.mp4`; the logo reveal previews are there too) |
 | Version 3 quality evidence | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\v3-qa\` |
 | Version 2 films, captions | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\final-v2\` (captions in `final-v2\captions\`) |
 | Voice auditions | `C:\Users\phira\Wavelength-Cloud\wavelength-video-output\v2-auditions\` |
