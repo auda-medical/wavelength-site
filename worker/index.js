@@ -10,7 +10,7 @@ import { handleApp } from './app.js';
 import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
 import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
 import { zohoConnectUrl, zohoCallback, zohoSubscribe, scheduledNewsletter, newsletterAdminHtml, newsletterAdminPost } from './newsletter.js';
-import { supervisorsAdminHtml, supervisorsAdminPost, evidenceFile } from './supervisors-admin.js';
+import { supervisorsAdminHtml, supervisorCaseHtml, supervisorsAdminPost, evidenceFile } from './supervisors-admin.js';
 import { monitorRun } from './monitor/run.js';
 import { sourcesAdminHtml, sourcesAdminPost } from './monitor/admin.js';
 import { dailyLifecycle } from './supervisor-lifecycle.js';
@@ -21,6 +21,7 @@ import { legacyAdminPath, adminNav, consoleHome } from './admin-console.js';
 import { accountsLive, accountsConfigured, readSession, clearSessionCookie, accountAudit } from './admin/accounts.js';
 import { preAuthRoute, accountsLogin, gate, accountRoutes, bootstrapRoute, withCsrf } from './admin/routes.js';
 import { deniedPage } from './admin/pages.js';
+import { permissionFor } from './admin/permissions.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
 // admin_hash, session_secret, admin_session_secret). Passwords are stored as PBKDF2 hashes, never in plain text.
@@ -385,13 +386,24 @@ async function adminRoute(req, env, ctx, url, p, s, who = null) {
       // The reviewer's name is typed once a session: remembered for the supervisor console only (it is a name, never
       // a credential; the admin login still decides who gets in).
       const typed = who || accessEmail ? '' : String(f.get('reviewer') || '').replace(/[\u0000-\u001f;,]/g, ' ').trim().slice(0, 80);
-      return redirect(`/admin/supervisors/?${r.app ? `app=${r.app}&` : r.id ? `id=${r.id}&` : ''}${r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`,
+      // From the whole-case page (case=<learner>), the answer goes back there.
+      const caseId = Number(f.get('case')) || 0;
+      return redirect(caseId > 0 ? `/admin/supervisors/case/?id=${caseId}&m=${encodeURIComponent(r.m)}` : `/admin/supervisors/?${r.app ? `app=${r.app}&` : r.id ? `id=${r.id}&` : ''}${r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`,
         typed ? { 'Set-Cookie': `wl_reviewer=${encodeURIComponent(typed)}; Path=/admin/supervisors/; Max-Age=43200; HttpOnly; Secure; SameSite=Strict` } : {});
     }
     const remembered = (/(?:^|;\s*)wl_reviewer=([^;]*)/.exec(req.headers.get('Cookie') || '') || [])[1];
     let reviewer = '';
     try { reviewer = remembered ? decodeURIComponent(remembered).slice(0, 80) : ''; } catch { reviewer = ''; }
     return page(await supervisorsAdminHtml(env, url, adminId, { reviewer: who ? '' : reviewer, access: accessEmail, account: who ? { name: accountName, learnerId: who.account.learner_id || 0 } : null }), 'supervisors');
+  }
+  // The whole case for one person: read here, decided through /admin/supervisors/ (its forms post there).
+  if (p === '/admin/supervisors/case/') {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return redirect(`/admin/supervisors/case/?id=${Number(url.searchParams.get('id')) || 0}`);
+    const remembered = (/(?:^|;s*)wl_reviewer=([^;]*)/.exec(req.headers.get('Cookie') || '') || [])[1];
+    let reviewer = '';
+    try { reviewer = remembered ? decodeURIComponent(remembered).slice(0, 80) : ''; } catch { reviewer = ''; }
+    const can = who ? (action) => { const perm = permissionFor('POST', '/admin/supervisors/', action); return !!perm && who.perms.has(perm); } : null;
+    return page(await supervisorCaseHtml(env, url, adminId, { reviewer: who ? '' : reviewer, access: accessEmail, account: who ? { name: accountName, learnerId: who.account.learner_id || 0 } : null, can }), 'supervisors');
   }
   if (p === '/admin/organisations/') {
     if (req.method === 'POST') {

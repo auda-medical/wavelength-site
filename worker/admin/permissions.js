@@ -94,6 +94,7 @@ export const GET_ROUTES = {
   '/admin/sources/': 'sources.view',
   '/admin/supervisors/': 'supervisors.view',
   '/admin/supervisors/evidence/': 'supervisors.evidence',
+  '/admin/supervisors/case/': 'supervisors.view',
   '/admin/organisations/': 'organisations.view',
   '/admin/business/': 'business.view',
 };

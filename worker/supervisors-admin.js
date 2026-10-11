@@ -27,6 +27,9 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const date = (v) => (ISO.test(String(v || '')) ? String(v) : null);
 const nowIso = () => new Date().toISOString();
 const BASE = '/admin/supervisors/';
+// The whole case: one page per person (supervisorCaseHtml below), linked from every queue row and both detail pages.
+const CASE = `${BASE}case/`;
+const caseLink = (id, text = 'Whole case') => `<a class="text-link" href="${CASE}?id=${Number(id)}">${esc(text)}</a>`;
 const PATHS = LOGBOOK.pathways.filter((p) => p.modules && p.modules.length);
 const REG_QUEUE = ['pending', 'manual_verification_required', 'manual_review', 'mismatch', 'source_unavailable'];
 const CRED_QUEUE = ['claimed', 'evidence_required', 'manual_review', 'more_evidence', 'not_found', 'source_unavailable'];
@@ -89,21 +92,25 @@ function emailStatusHtml(row, back = {}) {
 // opts.account: { name, learnerId } of the signed-in administrator account (native accounts): decisions are recorded
 // as that account, with no name to type.
 export async function supervisorsAdminHtml(env, url, admin = '', opts = {}) {
-  const html = await adminPage(env, url, admin, opts);
+  return personalise(await adminPage(env, url, admin, opts), opts);
+}
+function personalise(html, opts) {
   const who = opts.account ? `<p class="form-note">Recorded as ${esc(opts.account.name)} (your administrator account).</p><input type="hidden" name="reviewer" value="account">`
     : opts.access ? `<p class="form-note">Recorded as ${esc(opts.access)} (Cloudflare Access).</p><input type="hidden" name="reviewer" value="access">` : null;
   // Repeated clicks: the static admin shell (build.js) disables a sent .sv-form's button at once; the server's guarded
   // updates and outbox keys are the real protection.
   return (who ? html.split(reviewerField).join(who) : opts.reviewer ? html.split(REVIEWER_INPUT).join(REVIEWER_INPUT.replace(' required', ` value="${esc(clip(opts.reviewer, 80))}" required`)) : html);
 }
+// The outcome of the last action, where the eye lands: green when it worked, amber when the email did not go.
+function noteFor(m) {
+  const tone = /Approval email: (failed|unknown|not generated)/.test(m) ? 'sv-warn' : /^(Approved|Renewal approved|\d+ scopes? approved|Application recorded|Independent review recorded|GMC registration verified|Registration verified|Credential approved|Sent)/.test(m) ? 'sv-good' : '';
+  return m ? `<p class="sv-banner ${tone}" role="status" style="font-weight:600">${esc(m)}</p>` : '';
+}
 async function adminPage(env, url, admin = '', opts = {}) {
   if (!(await verificationReady(env))) return `${STYLE}<h2 class="display" style="font-size:34px;margin:0 0 8px">Supervisor verification</h2><p class="admin-summary">Not available yet: apply migrations/0011_verification.sql to the database first. ${NAV}</p>`;
-  const m = url.searchParams.get('m') || '';
   const id = Number(url.searchParams.get('id'));
   const appId = Number(url.searchParams.get('app'));
-  // The outcome of the last action, where the eye lands: green when it worked, amber when the email did not go.
-  const tone = /Approval email: (failed|unknown|not generated)/.test(m) ? 'sv-warn' : /^(Approved|Renewal approved|\d+ scopes? approved|Application recorded|Independent review recorded|GMC registration verified|Registration verified|Credential approved|Sent)/.test(m) ? 'sv-good' : '';
-  const note = m ? `<p class="sv-banner ${tone}" role="status" style="font-weight:600">${esc(m)}</p>` : '';
+  const note = noteFor(url.searchParams.get('m') || '');
   const life = await lifecycleReady(env);
   const me = (opts.account && opts.account.name) || opts.access || opts.reviewer || '';
   const selfId = (opts.account && opts.account.learnerId) || 0;
@@ -116,8 +123,8 @@ async function claimsQueue(env) {
   const regs = await env.DB.prepare(`SELECT r.*, l.title, l.first_name, l.last_name, l.email FROM professional_registrations r JOIN learners l ON l.id = r.learner_id WHERE r.active = 1 AND (r.status IN (${REG_QUEUE.map(() => '?').join(',')}) OR r.failure_state = 'recheck_due') ORDER BY r.updated_at`).bind(...REG_QUEUE).all();
   const creds = await env.DB.prepare(`SELECT c.*, l.title, l.first_name, l.last_name, l.email FROM credentials c JOIN learners l ON l.id = c.learner_id WHERE c.active = 1 AND (c.status IN (${CRED_QUEUE.map(() => '?').join(',')}) OR c.failure_state = 'recheck_due') ORDER BY c.updated_at`).bind(...CRED_QUEUE).all();
   return [
-    ...(regs.results || []).map((r) => `<tr><td>${esc(r.updated_at.slice(0, 10))}</td><td><a class="text-link" href="${BASE}?id=${r.learner_id}">${esc(name(r))}</a><br>${esc(r.email)}</td><td>Registration: ${esc((REG[r.regulator] || {}).short || r.regulator)} ${esc(r.registration_number)}</td><td>${pill(r.failure_state === 'recheck_due' ? 'recheck due' : r.status)}${r.failure_state && r.failure_state !== 'recheck_due' ? `<br><small>${esc(r.failure_state)}</small>` : ''}</td></tr>`),
-    ...(creds.results || []).map((c) => `<tr><td>${esc(c.updated_at.slice(0, 10))}</td><td><a class="text-link" href="${BASE}?id=${c.learner_id}">${esc(name(c))}</a><br>${esc(c.email)}</td><td>${esc((TYPE[c.credential_type] || {}).label || c.credential_type)}: ${esc(parseList(c.modules).join(', '))}</td><td>${pill(c.failure_state === 'recheck_due' ? 'recheck due' : c.status)}</td></tr>`),
+    ...(regs.results || []).map((r) => `<tr><td>${esc(r.updated_at.slice(0, 10))}</td><td><a class="text-link" href="${BASE}?id=${r.learner_id}">${esc(name(r))}</a><br>${esc(r.email)}<br><small>${caseLink(r.learner_id)}</small></td><td>Registration: ${esc((REG[r.regulator] || {}).short || r.regulator)} ${esc(r.registration_number)}</td><td>${pill(r.failure_state === 'recheck_due' ? 'recheck due' : r.status)}${r.failure_state && r.failure_state !== 'recheck_due' ? `<br><small>${esc(r.failure_state)}</small>` : ''}</td></tr>`),
+    ...(creds.results || []).map((c) => `<tr><td>${esc(c.updated_at.slice(0, 10))}</td><td><a class="text-link" href="${BASE}?id=${c.learner_id}">${esc(name(c))}</a><br>${esc(c.email)}<br><small>${caseLink(c.learner_id)}</small></td><td>${esc((TYPE[c.credential_type] || {}).label || c.credential_type)}: ${esc(parseList(c.modules).join(', '))}</td><td>${pill(c.failure_state === 'recheck_due' ? 'recheck due' : c.status)}</td></tr>`),
   ];
 }
 const claimsTable = (q) => (q.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Updated</th><th scope="col">Person</th><th scope="col">Claim</th><th scope="col">Status</th></tr></thead><tbody>${q.join('')}</tbody></table></div>` : '<p class="admin-summary">Nothing waiting.</p>');
@@ -128,7 +135,7 @@ async function peopleTable(env, life = false) {
       (SELECT COUNT(*) FROM supervisor_approvals WHERE learner_id = l.id AND status = 'approved') AS approvals
       ${life ? ", (SELECT COUNT(*) FROM supervisor_blocks WHERE learner_id = l.id AND lifted_at IS NULL) AS blocked" : ''}
     FROM learners l WHERE l.id IN (SELECT learner_id FROM professional_registrations UNION SELECT learner_id FROM credentials UNION SELECT learner_id FROM supervisor_approvals${life ? ' UNION SELECT learner_id FROM supervisor_applications UNION SELECT learner_id FROM supervisor_blocks' : ''}) ORDER BY l.last_name LIMIT 500`).all();
-  return (people.results || []).length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Registrations</th><th scope="col">Credentials</th><th scope="col">Approvals</th></tr></thead><tbody>${people.results.map((p) => `<tr><td><a class="text-link" href="${BASE}?id=${p.id}">${esc(name(p))}</a>${p.test_account ? ' <small>(test account)</small>' : ''}${p.blocked ? ` ${pill('blocked')}` : ''}</td><td>${esc(p.email)}<br><small>${esc(String(p.email_status || '').replace(/_/g, ' '))}</small></td><td>${esc(p.regs || 'None')}</td><td>${p.creds}</td><td>${p.approvals}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No professional claims yet.</p>';
+  return (people.results || []).length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Registrations</th><th scope="col">Credentials</th><th scope="col">Approvals</th></tr></thead><tbody>${people.results.map((p) => `<tr><td><a class="text-link" href="${BASE}?id=${p.id}">${esc(name(p))}</a>${p.test_account ? ' <small>(test account)</small>' : ''}${p.blocked ? ` ${pill('blocked')}` : ''}<br><small>${caseLink(p.id)}</small></td><td>${esc(p.email)}<br><small>${esc(String(p.email_status || '').replace(/_/g, ' '))}</small></td><td>${esc(p.regs || 'None')}</td><td>${p.creds}</td><td>${p.approvals}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No professional claims yet.</p>';
 }
 
 async function list(env, note) {
@@ -166,7 +173,7 @@ function appTable(rows, { waiting = true } = {}) {
   return `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Application</th><th scope="col">${waiting ? 'Waiting' : 'Decided'}</th><th scope="col">Applicant</th><th scope="col">Basis</th><th scope="col">Areas requested</th></tr></thead><tbody>${rows.map((a) => {
     const days = businessDaysSince(a.submitted_at);
     const b = basisOf(a);
-    return `<tr><td><a class="text-link" href="${BASE}?app=${a.id}">#${a.id} ${esc(KIND[a.kind] || a.kind)}</a><br>${pill(a.status)}</td>
+    return `<tr><td><a class="text-link" href="${BASE}?app=${a.id}">#${a.id} ${esc(KIND[a.kind] || a.kind)}</a><br>${pill(a.status)}<br><small>${caseLink(a.learner_id)}</small></td>
       <td>${waiting ? `${esc((a.submitted_at || '').slice(0, 10))}<br>${days >= 3 ? `<b>${days} business days</b>` : `${days} business day${days === 1 ? '' : 's'}`}` : `${esc((a.decided_at || '').slice(0, 10))}<br><small>${esc(a.decided_by || '')}</small>`}</td>
       <td>${esc(name(a))}${a.test_account ? ' <small>(test account)</small>' : ''}<br><small>${esc([a.role, a.organisation].filter(Boolean).join(', '))}</small>${a.invited_by ? `<br><small>Invited by ${esc(a.invited_by)}</small>` : ''}</td>
       <td><span class="sv-status ${b.cls === 'sv-good' ? 'sv-ok' : b.cls === 'sv-warn' ? 'sv-bad' : ''}">${esc(b.text)}</span><br><small>${esc(regText(a))}</small></td>
@@ -202,7 +209,7 @@ async function queues(env, tab, note) {
   if (tab === 'renewals') body = `<p class="admin-summary">Every renewal needs a decision here. "Confirm renewal" renews the same scopes for 12 months in one step. A complete renewal sent on time keeps the supervisor active for up to 30 days after their review date while it waits ("Renewal under review").</p>${appTable(renewals)}`;
   if (tab === 'claims') body = `<p class="admin-summary">Registration and credential claims that need a person. These are separate from supervisor approval.</p>${claimsTable(claims)}`;
   if (tab === 'attention') {
-    const row = (r, what) => `<tr><td><a class="text-link" href="${BASE}?id=${r.learner_id}">${esc(name(r))}</a></td><td>${what}</td></tr>`;
+    const row = (r, what) => `<tr><td><a class="text-link" href="${BASE}?id=${r.learner_id}">${esc(name(r))}</a><br><small>${caseLink(r.learner_id)}</small></td><td>${what}</td></tr>`;
     const rows = [
       ...lapses.map((w) => row(w, `Paused since ${esc(w.lapse_since)}: ${esc({ registration: 'registration not current', credential: 'a required credential is not current', email: 'email not confirmed' }[w.lapse_reason] || w.lapse_reason)}. Learners are told after 14 days.`)),
       ...pastDate.map((r) => row(r, `Review date ${esc(r.review_on)} has passed: renewal under review (grace until ${esc(addDays(r.review_on, 30))}), or waiting for the daily job to end it.`)),
@@ -272,7 +279,9 @@ function checklist(st, creds) {
 // The new "approved until" date: 12 months from today, or from the current review date for an early renewal.
 const renewBase = (approvals, day) => { const cur = approvals.map((a) => a.review_on).filter(Boolean).sort()[0]; return cur && cur > day ? cur : day; };
 
-async function applicationDetail(env, appId, note, me = '', selfId = 0) {
+// embedded: inside the whole-case page, which has the title, the email status, one merged history and the other
+// applications, so those are left out here.
+async function applicationDetail(env, appId, note, me = '', selfId = 0, { embedded = false } = {}) {
   const a = await env.DB.prepare(`${APP_SQL} WHERE a.id = ?`).bind(appId).first();
   if (!a) return `<p class="admin-summary">Application not found. <a class="text-link" href="${BASE}">Back to the queues</a></p>`;
   const st = await currentStatus(env, a.learner_id);
@@ -305,7 +314,7 @@ async function applicationDetail(env, appId, note, me = '', selfId = 0) {
   const currentNow = live.filter((x) => x.current);
   if (open && !renewal && currentNow.length) banner.push(`<div class="sv-banner sv-warn"><b>Already approved:</b> ${esc(approvedGroups(currentNow).map(groupLine).join('; '))}. This application is still open, so the supervisor's app also says it is under review. If nothing else was asked for, record it as approved. Otherwise decide it below.
     ${form('app_close_approved', H, '<label class="consent"><input type="checkbox" name="send_email" value="1"><span>Also email the supervisor their approval confirmation (leave unticked if they already know)</span></label>', 'Record as approved (no change to approvals)')}</div>`);
-  if (a.status === 'approved') banner.push(emailStatusHtml(await approvalEmailRow(env, { key: `app_approved:${a.id}` }), H));
+  if (a.status === 'approved' && !embedded) banner.push(emailStatusHtml(await approvalEmailRow(env, { key: `app_approved:${a.id}` }), H));
   if (st.block) banner.push(`<p class="sv-banner sv-warn">This account is blocked (${esc(st.block.kind === 'revoked' ? 'supervisor status revoked' : 'rejected on verification or safety grounds')}, ${esc((st.block.blocked_at || '').slice(0, 10))}). Lift the block on the <a class="text-link" href="${BASE}?id=${a.learner_id}">person page</a> before approving.</p>`);
   if (!st.learner || st.learner.email_status !== 'verified') banner.push('<p class="sv-banner sv-warn">The email address is not confirmed. An approval would not count until it is.</p>');
   if (!st.hasReg) banner.push(`<p class="sv-banner sv-warn">${a.no_registration ? 'The applicant says they are not on a statutory register.' : 'The registration is not verified yet.'} Verify it on the <a class="text-link" href="${BASE}?id=${a.learner_id}">person page</a>, or record a registration exemption with your reason below. An exemption covers the registration only: you must still be satisfied about identity and experience.</p>`);
@@ -334,8 +343,9 @@ async function applicationDetail(env, appId, note, me = '', selfId = 0) {
       <label>Why one-off assessment remains permitted<input name="one_off_note" maxlength="500"></label>`, 'Reject', 'Reject this application? The applicant is emailed and any learners waiting on them are told.')}
     ${renewal && a.status === 'submitted' && !a.grace_blocked ? form('grace_block', H, '<label>Material change found (ends the 30-day grace period)<textarea name="notes" required maxlength="800"></textarea></label>', 'End the grace period', 'End the grace period? If the review date has passed, supervisor status pauses at once.') : ''}
   </div></details>`;
-  return `<h2 class="display" style="font-size:34px;margin:0 0 8px">${esc(KIND[a.kind] || a.kind)} #${a.id}: ${esc(name(a))}</h2>
-  <p class="admin-summary">${pill(a.status)} · ${a.submitted_at ? `Sent ${esc(a.submitted_at.slice(0, 10))}, waiting ${businessDaysSince(a.submitted_at)} business days` : 'Not sent yet'} · <a class="text-link" href="${BASE}?id=${a.learner_id}">Person page</a> · <a class="text-link" href="${BASE}?tab=${renewal ? 'renewals' : 'new'}">Back to the queue</a></p>${note}
+  const sent = a.submitted_at ? `Sent ${esc(a.submitted_at.slice(0, 10))}${open ? `, waiting ${businessDaysSince(a.submitted_at)} business days` : ''}` : 'Not sent yet';
+  return `${embedded ? `<p class="admin-summary">${pill(a.status)} · ${sent} · <a class="text-link" href="${BASE}?app=${a.id}">Application page</a></p>` : `<h2 class="display" style="font-size:34px;margin:0 0 8px">${esc(KIND[a.kind] || a.kind)} #${a.id}: ${esc(name(a))}</h2>
+  <p class="admin-summary">${pill(a.status)} · ${sent} · ${caseLink(a.learner_id, 'Open the whole case')} · <a class="text-link" href="${BASE}?id=${a.learner_id}">Person page</a> · <a class="text-link" href="${BASE}?tab=${renewal ? 'renewals' : 'new'}">Back to the queue</a></p>`}${note}
   <p class="sv-banner ${b.cls}"><b>Basis:</b> ${esc(b.text)}. ${esc(regText(a))}.${a.justification ? ` Written explanation: ${String(a.justification).length} characters.` : ''}</p>${banner.join('')}
   <h3 style="margin:28px 0 10px">Answers</h3>
   ${dl([
@@ -356,12 +366,12 @@ async function applicationDetail(env, appId, note, me = '', selfId = 0) {
   <h3 style="margin:28px 0 10px">Invitation</h3>
   <p class="admin-summary">${link ? `Invited by ${esc(name(link))} on ${esc((link.created_at || '').slice(0, 10))}; link ${esc(link.status)}${link.claimed_at ? `, claimed ${esc(link.claimed_at.slice(0, 10))}` : ''}.` : 'Applied without an invitation.'} ${waitingLinks ? `${waitingLinks} learner${waitingLinks === 1 ? ' is' : 's are'} waiting for this decision; approval activates their links.` : ''}</p>
   ${actions}
-  <h3 style="margin:28px 0 10px">History</h3>
+  ${embedded ? '' : `<h3 style="margin:28px 0 10px">History</h3>
   ${history.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Details</th></tr></thead><tbody>${history.map((h) => `<tr><td>${esc(h.at)}</td><td>${esc(h.actor_type)} ${esc(h.actor_id || '')}</td><td>${esc(h.action)}</td><td><small>${esc(h.meta)}</small></td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No history.</p>'}
-  ${previous.length ? `<h3 style="margin:28px 0 10px">Other applications</h3><ul>${previous.map((x) => `<li><a class="text-link" href="${BASE}?app=${x.id}">#${x.id} ${esc(KIND[x.kind] || x.kind)}</a> ${pill(x.status)} ${esc((x.decided_at || x.submitted_at || '').slice(0, 10))}</li>`).join('')}</ul>` : ''}`;
+  ${previous.length ? `<h3 style="margin:28px 0 10px">Other applications</h3><ul>${previous.map((x) => `<li><a class="text-link" href="${BASE}?app=${x.id}">#${x.id} ${esc(KIND[x.kind] || x.kind)}</a> ${pill(x.status)} ${esc((x.decided_at || x.submitted_at || '').slice(0, 10))}</li>`).join('')}</ul>` : ''}`}`;
 }
 
-async function detail(env, id, note, life = false, me = '', selfId = 0) {
+async function detail(env, id, note, life = false, me = '', selfId = 0, { embedded = false } = {}) {
   const st = await currentStatus(env, id);
   const l = st.learner;
   if (!l) return `<p class="admin-summary">Not found. ${NAV}</p>`;
@@ -423,20 +433,20 @@ async function detail(env, id, note, life = false, me = '', selfId = 0) {
     ${form('appr_independent_review', H, '<fieldset><legend>Outcome</legend><label class="consent"><input type="radio" name="outcome" value="confirmed" required><span>Confirmed: identity, registration and the approved modules are supported by independent evidence</span></label><label class="consent"><input type="radio" name="outcome" value="concerns"><span>Concerns: I will revoke or change the approval</span></label></fieldset><label>Note (required for concerns)<textarea name="notes" maxlength="1000"></textarea></label>', 'Record independent review')}</div>` : '';
   const mailRow = life ? await approvalEmailRow(env, { learnerId: id }) : null;
   const badges = badgesFrom(env, st);
-  return `<h2 class="display" style="font-size:34px;margin:0 0 8px">${esc(name(l))}</h2>
-  <p class="admin-summary">${esc(l.email)} · Email: ${pill(l.email_status || 'legacy_unverified')} ${esc(l.email_verified_at || '')} · ${esc(l.organisation || '')} ${esc(l.role || '')} · <a class="text-link" href="${BASE}">Back to the queue</a></p>${note}
+  return `${embedded ? '' : `<h2 class="display" style="font-size:34px;margin:0 0 8px">${esc(name(l))}</h2>
+  <p class="admin-summary">${esc(l.email)} · Email: ${pill(l.email_status || 'legacy_unverified')} ${esc(l.email_verified_at || '')} · ${esc(l.organisation || '')} ${esc(l.role || '')} · ${life ? `${caseLink(id, 'Open the whole case')} · ` : ''}<a class="text-link" href="${BASE}">Back to the queue</a></p>`}${note}
   <p class="admin-summary">Badges shown today: ${badges.length ? badges.map((b) => esc(b.label + (b.modules ? ` (${b.modules.join(', ')})` : '') + (b.scopes ? ` (${b.scopes.map((s) => s.label).join(', ')})` : ''))).join(' · ') : 'none'}</p>
   ${life ? await lifecyclePanel(env, id, st, H) : ''}
-  <h3 style="margin:28px 0 10px">Professional registration</h3><div class="sv-grid">${regCards}</div>
-  <h3 style="margin:28px 0 10px">External credentials</h3><div class="sv-grid">${credCards}</div>
+  <h3 id="case-registration" style="margin:28px 0 10px">Professional registration</h3><div class="sv-grid">${regCards}</div>
+  <h3 id="case-credentials" style="margin:28px 0 10px">External credentials</h3><div class="sv-grid">${credCards}</div>
   ${await claimsPanel(env, id, form)}
-  <h3 style="margin:28px 0 10px">Wavelength supervisor approvals</h3>
+  <h3 id="case-approvals" style="margin:28px 0 10px">Wavelength supervisor approvals</h3>
   ${appRows ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Scope</th><th scope="col">Status</th><th scope="col">Approved</th><th scope="col">Review</th><th scope="col">Notes</th><th scope="col">Action</th></tr></thead><tbody>${appRows}</tbody></table></div>` : '<p class="admin-summary">No approvals.</p>'}
   ${review}${mailRow || st.approvals.length ? emailStatusHtml(mailRow, H) : ''}
   ${st.hasReg ? addApproval : '<p class="admin-summary">Verify a professional registration before approving this person as a supervisor.</p>'}
-  <h3 style="margin:28px 0 10px">History</h3>
+  ${embedded ? '' : `<h3 style="margin:28px 0 10px">History</h3>
   ${history.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">Outcome</th><th scope="col">Who</th><th scope="col">Details</th></tr></thead><tbody>${history.map((h) => `<tr><td>${esc(h.at)}</td><td>${esc(h.subject_type)} #${esc(h.subject_id)}: ${esc(h.action)}</td><td>${esc(h.outcome || '')}</td><td>${esc(h.actor)}</td><td>${esc([h.source, h.method, h.match_result && `match ${h.match_result} (${h.match_method} ${h.match_version})`, h.scope && `scope ${h.scope}`, h.evidence_id && `evidence #${h.evidence_id}`, h.notes].filter(Boolean).join(' · '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No history.</p>'}
-  ${life ? await auditTable(env, id) : ''}`;
+  ${life ? await auditTable(env, id) : ''}`}`;
 }
 
 async function lifecyclePanel(env, id, st, H) {
@@ -445,11 +455,10 @@ async function lifecyclePanel(env, id, st, H) {
   const links = (await env.DB.prepare("SELECT status, COUNT(*) AS n, SUM(claimed_at IS NOT NULL) AS claimed FROM supervisor_links WHERE supervisor_id = ? GROUP BY status").bind(id).all()).results || [];
   const blocks = (await env.DB.prepare('SELECT * FROM supervisor_blocks WHERE learner_id = ? ORDER BY id DESC').bind(id).all()).results || [];
   const watch = await env.DB.prepare('SELECT * FROM supervisor_watch WHERE learner_id = ?').bind(id).first();
-  const words = { none: 'Not a supervisor', applying: 'Application in progress', active: 'Active', renewal_review: 'Renewal under review (grace period)', paused: 'Paused', expired: 'Expired', withdrawn: 'Withdrew', revoked: 'Revoked' };
   const live = st.approvals.length;
   const active = blocks.find((b) => !b.lifted_at);
-  return `<h3 style="margin:28px 0 10px">Supervisor standing</h3>
-  <p class="sv-banner ${s.standing === 'active' ? 'sv-good' : ['paused', 'revoked'].includes(s.standing) ? 'sv-warn' : ''}"><b>${esc(words[s.standing] || s.standing)}</b>${s.lapse ? `: ${esc({ email: 'email not confirmed', registration: 'registration not current', credential: 'a required credential is not current', review: 'review date passed' }[s.lapse] || s.lapse)}` : ''}${watch && watch.lapse_since ? ` (since ${esc(watch.lapse_since)})` : ''}. Approved areas: ${esc(areaLabels(s.current).join(', ') || 'none')}. Links as supervisor: ${esc(links.map((k) => `${k.status} ${k.n}${k.status === 'pending' && k.claimed ? ` (${k.claimed} claimed)` : ''}`).join(', ') || 'none')}.</p>
+  return `<h3 id="case-standing" style="margin:28px 0 10px">Supervisor standing</h3>
+  <p class="sv-banner ${s.standing === 'active' ? 'sv-good' : ['paused', 'revoked'].includes(s.standing) ? 'sv-warn' : ''}"><b>${esc(STANDING_WORDS[s.standing] || s.standing)}</b>${s.lapse ? `: ${esc(LAPSE_WORDS[s.lapse] || s.lapse)}` : ''}${watch && watch.lapse_since ? ` (since ${esc(watch.lapse_since)})` : ''}. Approved areas: ${esc(areaLabels(s.current).join(', ') || 'none')}. Links as supervisor: ${esc(links.map((k) => `${k.status} ${k.n}${k.status === 'pending' && k.claimed ? ` (${k.claimed} claimed)` : ''}`).join(', ') || 'none')}.</p>
   ${active ? `<div class="sv-card"><h4>Blocked ${pill('blocked')}</h4><p>${esc(active.kind === 'revoked' ? 'Supervisor status revoked' : 'Rejected on verification or safety grounds')} on ${esc((active.blocked_at || '').slice(0, 10))} by ${esc(active.blocked_by)}. ${active.one_off_permitted ? `One-off assessment remains permitted: ${esc(active.one_off_note || '')}` : 'One-off assessor signing through Wavelength is blocked.'}</p><div class="sv-text">${esc(active.reason)}</div>
     ${form('block_lift', { ...H, sid: active.id }, '<label>Why the block can be lifted<textarea name="notes" required maxlength="800"></textarea></label>', 'Lift the block', 'Lift this block? It does not restore any approval.')}</div>` : ''}
   <div class="sv-actions">
@@ -459,10 +468,104 @@ async function lifecyclePanel(env, id, st, H) {
   ${apps.length ? `<p class="admin-summary">Applications: ${apps.map((x) => `<a class="text-link" href="${BASE}?app=${x.id}">#${x.id} ${esc(KIND[x.kind] || x.kind)}</a> ${pill(x.status)}`).join(' · ')}</p>` : ''}
   ${blocks.filter((b) => b.lifted_at).length ? `<p class="admin-summary">Lifted blocks: ${blocks.filter((b) => b.lifted_at).map((b) => `${esc(b.kind)} ${esc((b.blocked_at || '').slice(0, 10))} to ${esc(b.lifted_at.slice(0, 10))} (${esc(b.lifted_by || '')})`).join('; ')}</p>` : ''}`;
 }
-async function auditTable(env, id) {
+async function auditRows(env, id) {
   const apps = ((await env.DB.prepare('SELECT id FROM supervisor_applications WHERE learner_id = ?').bind(id).all()).results || []).map((r) => String(r.id));
-  const rows = (await env.DB.prepare(`SELECT * FROM audit_events WHERE (subject_type = 'learner' AND subject_id = ?) OR (actor_type IN ('learner', 'supervisor') AND actor_id = ?)${apps.length ? ` OR (subject_type = 'application' AND subject_id IN (${apps.map(() => '?').join(',')}))` : ''} ORDER BY id DESC LIMIT 300`).bind(String(id), String(id), ...apps).all()).results || [];
+  return (await env.DB.prepare(`SELECT * FROM audit_events WHERE (subject_type = 'learner' AND subject_id = ?) OR (actor_type IN ('learner', 'supervisor') AND actor_id = ?)${apps.length ? ` OR (subject_type = 'application' AND subject_id IN (${apps.map(() => '?').join(',')}))` : ''} ORDER BY id DESC LIMIT 300`).bind(String(id), String(id), ...apps).all()).results || [];
+}
+async function auditTable(env, id) {
+  const rows = await auditRows(env, id);
   return `<h3 style="margin:28px 0 10px">Audit trail</h3>${rows.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Subject</th><th scope="col">Details</th></tr></thead><tbody>${rows.map((h) => `<tr><td>${esc(h.at)}</td><td>${esc(h.actor_type)} ${esc(h.actor_id || '')}</td><td>${esc(h.action)}</td><td>${esc(h.subject_type || '')} ${esc(h.subject_id || '')}</td><td><small>${esc(h.meta)}</small></td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No audit events.</p>'}`;
+}
+
+// ---------- The whole case: one page per person (October 2026) ----------
+// Everything about one supervisor on one page (/admin/supervisors/case/?id=<learner>): who they are and where they
+// stand, what needs doing now, the open (or latest) application with its decision, their registration, credentials
+// and approvals with their controls, and one history. Same records, same form actions and same handler as the
+// application and person pages (which stay, each linking here): every form posts to /admin/supervisors/ with
+// case=<id>, and the answer comes back to this page. No new table, rule or action.
+const STANDING_WORDS = { none: 'Not a supervisor', applying: 'Application in progress', active: 'Active', renewal_review: 'Renewal under review (grace period)', paused: 'Paused', expired: 'Expired', withdrawn: 'Withdrew', revoked: 'Revoked' };
+const LAPSE_WORDS = { email: 'email not confirmed', registration: 'registration not current', credential: 'a required credential is not current', review: 'review date passed' };
+const CASE_STYLE = '<style>.case-todo{list-style:none;padding:0;margin:6px 0 0;display:grid;gap:6px}.case-todo li{padding:10px 12px;border-radius:10px;background:#F6DEDA}.case-todo li.case-info{background:#EDEAE3}.case-section{scroll-margin-top:16px}</style>';
+
+// opts as supervisorsAdminHtml, plus can(action) (native accounts): whether this administrator may use a form action.
+// A control they may not use is left off the page (the server refuses it anyway).
+export async function supervisorCaseHtml(env, url, admin = '', opts = {}) {
+  const id = Number(url.searchParams.get('id')) || 0;
+  let html;
+  if (!(await verificationReady(env)) || !(await lifecycleReady(env))) {
+    html = `${STYLE}<h2 class="display" style="font-size:34px;margin:0 0 8px">Supervisor case</h2><p class="admin-summary">Not available yet: apply migrations 0011 and 0012 first. ${NAV}</p>`;
+  } else {
+    const me = (opts.account && opts.account.name) || opts.access || opts.reviewer || '';
+    const selfId = (opts.account && opts.account.learnerId) || 0;
+    html = STYLE + CASE_STYLE + await caseView(env, id, noteFor(url.searchParams.get('m') || ''), me, selfId);
+    // Every decision goes to the one handler, and comes back here.
+    html = html.split('<form class="form sv-form" method="post"').join(`<form class="form sv-form" method="post" action="${BASE}"`)
+      .split('<input type="hidden" name="action" value="').join(`<input type="hidden" name="case" value="${id}"><input type="hidden" name="action" value="`);
+    if (typeof opts.can === 'function') html = html.replace(/<form class="form sv-form"[\s\S]*?<\/form>/g, (f) => { const a = (/name="action" value="([a-z_]+)"/.exec(f) || [])[1]; return a && opts.can(a) ? f : ''; });
+  }
+  return personalise(html, opts);
+}
+
+async function caseView(env, id, note, me = '', selfId = 0) {
+  const st = await currentStatus(env, id);
+  const l = st.learner;
+  if (!l) return `<p class="admin-summary">Not found. <a class="text-link" href="${BASE}">Back to the queues</a></p>`;
+  const s = await standingOf(env, id, st);
+  const day = ukDate();
+  const apps = (await env.DB.prepare('SELECT id, kind, status, submitted_at, decided_at, more_info_at FROM supervisor_applications WHERE learner_id = ? ORDER BY id DESC').bind(id).all()).results || [];
+  const open = apps.find((a) => ['submitted', 'more_info'].includes(a.status)) || null;
+  const shown = open || apps[0] || null;
+  const current = st.approvals.filter((a) => a.current);
+  const until = current.map((a) => a.review_on).filter(Boolean).sort()[0] || null;
+  const own = isSelf(l, me, selfId);
+  const selfRows = await selfApprovals(env, id);
+  const mail = await approvalEmailRow(env, { learnerId: id });
+  const regWait = st.registrations.filter((r) => r.active && (REG_QUEUE.includes(r.status) || r.failure_state === 'recheck_due'));
+  const credWait = (await env.DB.prepare(`SELECT credential_type, status, failure_state FROM credentials WHERE learner_id = ? AND active = 1 AND (status IN (${CRED_QUEUE.map(() => '?').join(',')}) OR failure_state = 'recheck_due')`).bind(id, ...CRED_QUEUE).all()).results || [];
+
+  // What needs doing now, most pressing first; each links to its control further down this page.
+  const todo = [];
+  const item = (anchor, text, info = false) => todo.push(`<li${info ? ' class="case-info"' : ''}><a class="text-link" href="#${anchor}">${text}</a></li>`);
+  if (st.block) item('case-standing', `Blocked (${esc(st.block.kind === 'revoked' ? 'supervisor status revoked' : 'rejected on verification or safety grounds')}, ${esc((st.block.blocked_at || '').slice(0, 10))}). Lift the block before any approval.`);
+  if (open && open.status === 'submitted') item('case-application', `${esc(KIND[open.kind] || open.kind)} #${open.id} is waiting for a decision (${businessDaysSince(open.submitted_at)} business days).`);
+  if (open && open.status === 'more_info') item('case-application', `${esc(KIND[open.kind] || open.kind)} #${open.id}: waiting for the applicant to send the information asked for${open.more_info_at ? ` on ${esc(open.more_info_at.slice(0, 10))}` : ''}.`, true);
+  if (open && open.kind !== 'renewal' && current.length) item('case-application', `Application #${open.id} is still open beside a current approval, so their app says it is under review. Record it as approved, or decide it.`);
+  if (regWait.length) item('case-registration', `Professional registration to check: ${esc(regWait.map((r) => `${(REG[r.regulator] || {}).short || r.regulator} ${String(r.failure_state === 'recheck_due' ? 'recheck due' : r.status).replace(/_/g, ' ')}`).join(', '))}.`);
+  if (credWait.length) item('case-credentials', `Credential${credWait.length === 1 ? '' : 's'} to check: ${esc(credWait.map((c) => `${(TYPE[c.credential_type] || {}).label || c.credential_type} (${String(c.failure_state === 'recheck_due' ? 'recheck due' : c.status).replace(/_/g, ' ')})`).join(', '))}.`);
+  if (selfRows.length) item('case-approvals', `Approved by ${esc(reviewerOf(selfRows[0].approved_by) || 'an administrator')} on ${esc((selfRows[0].approved_at || '').slice(0, 10))}, who appears to be this supervisor: ${own ? 'another administrator should record an independent review' : 'record an independent review'}.`);
+  if (mail && ['failed', 'unknown'].includes(mail.status)) item('case-approvals', `Approval email ${esc(EMAIL_WORDS[mail.status][0].toLowerCase())}: the supervisor may not know they were approved.`);
+  if (until && until < day) item('case-approvals', `Review date ${esc(longDate(until))} has passed: renewal under review, or ending.`);
+  else if (until && until <= addDays(day, 14) && !(open && open.kind === 'renewal')) item('case-approvals', `Review date ${esc(longDate(until))} is within 14 days and no renewal has started.`, true);
+  if (s.lapse && !st.block) item('case-standing', `Supervisor status paused: ${esc(LAPSE_WORDS[s.lapse] || s.lapse)}.`);
+
+  const tone = s.standing === 'active' ? 'sv-good' : ['paused', 'revoked'].includes(s.standing) || st.block ? 'sv-warn' : '';
+  const header = `<h2 class="display" style="font-size:34px;margin:0 0 8px">${esc(name(l))}</h2>
+  <p class="admin-summary">${esc(l.email)} · Email ${pill(l.email_status || 'legacy_unverified')} · ${esc([l.role, l.organisation].filter(Boolean).join(', '))}${l.test_account ? ' · <b>Test or review account</b>' : ''} · <a class="text-link" href="${BASE}">Back to the queues</a></p>${note}
+  ${own ? '<p class="sv-banner sv-warn"><b>This is your own record.</b> Decisions about your own supervisor status should be made by another administrator, and the independent review is for someone else to record.</p>' : ''}
+  <p class="sv-banner ${tone}" data-case-state="${esc(s.standing)}"><b>${esc(STANDING_WORDS[s.standing] || s.standing)}</b>${current.length ? `: ${esc(approvedGroups(current).map(groupLine).join('; '))}` : ''}${until ? `. Approved until ${esc(longDate(until))}` : ''}${st.block ? '. <b>Blocked</b>' : ''}.</p>
+  <h3 style="margin:24px 0 8px">What needs doing now</h3>
+  ${todo.length ? `<ul class="case-todo">${todo.join('')}</ul>` : '<p class="admin-summary">Nothing needs doing now.</p>'}`;
+
+  const earlier = apps.filter((a) => !shown || a.id !== shown.id);
+  const appSection = `<section id="case-application" class="case-section"><h3 style="margin:28px 0 10px">${shown ? `${esc(KIND[shown.kind] || shown.kind)} #${shown.id}${open ? '' : ' (the latest; none is open)'}` : 'Application'}</h3>
+  ${shown ? await applicationDetail(env, shown.id, '', me, selfId, { embedded: true }) : '<p class="admin-summary">No application. An approval can still be recorded under Wavelength supervisor approvals below.</p>'}
+  ${earlier.length ? `<details class="sv-more"><summary>Earlier applications (${earlier.length})</summary><ul>${earlier.map((x) => `<li><a class="text-link" href="${BASE}?app=${x.id}">#${x.id} ${esc(KIND[x.kind] || x.kind)}</a> ${pill(x.status)} ${esc((x.decided_at || x.submitted_at || '').slice(0, 10))}</li>`).join('')}</ul></details>` : ''}</section>`;
+  let person = await detail(env, id, '', true, me, selfId, { embedded: true });
+  // On your own record the independent review is someone else's to record (the server refuses it from you anyway).
+  if (own) person = person.replace(/<form class="form sv-form"(?:(?!<\/form>)[\s\S])*?name="action" value="appr_independent_review"[\s\S]*?<\/form>/, '<p class="form-note">Another administrator records the independent review.</p>');
+  return `${header}${appSection}<section class="case-section">${person}</section><section id="case-history" class="case-section">${await caseHistory(env, id)}</section>`;
+}
+
+// One history: verification decisions and audit entries (applications, approvals, emails, the person's own actions)
+// merged, newest first.
+async function caseHistory(env, id) {
+  const ver = (await env.DB.prepare('SELECT * FROM verification_events WHERE learner_id = ? ORDER BY id DESC LIMIT 300').bind(id).all()).results || [];
+  const aud = await auditRows(env, id);
+  const rows = [
+    ...ver.map((h) => ({ at: h.at, who: h.actor, what: `${h.subject_type} #${h.subject_id}: ${h.action}${h.outcome ? ` (${h.outcome})` : ''}`, scope: h.scope || '', details: [h.source, h.method, h.match_result && `match ${h.match_result} (${h.match_method} ${h.match_version})`, h.evidence_id && `evidence #${h.evidence_id}`, h.notes].filter(Boolean).join(' · ') })),
+    ...aud.map((h) => ({ at: h.at, who: `${h.actor_type} ${h.actor_id || ''}`.trim(), what: `${h.action}${h.subject_type ? ` (${h.subject_type} ${h.subject_id || ''})` : ''}`, scope: '', details: h.meta || '' })),
+  ].sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+  return `<h3 style="margin:28px 0 10px">History</h3>${rows.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Scope</th><th scope="col">Details</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${esc(r.at)}</td><td>${esc(r.who)}</td><td>${esc(r.what)}</td><td>${esc(r.scope)}</td><td><small>${esc(r.details)}</small></td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No history.</p>'}`;
 }
 
 // Returns the message to show after the redirect.
