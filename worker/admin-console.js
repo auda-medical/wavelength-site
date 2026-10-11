@@ -1,6 +1,7 @@
 // The Wavelength admin console at /admin/ (worker/index.js routes it): its sections, the navigation shown on every
 // console page, the home page, and where old /volunteer/admin/* addresses now live.
 import { allowed } from './access.js';
+import { NAV, ROLES } from './admin/permissions.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
@@ -13,25 +14,29 @@ export const SECTIONS = [
   { id: 'faculty', label: 'Faculty applications', about: 'Teach with us applications.' },
   { id: 'departments', label: 'Department enquiries', about: 'Training enquiries from departments.' },
   { id: 'newsletter', label: 'Newsletter', about: 'Zoho Campaigns connection, the weekly send and the send log.' },
+  { id: 'accounts', label: 'Administrators', about: 'Personal administrator accounts: roles, permissions, two-step verification, resets and sessions.' },
   { id: 'logins', label: 'Logins', about: 'Change the volunteer and admin passwords.' },
 ];
 
-// With Cloudflare Access on, a person sees only the sections their roles open. With it off, the one admin login
-// opens everything, as before.
-const visible = (acc) => SECTIONS.filter((x) => !acc || !acc.on || allowed(acc.roles || [], `/admin/${x.id}/`));
+// With a personal administrator account (worker/admin/), a person sees only the sections their permissions open.
+// With Cloudflare Access on, only the sections their Access roles open. Otherwise the one admin login opens everything.
+const visible = (acc) => (acc && acc.account
+  ? SECTIONS.filter((x) => { const n = NAV.find((y) => y.id === x.id); return n && acc.perms && acc.perms.has(n.perm); })
+  : SECTIONS.filter((x) => !acc || !acc.on || allowed(acc.roles || [], `/admin/${x.id}/`)));
 
 export function adminNav(acc, current = '') {
   const links = [{ id: '', label: 'Console' }, ...visible(acc)].map((x) => {
     const href = x.id ? `/admin/${x.id}/` : '/admin/';
     return x.id === current ? `<b aria-current="page">${esc(x.label)}</b>` : `<a class="text-link" href="${href}">${esc(x.label)}</a>`;
   });
-  return `<nav class="admin-summary admin-nav" aria-label="Admin console" style="margin:0 0 28px">${links.join(' · ')} · <a class="text-link" href="/admin/logout/">Log out</a></nav>`;
+  const mine = acc && acc.account ? (current === 'account' ? ' · <b aria-current="page">Your account</b>' : ' · <a class="text-link" href="/admin/account/">Your account</a>') : '';
+  return `<nav class="admin-summary admin-nav" aria-label="Admin console" style="margin:0 0 28px">${links.join(' · ')}${mine} · <a class="text-link" href="/admin/logout/">Log out</a></nav>`;
 }
 
 export function consoleHome(acc) {
   const items = visible(acc).map((x) => `<li><a class="text-link" href="/admin/${x.id}/"><b>${esc(x.label)}</b></a><br><span class="muted">${esc(x.about)}</span></li>`).join('');
   return `<h2 class="display" style="font-size:34px;margin:0 0 8px">Admin console</h2>
-  <p class="admin-summary">${acc && acc.on ? `Signed in through Cloudflare Access as ${esc(acc.email)}.` : 'Private to the Wavelength team.'} Volunteers use their own login at /volunteer/ and never see this console.</p>
+  <p class="admin-summary">${acc && acc.account ? `Signed in as ${esc(acc.account.display_name)} (${esc((ROLES[acc.account.role] || {}).label || acc.account.role)}). Everything you do is recorded against your account.` : acc && acc.on ? `Signed in through Cloudflare Access as ${esc(acc.email)}.` : 'Private to the Wavelength team.'} Volunteers use their own login at /volunteer/ and never see this console.</p>
   ${items ? `<ul class="admin-sections" style="list-style:none;padding:0;display:grid;gap:14px">${items}</ul>` : '<p class="admin-summary">Your admin roles do not open any section yet. Ask the owner to add the role you need.</p>'}`;
 }
 

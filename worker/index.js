@@ -18,6 +18,9 @@ import { organisationsAdminHtml, organisationsAdminPost } from './organisations.
 import { adminAccess, allowed } from './access.js';
 import { runScheduled } from './cron.js';
 import { legacyAdminPath, adminNav, consoleHome } from './admin-console.js';
+import { accountsLive, accountsConfigured, readSession, clearSessionCookie, accountAudit } from './admin/accounts.js';
+import { preAuthRoute, accountsLogin, gate, accountRoutes, bootstrapRoute, withCsrf } from './admin/routes.js';
+import { deniedPage } from './admin/pages.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
 // admin_hash, session_secret, admin_session_secret). Passwords are stored as PBKDF2 hashes, never in plain text.
@@ -146,10 +149,24 @@ async function saveVolunteer(env, form) {
   return true;
 }
 
-// Every console page: the static shell at /admin/ with the console navigation and the page's own HTML.
-async function render(env, req, html, acc, current) {
+// Every console page: the static shell at /admin/ with the console navigation and the page's own HTML. With a
+// personal account (native accounts) every form on the page gets the session's CSRF token.
+async function render(env, req, html, acc, current, csrf = '', { nav = true, status = 0 } = {}) {
   const shell = await env.ASSETS.fetch(new Request(new URL('/admin/', req.url).toString()));
-  return withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(adminNav(acc, current) + html, { html: true }); } }).transform(shell));
+  const body = (nav ? adminNav(acc, current) : '') + (csrf ? withCsrf(html, csrf) : html);
+  const out = withHeaders(new HTMLRewriter().on('#admin-root', { element(el) { el.setInnerContent(body, { html: true }); } }).transform(shell));
+  return status ? withHeaders(new Response(out.body, { status, headers: out.headers })) : out;
+}
+// What worker/admin/routes.js needs to answer: redirects, plain refusals and console pages.
+function helpers(env, req, acc, csrf) {
+  return {
+    redirect,
+    forbidden: () => withHeaders(new Response('Forbidden', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })),
+    refuse: async (to) => { await new Promise((r) => setTimeout(r, 800)); return redirect(to); },
+    bare: (html, status = 0) => render(env, req, html, null, '', '', { nav: false, status }),
+    page: (html, current) => render(env, req, html, acc, current, csrf),
+    denied: (cur) => render(env, req, deniedPage(), { on: false, ok: true, account: cur.account, perms: new Set(['console.home', 'account.self']) }, '', cur.session.csrf, { status: 403 }),
+  };
 }
 
 async function volunteersHtml(env) {
@@ -222,23 +239,40 @@ async function academyHtml(env, req) {
 // The console behind the admin login. Cloudflare Access (worker/access.js) applies only when ACCESS_TEAM_DOMAIN and
 // ACCESS_AUD are set: then the admin's Access email is their identity in audit events, and roles from
 // settings.admin_roles decide which sections open (roleForPath).
-async function adminRoute(req, env, ctx, url, p, s) {
-  const acc = await adminAccess(env, req, s);
-  if (!acc.ok) return withHeaders(new Response('Sign in through Cloudflare Access to use the admin area.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
-  if (acc.on && !allowed(acc.roles, p)) return withHeaders(new Response('Your admin roles do not include this page. Ask the owner to add the role you need.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
-  const accessEmail = acc.on ? acc.email : '';
+// who (native accounts, worker/admin/): { account, session, perms } of the signed-in administrator. The gate in
+// worker/admin/routes.js has already checked the session, the CSRF token and this route's permission; here every
+// decision is recorded as that account, never as a typed name.
+async function adminRoute(req, env, ctx, url, p, s, who = null) {
+  const access = await adminAccess(env, req, s);
+  if (!access.ok) return withHeaders(new Response('Sign in through Cloudflare Access to use the admin area.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
+  if (!who && access.on && !allowed(access.roles, p)) return withHeaders(new Response('Your admin roles do not include this page. Ask the owner to add the role you need.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
+  const acc = who ? { on: false, ok: true, account: who.account, perms: who.perms } : access;
+  const accessEmail = access.on ? access.email : '';
   const back = (to, m) => redirect(to + (m ? '?m=' + encodeURIComponent(m) : ''));
-  const page = async (html, current) => render(env, req, html, acc, current);
+  const csrf = who ? who.session.csrf : '';
+  const page = async (html, current) => render(env, req, html, acc, current, csrf);
+  const adminId = who ? `acct${who.account.id}` : s.admin_username;
+  const accountName = who ? who.account.display_name : '';
+  // Exports, deletions and other changes outside the supervisor and organisation modules, recorded against the account.
+  const record = (action, meta = {}, subjectType = null, subjectId = null) => (who ? accountAudit(env, who.account, action, { subjectType, subjectId, meta }).run() : Promise.resolve());
+  const formOf = async () => (who && req.method === 'POST' ? req.clone().formData() : null);
+
+  if (who && (p === '/admin/account/' || p === '/admin/reauth/' || p === '/admin/accounts/')) {
+    const r = await accountRoutes(req, env, url, p, who, helpers(env, req, acc, csrf));
+    if (r) return r;
+  }
+  if (!who && p === '/admin/accounts/') return bootstrapRoute(req, env, url, helpers(env, req, acc, ''));
+  if (!who && (p === '/admin/account/' || p === '/admin/reauth/')) return redirect('/admin/');
 
   if (p === '/admin/') return page(consoleHome(acc), '');
 
-  if (p === '/admin/volunteers/export.csv') return exportCsv(env);
+  if (p === '/admin/volunteers/export.csv') { await record('export.volunteers'); return exportCsv(env); }
   if (p === '/admin/volunteers/') {
     if (req.method === 'POST') {
       const f = await req.formData();
       const id = Number(f.get('id'));
-      if (id && f.get('action') === 'delete') await env.DB.prepare('DELETE FROM volunteers WHERE id = ?').bind(id).run();
-      if (id && f.get('action') === 'contacted') await env.DB.prepare('UPDATE volunteers SET contacted = 1 - contacted WHERE id = ?').bind(id).run();
+      if (id && f.get('action') === 'delete') { await env.DB.prepare('DELETE FROM volunteers WHERE id = ?').bind(id).run(); await record('volunteer.delete', {}, 'volunteer', id); }
+      if (id && f.get('action') === 'contacted') { await env.DB.prepare('UPDATE volunteers SET contacted = 1 - contacted WHERE id = ?').bind(id).run(); await record('volunteer.contacted', {}, 'volunteer', id); }
       return redirect('/admin/volunteers/');
     }
     return page(await volunteersHtml(env), 'volunteers');
@@ -251,20 +285,27 @@ async function adminRoute(req, env, ctx, url, p, s) {
       if (action !== 'password_volunteer' && action !== 'password_admin') return redirect('/admin/logins/');
       const np = String(f.get('new_password') || '');
       if (np.length < 10 || np.length > 200) return redirect('/admin/logins/?pw=short');
-      const who = action === 'password_admin' ? 'admin' : 'volunteer';
+      const side = action === 'password_admin' ? 'admin' : 'volunteer';
+      await record(`logins.${action}`);
       // A new signing secret for that side logs everyone on it out, so the old password stops working at once.
       // The other side's sessions are untouched.
-      const secret = who === 'admin' ? 'admin_session_secret' : 'session_secret';
+      const secret = side === 'admin' ? 'admin_session_secret' : 'session_secret';
       await env.DB.batch([
-        env.DB.prepare('UPDATE settings SET value = ? WHERE key = ?').bind(await hashPassword(np), who + '_hash'),
+        env.DB.prepare('UPDATE settings SET value = ? WHERE key = ?').bind(await hashPassword(np), side + '_hash'),
         env.DB.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').bind(secret, newSecret()),
       ]);
       SETTINGS = null;
-      return who === 'admin' ? redirect('/admin/login/', { 'Set-Cookie': clearCookie('a') }) : redirect('/admin/logins/?pw=ok');
+      // With personal accounts live the shared admin password only matters after a rollback: the account stays signed in.
+      return side === 'admin' && !who ? redirect('/admin/login/', { 'Set-Cookie': clearCookie('a') }) : redirect('/admin/logins/?pw=ok');
     }
     return page(await loginsHtml(env, req), 'logins');
   }
 
+  if (p === '/admin/academy/learners.csv') await record('export.academy_learners');
+  if (p === '/admin/academy/certificates.csv') await record('export.academy_certificates');
+  if (p === '/admin/academy/feedback.csv') await record('export.academy_feedback');
+  if (p === '/admin/faculty/applications.csv') await record('export.faculty_applications');
+  if (p === '/admin/departments/enquiries.csv') await record('export.department_enquiries');
   if (p === '/admin/academy/learners.csv') return csvResponse((await env.DB.prepare('SELECT * FROM learners ORDER BY created_at DESC').all()).results || [], ['created_at', 'title', 'first_name', 'last_name', 'email', 'role', 'organisation', 'newsletter', 'last_seen'], 'wavelength-academy-learners');
   if (p === '/admin/academy/certificates.csv') return csvResponse((await env.DB.prepare('SELECT * FROM certificates ORDER BY created_at DESC').all()).results || [], ['issued_on', 'code', 'name', 'module', 'module_title', 'score', 'cpd_hours', 'emailed_at', 'email_error'], 'wavelength-academy-certificates');
   if (p === '/admin/academy/feedback.csv') return csvResponse((await env.DB.prepare('SELECT created_at, module, useful, practice, comment FROM feedback ORDER BY created_at DESC').all()).results || [], ['created_at', 'module', 'useful', 'practice', 'comment'], 'wavelength-academy-feedback');
@@ -275,6 +316,7 @@ async function adminRoute(req, env, ctx, url, p, s) {
         const { results = [] } = await env.DB.prepare('SELECT c.*, l.email, l.title, l.first_name, l.last_name FROM certificates c JOIN learners l ON l.id = c.learner_id WHERE c.emailed_at IS NULL LIMIT 25').all();
         let ok = true;
         for (const c of results) ok = (await sendCertificate(env, c, c)) && ok;
+        await record('academy.send_certificates', { count: results.length, ok });
         return redirect(`/admin/academy/?sent=${ok ? 1 : 0}`);
       }
       return redirect('/admin/academy/');
@@ -284,16 +326,17 @@ async function adminRoute(req, env, ctx, url, p, s) {
 
   if (p === '/admin/faculty/applications.csv') return csvResponse((await env.DB.prepare('SELECT * FROM faculty_applications ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'profession', 'specialty', 'organisation', 'registration', 'experience', 'credentials', 'applications', 'interests', 'details', 'contacted'], 'wavelength-faculty-applications');
   if (p === '/admin/faculty/') {
-    if (req.method === 'POST') { await facultyAdminPost(env, req); return redirect('/admin/faculty/'); }
+    if (req.method === 'POST') { const f = await formOf(); await facultyAdminPost(env, req); if (f) await record(`faculty.${f.get('action')}`, {}, 'faculty_application', Number(f.get('id')) || null); return redirect('/admin/faculty/'); }
     return page(await facultyAdminHtml(env), 'faculty');
   }
   if (p === '/admin/departments/enquiries.csv') return csvResponse((await env.DB.prepare('SELECT * FROM department_enquiries ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'role', 'organisation', 'setting', 'training', 'topics', 'group_size', 'timing', 'details', 'contacted'], 'wavelength-department-enquiries');
   if (p === '/admin/departments/') {
-    if (req.method === 'POST') { await departmentsAdminPost(env, req); return redirect('/admin/departments/'); }
+    if (req.method === 'POST') { const f = await formOf(); await departmentsAdminPost(env, req); if (f) await record(`department.${f.get('action')}`, {}, 'department_enquiry', Number(f.get('id')) || null); return redirect('/admin/departments/'); }
     return page(await departmentsAdminHtml(env), 'departments');
   }
 
   if (p === '/admin/newsletter/connect/') {
+    await record('newsletter.connect');
     const exp = Date.now() + 15 * 60e3;
     const to = await zohoConnectUrl(env, `${exp}.${await sign(env, 'zoho.' + exp, 'admin_session_secret')}`);
     return to ? redirect(to) : back('/admin/newsletter/', 'Add the Zoho API client first.');
@@ -305,43 +348,49 @@ async function adminRoute(req, env, ctx, url, p, s) {
     return back('/admin/newsletter/', err ? 'Zoho connection failed: ' + err : 'Connected to Zoho Campaigns.');
   }
   if (p === '/admin/newsletter/') {
-    if (req.method === 'POST') return back('/admin/newsletter/', await newsletterAdminPost(env, await req.formData()));
+    if (req.method === 'POST') {
+      const f = await req.formData();
+      await record(`newsletter.${String(f.get('action') || '')}`);
+      return back('/admin/newsletter/', await newsletterAdminPost(env, f));
+    }
     return page(await newsletterAdminHtml(env, url.searchParams.get('m') || ''), 'newsletter');
   }
 
   if (p === '/admin/sources/') {
     if (req.method === 'POST') {
       const f = await req.formData();
-      if (accessEmail) f.set('reviewer', accessEmail);
-      const r = await sourcesAdminPost(env, f, accessEmail ? 'access' : s.admin_username, ctx);
+      if (who) f.set('reviewer', accountName);
+      else if (accessEmail) f.set('reviewer', accessEmail);
+      const r = await sourcesAdminPost(env, f, who ? adminId : accessEmail ? 'access' : s.admin_username, ctx);
       return redirect(`/admin/sources/?${r.change ? `change=${encodeURIComponent(r.change)}&` : r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`);
     }
     return page(await sourcesAdminHtml(env, url), 'sources');
   }
   if (p === '/admin/supervisors/evidence/') {
-    const file = await evidenceFile(env, url.searchParams.get('id'), accessEmail ? `access:${accessEmail}` : s.admin_username);
+    const file = await evidenceFile(env, url.searchParams.get('id'), who ? adminId : accessEmail ? `access:${accessEmail}` : s.admin_username);
     return file ? withHeaders(file) : redirect('/admin/supervisors/');
   }
   if (p === '/admin/supervisors/') {
     if (req.method === 'POST') {
       const f = await req.formData();
-      // With Access on, the verified email replaces the typed reviewer name as the actor.
-      if (accessEmail) f.set('reviewer', accessEmail);
-      const r = await supervisorsAdminPost(env, f, accessEmail ? 'access' : s.admin_username, ctx);
+      // A personal account, or with Access on the verified email, replaces the typed reviewer name as the actor.
+      if (who) f.set('reviewer', accountName);
+      else if (accessEmail) f.set('reviewer', accessEmail);
+      const r = await supervisorsAdminPost(env, f, who ? adminId : accessEmail ? 'access' : s.admin_username, ctx, { learnerId: who ? who.account.learner_id : 0, canRevokeAll: who ? who.perms.has('supervisors.revoke_all') : true });
       // The reviewer's name is typed once a session: remembered for the supervisor console only (it is a name, never
       // a credential; the admin login still decides who gets in).
-      const who = accessEmail ? '' : String(f.get('reviewer') || '').replace(/[\u0000-\u001f;,]/g, ' ').trim().slice(0, 80);
+      const typed = who || accessEmail ? '' : String(f.get('reviewer') || '').replace(/[\u0000-\u001f;,]/g, ' ').trim().slice(0, 80);
       return redirect(`/admin/supervisors/?${r.app ? `app=${r.app}&` : r.id ? `id=${r.id}&` : ''}${r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`,
-        who ? { 'Set-Cookie': `wl_reviewer=${encodeURIComponent(who)}; Path=/admin/supervisors/; Max-Age=43200; HttpOnly; Secure; SameSite=Strict` } : {});
+        typed ? { 'Set-Cookie': `wl_reviewer=${encodeURIComponent(typed)}; Path=/admin/supervisors/; Max-Age=43200; HttpOnly; Secure; SameSite=Strict` } : {});
     }
     const remembered = (/(?:^|;\s*)wl_reviewer=([^;]*)/.exec(req.headers.get('Cookie') || '') || [])[1];
     let reviewer = '';
     try { reviewer = remembered ? decodeURIComponent(remembered).slice(0, 80) : ''; } catch { reviewer = ''; }
-    return page(await supervisorsAdminHtml(env, url, s.admin_username, { reviewer, access: accessEmail }), 'supervisors');
+    return page(await supervisorsAdminHtml(env, url, adminId, { reviewer: who ? '' : reviewer, access: accessEmail, account: who ? { name: accountName, learnerId: who.account.learner_id || 0 } : null }), 'supervisors');
   }
   if (p === '/admin/organisations/') {
     if (req.method === 'POST') {
-      const r = await organisationsAdminPost(env, await req.formData(), s.admin_username, { access: accessEmail });
+      const r = await organisationsAdminPost(env, await req.formData(), adminId, { access: who ? '' : accessEmail });
       return redirect(`/admin/organisations/?${r.q ? `q=${encodeURIComponent(r.q)}&` : ''}m=${encodeURIComponent(r.m)}`);
     }
     return page(await organisationsAdminHtml(env, url, { access: accessEmail }), 'organisations');
@@ -409,6 +458,33 @@ export default {
     const refuse = async (to) => { await new Promise((r) => setTimeout(r, 800)); return redirect(to); };
 
     if (area === 'admin') {
+      // Personal administrator accounts (worker/admin/). Activation and two-step pages come before any session.
+      const H0 = helpers(env, req, null, '');
+      if (p === '/admin/activate/' || p === '/admin/two-step/' || p === '/admin/two-step/setup/') {
+        const r = await preAuthRoute(req, env, url, p, H0);
+        if (r) return r;
+      }
+      // Once an Owner has finished two-step set-up, only personal accounts sign in; the shared login is refused.
+      if (await accountsLive(env)) {
+        if (!accountsConfigured(env)) return asset(env, req, down, 503);
+        if (p === '/admin/login/') {
+          if (req.method === 'POST') return accountsLogin(req, env, url, H0);
+          const cur = await readSession(env, req);
+          if (cur && cur.session.stage === 'full') return redirect('/admin/');
+          return asset(env, req, '/admin/login/');
+        }
+        if (p === '/admin/logout/') {
+          const cur = await readSession(env, req);
+          if (cur) await env.DB.prepare('DELETE FROM admin_sessions WHERE id = ?').bind(cur.session.id).run();
+          const out = redirect('/admin/login/');
+          out.headers.append('Set-Cookie', clearSessionCookie());
+          out.headers.append('Set-Cookie', clearCookie('a'));
+          return out;
+        }
+        const g = await gate(req, env, url, p, H0);
+        if (g instanceof Response) return g;
+        return adminRoute(req, env, ctx, url, p, s, g.who);
+      }
       if (p === '/admin/login/') {
         if (req.method === 'POST') {
           if (!(await login(await req.formData(), 'admin'))) return refuse('/admin/login/?error=1');

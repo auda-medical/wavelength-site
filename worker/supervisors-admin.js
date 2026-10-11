@@ -44,6 +44,9 @@ const pill = (s) => `<span class="sv-status ${s === 'verified' || s === 'approve
 // Does the person recording a decision look like the person it is about? With Access, the verified email decides.
 // Without it the typed name is compared with the account name: a full match, a near match (initials, middle names)
 // or a single word that is the person's first or family name. False alarms only ask for an acknowledgement.
+// Self-recognition: by the reviewer's name or email, or (native accounts) by the administrator account's linked
+// logbook account, which cannot be mistaken.
+const isSelf = (l, me, selfId = 0) => !!l && ((!!selfId && l.id === selfId) || (!!me && looksLikeSelf(l, me)));
 export function looksLikeSelf(l, reviewer) {
   const r = String(reviewer || '').trim();
   if (!l || !r) return false;
@@ -82,10 +85,13 @@ function emailStatusHtml(row, back = {}) {
   return `<div class="sv-banner ${cls}" data-email-status="${esc(st)}"><b>Approval email: ${esc(word)}</b>${when ? ` <small>(${esc(when)} UTC${row.attempts ? `, ${row.attempts} attempt${row.attempts === 1 ? '' : 's'}` : ''})</small>` : ''}<br><small>${esc(help)}${row && row.last_error && st !== 'sent' ? ` Last error: ${esc(row.last_error)}.` : ''}</small>${retry}</div>`;
 }
 
-// opts.reviewer: the name remembered from this administrator's last decision; opts.access: their Access email.
+// opts.reviewer: the name remembered from this administrator's last decision; opts.access: their Access email;
+// opts.account: { name, learnerId } of the signed-in administrator account (native accounts): decisions are recorded
+// as that account, with no name to type.
 export async function supervisorsAdminHtml(env, url, admin = '', opts = {}) {
   const html = await adminPage(env, url, admin, opts);
-  const who = opts.access ? `<p class="form-note">Recorded as ${esc(opts.access)} (Cloudflare Access).</p><input type="hidden" name="reviewer" value="access">` : null;
+  const who = opts.account ? `<p class="form-note">Recorded as ${esc(opts.account.name)} (your administrator account).</p><input type="hidden" name="reviewer" value="account">`
+    : opts.access ? `<p class="form-note">Recorded as ${esc(opts.access)} (Cloudflare Access).</p><input type="hidden" name="reviewer" value="access">` : null;
   // Repeated clicks: the static admin shell (build.js) disables a sent .sv-form's button at once; the server's guarded
   // updates and outbox keys are the real protection.
   return (who ? html.split(reviewerField).join(who) : opts.reviewer ? html.split(REVIEWER_INPUT).join(REVIEWER_INPUT.replace(' required', ` value="${esc(clip(opts.reviewer, 80))}" required`)) : html);
@@ -99,9 +105,10 @@ async function adminPage(env, url, admin = '', opts = {}) {
   const tone = /Approval email: (failed|unknown|not generated)/.test(m) ? 'sv-warn' : /^(Approved|Renewal approved|\d+ scopes? approved|Application recorded|Independent review recorded|GMC registration verified|Registration verified|Credential approved|Sent)/.test(m) ? 'sv-good' : '';
   const note = m ? `<p class="sv-banner ${tone}" role="status" style="font-weight:600">${esc(m)}</p>` : '';
   const life = await lifecycleReady(env);
-  const me = opts.access || opts.reviewer || '';
-  if (life && appId) return STYLE + await applicationDetail(env, appId, note, me);
-  if (id) return STYLE + await detail(env, id, note, life, me);
+  const me = (opts.account && opts.account.name) || opts.access || opts.reviewer || '';
+  const selfId = (opts.account && opts.account.learnerId) || 0;
+  if (life && appId) return STYLE + await applicationDetail(env, appId, note, me, selfId);
+  if (id) return STYLE + await detail(env, id, note, life, me, selfId);
   return STYLE + (life ? await queues(env, url.searchParams.get('tab') || 'new', note) : await list(env, note));
 }
 
@@ -265,7 +272,7 @@ function checklist(st, creds) {
 // The new "approved until" date: 12 months from today, or from the current review date for an early renewal.
 const renewBase = (approvals, day) => { const cur = approvals.map((a) => a.review_on).filter(Boolean).sort()[0]; return cur && cur > day ? cur : day; };
 
-async function applicationDetail(env, appId, note, me = '') {
+async function applicationDetail(env, appId, note, me = '', selfId = 0) {
   const a = await env.DB.prepare(`${APP_SQL} WHERE a.id = ?`).bind(appId).first();
   if (!a) return `<p class="admin-summary">Application not found. <a class="text-link" href="${BASE}">Back to the queues</a></p>`;
   const st = await currentStatus(env, a.learner_id);
@@ -314,7 +321,7 @@ async function applicationDetail(env, appId, note, me = '') {
       ${basisBoxes(verifiedCreds, credIds)}
       <label>Approved until (12 months at most)<input type="date" name="review_on" value="${esc(until)}" max="${esc(until)}" required></label>
       ${st.hasReg ? '' : '<label class="consent"><input type="checkbox" name="exempt" value="1"><span>Registration exemption: approve without a verified registration</span></label><label>Reason for the exemption, and how you checked identity and experience instead<textarea name="exempt_reason" maxlength="1000"></textarea></label>'}
-      ${me && looksLikeSelf(st.learner, me) ? selfBoxFor(env) : ''}${optionalNote}
+      ${isSelf(st.learner, me, selfId) ? selfBoxFor(env) : ''}${optionalNote}
       <p class="form-note">Recorded automatically: who decided and when, the modules, role, credentials and evidence, and the status before and after. The supervisor is emailed once the approval is saved.</p>`, renewal ? 'Approve renewal' : 'Approve')}
   </div><details class="sv-more sv-other"><summary>Other decisions: ask for more information, reject${renewal ? ', end the grace period' : ''}, send the receipt</summary><div class="sv-actions">
     ${a.status === 'submitted' ? form('app_receipt', H, '<p class="form-note">Sends the applicant the normal receipt for their current submission if it was never sent. It never sends a second copy and changes nothing in the application.</p>', 'Send submission receipt') : ''}
@@ -354,7 +361,7 @@ async function applicationDetail(env, appId, note, me = '') {
   ${previous.length ? `<h3 style="margin:28px 0 10px">Other applications</h3><ul>${previous.map((x) => `<li><a class="text-link" href="${BASE}?app=${x.id}">#${x.id} ${esc(KIND[x.kind] || x.kind)}</a> ${pill(x.status)} ${esc((x.decided_at || x.submitted_at || '').slice(0, 10))}</li>`).join('')}</ul>` : ''}`;
 }
 
-async function detail(env, id, note, life = false, me = '') {
+async function detail(env, id, note, life = false, me = '', selfId = 0) {
   const st = await currentStatus(env, id);
   const l = st.learner;
   if (!l) return `<p class="admin-summary">Not found. ${NAV}</p>`;
@@ -410,7 +417,7 @@ async function detail(env, id, note, life = false, me = '') {
     ${scopeBoxes([], openApp ? jsonList(openApp.requested_pathways) : [...new Set(verifiedCreds.flatMap((c) => ((TYPE[c.credential_type] || {}).modules || []).map((m) => String(m.scope || '').split(':')[0]).filter(Boolean)))])}
     ${basisBoxes(verifiedCreds)}
     <label>${life ? 'Approved until (12 months at most)' : 'Review on'}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}"` : ''}></label>
-    ${me && looksLikeSelf(l, me) ? selfBoxFor(env) : ''}${optionalNote}`, 'Approve as Wavelength supervisor');
+    ${isSelf(l, me, selfId) ? selfBoxFor(env) : ''}${optionalNote}`, 'Approve as Wavelength supervisor');
   const selfRows = life ? await selfApprovals(env, id) : [];
   const review = selfRows.length ? `<div class="sv-banner sv-warn"><b>Independent review recommended.</b> The current approval was recorded by ${esc(reviewerOf(selfRows[0].approved_by) || 'an administrator')} on ${esc((selfRows[0].approved_at || '').slice(0, 10))}, who appears to be this supervisor. Another administrator should check the identity, registration and credentials and record the result. Nothing is revoked automatically.
     ${form('appr_independent_review', H, '<fieldset><legend>Outcome</legend><label class="consent"><input type="radio" name="outcome" value="confirmed" required><span>Confirmed: identity, registration and the approved modules are supported by independent evidence</span></label><label class="consent"><input type="radio" name="outcome" value="concerns"><span>Concerns: I will revoke or change the approval</span></label></fieldset><label>Note (required for concerns)<textarea name="notes" maxlength="1000"></textarea></label>', 'Record independent review')}</div>` : '';
@@ -459,7 +466,11 @@ async function auditTable(env, id) {
 }
 
 // Returns the message to show after the redirect.
-export async function supervisorsAdminPost(env, f, admin, ctx) {
+// who (native accounts): { learnerId, canRevokeAll } of the signed-in administrator: the linked logbook account for
+// self-recognition, and whether they hold the owner-only permission to end someone's supervisor status entirely.
+export async function supervisorsAdminPost(env, f, admin, ctx, who = {}) {
+  const selfId = Number(who.learnerId) || 0;
+  const canRevokeAll = who.canRevokeAll !== false;
   if (!(await verificationReady(env))) return { id: 0, m: 'Apply migration 0011 first.' };
   const action = String(f.get('action') || '');
   const learnerId = Number(f.get('learner')), sid = Number(f.get('sid'));
@@ -474,7 +485,7 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
   const adminAudit = (e) => auditStmt(env, { actorType: 'admin', actorId: `${clip(admin, 40)}:${reviewer}`, ...e });
   // Registration and credential decisions start the 30-day evidence purge clock (migration 0012).
   const decided = async (table, rowId) => { if (life) await env.DB.prepare(`UPDATE ${table} SET decided_at = ? WHERE id = ?`).bind(nowIso(), rowId).run(); };
-  if (life && (action.startsWith('app_') || action === 'grace_block')) return applicationPost(env, f, action, { actor, adminAudit, notes, ctx });
+  if (life && (action.startsWith('app_') || action === 'grace_block')) return applicationPost(env, f, action, { actor, adminAudit, notes, ctx, selfId });
   if (life && action.startsWith('notif_')) return notificationPost(env, f, action, { adminAudit, ctx });
 
   // Official directory listing claims (worker/monitor/claims-admin.js).
@@ -572,7 +583,7 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
     if (life) {
       if (!st.learner) return back('Account not found.');
       const open = await env.DB.prepare("SELECT * FROM supervisor_applications WHERE learner_id = ? AND status IN ('submitted', 'more_info') ORDER BY id DESC LIMIT 1").bind(learnerId).first();
-      return back(await grantApprovals(env, { st, l: st.learner, application: open || null, input: approvalInput(f, st), actor, adminAudit, notes, ctx, route: 'direct' }));
+      return back(await grantApprovals(env, { st, l: st.learner, application: open || null, input: approvalInput(f, st), actor, adminAudit, notes, ctx, route: 'direct', selfId }));
     }
     if (!st.hasReg) return back('Verify a professional registration first.');
     const scopes = validScopes(f);
@@ -590,7 +601,7 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
     }
     return back(`${added} scope${added === 1 ? '' : 's'} approved.`);
   }
-  if (life && action === 'appr_independent_review') return back(await independentReview(env, f, learnerId, { actor, adminAudit, ev, notes }));
+  if (life && action === 'appr_independent_review') return back(await independentReview(env, f, learnerId, { actor, adminAudit, ev, notes, selfId }));
   if (action.startsWith('appr_')) {
     if (!notes) return back('Add notes or a reason.');
     const day = ukDate(), maxUntil = addMonths(day, 12);
@@ -605,7 +616,9 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
     if (action === 'appr_revoke') {
       if (life) {
         const others = (await env.DB.prepare("SELECT COUNT(*) AS n FROM supervisor_approvals WHERE learner_id = ? AND status = 'approved' AND id != ?").bind(learnerId, a.id).first()).n;
-        // The last scope: a full administrative revocation, with the block rule.
+        // The last scope: a full administrative revocation, with the block rule. That ends the person's supervisor
+        // status, which the owner reserved ("revoke all approvals", 11 October 2026).
+        if (!others && a.status === 'approved' && !canRevokeAll) return back('This is their last approval: revoking it ends their supervisor status and blocks one-off signing. Only the owner can do that. Nothing changed.');
         if (!others && a.status === 'approved') return back(await revokeAll(env, learnerId, { actor, adminAudit, reason: notes, message: clip(f.get('message'), 500), oneOff: !!f.get('one_off'), oneOffNote: clip(f.get('one_off_note'), 500), kind: 'revoked', ctx }));
       }
       const res = await env.DB.prepare("UPDATE supervisor_approvals SET status = 'revoked', ended_by = ?, ended_at = ?, ended_reason = ? WHERE id = ? AND status = 'approved'").bind(actor, nowIso(), notes, a.id).run();
@@ -683,7 +696,7 @@ async function revokeAll(env, learnerId, { actor, adminAudit, reason, message = 
 }
 
 // ---------- Application decisions ----------
-async function applicationPost(env, f, action, { actor, adminAudit, notes, ctx }) {
+async function applicationPost(env, f, action, { actor, adminAudit, notes, ctx, selfId = 0 }) {
   const appId = Number(f.get('app'));
   const back = (m) => ({ app: appId, m });
   const a = await env.DB.prepare('SELECT * FROM supervisor_applications WHERE id = ?').bind(appId).first();
@@ -792,7 +805,7 @@ async function applicationPost(env, f, action, { actor, adminAudit, notes, ctx }
       if (lapsed) return back(`Something the approval relies on is not current (${lapsed.lapse}). Check the person page, or use Approve to change the basis.`);
       input = { scopes: live.map((x) => `${x.pathway}:${x.module}`), confirmRenewal: true };
     } else input = approvalInput(f, st);
-    return back(await grantApprovals(env, { f, st, l, application: a, input, actor, adminAudit, notes, ctx, route: 'application' }));
+    return back(await grantApprovals(env, { f, st, l, application: a, input, actor, adminAudit, notes, ctx, route: 'application', selfId }));
   }
   if (action === 'app_close_approved') {
     // Repair for an application left open after the person was approved from the person page (fixed October 2026):
@@ -836,7 +849,7 @@ async function evidenceRefs(env, learnerId, a, basis) {
   const rows = (await env.DB.prepare('SELECT id, subject_type, subject_id FROM credential_evidence WHERE learner_id = ? ORDER BY id').bind(learnerId).all()).results || [];
   return rows.filter((e) => (a && e.subject_type === 'application' && e.subject_id === a.id) || (e.subject_type === 'credential' && basis.includes(e.subject_id))).map((e) => e.id).slice(0, 40);
 }
-async function grantApprovals(env, { st, l, application: a = null, input, actor, adminAudit, notes = '', ctx, route }) {
+async function grantApprovals(env, { st, l, application: a = null, input, actor, adminAudit, notes = '', ctx, route, selfId = 0 }) {
   const lid = l.id, at = nowIso(), day = ukDate();
   const renewal = !!(a && a.kind === 'renewal');
   if (st.block) return route === 'direct' ? 'This account is blocked. Lift the block first.' : 'This account is blocked. Lift the block on the person page first.';
@@ -862,7 +875,7 @@ async function grantApprovals(env, { st, l, application: a = null, input, actor,
   }
   // Someone approving their own application: allowed (a small team may have no one else), but never silently. The
   // acknowledgement and reason are recorded, and the approval waits for an independent review (Needs attention).
-  const self = looksLikeSelf(l, reviewerOf(actor));
+  const self = isSelf(l, reviewerOf(actor), selfId);
   // SUPERVISOR_SELF_APPROVAL = "refuse" (Worker var, unset by default): an administrator can never decide their own
   // supervisor status; another administrator must. Unset or anything else: allowed with acknowledgement and review.
   if (self && env.SUPERVISOR_SELF_APPROVAL === 'refuse') return 'This looks like your own application. Another administrator must decide it.';
@@ -952,14 +965,14 @@ async function notificationPost(env, f, action, { adminAudit, ctx }) {
 
 // An approval its holder may have decided themselves (looksLikeSelf) waits for a review by someone else. The review
 // is recorded, never inferred; concerns leave the approval in place for a deliberate revocation.
-async function independentReview(env, f, learnerId, { actor, adminAudit, ev, notes }) {
+async function independentReview(env, f, learnerId, { actor, adminAudit, ev, notes, selfId = 0 }) {
   const st = await currentStatus(env, learnerId);
   const l = st.learner;
   if (!l) return 'Account not found.';
   const current = st.approvals.filter((x) => x.current);
   if (!current.length) return 'There is no current approval to review.';
   const me = reviewerOf(actor).trim().toLowerCase();
-  if (looksLikeSelf(l, me)) return 'An independent review must be recorded by someone other than the supervisor.';
+  if (isSelf(l, me, selfId)) return 'An independent review must be recorded by someone other than the supervisor.';
   if (current.some((x) => reviewerOf(x.approved_by).trim().toLowerCase() === me)) return 'An independent review must be recorded by someone other than the administrator who approved it.';
   const outcome = ['confirmed', 'concerns'].includes(f.get('outcome')) ? String(f.get('outcome')) : null;
   if (!outcome) return 'Choose the outcome of your review.';

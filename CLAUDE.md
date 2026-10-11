@@ -162,6 +162,13 @@ Claude is the sole builder of the Wavelength website and apps (owner's instructi
 - Cloudflare Access roles (`worker/access.js`, only when `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are set) route by `/admin/` paths: verifier for supervisors and organisations, academy, newsletter, owner for everything else; the console home needs any role and lists only the sections a person's roles open. When Access is set up, the Access application must cover `/admin` and `/admin/*`.
 - Tests: `test/admin-console.test.mjs`.
 
+## Administrator accounts (native, October 2026; not deployed yet)
+- `worker/admin/`: personal accounts, Owner and General Manager roles, mandatory two-step (authenticator app, ten recovery codes), activation links, D1 sessions, CSRF token on every console form, throttling and lock-out. Migration `0017_admin_accounts.sql`. Release package and runbook: `docs/admin-accounts/README.md`.
+- Every console page and form action must be declared in `worker/admin/permissions.js` (deny by default); `test/admin-registry.test.mjs` fails otherwise. A new section is routine (General Manager) only if declared `routine`.
+- Until an Owner has finished two-step set-up, the shared login works exactly as before ("legacy mode"); the first Owner is created from the Administrators page with the Worker secret ADMIN_BOOTSTRAP_CODE. After that only accounts sign in. Secrets: ADMIN_PEPPER, ADMIN_TOTP_KEY (32 bytes base64); without them accounts fail closed.
+- Decisions are attributed to the account (`acct<id>`, display name); never reintroduce a typed reviewer name. Owner-only: accounts and security, Zoho credentials, revoking every approval (including a supervisor's last one), merging organisations. Switchable, off by default: deletion, personal-data exports, newsletter "send now", business dashboard.
+- Recovery: `node tools/admin-recover.mjs <owner> [--reset-two-step]` (owner's Cloudflare login). Tests: `test/admin-accounts.test.mjs`, `admin-permissions`, `admin-registry`, `admin-recovery`; browser `tools/e2e-admin-accounts.mjs`.
+
 ## Teach with us (faculty applications)
 - Public form /faculty/join/ posts to /api/faculty/apply (`worker/faculty.js`), saves to D1 `faculty_applications` (`migrations/0004_faculty.sql`, applied to live), and emails hello@ through ZeptoMail with the applicant as reply-to. Option lists live in `worker/faculty-form.json`, shared by the build and the Worker. Admin list: /admin/faculty/ (admin login), with CSV, mark contacted and delete. Linked from the faculty page, contact page and footer. Privacy notice keeps applications two years.
 
