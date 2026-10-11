@@ -1,0 +1,102 @@
+[
+ {
+  "file": "wavelength-flagship-film-v4-1080p.mp4",
+  "composition": "V4Flagship",
+  "soundtrack": "final-a3/flagship",
+  "seconds": 110.87,
+  "lufs": -16.8,
+  "truePeakDBTP": -1.54,
+  "bytes": 30547248,
+  "renderSeconds": 239
+ },
+ {
+  "file": "wavelength-flagship-film-v4-captioned-1080p.mp4",
+  "composition": "V4FlagshipCaptioned",
+  "soundtrack": "final-a3/flagship",
+  "seconds": 110.87,
+  "lufs": -16.8,
+  "truePeakDBTP": -1.54,
+  "bytes": 31810863,
+  "renderSeconds": 234
+ },
+ {
+  "file": "wavelength-free-logbook-short-v4-1080p.mp4",
+  "composition": "V4Short",
+  "soundtrack": "final-a3/short",
+  "seconds": 30.44,
+  "lufs": -16.4,
+  "truePeakDBTP": -1.56,
+  "bytes": 6901683,
+  "renderSeconds": 83
+ },
+ {
+  "file": "wavelength-free-logbook-short-v4-captioned-1080p.mp4",
+  "composition": "V4ShortCaptioned",
+  "soundtrack": "final-a3/short",
+  "seconds": 30.44,
+  "lufs": -16.4,
+  "truePeakDBTP": -1.56,
+  "bytes": 7108530,
+  "renderSeconds": 73
+ },
+ {
+  "file": "wavelength-free-logbook-short-v4-vertical-1080x1920.mp4",
+  "composition": "V4ShortVertical",
+  "soundtrack": "final-a3/short",
+  "seconds": 30.44,
+  "lufs": -16.4,
+  "truePeakDBTP": -1.56,
+  "bytes": 6747138,
+  "renderSeconds": 75
+ },
+ {
+  "file": "wavelength-free-logbook-short-v4-vertical-captioned-1080x1920.mp4",
+  "composition": "V4ShortVerticalCaptioned",
+  "soundtrack": "final-a3/short",
+  "seconds": 30.44,
+  "lufs": -16.4,
+  "truePeakDBTP": -1.56,
+  "bytes": 6986450,
+  "renderSeconds": 74
+ },
+ {
+  "file": "wavelength-tailored-training-ad-v4-1080p.mp4",
+  "composition": "V4Ad",
+  "soundtrack": "final-a3/ad",
+  "seconds": 20.97,
+  "lufs": -16.7,
+  "truePeakDBTP": -1.69,
+  "bytes": 7519652,
+  "renderSeconds": 53
+ },
+ {
+  "file": "wavelength-tailored-training-ad-v4-captioned-1080p.mp4",
+  "composition": "V4AdCaptioned",
+  "soundtrack": "final-a3/ad",
+  "seconds": 20.97,
+  "lufs": -16.7,
+  "truePeakDBTP": -1.69,
+  "bytes": 7636918,
+  "renderSeconds": 54
+ },
+ {
+  "file": "wavelength-tailored-training-ad-v4-vertical-1080x1920.mp4",
+  "composition": "V4AdVertical",
+  "soundtrack": "final-a3/ad",
+  "seconds": 20.97,
+  "lufs": -16.7,
+  "truePeakDBTP": -1.69,
+  "bytes": 7756243,
+  "renderSeconds": 55
+ },
+ {
+  "file": "wavelength-tailored-training-ad-v4-vertical-captioned-1080x1920.mp4",
+  "composition": "V4AdVerticalCaptioned",
+  "soundtrack": "final-a3/ad",
+  "seconds": 20.97,
+  "lufs": -16.7,
+  "truePeakDBTP": -1.69,
+  "bytes": 7933513,
+  "renderSeconds": 55
+ }
+]

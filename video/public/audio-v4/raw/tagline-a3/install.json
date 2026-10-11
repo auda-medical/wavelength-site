@@ -1,0 +1,15 @@
+{
+ "installedAt": "2026-10-11T21:37:21.965Z",
+ "opening": {
+  "take": "opening/calm-plain-0.wav",
+  "replaces": "raw/flagship/f03.wav",
+  "kept": "raw/_before-a3/flagship-f03.wav"
+ },
+ "closing": {
+  "take": "closing/full-held-0.wav",
+  "pauseAfterTuneIn": 0.61,
+  "silenceAdded": 0.04,
+  "seconds": 3.88,
+  "file": "raw/tagline-a3/F.wav"
+ }
+}

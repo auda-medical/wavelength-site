@@ -1,0 +1,90 @@
+{
+ "flagship": {
+  "args": [
+   "flagship",
+   "A",
+   "--level=head",
+   "--protect-logo",
+   "--logo=L2",
+   "--tagline=audio-v4/tagline-a3/F.wav",
+   "--tagline-db=-1"
+  ],
+  "earlierPresentation": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.55,
+   "voiceLUFS": -14.4,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 2.44,
+   "masterGainDb": 3.28
+  },
+  "final": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.8,
+   "truePeakDBTP": -1.59,
+   "voiceLUFS": -16.4,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0.75,
+   "masterGainDb": 3.28
+  },
+  "voiceChangeDb": -2
+ },
+ "short": {
+  "args": [
+   "short",
+   "A",
+   "--level=head",
+   "--protect-logo",
+   "--logo=L2"
+  ],
+  "earlierPresentation": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.55,
+   "voiceLUFS": -13.1,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 3.35,
+   "masterGainDb": 3.93
+  },
+  "final": {
+   "voiceDb": -1.2,
+   "integratedLUFS": -16.4,
+   "truePeakDBTP": -1.58,
+   "voiceLUFS": -15.1,
+   "speechToMusicDb": 13.8,
+   "limiterMaxReductionDb": 1.48,
+   "masterGainDb": 3.93
+  },
+  "voiceChangeDb": -2
+ },
+ "ad": {
+  "args": [
+   "ad",
+   "A",
+   "--level=head",
+   "--protect-logo",
+   "--logo=L2",
+   "--tagline=audio-v4/tagline-a3/F.wav",
+   "--tagline-db=-1"
+  ],
+  "earlierPresentation": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.53,
+   "voiceLUFS": -14.4,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 1.81,
+   "masterGainDb": 3.22
+  },
+  "final": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.6,
+   "truePeakDBTP": -1.63,
+   "voiceLUFS": -16.4,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0,
+   "masterGainDb": 3.22
+  },
+  "voiceChangeDb": -2
+ }
+}

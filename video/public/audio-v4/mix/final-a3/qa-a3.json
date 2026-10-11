@@ -1,0 +1,92 @@
+[
+ {
+  "check": "Opening line through a phone speaker (simulated): every word heard by the transcriber",
+  "ok": true,
+  "detail": "\"And before you know it, another week has passed. Your scans shouldn't be forgotten simply because your rotors [rotas] don't match.\""
+ },
+ {
+  "check": "Closing line, flagship and advert, through a phone speaker: \"Gain clarity\", not \"Game\"",
+  "ok": true,
+  "detail": "flagship: \"Wave length, tune in, gain clarity\"; advert: \"Wave length. Tune in. Gain clarity.\""
+ },
+ {
+  "check": "Narration exactly 2 dB lower in every film, music and logo unchanged",
+  "ok": true,
+  "detail": "flagship, short and advert: -2.0 dB (mix-v4 --voice-db -1.7, -1.2, -1.7)"
+ },
+ {
+  "check": "Caption files (SRT and WebVTT) for every film, every spoken line",
+  "ok": true,
+  "detail": "flagship 30 cues, short 7, advert 6; each ends before its film"
+ },
+ {
+  "check": "wavelength-flagship-film-v4-1080p.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "110.87 s vs 110.87 s; -16.8 LUFS, true peak -1.54 dBTP"
+ },
+ {
+  "check": "wavelength-flagship-film-v4-captioned-1080p.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "110.87 s vs 110.87 s; -16.8 LUFS, true peak -1.54 dBTP"
+ },
+ {
+  "check": "wavelength-free-logbook-short-v4-1080p.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "30.44 s vs 30.43 s; -16.4 LUFS, true peak -1.56 dBTP"
+ },
+ {
+  "check": "wavelength-free-logbook-short-v4-captioned-1080p.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "30.44 s vs 30.43 s; -16.4 LUFS, true peak -1.56 dBTP"
+ },
+ {
+  "check": "wavelength-free-logbook-short-v4-vertical-1080x1920.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "30.44 s vs 30.43 s; -16.4 LUFS, true peak -1.56 dBTP"
+ },
+ {
+  "check": "wavelength-free-logbook-short-v4-vertical-captioned-1080x1920.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "30.44 s vs 30.43 s; -16.4 LUFS, true peak -1.56 dBTP"
+ },
+ {
+  "check": "wavelength-tailored-training-ad-v4-1080p.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "20.97 s vs 20.97 s; -16.7 LUFS, true peak -1.69 dBTP"
+ },
+ {
+  "check": "wavelength-tailored-training-ad-v4-captioned-1080p.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "20.97 s vs 20.97 s; -16.7 LUFS, true peak -1.69 dBTP"
+ },
+ {
+  "check": "wavelength-tailored-training-ad-v4-vertical-1080x1920.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "20.97 s vs 20.97 s; -16.7 LUFS, true peak -1.69 dBTP"
+ },
+ {
+  "check": "wavelength-tailored-training-ad-v4-vertical-captioned-1080x1920.mp4: length matches the picture timeline",
+  "ok": true,
+  "detail": "20.97 s vs 20.97 s; -16.7 LUFS, true peak -1.69 dBTP"
+ },
+ {
+  "check": "flagship: L2 settle at 23.90 s fades smoothly (no level rebound)",
+  "ok": true,
+  "detail": "largest rise after the settle 0.0 dB (50 ms windows, to 70 dB down); speech starts 0.75 s after the settle, 30.3 dB above the logo tail"
+ },
+ {
+  "check": "flagship: L2 settle at 105.00 s fades smoothly (no level rebound)",
+  "ok": true,
+  "detail": "largest rise after the settle 0.0 dB (50 ms windows, to 70 dB down); speech starts 0.70 s after the settle, 25.6 dB above the logo tail"
+ },
+ {
+  "check": "short: L2 settle at 25.05 s fades smoothly (no level rebound)",
+  "ok": true,
+  "detail": "largest rise after the settle 0.0 dB (50 ms windows, to 70 dB down); speech starts 0.45 s after the settle, 15.4 dB above the logo tail"
+ },
+ {
+  "check": "ad: L2 settle at 15.30 s fades smoothly (no level rebound)",
+  "ok": true,
+  "detail": "largest rise after the settle 0.0 dB (50 ms windows, to 70 dB down); speech starts 0.40 s after the settle, 13.7 dB above the logo tail"
+ }
+]

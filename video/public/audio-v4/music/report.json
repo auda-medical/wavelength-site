@@ -45,15 +45,15 @@
   "candidate": "A",
   "name": "Uplifting modern technology",
   "film": "flagship",
-  "seconds": 110.87,
+  "seconds": 111.07,
   "lufs": -20,
-  "truePeak": -2.5,
+  "truePeak": -2.6,
   "lowShare": 8,
   "harshShare": 0.9,
   "correlation": 0.89,
-  "sideToMidDb": -12.4,
-  "cues": "problem@0.00 lift@23.90 develop@54.13 main@81.77 free@90.63 warm@95.67 end@104.77",
-  "ms": 59725
+  "sideToMidDb": -12.3,
+  "cues": "problem@0.00 lift@23.90 develop@54.33 main@81.97 free@90.83 warm@95.87 end@104.97",
+  "ms": 41877
  },
  "B/flagship": {
   "candidate": "B",

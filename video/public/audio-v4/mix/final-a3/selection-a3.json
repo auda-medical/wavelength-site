@@ -1,0 +1,70 @@
+{
+ "date": "11 October 2026",
+ "opening": {
+  "take": "opening/calm-plain-0.wav",
+  "from": 16,
+  "before": {
+   "file": "f03.wav",
+   "mode": "opening",
+   "seconds": 7.01,
+   "pitchSpreadSt": 3.89,
+   "punchDb": 7.5,
+   "peakDb": 9.3,
+   "f0MedianHz": 115.2,
+   "centroidHz": 612,
+   "levelDb": -20.2,
+   "pauses": [
+    0.45
+   ]
+  },
+  "after": {
+   "file": "calm-plain-0.wav",
+   "mode": "opening",
+   "seconds": 6.67,
+   "pitchSpreadSt": 3.83,
+   "punchDb": 7.6,
+   "peakDb": 7.9,
+   "f0MedianHz": 109.4,
+   "centroidHz": 461,
+   "levelDb": -20.1,
+   "pauses": [
+    0.57,
+    0.22
+   ]
+  },
+  "heardBefore": "And before you know it, another week has passed. Your scans shouldn't be forgotten, simply because your rotors don't match.",
+  "heardAfter": "And before you know it, another week has passed. Your scans shouldn't be forgotten simply because your rotors don't match."
+ },
+ "closing": {
+  "take": "closing/full-held-0.wav",
+  "from": 28,
+  "runnerUp": "closing-more/full-held-6.wav",
+  "before": {
+   "gainHeldS": 0.36,
+   "dipS": 0.1,
+   "gcVsTiSt": -0.5,
+   "gcSpreadSt": 2.29,
+   "settleSt": -5.05,
+   "gcVsTiDb": -1.7,
+   "pauseAfterTuneIn": 0.65
+  },
+  "after": {
+   "gainHeldS": 0.46,
+   "dipS": 0.17,
+   "gcVsTiSt": -2.7,
+   "gcSpreadSt": 0.92,
+   "settleSt": -1.6,
+   "gcVsTiDb": -2.3,
+   "pauseAfterTuneIn": 0.65
+  },
+  "heardBefore": "Wavelength. Tune in. Gain Clarity.",
+  "heardAfter": "Wavelength. Tune in. Gain Clarity.",
+  "install": {
+   "take": "closing/full-held-0.wav",
+   "pauseAfterTuneIn": 0.61,
+   "silenceAdded": 0.04,
+   "seconds": 3.88,
+   "file": "raw/tagline-a3/F.wav"
+  }
+ }
+}

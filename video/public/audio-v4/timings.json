@@ -8,7 +8,7 @@
   "file": "audio-v4/flagship/f02.wav"
  },
  "flagship/f03": {
-  "seconds": 7.08,
+  "seconds": 6.82,
   "file": "audio-v4/flagship/f03.wav"
  },
  "flagship/f04": {
@@ -110,5 +110,9 @@
  "tagline-a2/T3": {
   "seconds": 3.07,
   "file": "audio-v4/tagline-a2/T3.wav"
+ },
+ "tagline-a3/F": {
+  "seconds": 3.42,
+  "file": "audio-v4/tagline-a3/F.wav"
  }
 }
