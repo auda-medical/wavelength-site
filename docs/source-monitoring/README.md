@@ -1,205 +1,215 @@
-# Directory autocomplete and daily source monitoring (11 October 2026)
+# Source monitoring and directory search: release package (11 October 2026)
 
-Branch `wavelength-source-monitor-20261010`, worktree `wavelength-source-monitor`. It is built on the supervisor verification release branch (`wavelength-supervisor-prod-20261010`, merged in at `b2e8814`), which itself sits on the deployed `main` (`2dfd55e`). It carries no commercial, 1.0.12+ or Android code. Nothing has been deployed, no migration has been applied, no live email has been sent and no real person's directory record has been collected.
+Branch `wavelength-source-monitor-20261010`, worktree `wavelength-source-monitor`. It contains the supervisor-verification release branch (`wavelength-supervisor-prod-20261010`, `0d4f924`) unchanged, on top of the deployed `main` (`2dfd55e`), and no commercial, 1.0.12+ or Android code.
 
-Status: **built and tested; ready for deployment approval.** Directory sync stays **off**: no professional body has given permission yet (section 3).
+Nothing has been deployed, no migration applied, no live record changed, no email sent and nothing bought. Production was only read, through read-only queries:
+- the schema (definitions only);
+- the account's Workers and their cron schedules.
 
-## 1. What it does
+**Status: ready for deployment approval.** Directory sync stays **off** until a body gives written permission.
 
-**Guides and accreditation sources (on at deployment).**
-- Every official source cited under a guide's `## Sources` heading is checked once a day: 40 sources, of which 36 are automatic, 1 is checked by hand (EACVI: the ESC terms forbid automated collection) and 3 are directories waiting for permission. `build.js` writes `worker/monitor/sources.json` from the guides plus `data/monitor-sources.json`, so a newly cited source joins the checks at the next deployment. A source no longer cited is retired, and its history is kept.
-- Each check:
-  - uses a conditional request (ETag, Last-Modified), with a full read at least weekly;
-  - strips menus, cookie banners and footers, but never a clinical line (words such as "consent" are kept);
-  - hashes the main text, and reads a document's version and date (HTML meta, PDF `/ModDate` and `/Title`, version in the address).
-- Changes are classified word by word:
-  - `no_change`;
-  - `minor` (recorded, no review);
-  - `meaningful` (a requirement term, more than 12 words, or 6 or more lines changed: waits for review);
-  - `important` (a number or "must/required"-type word changed in a requirement line, or a new version or date: waits for review, flags the guide, emails the team once);
-  - `format_changed` (the page lost most of its text: held, reviewed once, baseline kept).
-- **Nothing clinical is ever rewritten.** A reviewer at `/admin/sources/` acknowledges, approves (note required: what was decided) or dismisses (note required: why). Any guide edit goes through the normal release, with a new `reviewed` date.
-
-**What a guide shows** (website, Android and iPhone alike):
-- "Last clinically reviewed: [date]": the guide's `reviewed` front matter.
-- "Guidance last updated: [date]": the later of `updated` and `reviewed`.
-- "Source checked: [date]": only from the server, and only once every automatic source of that guide has been checked successfully. A failed check never moves the date. When the latest check of every source found nothing that matters, the line adds "No changes detected during the latest check."
-- Before the first check: "Official sources not yet checked automatically."
-- When a change awaits review, a notice: "An official source for this guide changed on [date]. This Wavelength summary is being reviewed. Until then, check the original guidance:" with a link to the source.
-- Opening a guide whose sources were not all checked today starts one background check. The answer never waits for it, and the date stays the last real success.
-- The hub (`/guides/pocus-accreditation/`) has no `reviewed` date, so it shows no "Last clinically reviewed" line. It does show "Source checked", which describes the automatic check of the cited pages, not a re-check of the hub's claims (CLAUDE.md rule on the hub's "Checked" date). Remove the hub from monitoring if you would rather it showed no check date at all.
-- In the apps, the status from the last connection is shown offline, labelled "Shown from this device's last connection, [date]." When the website's guide is newer than the copy bundled in the app, the app says so.
-
-**Supervisor directories and name autocomplete (off until permission).**
-- Adapters:
-  - `famus_html`: reads the SAM table by its headings; contact details are never read.
-  - `feed_json`: the feed format proposed in `feed-format.md`.
-  - `fixture`: tests only.
-- Validation keeps the previous directory when the source is empty, unreadable, or more than 10% of entries lack a name or module. A fall of more than 30% is held until an administrator checks the source and accepts it, with their name and how they checked (new in `66eed61`).
-- Matching across syncs uses, in order:
-  1. the source's own ID;
-  2. the same name and organisation;
-  3. the same name alone, when unique (a move);
-  4. a similar name at the same organisation (a corrected spelling).
-
-  Anything uncertain becomes an "ambiguous" event, never a merge. Removed people are kept, marked removed, for 12 months, then dropped. Directory events are kept for 13 months (`b87bbcf`).
-- Name search starts at three letters, in any word order, tolerates a one-letter slip, tells two people with the same name apart by hospital, returns at most 8 results, and never returns contact details. "On Wavelength" appears only for a confirmed, approved supervisor who chose to be found.
-- Four states stay separate:
-  - **Listing**: in a directory.
-  - **Identity**: an administrator confirms the claim, records the identity method, and verifies the listed credential for exactly the listed modules.
-  - **Membership**.
-  - **Wavelength approval**: still the administrator's decision.
-
-  A claim grants nothing.
-- Objections (UK GDPR Article 21): `/admin/sources/?tab=directories` records one by name, and organisation if given. It removes the person at once from both stored copies and from the event history, and keeps them out of later syncs, search and claims. The audit rows carry counts only.
-- Flexible verification is unchanged: people not in a directory, or on a pathway with no directory (RCEM), tick credentials, upload documents or describe their experience, as before.
-
-## 2. Files and commits
-
-| Commit | What |
+| Document | What |
 |---|---|
-| `ae88a72` | Monitoring core: registry, extraction, classification, runs, guide status API, website labels, admin dashboard, cron, migration 0016 |
-| `1d20647` | Listing claims for administrators, name autocomplete in the website app, browser check |
-| `b2e8814` | Merge of the release branch (`7f2c249`: "Verified on" is the UK date) |
-| `66eed61` | Free-plan CPU fit (one source per run), `last_outcome`, accepting a held fall, Android/iPhone patch, app browser check |
-| `b87bbcf` | Objections, retention limits for directory data |
-| `373379f` | Documents, app patch with directory search, app check of autocomplete, CLAUDE.md |
+| This file | Report, reliability and CPU assessment, deployment, rollback, approvals |
+| `source-inventory.md` | All 51 sources as checked on 11 October 2026, what was corrected, and the clinical review items |
+| `permissions.md` | Directory permission assessment, **the three final letters with verified contact routes**, data protection |
+| `feed-format.md` | The data format suggested to SAM and ICS |
+| `android-integration/` | The app patches (alone, or after the supervisor patch), steps and verification |
+| `0016-rollback.sql` | Rollback of the migration, rehearsed against the production schema |
 
-New: `worker/monitor/` (`run.js`, `extract.js`, `classify.js`, `directory.js`, `api.js`, `admin.js`, `claims-admin.js`, `sources.json`), `data/monitor-sources.json`, `migrations/0016_source_monitoring.sql`, `test/source-monitor.test.mjs`, `tools/e2e-monitor.mjs`, `tools/e2e-app-guides.mjs`, `tools/i18n/batch-source-monitor.json`, `docs/source-monitoring/`.
+## 1. Corrected RCEM references
+- `https://rcem.ac.uk/ultrasound/` returns 404. Three guides cited it as "RCEM: Ultrasound education and training, 2021 curriculum (FAQ)":
+  - RCEM ultrasound sign-off;
+  - ultrasound logbook;
+  - POCUS accreditation hub.
 
-Changed:
-- `build.js`: guide registry; guide date lines.
-- `src/assets/main.js` and `style.css`: the website guide status.
-- `src/app/app.js` and `app.css`: autocomplete in the website app.
-- `worker/cron.js`, `index.js`, `app.js`, `admin-console.js`, `access.js` (verifier role), `notify.js` (`monitor_summary`), `supervisors-admin.js` (claims panel), `professional.js` (`directory_listing` wording).
-- `wrangler.jsonc`: one cron added.
-- `test/cron.test.mjs`.
+  The RCEM one-page summary also used it as its official source.
+- **Replacement:** `https://rcem.ac.uk/ultrasound-education-training-2021-curriculum/`. This is the same document: the same title and FAQ, the same links to the SLO6 and Governance entrustment scales the RCEM guide cites, and the same Appendix 3. Used in all four places; the summary PDF was regenerated (`tools/glance-pdf.mjs`, which now also runs on Windows).
+- **Tracked separately:** `https://rcem.ac.uk/em-curriculum/`. It is RCEM's page for the 2021 curriculum's 2025 update (in effect from 6 August 2025), its summary of changes and transition advice. It contains no ultrasound guidance, so it does not replace the FAQ. It is added as a separate source of the RCEM sign-off guide, where SLO6 assessment changes matter. The "summary of changes" PDF is tracked for the reviewer.
+- **Clinical material unchanged.** The guides' text, numbers and `reviewed` dates are untouched. The citation fix is recorded as `updated: 2026-10-11` (RCEM sign-off, logbook, hub; the FUSIC guide too, for its HD citation), so "Guidance last updated" is honest and "Last clinically reviewed" does not move.
+- The app's directory of bodies (`data/credentials.json`) already pointed RCEM to the new page.
 
-## 3. Permission assessment (detail and draft letters: `permissions.md`)
+## 2. Verified source inventory
+Details: `source-inventory.md`.
+- **51 sources:** 36 cited, 12 tracked, 3 directories; 46 automatic, 2 checked by hand, 3 awaiting permission.
+- **Every automatic source answered 200.**
+- **Broken:** 1, the RCEM FAQ, now fixed.
+- **Outdated:** 1, the November 2025 FUSIC HD assessment day. Its permanent move pointed to a past event; it is replaced by the November 2026 page, whose requirements read word for word the same.
+- **Moved permanently:** the ESC page (registry updated) and the HD event.
+- **Temporary redirects:** eight ICS documents. Each is kept as cited, and the version is now read from the file name served.
+- **Duplicates:** none. The guides cite the newer of two copies of RCEM Appendix 3.
+- **Newer authoritative version, for clinical review: the FUSIC HD curriculum changed on 1 February 2026** (new reporting form, extra measurements, new examination competencies). The FUSIC guide does not mention it. Its three documents are tracked. Nothing was rewritten.
+- **Uncited documents for review:** five FAMUS curriculum packs (including two LP documents, v2 and v1.4); the RCEM Physics/Settings entrustment scale; the RCEM 2025 summary of changes.
+- **Manual review:** ESC/EACVI (terms) and the 5.3 MB FUSIC HD Complete Guide (CPU).
+- **Awaiting permission:** SAM FAMUS, ICS FUSIC and BSE directories.
 
-| Source | Personal data | API, feed or reuse terms | Status |
-|---|---|---|---|
-| SAM FAMUS supervisors and mentors | Yes (names, hospitals, modules, dates, contact column) | None found | `not_authorised`: needs SAM's written permission |
-| ICS FUSIC TMS directory | Yes (1,173 entries behind a hospital search) | None found; robots.txt sets no content signal | `not_authorised`: needs ICS's written permission, ideally a feed |
-| BSE accredited members | Yes | None found | `not_authorised`: ask BSE |
-| ESC / EACVI certified professionals | Yes | Terms forbid substantive extraction or automated collection | Manual only |
-| Guidance pages and documents (RCEM, SAM, ICS, ACEM, ACEP, CPoCUS, ESICM, EUSEM, RCR) | No | Public pages, read once a day with an identifying user agent | Automatic |
+## 3. Daily monitoring reliability
+- **Three separate facts, never mixed:**
+  - "Last clinically reviewed": the guide's `reviewed`; nothing automatic ever changes it.
+  - "Guidance last updated": the later of `updated` and `reviewed`.
+  - "Source checked": from the server only.
+- **No false "checked".** The guide-wide "Source checked: [date]" appears only when every automatic source of the guide succeeded at its latest attempt, and the date is the oldest of their successes. If a source fails:
+  - the guide shows "Source checked: [date] for 14 of 15 sources.";
+  - it names each failed source with its own last successful check and a link;
+  - "No changes detected" disappears.
 
-No scraping round any access control, no CAPTCHA bypass, no undocumented endpoint. Every directory is tested only with synthetic people.
+  A failure never moves any date, and never counts as a success (tests: `source-monitor`, `monitor-schedule`).
+- **Guides open at once.** The status is fetched after the page renders. The apps show their cached status, labelled with the day it arrived.
+- **Pending-review warnings** are unchanged: meaningful and important changes wait at `/admin/sources/` and show the notice on the guide until a reviewer records a decision with a note.
+- **Stronger detection, same baseline rules:**
+  - linked official documents are compared by file name (a new curriculum pack behind the same link text is an important change);
+  - versions are read from the file behind a redirect;
+  - a permanent move is recorded for the citation to be updated.
+- **Redirect safety.** Redirects are followed by hand, at most five, and only within the source's own site. Another site or a loop is a failure.
+- **Load on the live site:**
+  - status answers are cached at the edge for five minutes (Cache API: fifty openings make one database read);
+  - an opening may start at most one background check, at most once a minute per Worker instance, and only for a source of that guide that is already due (failing sources keep their back-off) and not held by another run;
+  - there is no route that takes an address from a request: sources come only from the build's registry (tests: `monitor-release`).
+- **Before the migration, or after its rollback,** the Worker does nothing and claims nothing: public status answers 503, runs return "not ready", and the admin page says to apply 0016.
 
-## 4. Migration 0016 (`migrations/0016_source_monitoring.sql`)
+## 4. Cloudflare CPU and scheduling
+- **Account.**
+  - Workers Free.
+  - One D1 database, `wavelength-volunteers` (`1d2a5805-b54f-4969-b0dc-8decaa5319cf`), bound as `DB`; matches `wrangler.jsonc`.
+  - Cron triggers read from the Cloudflare API: `wavelength-site` has 3 (`15 5 * * *`, `30 6 * * 2`, `30 7 * * 2`); OneRota's two Workers have none.
+  - This adds one, `4,14,24,34,44,54 * * * *`: **4 of the 5 the free plan allows per account**, leaving one for OneRota.
+  - The supervisor and newsletter schedules are unchanged, and each cron still runs exactly one job.
+- **Schedule.**
+  - Every ten minutes, one due source per run: 144 chances a day for 46 automatic sources.
+  - A success is due again after 23 hours, so every UK calendar day gets a check.
+  - Failures back off 1, 2, 4, 8, then 12 hours (at most about 7 attempts a day) and alert hello@ once after three in a row.
+  - The oldest-due source is always next, so nothing starves.
+  - Proven by a three-day simulated-clock run of the real code, with one run in seven missed, one source down throughout and one flaky: every healthy source succeeded every day; the failing one was never counted, was retried within bounds and was named on its guide (`test/monitor-schedule.test.mjs`).
+- **CPU.** Measured as process CPU time over 100 to 200 repetitions of the real Worker modules in V8 (the engine Workers runs), not single wall-clock timings (`tools/monitor-cpu.mjs`, against every real source body):
 
-It contains new tables only, so nothing existing changes. It is safe to apply before the Worker, and the current Worker ignores it.
-
-| Table | Purpose |
-|---|---|
-| `monitor_sources` | One row per source: mode, state, last attempt, last success, last change, next check, failures, lease, ETag and Last-Modified, content hash, version, source date, capped snapshot (200,000 characters), `last_outcome` |
-| `monitor_runs` | Every check (kept 90 days) |
-| `monitor_changes` | Changes with evidence and the review decision |
-| `directory_snapshots` | Current and previous validated list per directory (one JSON document each, written in one batch) |
-| `directory_events` | Added, removed, moved, modules, role, corrected name, relisted, ambiguous (kept 13 months) |
-| `directory_links` | A Wavelength account's claim to be a listed person, and the decision on it |
-| `directory_optouts` | Objections |
-
-It is numbered 0016 so it follows the commercial branch's 0014 and 0015 (not applied) without colliding. Apply it with `wrangler d1 execute --file`, not `migrations apply`, so 0014 and 0015 are not pulled in.
-
-## 5. Cron and switches
-
-`wrangler.jsonc` triggers: `["30 6 * * 2", "30 7 * * 2", "15 5 * * *", "4,24,44 * * * *"]`. The newsletter and daily supervisor crons are unchanged. `worker/cron.js` routes each cron to exactly one job; an unknown cron runs nothing. That is 4 of the 5 cron triggers the free plan allows; the commercial branch adds none.
-
-| Variable | Default | Effect |
+| | Before this round | Now |
 |---|---|---|
-| `DIRECTORY_SYNC` | unset (off) | Directories are read only when this is `"true"` AND the source's `mode` is `auto` in `data/monitor-sources.json`. Search and claims answer "not switched on yet" while it is off |
-| `MONITOR_ON_DEMAND` | unset (on) | `"false"` stops the background check when a guide is opened |
-| `MONITOR_TIMEOUT_MS` | 15000 | Fetch timeout |
-| `MONITOR_FETCH` | none | Test stand-in for the network; never set in `wrangler.jsonc` |
+| Heaviest real check (pipeline) | 6.3 ms (CPoCUS page) | **4.4 ms** (2.4 MB FUSIC HD updates PDF); CPoCUS 4.1 ms |
+| Worst HTML text extraction | 5.9 ms | 2.8 ms (output identical on all 26 real HTML pages and 3 edge cases) |
+| Idle run (nothing due) | | 0.3 ms |
+| Guide status answer | | 0.5 ms; a cache hit does no database work |
+| Largest page the monitor will parse (480 KB HTML with 60,000 characters of text) | | under 10 ms (asserted in the tests) |
 
-## 6. Cost and limits (Workers Free, D1 free tier; nothing paid)
+  Optimisations:
+  - one regular expression for all dropped blocks instead of thirteen passes;
+  - one test for furniture lines instead of sixteen;
+  - character fixes once per page.
 
-- **CPU.** I measured the parse, hash and diff of every real source on 11 October 2026: one fetch each for measurement, nothing kept. Heaviest: the CPoCUS page (375 KB), 5.7 ms. Next: an ICS PDF, 4.3 ms. Most pages: about 2 ms. The total for all 36 is 60 ms. The free plan allows 10 ms CPU per invocation, so each run checks **one** source (three runs an hour gives 72 slots a day for 36 sources), and a guide view starts at most one background check. A 304 answer costs almost nothing.
-- **Invocations.** 72 cron runs a day.
-- **Outbound fetches.** About 36 a day, plus at most one per guide view when a source is stale (not attempted in the last hour). One subrequest per run.
-- **D1.**
-  - Writes: about 2 rows per check (the source and the run), so about 75 rows a day plus index updates. A change adds one row.
-  - Seeding: one statement when the registry changes.
-  - Retention: one batch a day.
-  - Reads: a guide view reads one row per source of that guide (`last_outcome` avoids scanning the run history) plus open changes, about 10 to 30 rows. A cron run reads the due index (40 rows at most).
+  Hard limits stop a growing source pushing a run over 10 ms:
+  - HTML over 480 KB, main text over 60,000 characters, or a document over 3 MB is reported "too large: check by hand";
+  - such a source is never parsed and never counted as checked;
+  - the longest real guidance text is about 23,000 characters.
 
-  This is well inside the free tier's daily limits, which are now enforced.
-- **Email.** `monitor_summary` goes to `MAIL_REPLY_TO` (hello@) through the existing outbox, once per batch of important changes and once when a source fails three times in a row. It is internal mail only.
-- **KV, R2, queues and paid add-ons:** none.
+  D1 cost: about 2 rows written per check (about 100 a day); an idle run makes 5 small queries; guide views mostly come from the cache. Well within the enforced free-tier limits.
+- **Confirm on Cloudflare after deployment.** Local V8 measurement is representative, not identical. In the Worker's Metrics, watch CPU time for scheduled invocations and any "Exceeded CPU" outcome for the first 48 hours. Rollback trigger: any `exceededCpu`, or a p99 above 8 ms. Then remove the monitoring cron (section 9) and lower `MAX_HTML_BYTES`.
 
-## 7. Tests (11 October 2026)
+## 5. Supervisor directory permission status
+- **SAM FAMUS, ICS FUSIC and BSE: not authorised, never read.** They need two things: `mode` set to `auto` in `data/monitor-sources.json` with the permission cited, and `DIRECTORY_SYNC = "true"`. Tested only with synthetic people.
+- **Built and waiting:**
+  - daily detection of new and removed names, changed hospitals, roles and modules;
+  - validation that never empties or half-applies a directory;
+  - a held fall above 30% until an administrator accepts it;
+  - objections removed at once;
+  - removed people kept 12 months and events 13 months.
+- **Listing, identity, membership and Wavelength approval stay separate.** A claim grants nothing until an administrator confirms identity, and approval is still a separate decision.
+- **Manual entry stays the route:**
+  - RCEM has no directory;
+  - unlisted supervisors tick credentials or upload documents;
+  - a written account of experience remains eligible for manual assessment with no certificate (test: an RCEM supervisor's application with written experience and no credential is submitted);
+  - certificates are not mandatory.
+- **The three letters are final** in `permissions.md`, with verified addresses: famus@acutemedicine.org.uk, learning@ics.ac.uk, accreditation@bsecho.org. None sent.
+
+## 6. Tests (11 October 2026)
 
 | Check | Result |
 |---|---|
-| `npm test` equivalent (`node --import ./test/helpers/register.mjs --test --test-concurrency=1 test/*.test.mjs`) | **251 pass, 0 fail** |
-| `test/source-monitor.test.mjs` | 28 tests (below) |
-| `tools/e2e-monitor.mjs` (website and website app, 390 and 1440 px) | 38 checks pass |
-| `tools/e2e-app-guides.mjs` against the Android bundle with the patch | 14 checks pass |
-| `npx wrangler@4 deploy --dry-run` | Bundles; same bindings and variables as today |
-| Android line with the patch (fresh export of `5329d8d`) | Builds; 373 tests, 372 pass, 1 skipped (as before); i18n check OK |
+| Full Worker suite, this branch | **267 pass, 0 fail** (from 251 at the start of this round) |
+| New: `monitor-schedule` (3), `monitor-migration` (5), `monitor-release` (8) | All pass |
+| `tools/e2e-monitor.mjs`: website and website app at 390 and 1440 px, including a failing source | All pass |
+| `tools/e2e-app-guides.mjs`: Android bundle, alone and combined with the supervisor patch | All pass |
+| Android line, monitoring patch alone | 374 tests (373 pass, 1 skipped) |
+| Android line, supervisor + monitoring patches | 381 tests (380 pass, 1 skipped); the supervisor `e2e-verified` (android) passes too |
+| `wrangler deploy --dry-run` | Bundles; same bindings and variables as today; four crons |
 
-The tests cover:
-- the registry and seeding;
-- daily scheduling and the lease against duplicate runs;
-- no-change, header-only, cookie-banner and 304 answers;
-- minor, meaningful and important changes;
-- a reviewer's decision;
-- failures (back-off 1, 2, 4, 8 then 12 hours, alert after 3, the date never advanced);
-- timeouts and format changes;
-- PDFs;
-- the three dates around UK midnight;
-- on-demand refresh;
-- directories off without permission and the switch;
-- directory sync: baseline, new, removed, moved, modules, role, corrected name, same names apart;
-- never emptying or half-applying a directory;
-- accepting a held fall;
-- objections and retention;
-- the FAMUS adapter;
-- flags on claims when a listing changes;
-- autocomplete;
-- claims;
-- confirming a claim;
-- the admin dashboard and escaping;
-- the cron routing.
+The new tests cover:
+- replacement RCEM links;
+- broken sources and redirects;
+- several sources on one guide;
+- per-source dates;
+- failed daily checks;
+- scheduling and retry fairness;
+- CPU and account limits;
+- fifty simultaneous openings;
+- the allowlist;
+- directories without permission and the manual fallback;
+- dashboard access;
+- migration safety on the production schema;
+- website and app display.
 
-## 8. Android and iPhone
+## 7. Database migration safety
+- `migrations/0016_source_monitoring.sql` holds only `CREATE TABLE IF NOT EXISTS` and `CREATE [UNIQUE] INDEX IF NOT EXISTS`, for seven new tables. No ALTER, UPDATE, DELETE or INSERT.
+- None of its names exists in production. The production table `directory_profiles` is unrelated and untouched.
+- It needs `settings`, `audit_events`, `notification_log`, `learners` and `credentials`, all present.
+- **Rehearsed on the production schema** (`test/fixtures/production-schema-20261011.sql`, definitions only):
+  - applied twice: every existing table definition and row unchanged, seven tables added;
+  - `0016-rollback.sql` returns the schema exactly to the original and touches no other data;
+  - a Worker running before the migration or after the rollback does nothing and errors nowhere.
+- **Backups, in this order, before applying:**
+  1. a fresh export, `npx wrangler d1 export wavelength-volunteers --remote --output wavelength-volunteers-<date>.sql`. Keep it off the repository: it holds personal data. Check that it opens with `sqlite3 :memory: ".read <file>"` and that its row counts match a `SELECT COUNT(*)` of `learners`, `credentials` and `supervisor_applications`.
+  2. a Time Travel bookmark, `npx wrangler d1 time-travel info wavelength-volunteers`, as an additional safeguard, not the only one. A restore is destructive and rewinds everything written since.
+- **Reverting the Worker** to the release branch, or to `2dfd55e`, leaves the seven tables in place, unused. No earlier Worker reads or writes them, and they hold no learner records except the opt-in claims. Drop them only with `0016-rollback.sql`, after a fresh export.
 
-`android-integration/app-source-monitoring.patch` applies to the Android line (`wavelength-android-fixes-20261010` at `5329d8d`, checked on a fresh export). See `android-integration/README.md`. iPhone builds from the same `src/app/` bundle, so the same patch covers it. A store build is needed for phones to show either feature. Older installed apps are unaffected: the endpoints are new, and nothing the apps already use changed.
+## 8. Deployment sequence (each step needs your approval; none done)
+The supervisor-verification fix stays an independent, earlier release. Deploying the monitor does not depend on directory permissions.
 
-## 9. Deployment sequence (each step needs your approval; none done)
+**Release A: supervisor verification** (`wavelength-supervisor-prod-20261010`, `0d4f924`). Follow `docs/supervisor-verification-release/README.md` (export, bookmark, `npx wrangler deploy` from that worktree), then watch it for 24 to 48 hours. This branch does not need to wait for A, but A must not wait for this branch.
 
-**Order matters.** The supervisor verification release (`7f2c249`) should go first, or together: this branch already contains it, so deploying this branch deploys both.
+**Release B: source monitoring** (this branch, which contains A unchanged):
+1. Fresh export and Time Travel bookmark (section 7); note the current Worker version (`npx wrangler deployments list`).
+2. Apply 0016: `npx wrangler d1 execute wavelength-volunteers --remote --file migrations/0016_source_monitoring.sql`. Use `execute --file`, not `migrations apply`: production has no migrations table, and 0014/0015 belong to the commercial branch.
+   - Check: `SELECT name FROM sqlite_master WHERE name LIKE 'monitor_%' OR name IN ('directory_snapshots','directory_events','directory_links','directory_optouts')` lists 7 tables.
+3. In this worktree: `node build.js`, then `npx wrangler deploy --dry-run` (expect four crons and the same bindings), then `npx wrangler deploy`. `DIRECTORY_SYNC` stays unset.
+4. **First hours.**
+   - `/admin/sources/` shows sources checked one every ten minutes. All 46 are first checked within about 8 hours; these are baselines, not changes.
+   - Guides read "Official sources not yet checked automatically.", then "Source checked: [date] for N of M sources." while their sources are being reached, then "Source checked: [date]".
+   - Watch the CPU metrics (section 4).
+5. **First day.** Every guide should show "Source checked: [today]". Review any item at `/admin/sources/`.
+6. Then: the store build with the app patches (`android-integration/`), and the clinical review items in `source-inventory.md`.
+7. **Only after written permission from a body:** follow the checklist in `permissions.md` section 5.
 
-1. **Before you start.**
-   - Record the D1 bookmark: `npx wrangler d1 time-travel info wavelength-volunteers`.
-   - Record the current Worker version: `npx wrangler deployments list`.
-2. **Apply migration 0016:** `npx wrangler d1 execute wavelength-volunteers --remote --file migrations/0016_source_monitoring.sql`. Check it: `SELECT name FROM sqlite_master WHERE name LIKE 'monitor_%' OR name LIKE 'directory_%'` should list 7 tables.
-3. **Build and dry run** in this worktree: `node build.js && npx wrangler deploy --dry-run`.
-4. **Deploy:** `npx wrangler deploy` (GitHub is unavailable, so the dashboard build from `main` is not the route). `DIRECTORY_SYNC` stays unset.
-5. **First hour.**
-   - `/admin/sources/` should show sources being checked one at a time, and `/guides/fusic-accreditation/` should show "Official sources not yet checked automatically." until all 15 of its sources are checked.
-   - Expect `https://rcem.ac.uk/ultrasound/` to fail: it answered **404** on 11 October 2026. It is cited by three guides (RCEM sign-off, logbook, hub). After three failures (about 3 hours), the team gets one alert email at hello@. Until the citation is fixed, those three guides cannot show "Source checked". Replace the link in the guides (a content change: check the new RCEM page first).
-6. **First day.** Every automatic source should be checked by the next morning. The first checks are baselines, not changes.
-7. **Later, only after written permission from a body:**
-   - set that directory's `mode` to `auto` in `data/monitor-sources.json`, with the permission's reference in `why`;
-   - update the privacy notice (wording in `permissions.md`);
-   - add `"DIRECTORY_SYNC": "true"` to `wrangler.jsonc` vars;
-   - deploy.
+If the supervisor release needs a hotfix after A, make it on the release branch, then merge that branch into this one before B. This branch must never be merged into the release branch, and never into the commercial branch's deployment path.
 
-## 10. Rollback
+## 9. Rollback
+- **Monitoring off, quickly:** remove `"4,14,24,34,44,54 * * * *"` from the triggers, set `MONITOR_ON_DEMAND = "false"`, and deploy. Guides keep their last real check.
+- **Worker:** `npx wrangler rollback` to the version noted in step 1, or redeploy the release branch. The tables stay, unused (section 7).
+- **Tables:** `0016-rollback.sql`, after a fresh export, only if they must go.
+- **Directory sync:** unset `DIRECTORY_SYNC` and deploy.
+- **Time Travel restore:** a last resort, because it rewinds every write since the bookmark.
 
-- **Worker.** `npx wrangler rollback` to the version noted in step 1, or redeploy the release branch. The tables stay and are harmless.
-- **Monitoring only.** Remove `"4,24,44 * * * *"` from the triggers and set `MONITOR_ON_DEMAND = "false"`, then deploy. Guides then keep their last real check date. To hide the line too, revert the build.js guide-date block.
-- **Directory sync.** Unset `DIRECTORY_SYNC` and deploy. Stored snapshots stay until deleted (`DELETE FROM directory_snapshots WHERE source_id = ?`).
-- **Database.** Migration 0016 adds tables only. A Time Travel restore to the step-1 bookmark is never needed for this change.
+## 10. Mobile integration
+`android-integration/README.md` has the steps and the two patch variants:
+- alone: `app-source-monitoring.patch`;
+- after the supervisor patch: `app-source-monitoring.after-supervisor.patch`, for 1.0.15.
 
-## 11. Outstanding authorisations
+Both were verified on fresh exports of the unchanged Android tip `5329d8d`, including with the supervisor patch. The app shows the same honest status as the website, its cached status offline, pending-review notices, a newer-version notice, and no directory box while directories are off.
 
-1. Deploy (section 9), including migration 0016 and the new cron.
-2. Fix the RCEM ultrasound citation (`https://rcem.ac.uk/ultrasound/`, 404).
-3. Send the permission requests to SAM, ICS and BSE (drafts in `permissions.md`). Wavelength must not contact them without your approval.
-4. After any permission: a legitimate interests assessment, the privacy notice paragraph, the DPIA screening, then `DIRECTORY_SYNC`.
-5. A store build of the Android and iPhone apps with the patch (after the Worker is live).
-6. Clinical review of any change the monitor flags: the reviewer is a clinician, never automatic.
+## 11. Changed files
+This round:
+
+| Area | Files |
+|---|---|
+| Worker | `worker/monitor/run.js` (redirects, moves, size and text limits, readiness, `MAX_*`), `extract.js` (linked documents, faster extraction, `TEXT_LIMIT`), `classify.js` (linked documents), `api.js` (per-source and partial status, on-demand limits, edge cache, readiness), `worker/cron.js`, `worker/index.js`, `wrangler.jsonc` (cron every ten minutes), `worker/monitor/admin.js` |
+| Content | `content/guides/rcem-ultrasound-sign-off.md`, `ultrasound-logbook.md`, `pocus-accreditation.md`, `fusic-accreditation.md`, `at-a-glance/rcem-ultrasound-sign-off.md`, `src/assets/guides/rcem-ultrasound-sign-off-at-a-glance.pdf`, `at-a-glance.json`, `data/monitor-sources.json` |
+| Website | `src/assets/main.js`, `src/assets/style.css` |
+| Tests and tools | `test/monitor-schedule.test.mjs`, `test/monitor-migration.test.mjs`, `test/monitor-release.test.mjs`, `test/fixtures/production-schema-20261011.sql`, `test/source-monitor.test.mjs`, `test/cron.test.mjs`, `tools/monitor-cpu.mjs`, `tools/e2e-monitor.mjs`, `tools/e2e-app-guides.mjs`, `tools/glance-pdf.mjs` |
+| Docs | this folder, `CLAUDE.md` |
+
+## 12. Outstanding production approvals
+1. Release A: deploy the supervisor-verification fix (its own package).
+2. Release B: fresh export and bookmark, apply migration 0016, deploy this branch (adds the fourth account cron).
+3. Watch CPU for 48 hours after B.
+4. Send the three permission letters (none sent).
+5. Clinical review: FUSIC HD 2026 curriculum, FAMUS packs, RCEM 2025 update (`source-inventory.md`).
+6. After any permission: legitimate interests assessment, DPIA screening, privacy notice paragraph, then `DIRECTORY_SYNC`.
+7. Store build 1.0.15 with both app patches, after B is live.
+8. Optional: a Cloudflare Redirect Rule www to apex (unchanged since 5 October).

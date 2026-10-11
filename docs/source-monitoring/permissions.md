@@ -1,4 +1,4 @@
-# Supervisor directories: permission assessment, requests and data protection (11 October 2026)
+# Supervisor directories: permission assessment, letters and data protection (11 October 2026)
 
 **Conclusion: Wavelength may not read any supervisor directory automatically yet.** All three directories are set to `not_authorised` in `data/monitor-sources.json`, and the Worker also needs `DIRECTORY_SYNC = "true"`. Until a body gives written permission, supervisors are checked by hand, as now, on the person page of `/admin/supervisors/`. The code is built and tested with synthetic people only, so it can be switched on per directory once permission arrives.
 
@@ -36,65 +36,105 @@ Nothing in this work scrapes round a search form, bypasses a CAPTCHA, uses an un
 - Remove a person at once when they object, or when the body asks.
 - Stop and delete on request.
 
-## 3. Draft permission requests (not sent: they need your approval)
+## 3. Permission letters: final, ready to send (not sent: each needs your approval)
 
-### To the Society for Acute Medicine (FAMUS)
+### Verified contact routes (checked 11 October 2026 on each body's own pages)
 
-> Subject: Request to use the FAMUS supervisors and mentors directory in the Wavelength ultrasound logbook
+| Body | Send to | Where it is published | Data protection |
+|---|---|---|---|
+| Society for Acute Medicine (FAMUS) | famus@acutemedicine.org.uk (the FAMUS administrator) | FAMUS FAQs page, acutemedicine.org.uk/famus/faqs/ ("please contact the administrator") | administrator@acutemedicine.org.uk, named in SAM's privacy notice (acutemedicine.org.uk/privacy/) |
+| Intensive Care Society (FUSIC) | learning@ics.ac.uk (the learning team, which runs FUSIC) | Every FUSIC module page and assessment page on ics.ac.uk | info@ics.ac.uk, named in the ICS privacy policy (ics.ac.uk/policies/privacy-policy.html) |
+| British Society of Echocardiography | accreditation@bsecho.org (the accreditation team; telephone 0208 065 5794 on the same page) | BSE accreditation packs, for example the Level 1 accreditation pack 2026 on bsecho.org | BSE's privacy policy page loads its text by script, so no address could be read: the letter asks the accreditation team to pass it on |
+
+Send from hello@thewavelength.co.uk, signed by Dr Firas Abou-Auda. For SAM and ICS, attach `feed-format.md` as a one-page PDF ("Suggested data format"). Keep each reply with this file, because written permission is the first item of the checklist in section 5.
+
+### 1. Society for Acute Medicine
+
+> **To:** famus@acutemedicine.org.uk
+> **Subject:** FAMUS supervisor directory: request for permission to use listings in the Wavelength ultrasound logbook
 >
-> Dear FAMUS committee,
+> Dear FAMUS Committee,
 >
-> I am the Course Director of Wavelength (Auda Medical Ltd), which runs point-of-care ultrasound courses and a free logbook app for emergency and acute clinicians. Many of our learners are working towards FAMUS accreditation.
+> I am writing from Wavelength (Auda Medical Ltd), a UK provider of point-of-care ultrasound education. We are developing an ultrasound education and logbook platform that many FAMUS candidates use to record their scans and arrange supervisor sign-off.
 >
-> Learners invite their supervisors in the app, and supervisors can apply to be recognised as Wavelength supervisors. To help them pick the right person and to help us check credentials, we would like to use the FAMUS supervisors and mentors directory. We would read it at most once a day and keep only each person's name, hospital, the modules and roles listed, and the date accredited: never contact details. It would be used only for name search inside the app and for our administrators' checks. A listing would never be presented as FAMUS or Society endorsement of Wavelength, and anyone who objects would be removed at once.
+> We would like to ask the Society's permission to use the FAMUS directory of supervisors and mentors, in a limited and regularly refreshed way, to help clinicians identify appropriately listed supervisors. In practice:
 >
-> Could you tell us:
-> 1. whether the Society agrees to this use, and on what terms (attribution, frequency, retention);
-> 2. whether a data file or feed could be provided (a suggested format is attached), rather than us reading the web page;
-> 3. whether the people listed were told their entry might be reused in this way, or whether you would prefer we ask them ourselves;
-> 4. who to contact about corrections and removals.
+> - **What we would use:** each listed person's name, hospital or trust, the roles and modules shown, and the date accredited. We would never collect contact details.
+> - **How it would appear:** when a trainee types a supervisor's name, the app would suggest matching listings, each attributed to the FAMUS directory of the Society for Acute Medicine. Being listed would not be presented as Wavelength approval, or as the Society endorsing Wavelength.
+> - **What it would not do:** appearing in the directory would not create a Wavelength account for anyone, and would not mean the person has agreed to receive supervision requests. A trainee who wants to invite a supervisor still enters that supervisor's own email address, and Wavelength never contacts listed people.
+> - **Freshness, corrections and objections:** we would refresh the data no more than once a day, so corrections made by the Society reach us within a day. Anyone listed may ask us to correct their entry or to leave them out, and an objection takes effect at once. We would stop and delete the data whenever the Society asks.
 >
-> We will not use the directory until we have your written agreement. I would be happy to talk this through.
+> Could you let us know:
+> 1. whether the Society is willing to grant this permission, and on what terms (attribution wording, refresh frequency, retention);
+> 2. whether an official API, an approved data export, a feed or a formal data-sharing arrangement is available, rather than our reading the public page (a suggested format is attached);
+> 3. whether listed supervisors were told their entries might be reused in this way, or whether you would prefer us to inform them;
+> 4. the right contact for corrections, removals and any data protection questions.
+>
+> We will not use the directory until we have the Society's written agreement. We would value a long-term working relationship with the FAMUS programme, and I would be glad to discuss this by phone or video call at your convenience.
 >
 > Yours sincerely,
-> Dr Firas Abou-Auda, Course Director, Wavelength (Auda Medical Ltd, company 08487817)
+>
+> Dr Firas Abou-Auda
+> Course Director, Wavelength
+> Auda Medical Ltd (company number 08487817)
 > hello@thewavelength.co.uk · thewavelength.co.uk
 
-### To the Intensive Care Society (FUSIC TMS directory)
+### 2. Intensive Care Society
 
-> Subject: Request to use the FUSIC trainer, mentor and supervisor directory in the Wavelength ultrasound logbook
+> **To:** learning@ics.ac.uk
+> **Subject:** FUSIC trainer, mentor and supervisor directory: request for permission to use listings in the Wavelength ultrasound logbook
 >
 > Dear FUSIC team,
 >
-> I am the Course Director of Wavelength (Auda Medical Ltd), which runs point-of-care ultrasound courses and a free logbook app that supports FUSIC learners alongside other pathways.
+> I am writing from Wavelength (Auda Medical Ltd), a UK provider of point-of-care ultrasound education. We are developing an ultrasound education and logbook platform that supports FUSIC learners alongside other accreditation pathways.
 >
-> Learners invite their mentors and supervisors in the app, and supervisors can apply to be recognised as Wavelength supervisors. We would like to use the FUSIC TMS directory so that learners pick the right person, and so that our administrators can check a supervisor's listed modules. We would keep only name, hospital, roles and modules, at most once a day, never contact details. It would be used only for name search inside the app and for administrators' checks, with objections honoured at once. Nothing would suggest ICS endorsement of Wavelength.
+> We would like to ask the Society's permission to use the FUSIC TMS directory, in a limited and regularly refreshed way, to help clinicians identify appropriately listed trainers, mentors and supervisors:
 >
-> As the directory is reached through a hospital search, we have not read it automatically and will not do so without your agreement. Could you tell us:
-> 1. whether the Society agrees to this use, and on what terms;
-> 2. whether a data file or feed could be provided (suggested format attached);
-> 3. whether listed people were told their entry might be reused, or whether you would prefer we ask them;
-> 4. who to contact about corrections and removals.
+> - **What we would use:** each listed person's name, hospital, and the FUSIC roles and modules shown. We would never collect contact details.
+> - **How it would appear:** name suggestions in the app, each attributed to the Intensive Care Society's FUSIC directory. Nothing would suggest that the Society endorses Wavelength, or that a listing is a Wavelength approval.
+> - **What it would not do:** a listing would not create a Wavelength account, and would not mean the person has agreed to receive supervision requests. Trainees still invite a supervisor using that supervisor's own email address, and Wavelength never contacts listed people.
+> - **Freshness, corrections and objections:** we would refresh at most once a day, so the Society's own corrections reach us promptly. Anyone listed could ask us to correct or remove their entry, and an objection takes effect immediately. We would stop and delete the data on request.
+>
+> Because the directory is reached through a hospital search, we have not read it automatically and will not do so without your agreement. Could you tell us:
+> 1. whether the Society would grant permission, and on what terms;
+> 2. whether an official API, an approved data export, a feed or a formal data-sharing arrangement is available (a suggested format is attached);
+> 3. whether listed people were told their entries might be reused, or whether you would prefer us to inform them;
+> 4. the right contact for corrections, removals and data protection.
+>
+> We would welcome a long-term collaboration that supports FUSIC training, and would be happy to talk this through.
 >
 > Yours sincerely,
-> Dr Firas Abou-Auda, Course Director, Wavelength (Auda Medical Ltd, company 08487817)
+>
+> Dr Firas Abou-Auda
+> Course Director, Wavelength
+> Auda Medical Ltd (company number 08487817)
 > hello@thewavelength.co.uk · thewavelength.co.uk
 
-### To the British Society of Echocardiography
+### 3. British Society of Echocardiography
 
-> Subject: Checking BSE accreditation for Wavelength supervisors
+> **To:** accreditation@bsecho.org
+> **Subject:** Confirming BSE accreditation for supervisors on the Wavelength ultrasound logbook
 >
 > Dear BSE accreditation team,
 >
-> Wavelength (Auda Medical Ltd) runs point-of-care ultrasound courses and a free logbook app. Some supervisors who apply to supervise through Wavelength hold BSE accreditation, and we would like to confirm it accurately.
+> I am writing from Wavelength (Auda Medical Ltd), a UK provider of point-of-care ultrasound education. We are developing an ultrasound education and logbook platform. Some of the clinicians who apply to supervise learners through it hold BSE accreditation, which several training pathways recognise.
 >
-> Could you tell us how the BSE would prefer organisations to confirm a member's accreditation: a lookup the BSE permits, a confirmation by email, or evidence from the member? We will not query the accredited members list automatically without your agreement, and we keep no contact details.
+> To confirm that accreditation accurately, we would like to ask how the Society would prefer organisations to do so:
+> - by limited, regularly refreshed use of your accredited members listing, under a written permission;
+> - through an official API, an approved data export or feed, or a formal data-sharing arrangement;
+> - by a confirmation from your team on request;
+> - or from evidence the member provides.
+>
+> If a listing were used, we would keep only the member's name, organisation and the accreditation shown, with the source attributed to the BSE, and never contact details. Appearing in the listing would not create a Wavelength account or mean the member has agreed to receive supervision requests. Members could ask us to correct their entry or to leave them out at any time, and we would stop and delete the data on request. We will not query the listing automatically without your agreement.
+>
+> I would also be grateful if you could pass this to the Society's data protection contact, or let me know who that is.
 >
 > Yours sincerely,
-> Dr Firas Abou-Auda, Course Director, Wavelength (Auda Medical Ltd, company 08487817)
-> hello@thewavelength.co.uk
-
-Attach `feed-format.md` (as a short PDF or the text) to the SAM and ICS letters.
+>
+> Dr Firas Abou-Auda
+> Course Director, Wavelength
+> Auda Medical Ltd (company number 08487817)
+> hello@thewavelength.co.uk · thewavelength.co.uk
 
 ## 4. Data protection, before any directory is switched on
 
