@@ -65,11 +65,11 @@ export const linkExpiredPage = () => `${h2('This link has expired or was already
 <p class="admin-summary">Activation links work once and expire after 72 hours. Ask the owner for a new link.</p>`;
 
 export const reauthPage = ({ csrf, next, error = '' }) => `${h2('Confirm it is you')}
-<p class="admin-summary">Account and security pages need your password and a fresh authenticator code (every 10 minutes).</p>
+<p class="admin-summary">Account and security pages need your password and a fresh authenticator code (every 10 minutes). Without your phone, use one of your recovery codes.</p>
 ${note(error, true)}
 <form class="form vol-login" method="post" action="/admin/reauth/">${hidden('_csrf', csrf)}${hidden('action', 'reauth')}${hidden('next', next)}
   <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-  <label>Authenticator code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required></label>
+  <label>Authenticator code or recovery code<input name="code" autocomplete="one-time-code" autocapitalize="none" maxlength="20" required></label>
   <div><button class="btn" type="submit">Confirm</button></div>
 </form>`;
 
@@ -91,6 +91,14 @@ ${note(msg)}
   <label>Same new password again<input name="password2" type="password" autocomplete="new-password" minlength="12" maxlength="200" required></label>
   <button class="btn btn-ghost small" type="submit">Change password</button>
   <p class="form-note">Your other sessions end when you change your password.</p>
+</form>
+<h3 style="margin:28px 0 10px">New phone or authenticator</h3>
+<form class="form pw-form" method="post" style="max-width:520px">${hidden('action', 'two_step_renew')}
+  <input type="text" name="username" value="${esc(account.username)}" autocomplete="username" hidden>
+  <label>Current password<input name="current" type="password" autocomplete="current-password" required></label>
+  <label>A code from your current app, or a recovery code<input name="code" autocomplete="one-time-code" autocapitalize="none" maxlength="20" required></label>
+  <button class="btn btn-ghost small" type="submit">Set up a new authenticator</button>
+  <p class="form-note">Your old authenticator and all recovery codes stop working; you get new ones. Your other sessions end.</p>
 </form>
 <h3 style="margin:28px 0 10px">Where you are signed in</h3>
 <div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Signed in</th><th scope="col">Last active</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>

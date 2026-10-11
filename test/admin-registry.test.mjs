@@ -31,6 +31,8 @@ const MODULES = {
 test('every /admin/ path in the Worker is declared (or is a sign-in page)', () => {
   const paths = new Set([...src('index.js').matchAll(/p === '(\/admin\/[^']*)'/g)].map((m) => m[1]));
   for (const p of [...src('admin/routes.js').matchAll(/p === '(\/admin\/[^']*)'/g)].map((m) => m[1])) paths.add(p);
+  // Spreadsheet downloads listed in a table (CSV_EXPORTS in worker/index.js).
+  for (const p of [...src('index.js').matchAll(/^\s*'(\/admin\/[^']*\.csv)':/gm)].map((m) => m[1])) paths.add(p);
   assert.ok(paths.size >= 25, `found ${paths.size} paths`);
   for (const p of paths) assert.ok(PRE_AUTH.has(p) || GET_ROUTES[p] || POST_ROUTES[p], `undeclared admin path ${p}`);
 });

@@ -26,14 +26,24 @@ export const LOCK_MINUTES = 15;
 const iso = (ms = Date.now()) => new Date(ms).toISOString();
 
 // ---------- Mode ----------
+// Per database (one isolate may serve several in tests): the table exists, and accounts have gone live. Both only ever
+// change from false to true, so a true answer is cached.
+const READY = new WeakMap(), LIVE = new WeakMap();
 export async function accountsReady(env) {
-  try { await env.DB.prepare('SELECT id FROM admin_accounts LIMIT 1').first(); return true; } catch { return false; }
+  if (READY.get(env.DB)) return true;
+  try { await env.DB.prepare('SELECT id FROM admin_accounts LIMIT 1').first(); READY.set(env.DB, true); return true; } catch { return false; }
 }
-// True when personal accounts are in force: an active Owner who has finished two-step enrolment exists.
+// True once personal accounts are in force. Sticky: the first Owner to finish two-step set-up writes
+// settings.admin_accounts_live, and from then on the shared login never comes back, even while an owner's password
+// or two-step is being reset (emergency recovery). Before the flag existed, an active, enrolled Owner also counts.
 export async function accountsLive(env) {
+  if (LIVE.get(env.DB)) return true;
   if (!(await accountsReady(env))) return false;
-  const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM admin_accounts WHERE role = 'owner' AND status = 'active' AND totp_secret IS NOT NULL AND password_hash IS NOT NULL").first();
-  return !!(r && r.n);
+  const flag = await env.DB.prepare("SELECT value FROM settings WHERE key = 'admin_accounts_live'").first();
+  const r = flag ? { n: 1 } : await env.DB.prepare("SELECT COUNT(*) AS n FROM admin_accounts WHERE role = 'owner' AND status = 'active' AND totp_secret IS NOT NULL AND password_hash IS NOT NULL").first();
+  const live = !!(r && r.n);
+  if (live) LIVE.set(env.DB, true);
+  return live;
 }
 export const accountCount = async (env) => (await accountsReady(env)) ? ((await env.DB.prepare('SELECT COUNT(*) AS n FROM admin_accounts').first()) || {}).n || 0 : 0;
 
@@ -114,9 +124,9 @@ export async function createSession(env, req, accountId, stage) {
   const ip = clientIp(req);
   await env.DB.prepare('INSERT INTO admin_sessions (id, admin_id, stage, csrf, created_at, expires_at, last_seen_at, reauth_at, ip_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .bind(await tokenId(token), accountId, stage, csrf, iso(now), iso(expires), iso(now), stage === 'full' ? iso(now) : null, ip ? (await sha256Hex('ip:' + ip)).slice(0, 22) : null).run();
-  return { token, csrf, cookie: `${COOKIE}=${token}; Path=/admin; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_HOURS * 3600}` };
+  return { token, csrf, cookie: `${COOKIE}=${token}; Path=/admin; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_HOURS * 3600}` };
 }
-export const clearSessionCookie = () => `${COOKIE}=; Path=/admin; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
+export const clearSessionCookie = () => `${COOKIE}=; Path=/admin; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 
 const cookieToken = (req) => {
   const m = (req.headers.get('Cookie') || '').match(/(?:^|;\s*)__Secure-wl_admin_session=([A-Za-z0-9_-]{20,100})/);
@@ -150,13 +160,16 @@ export const listSessions = async (env, accountId) => (await env.DB.prepare('SEL
 
 // ---------- Failures and lock-out ----------
 const isLocked = (a) => !!(a && a.locked_until && a.locked_until > iso());
+// Every failed step writes the same two statements, whether or not the account exists, is disabled or is locked, so
+// the time a refusal takes does not reveal which usernames exist. Only a live, unlocked account's counter moves.
 async function recordFailure(env, a, what) {
-  if (!a) return;
-  const failed = (a.failed_count || 0) + 1;
-  const lock = failed >= MAX_FAILURES;
+  const counts = !!(a && a.status !== 'disabled' && !isLocked(a));
+  const failed = counts ? (a.failed_count || 0) + 1 : 0;
+  const lock = counts && failed >= MAX_FAILURES;
   await env.DB.batch([
-    env.DB.prepare('UPDATE admin_accounts SET failed_count = ?, locked_until = ? WHERE id = ?').bind(lock ? 0 : failed, lock ? iso(Date.now() + LOCK_MINUTES * 60e3) : a.locked_until, a.id),
-    accountAudit(env, a, lock ? 'admin.locked' : 'admin.sign_in_failed', { subjectId: a.id, meta: { step: what } }),
+    env.DB.prepare('UPDATE admin_accounts SET failed_count = ?, locked_until = ? WHERE id = ? AND ?')
+      .bind(lock ? 0 : failed, lock ? iso(Date.now() + LOCK_MINUTES * 60e3) : (a && a.locked_until) || null, a ? a.id : -1, counts ? 1 : 0),
+    accountAudit(env, a, lock ? 'admin.locked' : 'admin.sign_in_failed', { subjectId: a ? a.id : null, meta: { step: what } }),
   ]);
 }
 const clearFailures = (env, a) => env.DB.prepare('UPDATE admin_accounts SET failed_count = 0, locked_until = NULL WHERE id = ?').bind(a.id);
@@ -172,8 +185,7 @@ export async function signInAllowed(env, req) {
 export async function checkPasswordStep(env, username, password) {
   const a = await byUsername(env, username);
   const good = await checkAdminPassword(env, String(password || '').slice(0, 200), a && a.password_hash);
-  if (!a || a.status === 'disabled' || isLocked(a) || !a.password_hash) return { ok: false };
-  if (!good) { await recordFailure(env, a, 'password'); return { ok: false }; }
+  if (!a || a.status === 'disabled' || isLocked(a) || !a.password_hash || !good) { await recordFailure(env, a, 'password'); return { ok: false }; }
   return { ok: true, account: a };
 }
 
@@ -200,6 +212,8 @@ export async function finishEnrolment(env, account, code) {
   await env.DB.batch([
     env.DB.prepare("UPDATE admin_accounts SET totp_secret = totp_pending, totp_pending = NULL, totp_enrolled_at = ?, totp_last_step = ?, status = CASE WHEN status = 'pending' THEN 'active' ELSE status END, failed_count = 0, locked_until = NULL, updated_at = ? WHERE id = ? AND totp_pending IS NOT NULL")
       .bind(at, step, at, account.id),
+    // The first Owner with two-step ends the shared login for good (see accountsLive).
+    ...(account.role === 'owner' ? [env.DB.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('admin_accounts_live', ?)").bind(at)] : []),
     env.DB.prepare('DELETE FROM admin_recovery_codes WHERE admin_id = ?').bind(account.id),
     ...(await Promise.all(codes.map(async (c) => env.DB.prepare('INSERT INTO admin_recovery_codes (admin_id, code_hash, created_at) VALUES (?, ?, ?)').bind(account.id, await recoveryHash(env, account.id, c), at)))),
     accountAudit(env, account, 'admin.two_step_enrolled', { subjectId: account.id, meta: { recoveryCodes: codes.length } }),
@@ -230,6 +244,9 @@ export async function checkSecondFactor(env, account, input) {
   return '';
 }
 export const recoveryLeft = async (env, accountId) => ((await env.DB.prepare('SELECT COUNT(*) AS n FROM admin_recovery_codes WHERE admin_id = ? AND used_at IS NULL').bind(accountId).first()) || {}).n || 0;
+
+// Ends every unused activation link of an account (disable, and before issuing a new one).
+export const revokeLinks = (env, accountId) => env.DB.prepare('UPDATE admin_tokens SET used_at = ? WHERE admin_id = ? AND used_at IS NULL').bind(iso(), accountId);
 
 // ---------- Owner actions on another account ----------
 // Each returns the statements for one batch: the change, the session revocation where needed, and the audit entry.

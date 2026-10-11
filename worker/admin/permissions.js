@@ -111,7 +111,7 @@ const SUPERVISOR_ACTIONS = {
   notif_resend: 'supervisors.email', notif_mark_sent: 'supervisors.email',
 };
 export const POST_ROUTES = {
-  '/admin/account/': { password: 'account.self', sign_out_everywhere: 'account.self', sign_out_session: 'account.self' },
+  '/admin/account/': { password: 'account.self', two_step_renew: 'account.self', sign_out_everywhere: 'account.self', sign_out_session: 'account.self' },
   '/admin/reauth/': { reauth: 'account.self' },
   '/admin/accounts/': {
     create: 'admins.manage', name: 'admins.manage', role: 'admins.manage', grants: 'admins.manage', link: 'admins.manage',

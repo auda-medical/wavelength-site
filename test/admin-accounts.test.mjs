@@ -125,14 +125,14 @@ test('wrong passwords: one answer for unknown users and wrong passwords; ten fai
   assert.ok((await one(env2, "SELECT failed_count FROM admin_accounts WHERE username = 'owner'")).failed_count <= 10, 'the limit stops counting attempts past ten a minute');
 });
 
-test('session cookie: __Secure-, HttpOnly, SameSite=Strict, /admin only; idle and absolute expiry', async () => {
+test('session cookie: __Secure-, HttpOnly, SameSite=Lax, /admin only; idle and absolute expiry', async () => {
   const env = await setupEnv();
   const { owner } = await bootstrapOwner(env);
   const b = browser(env);
   advance(31e3);
   const p = await b.go('/admin/login/', { form: { username: 'owner', password: owner.password }, keepCsrf: false });
   const set = p.setCookies.find((c) => c.startsWith('__Secure-wl_admin_session='));
-  assert.match(set, /; Path=\/admin; HttpOnly; Secure; SameSite=Strict/);
+  assert.match(set, /; Path=\/admin; HttpOnly; Secure; SameSite=Lax/);
   await b.go('/admin/two-step/');
   await b.go('/admin/two-step/', { form: { code: await codeFor(owner.key) } });
   assert.equal((await b.go('/admin/')).status, 200);

@@ -236,6 +236,15 @@ async function academyHtml(env, req) {
   return html;
 }
 
+// Spreadsheet downloads of the console (the volunteers export has its own function above).
+const CSV_EXPORTS = {
+  '/admin/academy/learners.csv': { audit: 'export.academy_learners', sql: 'SELECT * FROM learners ORDER BY created_at DESC', cols: ['created_at', 'title', 'first_name', 'last_name', 'email', 'role', 'organisation', 'newsletter', 'last_seen'], name: 'wavelength-academy-learners' },
+  '/admin/academy/certificates.csv': { audit: 'export.academy_certificates', sql: 'SELECT * FROM certificates ORDER BY created_at DESC', cols: ['issued_on', 'code', 'name', 'module', 'module_title', 'score', 'cpd_hours', 'emailed_at', 'email_error'], name: 'wavelength-academy-certificates' },
+  '/admin/academy/feedback.csv': { audit: 'export.academy_feedback', sql: 'SELECT created_at, module, useful, practice, comment FROM feedback ORDER BY created_at DESC', cols: ['created_at', 'module', 'useful', 'practice', 'comment'], name: 'wavelength-academy-feedback' },
+  '/admin/faculty/applications.csv': { audit: 'export.faculty_applications', sql: 'SELECT * FROM faculty_applications ORDER BY created_at DESC', cols: ['created_at', 'first_name', 'last_name', 'email', 'phone', 'profession', 'specialty', 'organisation', 'registration', 'experience', 'credentials', 'applications', 'interests', 'details', 'contacted'], name: 'wavelength-faculty-applications' },
+  '/admin/departments/enquiries.csv': { audit: 'export.department_enquiries', sql: 'SELECT * FROM department_enquiries ORDER BY created_at DESC', cols: ['created_at', 'first_name', 'last_name', 'email', 'phone', 'role', 'organisation', 'setting', 'training', 'topics', 'group_size', 'timing', 'details', 'contacted'], name: 'wavelength-department-enquiries' },
+};
+
 // The console behind the admin login. Cloudflare Access (worker/access.js) applies only when ACCESS_TEAM_DOMAIN and
 // ACCESS_AUD are set: then the admin's Access email is their identity in audit events, and roles from
 // settings.admin_roles decide which sections open (roleForPath).
@@ -301,14 +310,12 @@ async function adminRoute(req, env, ctx, url, p, s, who = null) {
     return page(await loginsHtml(env, req), 'logins');
   }
 
-  if (p === '/admin/academy/learners.csv') await record('export.academy_learners');
-  if (p === '/admin/academy/certificates.csv') await record('export.academy_certificates');
-  if (p === '/admin/academy/feedback.csv') await record('export.academy_feedback');
-  if (p === '/admin/faculty/applications.csv') await record('export.faculty_applications');
-  if (p === '/admin/departments/enquiries.csv') await record('export.department_enquiries');
-  if (p === '/admin/academy/learners.csv') return csvResponse((await env.DB.prepare('SELECT * FROM learners ORDER BY created_at DESC').all()).results || [], ['created_at', 'title', 'first_name', 'last_name', 'email', 'role', 'organisation', 'newsletter', 'last_seen'], 'wavelength-academy-learners');
-  if (p === '/admin/academy/certificates.csv') return csvResponse((await env.DB.prepare('SELECT * FROM certificates ORDER BY created_at DESC').all()).results || [], ['issued_on', 'code', 'name', 'module', 'module_title', 'score', 'cpd_hours', 'emailed_at', 'email_error'], 'wavelength-academy-certificates');
-  if (p === '/admin/academy/feedback.csv') return csvResponse((await env.DB.prepare('SELECT created_at, module, useful, practice, comment FROM feedback ORDER BY created_at DESC').all()).results || [], ['created_at', 'module', 'useful', 'practice', 'comment'], 'wavelength-academy-feedback');
+  // Spreadsheet downloads: one place for the query, the columns and the audit name of each.
+  const csv = CSV_EXPORTS[p];
+  if (csv) {
+    await record(csv.audit);
+    return csvResponse((await env.DB.prepare(csv.sql).all()).results || [], csv.cols, csv.name);
+  }
   if (p === '/admin/academy/') {
     if (req.method === 'POST') {
       const f = await req.formData();
@@ -324,12 +331,10 @@ async function adminRoute(req, env, ctx, url, p, s, who = null) {
     return page(await academyHtml(env, req), 'academy');
   }
 
-  if (p === '/admin/faculty/applications.csv') return csvResponse((await env.DB.prepare('SELECT * FROM faculty_applications ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'profession', 'specialty', 'organisation', 'registration', 'experience', 'credentials', 'applications', 'interests', 'details', 'contacted'], 'wavelength-faculty-applications');
   if (p === '/admin/faculty/') {
     if (req.method === 'POST') { const f = await formOf(); await facultyAdminPost(env, req); if (f) await record(`faculty.${f.get('action')}`, {}, 'faculty_application', Number(f.get('id')) || null); return redirect('/admin/faculty/'); }
     return page(await facultyAdminHtml(env), 'faculty');
   }
-  if (p === '/admin/departments/enquiries.csv') return csvResponse((await env.DB.prepare('SELECT * FROM department_enquiries ORDER BY created_at DESC').all()).results || [], ['created_at', 'first_name', 'last_name', 'email', 'phone', 'role', 'organisation', 'setting', 'training', 'topics', 'group_size', 'timing', 'details', 'contacted'], 'wavelength-department-enquiries');
   if (p === '/admin/departments/') {
     if (req.method === 'POST') { const f = await formOf(); await departmentsAdminPost(env, req); if (f) await record(`department.${f.get('action')}`, {}, 'department_enquiry', Number(f.get('id')) || null); return redirect('/admin/departments/'); }
     return page(await departmentsAdminHtml(env), 'departments');

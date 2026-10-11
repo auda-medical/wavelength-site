@@ -10,7 +10,7 @@ import {
   createAccount, issueActivation, activationAccount, completeActivation, changePassword, createSession, readSession,
   upgradeSession, markReauth, listSessions, revokeSessions, clearSessionCookie, signInAllowed, checkPasswordStep,
   enrolled, beginEnrolment, pendingSecret, finishEnrolment, checkSecondFactor, recoveryLeft, resetTwoStepStmts,
-  accountAudit, USERNAME_RE,
+  accountAudit, USERNAME_RE, revokeLinks,
 } from './accounts.js';
 import { adminPasswordProblem, checkAdminPassword, sameString, sha256Hex, otpauthUrl } from './crypto.js';
 import { permissionFor, permissionsOf, can, ROLES, SWITCHABLE, REAUTH_PERMISSIONS, REAUTH_MINUTES } from './permissions.js';
@@ -27,7 +27,8 @@ export function sameOrigin(req, url) {
   return site === 'same-origin';
 }
 // The per-session token added to every console form (worker/index.js render) and checked on every POST.
-export const withCsrf = (html, csrf) => String(html).replace(/<form\b[^>]*\bmethod="post"[^>]*>/gi, (m) => `${m}<input type="hidden" name="_csrf" value="${csrf}">`);
+// Any quoting of method=post is matched, so a form written in another style still gets the token.
+export const withCsrf = (html, csrf) => String(html).replace(/<form\b[^>]*\bmethod\s*=\s*["']?post\b["']?[^>]*>/gi, (m) => `${m}<input type="hidden" name="_csrf" value="${csrf}">`);
 const csrfOk = (f, session) => !!session && sameString(String(f.get('_csrf') || ''), session.csrf);
 const safeNext = (n) => (/^\/admin\/[A-Za-z0-9/_.\-?=&%]*$/.test(String(n || '')) && !String(n).startsWith('/admin/reauth/') ? String(n) : '/admin/');
 const activationUrl = (url, token) => `${url.origin}/admin/activate/?t=${token}`;
@@ -150,8 +151,9 @@ export async function accountRoutes(req, env, url, p, who, H) {
       const n = safeNext(f.get('next'));
       if (!(await signInAllowed(env, req))) return H.page(P.reauthPage({ csrf: who.session.csrf, next: n, error: 'Too many attempts. Wait a minute and try again.' }), '');
       const pwOk = await checkAdminPassword(env, String(f.get('password') || '').slice(0, 200), me.password_hash);
-      const codeOk = pwOk && /^\d{3}\s?\d{3}$/.test(String(f.get('code') || '').trim()) ? await checkSecondFactor(env, me, f.get('code')) : '';
-      if (!pwOk || codeOk !== 'code') {
+      // An authenticator code, or (for someone who has lost their phone) one of their recovery codes.
+      const codeOk = pwOk ? await checkSecondFactor(env, me, f.get('code')) : '';
+      if (!pwOk || !codeOk) {
         if (!pwOk) await accountAudit(env, me, 'admin.reauth_failed', { subjectId: me.id }).run();
         return H.page(P.reauthPage({ csrf: who.session.csrf, next: n, error: 'The password or code is not correct.' }), '');
       }
@@ -173,6 +175,23 @@ export async function accountRoutes(req, env, url, p, who, H) {
         if (problem) return back(problem);
         await changePassword(env, me, pw, who.session.id);
         return back('Password changed. Your other sessions have ended.');
+      }
+      // A new authenticator (a lost or replaced phone): password plus a current code or a recovery code; the old
+      // authenticator and every recovery code stop working, other sessions end, and this session goes to set-up.
+      if (action === 'two_step_renew') {
+        if (!(await signInAllowed(env, req))) return back('Too many attempts. Wait a minute and try again.');
+        const pwOk = await checkAdminPassword(env, String(f.get('current') || '').slice(0, 200), me.password_hash);
+        const how = pwOk ? await checkSecondFactor(env, me, f.get('code')) : '';
+        if (!pwOk || !how) return back('The password or code is not correct. Nothing changed.');
+        const at = iso();
+        await env.DB.batch([
+          env.DB.prepare('UPDATE admin_accounts SET totp_secret = NULL, totp_pending = NULL, totp_enrolled_at = NULL, totp_last_step = 0, updated_at = ? WHERE id = ?').bind(at, me.id),
+          env.DB.prepare('DELETE FROM admin_recovery_codes WHERE admin_id = ?').bind(me.id),
+          env.DB.prepare('DELETE FROM admin_sessions WHERE admin_id = ? AND id <> ?').bind(me.id, who.session.id),
+          env.DB.prepare("UPDATE admin_sessions SET stage = 'enrol', expires_at = ? WHERE id = ?").bind(new Date(Date.now() + 30 * 60e3).toISOString(), who.session.id),
+          accountAudit(env, me, 'admin.two_step_renew', { subjectId: me.id, meta: { with: how } }),
+        ]);
+        return H.redirect('/admin/two-step/setup/');
       }
       if (action === 'sign_out_everywhere') {
         await env.DB.batch([revokeSessions(env, me.id), accountAudit(env, me, 'admin.sign_out_everywhere', { subjectId: me.id })]);
@@ -228,6 +247,9 @@ async function ownerAccounts(req, env, url, me, H) {
     return show('Display name saved.');
   }
   if (action === 'link') {
+    // Your own link can be set once (the first owner has no one else to do it); changing it needs another owner, so
+    // nobody can quietly switch off the recognition of their own supervisor record.
+    if (self && target.learner_id) return show('Your logbook link is set. Another owner must change it.');
     const email = clip(f.get('learner_email'), 160).toLowerCase();
     const l = email ? await env.DB.prepare('SELECT id FROM learners WHERE email = ?').bind(email).first() : null;
     if (email && !l) return show('No logbook account has that email address. Nothing changed.');
@@ -263,7 +285,7 @@ async function ownerAccounts(req, env, url, me, H) {
   }
   if (action === 'disable') {
     if (target.role === 'owner' && !(await activeOwners(env, target.id))) return show('The last active owner cannot be disabled.');
-    await env.DB.batch([env.DB.prepare("UPDATE admin_accounts SET status = 'disabled', updated_at = ? WHERE id = ?").bind(iso(), target.id), revokeSessions(env, target.id), audit('admin.disable')]);
+    await env.DB.batch([env.DB.prepare("UPDATE admin_accounts SET status = 'disabled', updated_at = ? WHERE id = ?").bind(iso(), target.id), revokeSessions(env, target.id), revokeLinks(env, target.id), audit('admin.disable')]);
     return show(`${target.display_name} is disabled and signed out.`);
   }
   if (action === 'restore') {

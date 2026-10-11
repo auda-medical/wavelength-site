@@ -30,15 +30,19 @@
   box and its cookie are gone. A linked logbook account makes self-approval recognition certain, and an administrator
   can never record the independent review of their own record.
 - **Sessions** live in D1 (only the SHA-256 of the cookie token is stored): `__Secure-wl_admin_session`, HttpOnly,
-  Secure, SameSite=Strict, Path=/admin; 12 hours at most, 60 minutes idle; "last active" written at most every 5 minutes.
+  Secure, SameSite=Lax (so the return from Zoho's authorisation page keeps the session; every POST still needs the
+  per-session CSRF token), Path=/admin; 12 hours at most, 60 minutes idle; "last active" written at most every 5 minutes.
 - **CSRF**: a per-session token is added to every console form and checked on every POST, plus a same-origin check
   (Origin, or Sec-Fetch-Site).
 - **Throttling**: ten sign-in steps a minute per network address (address never stored); ten failures lock the
   account for 15 minutes; unknown usernames, wrong passwords, disabled and locked accounts all get the same answer.
 - **Passwords**: at least 12 characters, not containing the username or name; PBKDF2-SHA-256, 100,000 iterations (the
   Workers maximum), over HMAC-SHA-256 with the secret pepper. Recovery codes are keyed with the pepper too.
-- **Shared login**: works exactly as before until an Owner has finished two-step set-up; from then on it is refused,
-  but the shared password stays in `settings` as the way back in after a rollback (keep it secret).
+- **Shared login**: works exactly as before until an Owner has finished two-step set-up; from then on it is refused
+  for good (`settings.admin_accounts_live`), even while an owner is being recovered. The shared password stays in
+  `settings` as the way back in after a rollback to the old Worker (keep it secret).
+- **Lost phone**: sign in with a recovery code; re-authenticate with a recovery code; then **Your account, New phone
+  or authenticator** sets up a new one (old key and codes stop working).
 - **Emergency recovery**: `node tools/admin-recover.mjs <owner> [--reset-two-step]` prints one SQL command (run with the
   owner's own Cloudflare login) and a two-hour, single-use owner link.
 - Cloudflare Access stays off and untouched.
@@ -47,14 +51,14 @@
 
 | Area | Files |
 |---|---|
-| New | `worker/admin/crypto.js`, `accounts.js`, `permissions.js`, `routes.js`, `pages.js`; `migrations/0017_admin_accounts.sql`; `tools/admin-recover.mjs`, `tools/e2e-admin-accounts.mjs`; `test/admin-accounts.test.mjs`, `admin-permissions.test.mjs`, `admin-registry.test.mjs`, `admin-recovery.test.mjs`, `test/helpers/admin-accounts.mjs`; this folder |
+| New | `test/admin-review-fixes.test.mjs`, `worker/admin/crypto.js`, `accounts.js`, `permissions.js`, `routes.js`, `pages.js`; `migrations/0017_admin_accounts.sql`; `tools/admin-recover.mjs`, `tools/e2e-admin-accounts.mjs`; `test/admin-accounts.test.mjs`, `admin-permissions.test.mjs`, `admin-registry.test.mjs`, `admin-recovery.test.mjs`, `test/helpers/admin-accounts.mjs`; this folder |
 | Changed | `worker/index.js` (accounts mode, gate, attribution, CSRF in `render`), `worker/admin-console.js` (navigation by permission, Administrators section, Your account), `worker/supervisors-admin.js` (account attribution, linked-account self-recognition, last-approval rule), `CLAUDE.md` |
 
 ## 3. Tests (11 October 2026)
 
 | Run | Result |
 |---|---|
-| Full suite (`node --import ./test/helpers/register.mjs --test --test-concurrency=1 test/*.test.mjs`) | **289/289** (Release B's 267, unchanged, plus 22 new) |
+| Full suite (`node --import ./test/helpers/register.mjs --test --test-concurrency=1 test/*.test.mjs`) | **296/296** (Release B's 267, unchanged, plus 29 new) |
 | Browser, accounts journey (`tools/e2e-admin-accounts.mjs`) | **31/31**: bootstrap, activation, QR and key, recovery codes, adding the General Manager, her set-up, refused delete, two-step sign-in; ten pages at 390 and 1440 px without overflow; no console errors |
 | Browser, existing checks (shared login) | `e2e-verified` 274/274; `e2e-monitor` 46/46 |
 | Dry run | 1,041.93 KiB (gzip 291.19 KiB) |
@@ -67,7 +71,10 @@ CSRF (missing, other session's, forged token; foreign or missing origin); 10-min
 audit; fail-closed without secrets; every GET route and every POST action for both roles (each refusal 403 with an
 unchanged database); switchable permissions on and off; account attribution ignoring a typed name; owner-only revoke
 all (including the last approval) and merge; linked-account self-approval and independent review; emergency recovery
-with and without two-step reset, owner-only, input checked.
+with and without two-step reset, owner-only, input checked. After the code review: accounts mode stays on through an
+owner recovery; recovery codes for re-authentication and a new authenticator; disabling ends activation links; your own
+logbook link cannot be changed by yourself once set; the same failure records for known and unknown usernames; CSRF
+token in any form quoting style.
 
 ## 4. Deployment runbook (only after a separate owner approval)
 
