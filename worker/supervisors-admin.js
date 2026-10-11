@@ -9,10 +9,12 @@
 // the application, and the lifecycle decisions: approve (or confirm a renewal in one step), ask for more information,
 // reject, end a renewal's grace period, revoke, reinstate and lift a block. Decisions also go to audit_events.
 import LOGBOOK from '../data/logbook.json';
-import { REG, TYPE, BODY, logEvent, checkRegistration, currentStatus, badgesFrom, scopeLabel, parseList } from './professional.js';
+import { REG, TYPE, BODY, logEvent, checkRegistration, currentStatus, badgesFrom, scopeLabel, parseList, isCurrentCred } from './professional.js';
 import { sendMail } from './academy.js';
 import { verificationReady, lifecycleReady, fullName } from './app-util.js';
-import { standingOf, suggestedScopes, areaLabels, activateClaimedLinks, supervisorUnavailable, AREAS } from './supervisor-lifecycle.js';
+import { standingOf, suggestedScopes, areaLabels, activateClaimedLinks, supervisorUnavailable, AREAS, verificationOf } from './supervisor-lifecycle.js';
+import { approvedGroups, groupLine } from './verification/status.js';
+import { matchNames } from './verification/names.js';
 import { queueStmt, deliver, deliverLater } from './notify.js';
 import { receiptKey, receiptFor } from './supervisor-apply.js';
 import { auditStmt, audit } from './audit.js';
@@ -34,20 +36,76 @@ const REG_QUEUE = ['pending', 'manual_verification_required', 'manual_review', '
 const CRED_QUEUE = ['claimed', 'evidence_required', 'manual_review', 'more_evidence', 'not_found', 'source_unavailable', 'directory_match', 'identity_pending'];
 const NAV = `<a class="text-link" href="/admin/volunteers/">Volunteers</a> · <a class="text-link" href="/admin/academy/">Academy</a> · <a class="text-link" href="${BASE}">Supervisor verification</a> · <a class="text-link" href="/admin/organisations/">Organisations</a>`;
 const name = (l) => [l.title, l.first_name, l.last_name].filter(Boolean).join(' ');
-const reviewerField = '<label>Your name (recorded with the decision)<input name="reviewer" autocomplete="name" maxlength="80" required></label>';
+// Who decided. With Cloudflare Access the verified email is recorded instead (worker/index.js), and the field is
+// replaced by a line saying so; without it the name typed once is remembered for the session (wl_reviewer cookie).
+const REVIEWER_INPUT = '<input name="reviewer" autocomplete="name" maxlength="80" required>';
+const reviewerField = `<label>Your name (recorded with the decision)${REVIEWER_INPUT}</label>`;
 const form = (action, hidden, inner, button, confirmText) => `<form class="form sv-form" method="post"${confirmText ? ` onsubmit="return confirm(this.dataset.confirm)" data-confirm="${esc(confirmText)}"` : ''}><input type="hidden" name="action" value="${action}">${Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join('')}${inner}${reviewerField}<button class="btn btn-ghost small" type="submit">${esc(button)}</button></form>`;
-const STYLE = '<style>.sv-grid{display:grid;gap:18px}.sv-card{background:#fff;border:1px solid #E4E0D7;border-radius:12px;padding:18px;overflow-wrap:anywhere}.sv-card h4{margin:0 0 6px}.sv-form{display:grid;gap:8px;margin:10px 0;padding:12px;border:1px dashed #E4E0D7;border-radius:10px}.sv-form label{display:grid;gap:4px;font-size:14px}.sv-actions{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.sv-status{display:inline-block;padding:2px 10px;border-radius:99px;background:#EDEAE3;font-size:13px}.sv-ok{background:#DDEFE9}.sv-bad{background:#F6DEDA}.sv-checks{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0 0 8px}.sv-checks legend{font-weight:600;font-size:14px;margin-bottom:4px}.sv-form .sv-checks label,.sv-form label.consent{display:inline-flex;flex-direction:row;gap:6px;align-items:center}.sv-form input[type=checkbox]{width:18px;height:18px;min-height:0;flex:none;margin:0}.sv-actions{align-items:start}.sv-form button{justify-self:start;align-self:start;width:auto;height:auto;min-height:0}.sv-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.sv-tabs a{padding:6px 12px;border-radius:99px;border:1px solid #E4E0D7;text-decoration:none;color:inherit;font-size:14px}.sv-tabs a[aria-current=page]{background:#0F1E33;color:#fff;border-color:#0F1E33}.sv-banner{padding:12px 14px;border-radius:10px;background:#EDEAE3;margin:10px 0}.sv-warn{background:#F6DEDA}.sv-good{background:#DDEFE9}.sv-text{white-space:pre-wrap;overflow-wrap:anywhere;background:#F7F5F0;border-radius:8px;padding:10px;margin:6px 0}.sv-dl{display:grid;grid-template-columns:minmax(120px,220px) 1fr;gap:6px 14px;margin:8px 0}.sv-dl dt{font-weight:600}.sv-dl dd{margin:0;overflow-wrap:anywhere}@media(max-width:600px){.sv-dl{grid-template-columns:1fr}}</style>';
+const STYLE = '<style>.sv-more{margin:4px 0 8px}.sv-more summary{cursor:pointer;font-size:14px;font-weight:600;padding:4px 0}.sv-list{margin:6px 0 0;padding-left:0;list-style:none;display:grid;gap:4px}.sv-ok-i{color:#2E7D5B;font-weight:700;margin-right:6px}.sv-no-i{color:#B4453A;font-weight:700;margin-right:6px}.sv-na-i{color:#6B7684;font-weight:700;margin-right:8px}.sv-main{grid-template-columns:minmax(0,640px)}.sv-other{margin-top:14px}.sv-other>summary{padding:8px 0}.sv-form button[disabled]{opacity:.6;cursor:progress}.sv-grid{display:grid;gap:18px}.sv-card{background:#fff;border:1px solid #E4E0D7;border-radius:12px;padding:18px;overflow-wrap:anywhere}.sv-card h4{margin:0 0 6px}.sv-form{display:grid;gap:8px;margin:10px 0;padding:12px;border:1px dashed #E4E0D7;border-radius:10px}.sv-form label{display:grid;gap:4px;font-size:14px}.sv-actions{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.sv-status{display:inline-block;padding:2px 10px;border-radius:99px;background:#EDEAE3;font-size:13px}.sv-ok{background:#DDEFE9}.sv-bad{background:#F6DEDA}.sv-checks{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0 0 8px}.sv-checks legend{font-weight:600;font-size:14px;margin-bottom:4px}.sv-form .sv-checks label,.sv-form label.consent{display:inline-flex;flex-direction:row;gap:6px;align-items:center}.sv-form input[type=checkbox]{width:18px;height:18px;min-height:0;flex:none;margin:0}.sv-actions{align-items:start}.sv-form button{justify-self:start;align-self:start;width:auto;height:auto;min-height:0}.sv-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.sv-tabs a{padding:6px 12px;border-radius:99px;border:1px solid #E4E0D7;text-decoration:none;color:inherit;font-size:14px}.sv-tabs a[aria-current=page]{background:#0F1E33;color:#fff;border-color:#0F1E33}.sv-banner{padding:12px 14px;border-radius:10px;background:#EDEAE3;margin:10px 0}.sv-warn{background:#F6DEDA}.sv-good{background:#DDEFE9}.sv-text{white-space:pre-wrap;overflow-wrap:anywhere;background:#F7F5F0;border-radius:8px;padding:10px;margin:6px 0}.sv-dl{display:grid;grid-template-columns:minmax(120px,220px) 1fr;gap:6px 14px;margin:8px 0}.sv-dl dt{font-weight:600}.sv-dl dd{margin:0;overflow-wrap:anywhere}@media(max-width:600px){.sv-dl{grid-template-columns:1fr}}</style>';
 const pill = (s) => `<span class="sv-status ${s === 'verified' || s === 'approved' ? 'sv-ok' : ['rejected', 'revoked', 'mismatch', 'not_current', 'expired'].includes(s) ? 'sv-bad' : ''}">${esc(String(s).replace(/_/g, ' '))}</span>`;
 
-export async function supervisorsAdminHtml(env, url, admin = '') {
+// ---------- Self-approval (supervisor QA, October 2026) ----------
+// Does the person recording a decision look like the person it is about? With Access, the verified email decides.
+// Without it the typed name is compared with the account name: a full match, a near match (initials, middle names)
+// or a single word that is the person's first or family name. False alarms only ask for an acknowledgement.
+export function looksLikeSelf(l, reviewer) {
+  const r = String(reviewer || '').trim();
+  if (!l || !r) return false;
+  if (r.includes('@')) return r.toLowerCase() === String(l.email || '').toLowerCase();
+  const fold = (x) => String(x || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z\s'-]/g, ' ');
+  const words = fold(r).replace(/^\s*(dr|prof|professor|mr|mrs|ms|miss|mx)\b/, ' ').split(/[\s-]+/).filter(Boolean);
+  const own = new Set(fold(`${l.first_name} ${l.last_name}`).split(/[\s-]+/).filter(Boolean));
+  if (words.length === 1) return own.has(words[0]);
+  const m = matchNames({ given: l.first_name, family: l.last_name }, words.join(' '));
+  return m.result === 'match' || (m.result === 'review' && m.method !== 'incomplete');
+}
+// The reviewer part of an actor id ("admin:wavelength:Firas" or "admin:access:x@y" → the name or email).
+const reviewerOf = (actor) => String(actor || '').split(':').slice(2).join(':');
+
+// ---------- Approval email status (one indicator for administrators) ----------
+// notification_log statuses, said exactly: 'sent' means ZeptoMail accepted the message for sending. Wavelength gets
+// no delivery or bounce reports, so nothing here ever says delivered.
+const EMAIL_WORDS = {
+  none: ['Not generated', 'No approval email exists for this decision.'],
+  pending: ['Queued', 'Waiting to be handed to the email provider.'],
+  sending: ['Submitting', 'Being handed to the email provider now.'],
+  sent: ['Accepted by the email provider', 'ZeptoMail accepted it for sending. Delivery to the inbox is not confirmed: Wavelength receives no delivery or bounce reports.'],
+  failed: ['Failed', 'The email provider refused it, or email sending is not set up. It is retried by the daily job, up to three attempts.'],
+  unknown: ['Unknown', 'The email provider did not answer. It may or may not have gone, so it is never retried on its own.'],
+};
+export async function approvalEmailRow(env, { key = null, learnerId = null } = {}) {
+  if (key) return env.DB.prepare('SELECT key, status, attempts, last_error, created_at, sent_at, payload IS NOT NULL AS resendable FROM notification_log WHERE key = ?').bind(key).first();
+  return env.DB.prepare("SELECT key, status, attempts, last_error, created_at, sent_at, payload IS NOT NULL AS resendable FROM notification_log WHERE learner_id = ? AND kind = 'app_approved' ORDER BY created_at DESC LIMIT 1").bind(learnerId).first();
+}
+function emailStatusHtml(row, back = {}) {
+  const st = row ? row.status : 'none';
+  const [word, help] = EMAIL_WORDS[st] || [st, ''];
+  const when = row ? (row.sent_at || row.created_at || '').slice(0, 16).replace('T', ' ') : '';
+  const cls = st === 'sent' ? 'sv-good' : ['failed', 'unknown'].includes(st) ? 'sv-warn' : '';
+  const retry = row && ['failed', 'unknown'].includes(st) && row.resendable ? form('notif_resend', { key: row.key, ...back }, '', 'Send again', 'Send the approval email again? If the first one did arrive, the supervisor gets it twice.') : '';
+  return `<div class="sv-banner ${cls}" data-email-status="${esc(st)}"><b>Approval email: ${esc(word)}</b>${when ? ` <small>(${esc(when)} UTC${row.attempts ? `, ${row.attempts} attempt${row.attempts === 1 ? '' : 's'}` : ''})</small>` : ''}<br><small>${esc(help)}${row && row.last_error && st !== 'sent' ? ` Last error: ${esc(row.last_error)}.` : ''}</small>${retry}</div>`;
+}
+
+// opts.reviewer: the name remembered from this administrator's last decision; opts.access: their Access email.
+export async function supervisorsAdminHtml(env, url, admin = '', opts = {}) {
+  const html = await adminPage(env, url, admin, opts);
+  const who = opts.access ? `<p class="form-note">Recorded as ${esc(opts.access)} (Cloudflare Access).</p><input type="hidden" name="reviewer" value="access">` : null;
+  // Repeated clicks: the static admin shell (build.js) disables a sent .sv-form's button at once; the server's guarded
+  // updates and outbox keys are the real protection.
+  return (who ? html.split(reviewerField).join(who) : opts.reviewer ? html.split(REVIEWER_INPUT).join(REVIEWER_INPUT.replace(' required', ` value="${esc(clip(opts.reviewer, 80))}" required`)) : html);
+}
+async function adminPage(env, url, admin = '', opts = {}) {
   if (!(await verificationReady(env))) return `${STYLE}<h2 class="display" style="font-size:34px;margin:0 0 8px">Supervisor verification</h2><p class="admin-summary">Not available yet: apply migrations/0011_verification.sql to the database first. ${NAV}</p>`;
   const m = url.searchParams.get('m') || '';
   const id = Number(url.searchParams.get('id'));
   const appId = Number(url.searchParams.get('app'));
-  const note = m ? `<p class="form-note" style="font-weight:600">${esc(m)}</p>` : '';
+  // The outcome of the last action, where the eye lands: green when it worked, amber when the email did not go.
+  const tone = /Approval email: (failed|unknown|not generated)/.test(m) ? 'sv-warn' : /^(Approved|Renewal approved|\d+ scopes? approved|Application recorded|Independent review recorded|GMC registration verified|Registration verified|Credential approved|Sent)/.test(m) ? 'sv-good' : '';
+  const note = m ? `<p class="sv-banner ${tone}" role="status" style="font-weight:600">${esc(m)}</p>` : '';
   const life = await lifecycleReady(env);
-  if (life && appId) return STYLE + await applicationDetail(env, appId, note);
-  if (id) return STYLE + await detail(env, id, note, life);
+  const me = opts.access || opts.reviewer || '';
+  if (life && appId) return STYLE + await applicationDetail(env, appId, note, me);
+  if (id) return STYLE + await detail(env, id, note, life, me);
   return STYLE + (life ? await queues(env, url.searchParams.get('tab') || 'new', note) : await list(env, note));
 }
 
@@ -124,7 +182,13 @@ async function queues(env, tab, note) {
   const dueSoon = (await env.DB.prepare(`SELECT a.learner_id, MIN(a.review_on) AS review_on, l.title, l.first_name, l.last_name FROM supervisor_approvals a JOIN learners l ON l.id = a.learner_id WHERE a.status = 'approved' AND a.review_on >= ? AND a.review_on <= ?
       AND NOT EXISTS (SELECT 1 FROM supervisor_applications s WHERE s.learner_id = a.learner_id AND s.kind = 'renewal' AND s.status IN ('draft', 'submitted', 'more_info')) GROUP BY a.learner_id ORDER BY review_on`).bind(day, addDays(day, 14)).all()).results || [];
   const notif = (await env.DB.prepare("SELECT COUNT(*) AS n FROM notification_log WHERE status IN ('unknown') OR (status = 'failed' AND attempts >= 3)").first()).n;
-  const attention = lapses.length + pastDate.length + dueSoon.length + (notif ? 1 : 0);
+  // Approval emails that have not been accepted by the provider, at any attempt: the supervisor may not know.
+  const approvalMail = (await env.DB.prepare("SELECT n.key, n.learner_id, n.status, n.last_error, l.title, l.first_name, l.last_name FROM notification_log n LEFT JOIN learners l ON l.id = n.learner_id WHERE n.kind = 'app_approved' AND n.status IN ('failed', 'unknown') ORDER BY n.created_at DESC LIMIT 50").all()).results || [];
+  // Open applications of people who already hold a current approval (approved from the person page before October
+  // 2026, or a genuine further application): each needs a decision so the app does not say "under review".
+  const staleOpen = (await env.DB.prepare(`${APP_SQL} WHERE a.status IN ('submitted', 'more_info') AND a.kind != 'renewal' AND EXISTS (SELECT 1 FROM supervisor_approvals x WHERE x.learner_id = a.learner_id AND x.status = 'approved') ORDER BY a.submitted_at`).all()).results || [];
+  const selfRows = await selfApprovals(env);
+  const attention = lapses.length + pastDate.length + dueSoon.length + (notif ? 1 : 0) + approvalMail.length + staleOpen.length + selfRows.length;
   const tabs = [['new', `New applications (${fresh.length})`], ['more', `Waiting for information (${more.length})`], ['renewals', `Renewals (${renewals.length})`], ['attention', `Needs attention (${attention})`], ['claims', `Registration and credential checks (${claims.length})`], ['ended', 'Decided and ended'], ['people', 'People'], ['system', 'System']];
   if (!tabs.some(([k]) => k === tab)) tab = 'new';
   const nav = `<nav class="sv-tabs" aria-label="Queues">${tabs.map(([k, label]) => `<a href="${BASE}?tab=${k}"${k === tab ? ' aria-current="page"' : ''}>${esc(label)}</a>`).join('')}</nav>`;
@@ -139,6 +203,9 @@ async function queues(env, tab, note) {
       ...lapses.map((w) => row(w, `Paused since ${esc(w.lapse_since)}: ${esc({ registration: 'registration not current', credential: 'a required credential is not current', email: 'email not confirmed' }[w.lapse_reason] || w.lapse_reason)}. Learners are told after 14 days.`)),
       ...pastDate.map((r) => row(r, `Review date ${esc(r.review_on)} has passed: renewal under review (grace until ${esc(addDays(r.review_on, 30))}), or waiting for the daily job to end it.`)),
       ...dueSoon.map((r) => row(r, `Review date ${esc(r.review_on)} within 14 days and no renewal started.`)),
+      ...staleOpen.map((a) => row(a, `Application <a class="text-link" href="${BASE}?app=${a.id}">#${a.id}</a> is still open although they hold a current approval, so their app also says it is under review. Record it as approved or decide it.`)),
+      ...selfRows.map((r) => row(r, `Approved by ${esc(reviewerOf(r.approved_by) || 'an administrator')} on ${esc((r.approved_at || '').slice(0, 10))}, who appears to be the supervisor. An independent review by another administrator is recommended.`)),
+      ...approvalMail.map((n) => row(n, `Approval email ${esc(n.status)}${n.last_error ? ` (${esc(n.last_error)})` : ''}: the supervisor may not know they were approved. Resend it from their page or the System tab.`)),
     ];
     body = `${notif ? `<p class="sv-banner sv-warn">${notif} email${notif === 1 ? '' : 's'} may not have gone. See <a class="text-link" href="${BASE}?tab=system">System</a>.</p>` : ''}${rows.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Supervisor</th><th scope="col">What needs attention</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>` : '<p class="admin-summary">Nothing needs attention.</p>'}`;
   }
@@ -173,11 +240,35 @@ async function systemTab(env) {
 
 // ---------- One application ----------
 const PATHWAY_NAMES = { rcem: 'RCEM', famus: 'FAMUS', fusic: 'FUSIC', international: 'International pathways and frameworks', general: 'General or local logbooks' };
-const scopeBoxes = (ticked) => PATHS.map((p) => `<fieldset class="sv-checks"><legend>${esc(p.label)}</legend><label><input type="checkbox" name="scope" value="${p.id}:*"${ticked.includes(`${p.id}:*`) ? ' checked' : ''}>All modules</label>${p.modules.map((m) => `<label><input type="checkbox" name="scope" value="${p.id}:${m.id}"${ticked.includes(`${p.id}:${m.id}`) ? ' checked' : ''}>${esc(m.label)}</label>`).join('')}</fieldset>`).join('');
+const pathwayBox = (p, ticked) => `<fieldset class="sv-checks"><legend>${esc(p.label)}</legend><label><input type="checkbox" name="scope" value="${p.id}:*"${ticked.includes(`${p.id}:*`) ? ' checked' : ''}>All modules</label>${p.modules.map((m) => `<label><input type="checkbox" name="scope" value="${p.id}:${m.id}"${ticked.includes(`${p.id}:${m.id}`) ? ' checked' : ''}>${esc(m.label)}</label>`).join('')}</fieldset>`;
+// The pathways that matter for this decision (requested, or already ticked) open; every other pathway one tap away.
+const INTERNATIONAL = ['eusem', 'eusem2', 'acem', 'cpocus', 'acep'];
+function scopeBoxes(ticked, requested = []) {
+  const focus = new Set([...ticked.map((s) => s.split(':')[0]), ...requested.flatMap((p) => (p === 'international' ? INTERNATIONAL : [p]))]);
+  const shown = PATHS.filter((p) => focus.has(p.id)), rest = PATHS.filter((p) => !focus.has(p.id));
+  if (!shown.length) return PATHS.map((p) => pathwayBox(p, ticked)).join('');
+  return shown.map((p) => pathwayBox(p, ticked)).join('') + (rest.length ? `<details class="sv-more"><summary>Other pathways (${rest.length})</summary>${rest.map((p) => pathwayBox(p, ticked)).join('')}</details>` : '');
+}
+const roleSelect = () => `<label>Verified role<select name="capacity">${CAPACITIES.map((k) => `<option value="${k}"${k === 'supervisor' ? ' selected' : ''}>${esc(capacityLabel(k))}</option>`).join('')}</select></label>`;
+const basisBoxes = (creds, ticked = []) => (creds.length ? `<fieldset class="sv-checks"><legend>Credentials this approval relies on</legend>${creds.map((c) => `<label><input type="checkbox" name="basis" value="${c.id}"${ticked.includes(c.id) ? ' checked' : ''}>${esc((TYPE[c.credential_type] || {}).label || c.credential_type)}: ${esc(parseList(c.modules).join(', '))}</label>`).join('')}<small class="form-note">If one of these expires or is withdrawn, supervisor status pauses until it is current again.</small></fieldset>` : '<p class="form-note">No verified credentials. The approval rests on the registration and the application.</p>');
+const optionalNote = '<details class="sv-more"><summary>Add a note (optional)</summary><label>Note (internal, not sent)<textarea name="notes" maxlength="1000"></textarea></label></details>';
+const selfBox = '<div class="sv-banner sv-warn"><b>This looks like your own application.</b> Wavelength recommends that another administrator decides it. If you approve it yourself, it is recorded as a self-approval and listed for an independent review.<label class="consent"><input type="checkbox" name="self_ack" value="1"><span>I am approving my own supervisor status</span></label><label>What independent evidence supports it (required, recorded)<textarea name="self_reason" maxlength="1000"></textarea></label></div>';
+const selfBoxFor = (env) => (env.SUPERVISOR_SELF_APPROVAL === 'refuse' ? '<div class="sv-banner sv-warn"><b>This looks like your own application.</b> Another administrator must decide it (SUPERVISOR_SELF_APPROVAL is "refuse").</div>' : selfBox);
+// "Before approving": the three things a reviewer checks, read from the records.
+function checklist(st, creds) {
+  const tick = (ok) => (ok ? '<span class="sv-ok-i" aria-label="Done">✓</span>' : '<span class="sv-no-i" aria-label="Not yet">✗</span>');
+  const reg = st.registrations.find((r) => r.active && r.status === 'verified');
+  const pending = st.registrations.find((r) => r.active && r.status !== 'verified');
+  return `<div class="sv-banner"><b>Before approving</b><ul class="sv-list">
+    <li>${tick(st.learner && st.learner.email_status === 'verified')} Email ${st.learner && st.learner.email_status === 'verified' ? 'confirmed' : 'not confirmed: an approval would not count'}</li>
+    <li>${tick(!!reg)} Professional registration ${reg ? `${esc((REG[reg.regulator] || {}).short || reg.regulator)} verified ${esc((reg.verified_at || '').slice(0, 10))}` : pending ? `${esc((REG[pending.regulator] || {}).short || pending.regulator)} ${esc(String(pending.status).replace(/_/g, ' '))}` : 'none given'}</li>
+    <li>${creds.length ? tick(creds.some((c) => isCurrentCred(c))) : '<span class="sv-na-i" aria-label="None claimed">–</span>'} Credentials ${creds.length ? creds.map((c) => `${esc((TYPE[c.credential_type] || {}).label || c.credential_type)} (${esc(isCurrentCred(c) ? 'verified' : String(c.status).replace(/_/g, ' '))})`).join(', ') : 'none claimed'}</li>
+  </ul></div>`;
+}
 // The new "approved until" date: 12 months from today, or from the current review date for an early renewal.
 const renewBase = (approvals, day) => { const cur = approvals.map((a) => a.review_on).filter(Boolean).sort()[0]; return cur && cur > day ? cur : day; };
 
-async function applicationDetail(env, appId, note) {
+async function applicationDetail(env, appId, note, me = '') {
   const a = await env.DB.prepare(`${APP_SQL} WHERE a.id = ?`).bind(appId).first();
   if (!a) return `<p class="admin-summary">Application not found. <a class="text-link" href="${BASE}">Back to the queues</a></p>`;
   const st = await currentStatus(env, a.learner_id);
@@ -202,9 +293,15 @@ async function applicationDetail(env, appId, note) {
   const lastApproved = await env.DB.prepare("SELECT approved_scopes FROM supervisor_applications WHERE learner_id = ? AND status = 'approved' ORDER BY id DESC LIMIT 1").bind(a.learner_id).first();
   const ticked = live.length ? live.map((x) => `${x.pathway}:${x.module}`) : lastApproved && jsonList(lastApproved.approved_scopes).length ? jsonList(lastApproved.approved_scopes) : suggestedScopes(areas, pathways);
   const until = addMonths(renewBase(renewal ? live : [], day), 12);
-  const verifiedCreds = st.credentials.filter((c) => c.status === 'verified');
+  const verifiedCreds = st.credentials.filter(isCurrentCred);
   const H = { app: a.id };
-  const banner = [];
+  const banner = [checklist(st, creds)];
+  // An application left open after the person was approved from the person page (the cause of "Verified" and "under
+  // review" together in the app, October 2026). Record it as decided, without changing any approval.
+  const currentNow = live.filter((x) => x.current);
+  if (open && !renewal && currentNow.length) banner.push(`<div class="sv-banner sv-warn"><b>Already approved:</b> ${esc(approvedGroups(currentNow).map(groupLine).join('; '))}. This application is still open, so the supervisor's app also says it is under review. If nothing else was asked for, record it as approved. Otherwise decide it below.
+    ${form('app_close_approved', H, '<label class="consent"><input type="checkbox" name="send_email" value="1"><span>Also email the supervisor their approval confirmation (leave unticked if they already know)</span></label>', 'Record as approved (no change to approvals)')}</div>`);
+  if (a.status === 'approved') banner.push(emailStatusHtml(await approvalEmailRow(env, { key: `app_approved:${a.id}` }), H));
   if (st.block) banner.push(`<p class="sv-banner sv-warn">This account is blocked (${esc(st.block.kind === 'revoked' ? 'supervisor status revoked' : 'rejected on verification or safety grounds')}, ${esc((st.block.blocked_at || '').slice(0, 10))}). Lift the block on the <a class="text-link" href="${BASE}?id=${a.learner_id}">person page</a> before approving.</p>`);
   if (!st.learner || st.learner.email_status !== 'verified') banner.push('<p class="sv-banner sv-warn">The email address is not confirmed. An approval would not count until it is.</p>');
   if (!st.hasReg) banner.push(`<p class="sv-banner sv-warn">${a.no_registration ? 'The applicant says they are not on a statutory register.' : 'The registration is not verified yet.'} Verify it on the <a class="text-link" href="${BASE}?id=${a.learner_id}">person page</a>, or record a registration exemption with your reason below. An exemption covers the registration only: you must still be satisfied about identity and experience.</p>`);
@@ -213,13 +310,16 @@ async function applicationDetail(env, appId, note) {
     banner.push(`<p class="sv-banner">${cur ? `Current approval runs until ${esc(longDate(cur))}. ` : 'No approval is live (it may have expired). '}${a.current_at_submit ? 'Sent on time while fully approved' : 'Not sent while fully approved and current'}${a.grace_blocked ? '; grace ended by an administrator' : ''}. Standing now: <b>${esc(standing.standing.replace(/_/g, ' '))}</b>.</p>`);
   }
   const dl = (rows) => `<dl class="sv-dl">${rows.filter(([, v]) => v !== null && v !== undefined && v !== '').map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
-  const actions = !open ? '' : `<h3 style="margin:28px 0 10px">Decision</h3><div class="sv-actions">
+  // Approve (or confirm a renewal) is the main decision, full width; the rest is one tap away under Other decisions.
+  const actions = !open ? '' : `<h3 style="margin:28px 0 10px">Decision</h3><div class="sv-actions sv-main">
     ${renewal && live.length ? form('app_confirm_renewal', H, `<p class="form-note">Renews the same scopes (${esc(live.map((x) => scopeLabel(x.pathway, x.module)).join(', '))}) until ${esc(longDate(until))}, keeping their basis. Use "Approve" instead to change scopes or basis.</p><label>Note (optional)<input name="notes" maxlength="500"></label>`, 'Confirm renewal') : ''}
-    ${form('app_approve', H, `<p class="form-note">Scopes: pre-ticked from the areas and pathways requested${live.length ? ' and the current approval' : ''}. Tick only what the evidence supports.</p>${scopeBoxes(ticked)}<label>Capacity for new scopes<select name="capacity">${CAPACITIES.map((k) => `<option value="${k}"${k === 'supervisor' ? ' selected' : ''}>${esc(capacityLabel(k))}</option>`).join('')}</select></label>
-      <p class="form-note">Credentials this approval relies on. If one of them expires or is withdrawn, supervisor status pauses until it is current again.</p><div class="sv-checks">${verifiedCreds.map((c) => `<label><input type="checkbox" name="basis" value="${c.id}">${esc((TYPE[c.credential_type] || {}).label || c.credential_type)}: ${esc(parseList(c.modules).join(', '))}</label>`).join('') || '<span class="admin-summary">No verified credentials. Record the basis in the note.</span>'}</div>
+    ${form('app_approve', H, `<p class="form-note">Modules: pre-ticked from what was requested${live.length ? ' and the current approval' : ''}. Tick only what the evidence supports.</p>${scopeBoxes(ticked, pathways)}${roleSelect()}
+      ${basisBoxes(verifiedCreds, credIds)}
       <label>Approved until (12 months at most)<input type="date" name="review_on" value="${esc(until)}" max="${esc(until)}" required></label>
       ${st.hasReg ? '' : '<label class="consent"><input type="checkbox" name="exempt" value="1"><span>Registration exemption: approve without a verified registration</span></label><label>Reason for the exemption, and how you checked identity and experience instead<textarea name="exempt_reason" maxlength="1000"></textarea></label>'}
-      <label>Decision note (basis and reasoning; not sent to the applicant)<textarea name="notes" required maxlength="1000"></textarea></label>`, renewal ? 'Approve renewal' : 'Approve')}
+      ${me && looksLikeSelf(st.learner, me) ? selfBoxFor(env) : ''}${optionalNote}
+      <p class="form-note">Recorded automatically: who decided and when, the modules, role, credentials and evidence, and the status before and after. The supervisor is emailed once the approval is saved.</p>`, renewal ? 'Approve renewal' : 'Approve')}
+  </div><details class="sv-more sv-other"><summary>Other decisions: ask for more information, reject${renewal ? ', end the grace period' : ''}, send the receipt</summary><div class="sv-actions">
     ${a.status === 'submitted' ? form('app_receipt', H, '<p class="form-note">Sends the applicant the normal receipt for their current submission if it was never sent. It never sends a second copy and changes nothing in the application.</p>', 'Send submission receipt') : ''}
     ${a.status === 'submitted' ? form('app_more', H, '<label>What you need (emailed to the applicant)<textarea name="notes" required maxlength="800"></textarea></label>', 'Ask for more information') : ''}
     ${form('app_reject', H, `<label>Grounds<select name="grounds" required><option value="insufficient_evidence">Not enough evidence or experience</option><option value="verification_or_safety">Verification or safety grounds (blocks one-off assessor signing)</option></select></label>
@@ -229,7 +329,7 @@ async function applicationDetail(env, appId, note) {
       <label class="consent"><input type="checkbox" name="one_off" value="1"><span>Verification or safety grounds only: one-off assessment through Wavelength remains permitted</span></label>
       <label>Why one-off assessment remains permitted<input name="one_off_note" maxlength="500"></label>`, 'Reject', 'Reject this application? The applicant is emailed and any learners waiting on them are told.')}
     ${renewal && a.status === 'submitted' && !a.grace_blocked ? form('grace_block', H, '<label>Material change found (ends the 30-day grace period)<textarea name="notes" required maxlength="800"></textarea></label>', 'End the grace period', 'End the grace period? If the review date has passed, supervisor status pauses at once.') : ''}
-  </div>`;
+  </div></details>`;
   return `<h2 class="display" style="font-size:34px;margin:0 0 8px">${esc(KIND[a.kind] || a.kind)} #${a.id}: ${esc(name(a))}</h2>
   <p class="admin-summary">${pill(a.status)} · ${a.submitted_at ? `Sent ${esc(a.submitted_at.slice(0, 10))}, waiting ${businessDaysSince(a.submitted_at)} business days` : 'Not sent yet'} · <a class="text-link" href="${BASE}?id=${a.learner_id}">Person page</a> · <a class="text-link" href="${BASE}?tab=${renewal ? 'renewals' : 'new'}">Back to the queue</a></p>${note}
   <p class="sv-banner ${b.cls}"><b>Basis:</b> ${esc(b.text)}. ${esc(regText(a))}.${a.justification ? ` Written explanation: ${String(a.justification).length} characters.` : ''}</p>${banner.join('')}
@@ -257,7 +357,7 @@ async function applicationDetail(env, appId, note) {
   ${previous.length ? `<h3 style="margin:28px 0 10px">Other applications</h3><ul>${previous.map((x) => `<li><a class="text-link" href="${BASE}?app=${x.id}">#${x.id} ${esc(KIND[x.kind] || x.kind)}</a> ${pill(x.status)} ${esc((x.decided_at || x.submitted_at || '').slice(0, 10))}</li>`).join('')}</ul>` : ''}`;
 }
 
-async function detail(env, id, note, life = false) {
+async function detail(env, id, note, life = false, me = '') {
   const st = await currentStatus(env, id);
   const l = st.learner;
   if (!l) return `<p class="admin-summary">Not found. ${NAV}</p>`;
@@ -308,13 +408,20 @@ async function detail(env, id, note, life = false) {
     </div>` : ''}</div>`;
   }).join('') || '<p class="admin-summary">No credentials claimed.</p>';
   const appRows = allApps.map((a) => `<tr><td>${esc(scopeLabel(a.pathway, a.module))}<br><small>${esc(capacityLabel(a.capacity || 'supervisor'))}</small></td><td>${pill(a.status)}${a.status === 'approved' && !st.hasReg ? '<br><small>Not current: no verified registration</small>' : ''}</td><td>${esc(a.approved_by || '')} ${esc((a.approved_at || '').slice(0, 10))}</td><td>${esc(a.review_on || '')}</td><td>${esc(a.notes || '')}${a.ended_reason ? `<br>Ended: ${esc(a.ended_reason)} (${esc(a.ended_by || '')})` : ''}</td><td>${a.status === 'approved' ? form('appr_revoke', { ...H, sid: a.id }, `<label>Reason (internal)<input name="notes" required maxlength="500"></label>${life ? `<label>Message to the supervisor (optional, emailed)<input name="message" maxlength="500"></label>${allApps.filter((x) => x.status === 'approved').length === 1 ? '<p class="form-note">This is their last scope: revoking it blocks one-off assessor signing through Wavelength unless you tick the box.</p><label class="consent"><input type="checkbox" name="one_off" value="1"><span>One-off assessment remains permitted</span></label><label>Why<input name="one_off_note" maxlength="500"></label>' : ''}` : ''}`, 'Revoke', 'Revoke this supervisor approval? It stops counting at once. Past sign-offs keep what was true when they were signed.') : form('appr_reinstate', { ...H, sid: a.id }, `<label>Why<input name="notes" required maxlength="500"></label><label>Approved until${life ? ' (12 months at most)' : ''}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}" required` : ''}></label>${life ? '<p class="form-note">Reinstating also lifts an active block.</p>' : ''}`, 'Reinstate')}</td></tr>`).join('');
-  const verifiedCreds = allCreds.filter((c) => c.active && c.status === 'verified');
-  const addApproval = form('appr_add', H, `<p class="form-note">Modules (scope). Tick only the modules the evidence supports. "All modules" is recorded as its own scope.</p>
-    ${PATHS.map((p) => `<fieldset class="sv-checks"><legend>${esc(p.label)}</legend><label><input type="checkbox" name="scope" value="${p.id}:*">All modules</label>${p.modules.map((m) => `<label><input type="checkbox" name="scope" value="${p.id}:${m.id}">${esc(m.label)}</label>`).join('')}</fieldset>`).join('')}
-    <label>Capacity<select name="capacity">${CAPACITIES.map((k) => `<option value="${k}"${k === 'supervisor' ? ' selected' : ''}>${esc(capacityLabel(k))}</option>`).join('')}</select></label>
-    <p class="form-note">The capacity decides what they may sign for each module (data/supervision-policy.json). FAMUS and FUSIC Heart mentors review scans and give feedback but never sign the final or triggered assessment; FUSIC modules other than Heart use trainers, one module at a time; FAMUS peripheral access is approved locally. A scope that does not recognise the capacity is refused.</p>
-    <p class="form-note">Basis: the verified credentials this approval relies on.</p><div class="sv-checks">${verifiedCreds.map((c) => `<label><input type="checkbox" name="basis" value="${c.id}">${esc((TYPE[c.credential_type] || {}).label || c.credential_type)}: ${esc(parseList(c.modules).join(', '))}</label>`).join('') || '<span class="admin-summary">No verified credentials. Record the basis in the notes.</span>'}</div>
-    <label>${life ? 'Approved until (12 months at most)' : 'Review on'}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}"` : ''}></label><label>Notes (basis and reasoning)<textarea name="notes" required maxlength="1000"></textarea></label>`, 'Approve as Wavelength supervisor for these scopes');
+  const verifiedCreds = allCreds.filter((c) => c.active && isCurrentCred(c));
+  // An open application is decided by an approval here (grantApprovals), and the form says so.
+  const openApp = life ? await env.DB.prepare("SELECT id, kind, status, requested_pathways FROM supervisor_applications WHERE learner_id = ? AND status IN ('submitted', 'more_info') ORDER BY id DESC LIMIT 1").bind(id).first() : null;
+  const addApproval = form('appr_add', H, `${openApp ? `<p class="sv-banner">Application <a class="text-link" href="${BASE}?app=${openApp.id}">#${openApp.id}</a> is open. Approving here also decides it, and the supervisor is emailed.</p>` : ''}<p class="form-note">Tick only the modules the evidence supports. "All modules" is recorded as its own scope.</p>
+    ${scopeBoxes([], openApp ? jsonList(openApp.requested_pathways) : [...new Set(verifiedCreds.flatMap((c) => ((TYPE[c.credential_type] || {}).modules || []).map((m) => String(m.scope || '').split(':')[0]).filter(Boolean)))])}
+    ${roleSelect()}
+    <details class="sv-more"><summary>What each role may sign</summary><p class="form-note">The role decides what they may sign for each module (data/supervision-policy.json). FAMUS and FUSIC Heart mentors review scans and give feedback but never sign the final or triggered assessment; FUSIC modules other than Heart use trainers, one module at a time; FAMUS peripheral access is approved locally. A module that does not recognise the role is refused.</p></details>
+    ${basisBoxes(verifiedCreds)}
+    <label>${life ? 'Approved until (12 months at most)' : 'Review on'}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}"` : ''}></label>
+    ${me && looksLikeSelf(l, me) ? selfBoxFor(env) : ''}${optionalNote}`, 'Approve as Wavelength supervisor');
+  const selfRows = life ? await selfApprovals(env, id) : [];
+  const review = selfRows.length ? `<div class="sv-banner sv-warn"><b>Independent review recommended.</b> The current approval was recorded by ${esc(reviewerOf(selfRows[0].approved_by) || 'an administrator')} on ${esc((selfRows[0].approved_at || '').slice(0, 10))}, who appears to be this supervisor. Another administrator should check the identity, registration and credentials and record the result. Nothing is revoked automatically.
+    ${form('appr_independent_review', H, '<fieldset><legend>Outcome</legend><label class="consent"><input type="radio" name="outcome" value="confirmed" required><span>Confirmed: identity, registration and the approved modules are supported by independent evidence</span></label><label class="consent"><input type="radio" name="outcome" value="concerns"><span>Concerns: I will revoke or change the approval</span></label></fieldset><label>Note (required for concerns)<textarea name="notes" maxlength="1000"></textarea></label>', 'Record independent review')}</div>` : '';
+  const mailRow = life ? await approvalEmailRow(env, { learnerId: id }) : null;
   const badges = badgesFrom(env, st);
   return `<h2 class="display" style="font-size:34px;margin:0 0 8px">${esc(name(l))}</h2>
   <p class="admin-summary">${esc(l.email)} · Email: ${pill(l.email_status || 'legacy_unverified')} ${esc(l.email_verified_at || '')} · ${esc(l.organisation || '')} ${esc(l.role || '')} · <a class="text-link" href="${BASE}">Back to the queue</a></p>${note}
@@ -324,6 +431,7 @@ async function detail(env, id, note, life = false) {
   <h3 style="margin:28px 0 10px">External credentials</h3><div class="sv-grid">${credCards}</div>
   <h3 style="margin:28px 0 10px">Wavelength supervisor approvals</h3>
   ${appRows ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Scope</th><th scope="col">Status</th><th scope="col">Approved</th><th scope="col">Review</th><th scope="col">Notes</th><th scope="col">Action</th></tr></thead><tbody>${appRows}</tbody></table></div>` : '<p class="admin-summary">No approvals.</p>'}
+  ${review}${mailRow || st.approvals.length ? emailStatusHtml(mailRow, H) : ''}
   ${st.hasReg ? addApproval : '<p class="admin-summary">Verify a professional registration before approving this person as a supervisor.</p>'}
   <h3 style="margin:28px 0 10px">History</h3>
   ${history.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">Outcome</th><th scope="col">Who</th><th scope="col">Details</th></tr></thead><tbody>${history.map((h) => `<tr><td>${esc(h.at)}</td><td>${esc(h.subject_type)} #${esc(h.subject_id)}: ${esc(h.action)}</td><td>${esc(h.outcome || '')}</td><td>${esc(h.actor)}</td><td>${esc([h.source, h.method, h.match_result && `match ${h.match_result} (${h.match_method} ${h.match_version})`, h.scope && `scope ${h.scope}`, h.evidence_id && `evidence #${h.evidence_id}`, h.notes].filter(Boolean).join(' · '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No history.</p>'}
@@ -437,7 +545,8 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
   const reviewer = clip(f.get('reviewer'), 80);
   const notes = clip(f.get('notes'), 1000);
   const back = (m) => ({ id: learnerId, m });
-  if (!reviewer) return action.startsWith('app_') || action === 'grace_block' ? { app: Number(f.get('app')), m: 'Enter your name: every decision records who made it.' } : action.startsWith('notif_') ? { tab: 'system', m: 'Enter your name: every decision records who made it.' } : back('Enter your name: every decision records who made it.');
+  const NAME = 'Enter your name: every decision records who made it.';
+  if (!reviewer) return action.startsWith('app_') || action === 'grace_block' ? { app: Number(f.get('app')), m: NAME } : action.startsWith('notif_') ? notifBack(f, NAME) : back(NAME);
   const actor = `admin:${clip(admin, 40)}:${reviewer}`;
   const ev = (e) => logEvent(env, { learnerId, actor, ...e });
   const life = await lifecycleReady(env);
@@ -481,7 +590,8 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
     if (!c) return back('Credential not found.');
     const t = TYPE[c.credential_type] || { modules: [] };
     if (action === 'cred_directory_check' || action === 'cred_listing_send') return directoryPost(env, f, action, c, { reviewer, actor, back, ev, decided, ctx });
-    if (!notes) return back('Add notes or a reason.');
+    // Approving a credential needs no note: the method, modules, dates, evidence and reviewer are recorded.
+    if (!notes && action !== 'cred_approve') return back('Add notes or a reason.');
     if (action === 'cred_approve') {
       // A credential the body lists in an official directory is verified through the directory check, which also
       // needs identity confirmed separately. Approving from evidence (for example the body's own letter) needs that
@@ -540,42 +650,38 @@ export async function supervisorsAdminPost(env, f, admin, ctx) {
     return back(v ? 'Marked as a test account.' : 'No longer a test account.');
   }
 
+  if (action === 'appr_add') {
+    // The person page's approval: the same routine as an application decision. An application that is still open
+    // (sent, or waiting for information) is decided by it, so the app never shows an approved supervisor as under
+    // review. Without migration 0012 there are no applications or outbox: the earlier direct insert applies.
+    const st = await currentStatus(env, learnerId);
+    if (life) {
+      if (!st.learner) return back('Account not found.');
+      const open = await env.DB.prepare("SELECT * FROM supervisor_applications WHERE learner_id = ? AND status IN ('submitted', 'more_info') ORDER BY id DESC LIMIT 1").bind(learnerId).first();
+      return back(await grantApprovals(env, { st, l: st.learner, application: open || null, input: approvalInput(f, st), actor, adminAudit, notes, ctx, route: 'direct' }));
+    }
+    if (!st.hasReg) return back('Verify a professional registration first.');
+    const scopes = validScopes(f);
+    if (!scopes.length) return back('Tick at least one module scope.');
+    const reviewOn = date(f.get('review_on'));
+    const basis = f.getAll('basis').map(Number).filter((x) => st.credentials.some((c) => c.id === x));
+    let added = 0;
+    for (const sc of scopes) {
+      const [p, m] = sc.split(':');
+      try {
+        await env.DB.prepare("INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes) VALUES (?,?,?,'approved',?,?,?,?,?)").bind(learnerId, p, m, JSON.stringify(basis), reviewOn, actor, nowIso(), notes || 'Approved from the person page').run();
+        added++;
+        await ev({ subjectType: 'approval', action: 'admin_approved', outcome: 'approved', scope: sc, notes: `${notes || 'Approved from the person page'} | basis credentials: ${basis.join(',') || 'none'}` });
+      } catch { /* already approved for this scope */ }
+    }
+    return back(`${added} scope${added === 1 ? '' : 's'} approved.`);
+  }
+  if (life && action === 'appr_independent_review') return back(await independentReview(env, f, learnerId, { actor, adminAudit, ev, notes }));
   if (action.startsWith('appr_')) {
     if (!notes) return back('Add notes or a reason.');
     const day = ukDate(), maxUntil = addMonths(day, 12);
     // After migration 0012 every approval has an "approved until" date, at most 12 months away (decision 1).
     const until = () => { const v = date(f.get('review_on')) || (life ? maxUntil : null); return life && (!v || v <= day || v > maxUntil) ? false : v; };
-    if (action === 'appr_add') {
-      const st = await currentStatus(env, learnerId);
-      if (!st.hasReg) return back('Verify a professional registration first.');
-      if (life && st.block) return back('This account is blocked. Lift the block first.');
-      const scopes = validScopes(f);
-      if (!scopes.length) return back('Tick at least one module scope.');
-      const reviewOn = until();
-      if (reviewOn === false) return back('The approved-until date must be after today and no more than 12 months away.');
-      const basis = f.getAll('basis').map(Number).filter((x) => st.credentials.some((c) => c.id === x));
-      // Capacity (migration 0015): every chosen scope must recognise it, or nothing is approved.
-      const capacity = CAPACITIES.includes(f.get('capacity')) ? String(f.get('capacity')) : 'supervisor';
-      const capCol = await hasCapacity(env);
-      if (capacity !== 'supervisor' && !capCol) return back('Approving in a capacity other than supervisor needs migration 0015.');
-      const unfit = scopes.filter((s) => { const [p, m] = s.split(':'); return m === '*' ? !(PATHS.find((x) => x.id === p) || { modules: [] }).modules.every((mm) => capacitiesFor(p, mm.id).includes(capacity)) : !capacitiesFor(p, m).includes(capacity); });
-      if (unfit.length) return back(`${capacityLabel(capacity)} is not a role for ${unfit.map((s) => scopeLabel(...s.split(':'))).join(', ')}. Choose another capacity or untick those scopes.`);
-      let added = 0;
-      for (const s of scopes) {
-        const [p, m] = s.split(':');
-        try {
-          await env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes${life ? ', required_basis' : ''}${capCol ? ', capacity' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?${life ? ',?' : ''}${capCol ? ',?' : ''})`).bind(learnerId, p, m, JSON.stringify(basis), reviewOn, actor, nowIso(), notes, ...(life ? [JSON.stringify(basis)] : []), ...(capCol ? [capacity] : [])).run();
-          added++;
-          await ev({ subjectType: 'approval', action: 'admin_approved', outcome: 'approved', scope: s, notes: `${notes} | capacity: ${capacity} | basis credentials: ${basis.join(',') || 'none'}` });
-        } catch { /* already approved for this scope */ }
-      }
-      if (life && added) {
-        const act = await activateClaimedLinks(env, learnerId);
-        await env.DB.batch([...act.stmts, adminAudit({ action: 'approval.grant', subjectType: 'learner', subjectId: learnerId, meta: { scopes, basis: basis.length, links: act.keys.length, route: 'direct' } })]);
-        deliverLater(env, ctx, act.keys);
-      }
-      return back(`${added} scope${added === 1 ? '' : 's'} approved.`);
-    }
     if (life && action === 'appr_revoke_all') {
       const r = await revokeAll(env, learnerId, { actor, adminAudit, reason: notes, message: clip(f.get('message'), 500), oneOff: !!f.get('one_off'), oneOffNote: clip(f.get('one_off_note'), 500), kind: 'revoked', ctx });
       return back(r);
@@ -764,100 +870,211 @@ async function applicationPost(env, f, action, { actor, adminAudit, notes, ctx }
 
   if (action === 'app_approve' || action === 'app_confirm_renewal') {
     const st = await currentStatus(env, lid);
-    if (st.block) return back('This account is blocked. Lift the block on the person page first.');
-    if (!st.learner || st.learner.email_status !== 'verified') return back('The applicant has not confirmed their email address.');
     const live = st.approvals;
-    const base = renewal && live.length ? (live.map((x) => x.review_on).filter(Boolean).sort()[0] || day) : day;
-    const maxUntil = addMonths(base > day ? base : day, 12);
-    let scopes, basis = [], exempt = 0, exemptReason = null, reviewOn, capacity = 'supervisor';
-    const capCol = await hasCapacity(env);
+    let input;
     if (action === 'app_confirm_renewal') {
       if (!renewal) return back('Only a renewal can be confirmed in one step.');
       if (!live.length) return back('There is no live approval to renew (it may have expired). Use Approve and tick the scopes.');
       const lapsed = live.find((x) => x.lapse);
       if (lapsed) return back(`Something the approval relies on is not current (${lapsed.lapse}). Check the person page, or use Approve to change the basis.`);
-      scopes = live.map((x) => `${x.pathway}:${x.module}`);
-      reviewOn = maxUntil;
-    } else {
-      scopes = validScopes(f);
-      if (!scopes.length) return back('Tick at least one module scope.');
-      reviewOn = date(f.get('review_on')) || maxUntil;
-      if (reviewOn <= day || reviewOn > maxUntil) return back(`The approved-until date must be after today and no later than ${maxUntil}.`);
-      basis = f.getAll('basis').map(Number).filter((x) => st.credentials.some((c) => c.id === x && c.status === 'verified'));
-      capacity = CAPACITIES.includes(f.get('capacity')) ? String(f.get('capacity')) : 'supervisor';
-      const unfit = scopes.filter((sc) => { const [p, m] = sc.split(':'); return m !== '*' && !capacitiesFor(p, m).includes(capacity); });
-      if (unfit.length) return back(`${capacityLabel(capacity)} is not a role for ${unfit.map((sc) => scopeLabel(...sc.split(':'))).join(', ')}.`);
-      if (!notes) return back('Add a decision note: the basis and your reasoning.');
-      if (!st.hasReg) {
-        exemptReason = clip(f.get('exempt_reason'), 1000);
-        if (!f.get('exempt')) return back('The registration is not verified. Verify it on the person page, or tick the registration exemption and give your reason.');
-        if (exemptReason.length < 20) return back('Give the reason for the registration exemption, and how you checked identity and experience instead.');
-        exempt = 1;
-      }
-    }
-    const stmts = [];
-    const renewed = [], added = [], ended = [];
-    for (const sc of scopes) {
-      const [p, m] = sc.split(':');
-      const row = live.find((x) => x.pathway === p && x.module === m);
-      if (row && action === 'app_confirm_renewal') {
-        stmts.push(env.DB.prepare('UPDATE supervisor_approvals SET review_on = ?, last_renewed_at = ?, application_id = ? WHERE id = ? AND status = ?').bind(reviewOn, at, a.id, row.id, 'approved'));
-        renewed.push(sc);
-      } else if (row) {
-        stmts.push(env.DB.prepare('UPDATE supervisor_approvals SET review_on = ?, last_renewed_at = ?, application_id = ?, basis = ?, required_basis = ?, registration_exempt = ?, exempt_reason = ?, notes = ? WHERE id = ? AND status = ?').bind(reviewOn, at, a.id, JSON.stringify(basis), JSON.stringify(basis), exempt, exemptReason, notes, row.id, 'approved'));
-        renewed.push(sc);
-      } else {
-        stmts.push(env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes, application_id, registration_exempt, exempt_reason, required_basis${capCol ? ', capacity' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?,?,?,?,?${capCol ? ',?' : ''})`)
-          .bind(lid, p, m, JSON.stringify(basis), reviewOn, actor, at, notes || `Approved with application #${a.id}`, a.id, exempt, exemptReason, JSON.stringify(basis), ...(capCol ? [capacity] : [])));
-        added.push(sc);
-      }
-    }
-    // A renewal approved with fewer scopes ends the ones left out.
-    for (const x of live) {
-      const sc = `${x.pathway}:${x.module}`;
-      if (!scopes.includes(sc)) { stmts.push(env.DB.prepare("UPDATE supervisor_approvals SET status = 'expired', ended_by = ?, ended_at = ?, ended_reason = 'not included in the renewal' WHERE id = ? AND status = 'approved'").bind(actor, at, x.id)); ended.push(sc); }
-    }
-    const first = await decide('approved', { decision_note: notes || 'Renewal confirmed', approved_scopes: JSON.stringify(scopes) }).run();
-    if (!(first.meta && first.meta.changes)) return back('This application has already been decided.');
-    const act = await activateClaimedLinks(env, lid);
+      input = { scopes: live.map((x) => `${x.pathway}:${x.module}`), confirmRenewal: true };
+    } else input = approvalInput(f, st);
+    return back(await grantApprovals(env, { f, st, l, application: a, input, actor, adminAudit, notes, ctx, route: 'application' }));
+  }
+  if (action === 'app_close_approved') {
+    // Repair for an application left open after the person was approved from the person page (fixed October 2026):
+    // records the decision the console already made, with the scopes that are current now. No approval changes. The
+    // approval email goes only if the administrator ticks the box.
+    const st = await currentStatus(env, lid);
+    const current = st.approvals.filter((x) => x.current);
+    if (!current.length) return back('This person has no current approval, so there is nothing to record. Decide the application instead.');
+    const scopes = current.map((x) => `${x.pathway}:${x.module}`);
+    const res = await decide('approved', { decision_note: notes || 'Closed: already approved from the person page', approved_scopes: JSON.stringify(scopes) }).run();
+    if (!(res.meta && res.meta.changes)) return back('This application has already been decided.');
     const key = `app_approved:${a.id}`;
-    stmts.push(...act.stmts,
-      queueStmt(env, { key, learnerId: lid, kind: 'app_approved', to: l.email, toName: fullName(l), data: { firstName: l.first_name, renewal, areas: areaLabels(scopes.map((sc) => { const [pathway, module] = sc.split(':'); return { pathway, module }; })), reviewOn, learners: act.learners } }),
-      adminAudit({ action: action === 'app_confirm_renewal' ? 'application.confirm_renewal' : 'application.approve', subjectType: 'application', subjectId: a.id, meta: { kind: a.kind, scopes, basis: basis.length, exempt: !!exempt, links: act.keys.length, to: reviewOn } }));
-    try { await env.DB.batch(stmts); }
-    catch (e) {
-      // Undo the decision so the reviewer can try again: nothing else was written.
-      await env.DB.prepare("UPDATE supervisor_applications SET status = ?, decided_at = NULL, decided_by = NULL, approved_scopes = NULL WHERE id = ?").bind(a.status, a.id).run();
-      return back('Could not save the approval. Please try again.');
-    }
-    for (const sc of [...added, ...renewed]) await logEvent(env, { learnerId: lid, subjectType: 'approval', action: added.includes(sc) ? 'admin_approved' : 'admin_renewed', outcome: 'approved', actor, scope: sc, notes: `Application #${a.id}${exempt ? ' (registration exemption)' : ''}: ${notes || 'renewal confirmed'}` });
-    for (const sc of ended) await logEvent(env, { learnerId: lid, subjectType: 'approval', action: 'not_renewed', outcome: 'expired', actor, scope: sc, notes: `Left out of renewal #${a.id}` });
-    deliverLater(env, ctx, [key, ...act.keys]);
-    return back(`${renewal ? 'Renewal approved' : 'Approved'} until ${reviewOn}: ${scopes.length} scope${scopes.length === 1 ? '' : 's'}${ended.length ? `, ${ended.length} ended` : ''}${act.keys.length ? `, ${act.keys.length} waiting learner link${act.keys.length === 1 ? '' : 's'} activated` : ''}.`);
+    const stmts = [adminAudit({ action: 'application.close_approved', subjectType: 'application', subjectId: a.id, meta: { kind: a.kind, scopes, previous: a.status, status: 'approved', notified: !!f.get('send_email') } })];
+    if (f.get('send_email')) stmts.push(queueStmt(env, { key, learnerId: lid, kind: 'app_approved', to: l.email, toName: fullName(l), data: { firstName: l.first_name, renewal, groups: approvedGroups(current).map(groupLine), reviewOn: current.map((x) => x.review_on).filter(Boolean).sort()[0] || null, learners: [] } }));
+    await env.DB.batch(stmts);
+    await logEvent(env, { learnerId: lid, subjectType: 'application', subjectId: a.id, action: 'admin_closed_approved', outcome: 'approved', actor, scope: scopes.join(','), notes: notes || 'Already approved from the person page' });
+    if (f.get('send_email')) { await deliver(env, [key]); const row = await approvalEmailRow(env, { key }); return back(`Application recorded as approved. Approval email: ${(EMAIL_WORDS[row ? row.status : 'none'] || [''])[0].toLowerCase()}.`); }
+    return back('Application recorded as approved. No email was sent.');
   }
   return back('Nothing changed.');
 }
 
+// ---------- One approval routine for every route ----------
+// The application decision (Approve, Confirm renewal) and the person page's direct approval both come here, so an
+// approval always: writes the approval rows; decides the open application in the same step (a person approved from
+// the person page while an application was open no longer keeps an application "under review"); activates links
+// waiting for the decision; queues the approval email in the same D1 batch, so it exists only if the approval was
+// saved and a repeated click cannot queue a second one; and records who decided, when, what was approved, on which
+// credentials and evidence, and the standing before and after. A note is optional and never carries the audit.
+function approvalInput(f, st) {
+  return {
+    scopes: validScopes(f),
+    reviewOn: date(f.get('review_on')),
+    basis: f.getAll('basis').map(Number).filter((x) => st.credentials.some((c) => c.id === x && isCurrentCred(c))),
+    capacity: CAPACITIES.includes(f.get('capacity')) ? String(f.get('capacity')) : 'supervisor',
+    exempt: !!f.get('exempt'), exemptReason: clip(f.get('exempt_reason'), 1000),
+    selfAck: !!f.get('self_ack'), selfReason: clip(f.get('self_reason'), 1000),
+  };
+}
+// Evidence the decision rested on: files and links on the application, and on the credentials ticked as its basis.
+async function evidenceRefs(env, learnerId, a, basis) {
+  const rows = (await env.DB.prepare('SELECT id, subject_type, subject_id FROM credential_evidence WHERE learner_id = ? ORDER BY id').bind(learnerId).all()).results || [];
+  return rows.filter((e) => (a && e.subject_type === 'application' && e.subject_id === a.id) || (e.subject_type === 'credential' && basis.includes(e.subject_id))).map((e) => e.id).slice(0, 40);
+}
+async function grantApprovals(env, { st, l, application: a = null, input, actor, adminAudit, notes = '', ctx, route }) {
+  const lid = l.id, at = nowIso(), day = ukDate();
+  const renewal = !!(a && a.kind === 'renewal');
+  if (st.block) return route === 'direct' ? 'This account is blocked. Lift the block first.' : 'This account is blocked. Lift the block on the person page first.';
+  if (!st.learner || st.learner.email_status !== 'verified') return 'The applicant has not confirmed their email address. An approval would not count until they do.';
+  if (route === 'direct' && !st.hasReg) return 'Verify a professional registration first.';
+  const live = st.approvals;
+  const base = renewal && live.length ? (live.map((x) => x.review_on).filter(Boolean).sort()[0] || day) : day;
+  const maxUntil = addMonths(base > day ? base : day, 12);
+  const capCol = await hasCapacity(env);
+  const { scopes, confirmRenewal = false } = input;
+  const basis = confirmRenewal ? [] : input.basis || [];
+  const capacity = input.capacity || 'supervisor';
+  let reviewOn = maxUntil, exempt = 0, exemptReason = null;
+  if (!confirmRenewal) {
+    if (!scopes.length) return 'Tick at least one module scope.';
+    reviewOn = input.reviewOn || maxUntil;
+    if (reviewOn <= day || reviewOn > maxUntil) return `The approved-until date must be after today and no later than ${maxUntil}.`;
+    if (capacity !== 'supervisor' && !capCol) return 'Approving in a capacity other than supervisor needs migration 0015.';
+    const unfit = scopes.filter((sc) => { const [p, m] = sc.split(':'); return m === '*' ? !(PATHS.find((x) => x.id === p) || { modules: [] }).modules.every((mm) => capacitiesFor(p, mm.id).includes(capacity)) : !capacitiesFor(p, m).includes(capacity); });
+    if (unfit.length) return `${capacityLabel(capacity)} is not a role for ${unfit.map((sc) => scopeLabel(...sc.split(':'))).join(', ')}. Choose another role or untick those modules.`;
+    if (!st.hasReg) {
+      if (!input.exempt) return 'The registration is not verified. Verify it on the person page, or tick the registration exemption and give your reason.';
+      if (input.exemptReason.length < 20) return 'Give the reason for the registration exemption, and how you checked identity and experience instead.';
+      exempt = 1; exemptReason = input.exemptReason;
+    }
+  }
+  // Someone approving their own application: allowed (a small team may have no one else), but never silently. The
+  // acknowledgement and reason are recorded, and the approval waits for an independent review (Needs attention).
+  const self = looksLikeSelf(l, reviewerOf(actor));
+  // SUPERVISOR_SELF_APPROVAL = "refuse" (Worker var, unset by default): an administrator can never decide their own
+  // supervisor status; another administrator must. Unset or anything else: allowed with acknowledgement and review.
+  if (self && env.SUPERVISOR_SELF_APPROVAL === 'refuse') return 'This looks like your own application. Another administrator must decide it.';
+  if (self && (!input.selfAck || (input.selfReason || '').length < 20)) return 'This looks like your own application. Wavelength recommends that another administrator decides it. To approve it yourself, tick the self-approval box and say what independent evidence supports it (20 characters or more).';
+  const stmts = [], renewed = [], added = [], ended = [], capOf = {};
+  for (const sc of scopes) {
+    const [p, m] = sc.split(':');
+    const row = live.find((x) => x.pathway === p && x.module === m);
+    if (row && confirmRenewal) {
+      stmts.push(env.DB.prepare('UPDATE supervisor_approvals SET review_on = ?, last_renewed_at = ?, application_id = ? WHERE id = ? AND status = ?').bind(reviewOn, at, a.id, row.id, 'approved'));
+      renewed.push(sc); capOf[sc] = row.capacity || 'supervisor';
+    } else if (row && a) {
+      stmts.push(env.DB.prepare('UPDATE supervisor_approvals SET review_on = ?, last_renewed_at = ?, application_id = ?, basis = ?, required_basis = ?, registration_exempt = ?, exempt_reason = ?, notes = ? WHERE id = ? AND status = ?').bind(reviewOn, at, a.id, JSON.stringify(basis), JSON.stringify(basis), exempt, exemptReason, notes || null, row.id, 'approved'));
+      renewed.push(sc); capOf[sc] = row.capacity || 'supervisor';
+    } else if (!row) {
+      stmts.push(env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes, application_id, registration_exempt, exempt_reason, required_basis${capCol ? ', capacity' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?,?,?,?,?${capCol ? ',?' : ''})`)
+        .bind(lid, p, m, JSON.stringify(basis), reviewOn, actor, at, notes || (a ? `Approved with application #${a.id}` : 'Approved from the person page'), a ? a.id : null, exempt, exemptReason, JSON.stringify(basis), ...(capCol ? [capacity] : [])));
+      added.push(sc); capOf[sc] = capacity;
+    }
+  }
+  // An application approved with fewer scopes than are live ends the ones left out (a renewal that drops a module).
+  // A direct approval only ever adds.
+  if (a) for (const x of live) {
+    const sc = `${x.pathway}:${x.module}`;
+    if (!scopes.includes(sc)) { stmts.push(env.DB.prepare("UPDATE supervisor_approvals SET status = 'expired', ended_by = ?, ended_at = ?, ended_reason = 'not included in the renewal' WHERE id = ? AND status = 'approved'").bind(actor, at, x.id)); ended.push(sc); }
+  }
+  if (!a && !added.length) return 'Already approved for these modules: nothing changed, and no email was sent.';
+  const before = (await standingOf(env, lid, st)).standing;
+  // A guarded update, so two administrators deciding at once cannot both win.
+  if (a) {
+    const first = await env.DB.prepare("UPDATE supervisor_applications SET status = 'approved', decided_at = ?, decided_by = ?, decision_note = ?, approved_scopes = ?, updated_at = datetime('now') WHERE id = ? AND status IN ('submitted', 'more_info')")
+      .bind(at, actor, notes || (confirmRenewal ? 'Renewal confirmed' : route === 'direct' ? 'Approved from the person page' : null), JSON.stringify(scopes), a.id).run();
+    if (!(first.meta && first.meta.changes)) return 'This application has already been decided.';
+  }
+  const act = await activateClaimedLinks(env, lid);
+  const key = a ? `app_approved:${a.id}` : `app_approved:direct:${lid}:${at}`;
+  const decidedRows = [...added, ...renewed].map((sc) => { const [pathway, module] = sc.split(':'); return { pathway, module, capacity: capOf[sc], approved_at: at, review_on: reviewOn }; });
+  const groups = approvedGroups(decidedRows);
+  const evidence = await evidenceRefs(env, lid, a, basis);
+  stmts.push(...act.stmts,
+    queueStmt(env, { key, learnerId: lid, kind: 'app_approved', to: l.email, toName: fullName(l), data: { firstName: l.first_name, renewal, groups: groups.map(groupLine), reviewOn, learners: act.learners } }),
+    adminAudit({ action: confirmRenewal ? 'application.confirm_renewal' : a ? 'application.approve' : 'approval.grant', subjectType: a ? 'application' : 'learner', subjectId: a ? a.id : lid, meta: { kind: a ? a.kind : 'direct', route, scopes, capacity: confirmRenewal ? null : capacity, basis: basis.length, credentials: basis, evidence, exempt: !!exempt, links: act.keys.length, to: reviewOn, previous: before, status: 'active', selfApproval: self, hasNote: !!notes, notified: true } }));
+  try { await env.DB.batch(stmts); }
+  catch (e) {
+    // Undo the decision so the reviewer can try again: nothing else was written, and no email was queued.
+    if (a) await env.DB.prepare('UPDATE supervisor_applications SET status = ?, decided_at = NULL, decided_by = NULL, approved_scopes = NULL WHERE id = ?').bind(a.status, a.id).run();
+    return 'Could not save the approval. Nothing was changed and no email was sent. Please try again.';
+  }
+  const tag = `${a ? `Application #${a.id}` : 'Person page'}${exempt ? ' (registration exemption)' : ''}${self ? ` (self-approval: ${input.selfReason})` : ''}`;
+  for (const sc of [...added, ...renewed]) await logEvent(env, { learnerId: lid, subjectType: 'approval', action: added.includes(sc) ? 'admin_approved' : 'admin_renewed', outcome: 'approved', actor, scope: sc, evidenceId: evidence[0] || null, notes: `${tag} | role: ${capOf[sc]} | basis credentials: ${basis.join(',') || 'none'}${notes ? ` | ${notes}` : ''}` });
+  for (const sc of ended) await logEvent(env, { learnerId: lid, subjectType: 'approval', action: 'not_renewed', outcome: 'expired', actor, scope: sc, notes: `Left out of renewal #${a.id}` });
+  // The approval email goes now, so the reviewer sees what happened to it; the learners' emails go in the background.
+  await deliver(env, [key]).catch(() => null);
+  deliverLater(env, ctx, act.keys);
+  const row = await approvalEmailRow(env, { key });
+  const mail = ` Approval email: ${(EMAIL_WORDS[row ? row.status : 'none'] || ['unknown'])[0].toLowerCase()}.${self ? ' Recorded as a self-approval: an independent review is listed under Needs attention.' : ''}`;
+  if (!a) return `${added.length} scope${added.length === 1 ? '' : 's'} approved${act.keys.length ? `, ${act.keys.length} waiting learner link${act.keys.length === 1 ? '' : 's'} activated` : ''}.${mail}`;
+  return `${renewal ? 'Renewal approved' : 'Approved'} until ${reviewOn}: ${groups.map(groupLine).join('; ')}${ended.length ? `; ${ended.length} ended` : ''}${act.keys.length ? `; ${act.keys.length} waiting learner link${act.keys.length === 1 ? '' : 's'} activated` : ''}.${mail}`;
+}
+
 // ---------- Emails that need a person ----------
+// Back to where the button was: an application, a person page, or the System tab.
+const notifBack = (f, m) => (Number(f.get('app')) ? { app: Number(f.get('app')), m } : Number(f.get('learner')) ? { id: Number(f.get('learner')), m } : { tab: 'system', m });
 async function notificationPost(env, f, action, { adminAudit, ctx }) {
   const key = clip(f.get('key'), 200);
   const row = await env.DB.prepare('SELECT key, kind, status FROM notification_log WHERE key = ?').bind(key).first();
-  if (!row) return { tab: 'system', m: 'Email not found.' };
+  if (!row) return notifBack(f, 'Email not found.');
   if (action === 'notif_resend') {
+    // Only an email that failed or whose result is unknown, and only while its payload is kept. A sent email is never
+    // resent from here, so a click cannot send a confirmed email twice.
     const r = await env.DB.prepare("UPDATE notification_log SET status = 'pending', attempts = 0, next_attempt_at = NULL, last_error = 'resent by an administrator' WHERE key = ? AND status IN ('failed', 'unknown') AND payload IS NOT NULL").bind(key).run();
-    if (!(r.meta && r.meta.changes)) return { tab: 'system', m: 'That email cannot be resent.' };
+    if (!(r.meta && r.meta.changes)) return notifBack(f, 'That email cannot be resent.');
     await adminAudit({ action: 'email.resend', subjectType: 'notification', subjectId: row.kind, meta: { kind: row.kind, from: row.status } }).run();
     const out = await deliver(env, [key]);
-    return { tab: 'system', m: out.sent ? 'Sent.' : 'Not sent: it is queued and shown below.' };
+    const now = await env.DB.prepare('SELECT status FROM notification_log WHERE key = ?').bind(key).first();
+    return notifBack(f, out.sent ? 'Sent: accepted by the email provider.' : `Not sent: status "${now ? now.status : 'unknown'}". It is shown below.`);
   }
   if (action === 'notif_mark_sent') {
     await env.DB.batch([
       env.DB.prepare("UPDATE notification_log SET status = 'sent', sent_at = ?, payload = NULL, last_error = 'marked sent by an administrator' WHERE key = ? AND status IN ('failed', 'unknown')").bind(nowIso(), key),
       adminAudit({ action: 'email.mark_sent', subjectType: 'notification', subjectId: row.kind, meta: { kind: row.kind, from: row.status } }),
     ]);
-    return { tab: 'system', m: 'Marked as sent.' };
+    return notifBack(f, 'Marked as sent.');
   }
-  return { tab: 'system', m: 'Nothing changed.' };
+  return notifBack(f, 'Nothing changed.');
+}
+
+// An approval its holder may have decided themselves (looksLikeSelf) waits for a review by someone else. The review
+// is recorded, never inferred; concerns leave the approval in place for a deliberate revocation.
+async function independentReview(env, f, learnerId, { actor, adminAudit, ev, notes }) {
+  const st = await currentStatus(env, learnerId);
+  const l = st.learner;
+  if (!l) return 'Account not found.';
+  const current = st.approvals.filter((x) => x.current);
+  if (!current.length) return 'There is no current approval to review.';
+  const me = reviewerOf(actor).trim().toLowerCase();
+  if (looksLikeSelf(l, me)) return 'An independent review must be recorded by someone other than the supervisor.';
+  if (current.some((x) => reviewerOf(x.approved_by).trim().toLowerCase() === me)) return 'An independent review must be recorded by someone other than the administrator who approved it.';
+  const outcome = ['confirmed', 'concerns'].includes(f.get('outcome')) ? String(f.get('outcome')) : null;
+  if (!outcome) return 'Choose the outcome of your review.';
+  if (outcome === 'concerns' && notes.length < 20) return 'Describe the concern (20 characters or more).';
+  const scopes = current.map((x) => `${x.pathway}:${x.module}`);
+  await adminAudit({ action: 'approval.independent_review', subjectType: 'learner', subjectId: learnerId, meta: { outcome, scopes, hasNote: !!notes } }).run();
+  await ev({ subjectType: 'approval', action: 'independent_review', outcome, scope: scopes.join(','), notes: notes || 'Identity, registration and credentials confirmed independently' });
+  return outcome === 'confirmed' ? 'Independent review recorded.' : 'Concerns recorded. Revoke the approval below if it should not stand.';
+}
+// Current approvals that look self-approved and have no confirmed independent review since. For Needs attention and
+// the person page. Works on records made before this check existed too: approved_by holds the reviewer's name.
+async function selfApprovals(env, learnerId = null) {
+  const rows = (await env.DB.prepare(`SELECT a.learner_id, a.approved_by, a.approved_at, l.email, l.title, l.first_name, l.last_name FROM supervisor_approvals a JOIN learners l ON l.id = a.learner_id WHERE a.status = 'approved'${learnerId ? ' AND a.learner_id = ?' : ''} ORDER BY a.approved_at`).bind(...(learnerId ? [learnerId] : [])).all()).results || [];
+  const out = new Map();
+  for (const r of rows) {
+    if (!looksLikeSelf(r, reviewerOf(r.approved_by))) continue;
+    const prev = out.get(r.learner_id);
+    if (!prev || (r.approved_at || '') > (prev.approved_at || '')) out.set(r.learner_id, r);
+  }
+  for (const [id, r] of [...out]) {
+    const { results: revs = [] } = await env.DB.prepare("SELECT at, meta FROM audit_events WHERE action = 'approval.independent_review' AND subject_type = 'learner' AND subject_id = ? ORDER BY id DESC LIMIT 5").bind(String(id)).all();
+    if (revs.some((x) => x.at >= (r.approved_at || '') && /"outcome":"confirmed"/.test(x.meta || ''))) out.delete(id);
+  }
+  return [...out.values()];
 }
 
 // Evidence file download for administrators. Served as an attachment with a locked-down content type.

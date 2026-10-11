@@ -14,7 +14,7 @@
 import LOGBOOK from '../data/logbook.json';
 import { json, clip, body, fullName, TITLES, lifecycleReady } from './app-util.js';
 import { currentStatus, submitRegistration, submitCredential, amendCredentialModules, addEvidence, publicRegistration, publicCredential, config, logEvent, parseList, scopeLabel, TYPE } from './professional.js';
-import { standingOf, applyOn, areaLabels, AREAS, withdrawSupervisor, WITHDRAW_REASONS, activeBlock } from './supervisor-lifecycle.js';
+import { standingOf, applyOn, areaLabels, AREAS, withdrawSupervisor, WITHDRAW_REASONS, activeBlock, verificationOf } from './supervisor-lifecycle.js';
 import { queueStmt, deliverLater } from './notify.js';
 import { auditStmt, audit } from './audit.js';
 import { nowIso, ukDate, addDays } from './time.js';
@@ -70,6 +70,9 @@ async function overview(env, l) {
   const canRenew = !!current.length && !!reviewOn && ukDate() >= addDays(reviewOn, -RENEW_FROM_DAYS) && !(open && open.kind === 'renewal');
   return json({
     ok: true, available: applyOn(env), emailVerified: l.email_status === 'verified',
+    // The one authoritative reading (worker/verification/status.js). Apps from October 2026 draw from this alone;
+    // the fields below stay for installed apps that read them.
+    verification: await verificationOf(env, l.id, 'self', s),
     standing: s.standing, lapse: s.lapse, blocked: !!s.block && !s.block.one_off_permitted,
     approvals: st.approvals.map((a) => ({ pathway: a.pathway, module: a.module, label: scopeLabel(a.pathway, a.module), current: a.current, grace: !!a.grace, graceUntil: a.graceUntil || null, reviewOn: a.review_on, approvedAt: a.approved_at, lastRenewedAt: a.last_renewed_at || null })),
     areas: areaLabels(current), reviewOn, canRenew,
