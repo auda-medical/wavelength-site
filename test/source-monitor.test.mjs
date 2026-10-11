@@ -11,7 +11,7 @@ import { seedSources, monitorRun, backoff, ALERT_AFTER, DAY_MS, PER_RUN } from '
 import { classify, lineDiff } from '../worker/monitor/classify.js';
 import { htmlToText, htmlMeta, pdfMeta, parseDate, findVersion } from '../worker/monitor/extract.js';
 import { parseFamusHtml, parseFeed, validate, sync, norm } from '../worker/monitor/directory.js';
-import { guideStatus, score } from '../worker/monitor/api.js';
+import { guideStatus, score, resetOnDemand } from '../worker/monitor/api.js';
 import { sourcesAdminHtml, sourcesAdminPost } from '../worker/monitor/admin.js';
 import { handleApp } from '../worker/app.js';
 import { adminForm } from './helpers/verify.mjs';
@@ -111,9 +111,9 @@ test('a run checks one due source (CPU allowance), records a baseline, and does 
   assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM monitor_changes").first()).n, 0, 'a baseline is not a change');
 });
 
-test('over a day of runs (three an hour) every automatic source is checked; directories and manual sources never are', async () => {
+test('over a day of runs (every ten minutes) every automatic source is checked; directories and manual sources never are', async () => {
   const { env, n } = await setup();
-  for (let h = 0; h < 72; h++) await monitorRun(env, ctx, { trigger: 'cron' });
+  for (let h = 0; h < 144; h++) await monitorRun(env, ctx, { trigger: 'cron' });
   const rows = (await env.DB.prepare('SELECT id, mode, last_success_at FROM monitor_sources').all()).results;
   for (const s of rows) assert.equal(!!s.last_success_at, s.mode === 'auto', s.id);
   for (const s of SOURCES.sources.filter((x) => x.mode !== 'auto')) assert.ok(!n.count.has(s.url), `${s.id} never fetched`);
@@ -283,13 +283,32 @@ test('the three dates: never checked, checked today, a failure keeps yesterday, 
   assert.equal(st.noChangeLatest, true);
   assert.equal(st.reviewedOn, '2026-10-04', 'a check is never a review');
   assert.equal(st.updatedOn, '2026-10-05', 'nor a content update');
-  // Yesterday's success, today's failure: the guide says yesterday.
+  // Yesterday's success for all, then one source fails today: the guide is not "checked" as a whole; the others keep
+  // their date, and the failed source is named with its own last success.
   await env.DB.prepare("UPDATE monitor_sources SET last_success_at = '2026-10-09T05:07:00.000Z' WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids)).run();
-  n.pages.set(SOURCES.sources.find((s) => s.id === ids[0]).url, { status: 503 });
+  const failed = SOURCES.sources.find((s) => s.id === ids[0]);
+  n.pages.set(failed.url, { status: 503 });
   await checkOne(env, ids[0]);
   st = await guideStatus(env, 'famus-accreditation', null, { refresh: false });
-  assert.equal(st.checkedOn, '2026-10-09');
+  assert.equal(st.checkedOn, null, 'never "checked" while a source is unavailable');
   assert.equal(st.checkedToday, false);
+  assert.equal(st.noChangeLatest, false);
+  assert.deepEqual(st.partial, { checkedOn: '2026-10-09', ok: ids.length - 1, total: ids.length });
+  assert.deepEqual(st.unavailable, [{ name: failed.name, url: failed.url, lastCheckedOn: '2026-10-09' }]);
+  assert.equal((await row(env, ids[0])).last_success_at, '2026-10-09T05:07:00.000Z', 'the failure kept the last success');
+  // The others checked today: still not "checked" as a whole, and the date shown for them is today.
+  await monitorRun(env, ctx, { trigger: 'cron', ids: ids.slice(1), limit: ids.length, force: true });
+  st = await guideStatus(env, 'famus-accreditation', null, { refresh: false });
+  assert.equal(st.checkedOn, null);
+  assert.equal(st.partial.checkedOn, ukDate());
+  assert.equal(st.unavailable[0].lastCheckedOn, '2026-10-09');
+  // The source answers again: the whole guide is checked, today.
+  n.pages.set(failed.url, { body: page(BASE_BODY.replace('FUSIC Heart', failed.name), failed.name) });
+  await checkOne(env, ids[0]);
+  st = await guideStatus(env, 'famus-accreditation', null, { refresh: false });
+  assert.equal(st.checkedOn, ukDate());
+  assert.deepEqual(st.unavailable, []);
+  assert.equal(st.partial, null);
   // 23:30 UTC on 30 June is 1 July in the UK (BST); 23:30 UTC on 31 December is still 31 December (GMT).
   await env.DB.prepare("UPDATE monitor_sources SET last_success_at = '2026-06-30T23:30:00.000Z' WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids)).run();
   assert.equal((await guideStatus(env, 'famus-accreditation', null, { refresh: false })).checkedOn, '2026-07-01');
@@ -306,6 +325,8 @@ test('opening a guide before the day\'s check: answered at once with the last re
   const res = await app.call('/api/app/sources/guide/rcem-ultrasound-sign-off');
   assert.equal(res.status, 200);
   assert.equal(res.body.guide.checkedOn, null, 'not checked yet: no date claimed');
+  await settle();
+  n.count.clear(); resetOnDemand();
   const st = await guideStatus(env, 'rcem-ultrasound-sign-off', c);
   assert.equal(st.checkedOn, null, 'the answer does not wait for the source');
   assert.equal(waits.length, 1);

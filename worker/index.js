@@ -352,7 +352,7 @@ async function adminRoute(req, env, ctx, url, p, s) {
 export default {
   async scheduled(event, env, ctx) {
     // One cron, one job (worker/cron.js): 15 5 * * * runs the daily supervisor job, the two Tuesday crons the newsletter,
-    // 4,24,44 * * * * the source monitoring.
+    // 4,14,24,34,44,54 * * * * the source monitoring.
     runScheduled(event, env, ctx, { dailyLifecycle, scheduledNewsletter, monitorRun });
   },
   async fetch(req, env, ctx) {

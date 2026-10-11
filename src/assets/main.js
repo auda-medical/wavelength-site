@@ -440,8 +440,27 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') docu
     if (!res || !res.ok || !res.guide) return;
     var g = res.guide;
     if (g.sources.automatic) {
-      el.textContent = g.checkedOn ? 'Source checked: ' + uk(g.checkedOn) + (g.noChangeLatest ? '. No changes detected during the latest check.' : '') : 'Official sources not yet checked automatically.';
+      // Every source checked at its latest attempt: one date for the guide. Otherwise the date covers only the sources
+      // that were, the count says so, and each source that could not be checked is named with its own last success.
+      el.textContent = g.checkedOn ? 'Source checked: ' + uk(g.checkedOn) + (g.noChangeLatest ? '. No changes detected during the latest check.' : '')
+        : g.partial ? 'Source checked: ' + uk(g.partial.checkedOn) + ' for ' + g.partial.ok + ' of ' + g.partial.total + ' sources.' + (g.notYetChecked ? ' Not yet checked: ' + g.notYetChecked + '.' : '')
+        : 'Official sources not yet checked automatically.';
       el.hidden = false;
+      var bad = g.unavailable || [];
+      if (bad.length) {
+        var u = document.createElement('p');
+        u.className = 'source-unavailable rise'; u.setAttribute('role', 'status');
+        u.appendChild(document.createTextNode('Could not be checked at the latest attempt: '));
+        bad.slice(0, 3).forEach(function (s, i) {
+          if (i) u.appendChild(document.createTextNode('; '));
+          var a = document.createElement('a'); a.href = s.url; a.rel = 'noopener'; a.target = '_blank'; a.textContent = s.name;
+          u.appendChild(a);
+          u.appendChild(document.createTextNode(s.lastCheckedOn ? ' (last checked ' + uk(s.lastCheckedOn) + ')' : ' (not yet checked successfully)'));
+        });
+        if (bad.length > 3) u.appendChild(document.createTextNode('; and ' + (bad.length - 3) + ' more'));
+        u.appendChild(document.createTextNode('.'));
+        el.parentNode.parentNode.insertBefore(u, el.parentNode.nextSibling);
+      }
     }
     var box = document.querySelector('[data-source-notice="' + slug + '"]');
     if (box && g.pendingReview && g.pendingReview.length) {

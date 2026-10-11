@@ -30,7 +30,7 @@ test('every cron maps to exactly one job', () => {
 
 test('wrangler.jsonc carries exactly the four crons, each routed (the hourly source monitoring added October 2026)', () => {
   const crons = wranglerCrons();
-  assert.deepEqual(crons, ['30 6 * * 2', '30 7 * * 2', '15 5 * * *', '4,24,44 * * * *']);
+  assert.deepEqual(crons, ['30 6 * * 2', '30 7 * * 2', '15 5 * * *', '4,14,24,34,44,54 * * * *']);
   assert.ok(crons.length <= 5, 'the Workers free plan allows five cron triggers per account');
   assert.deepEqual(crons.filter((c) => jobFor(c) === 'source-monitor'), [MONITOR_CRON]);
   assert.equal(new Set(crons).size, crons.length, 'no duplicates');

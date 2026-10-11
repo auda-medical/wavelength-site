@@ -6,10 +6,10 @@
    "href": "/guides/pocus-accreditation/",
    "draft": false,
    "reviewed": null,
-   "updated": "2026-10-05",
-   "contentVersion": "ef7f4233ad81e780",
+   "updated": "2026-10-11",
+   "contentVersion": "868eedbdd0e31ff0",
    "sources": [
-    "g:38187a981e48",
+    "g:5385918cc2ee",
     "g:50f2134f87a3",
     "g:5e2f7962ecbf",
     "g:f92d726b14bb",
@@ -25,15 +25,16 @@
    "href": "/guides/rcem-ultrasound-sign-off/",
    "draft": false,
    "reviewed": "2026-10-04",
-   "updated": "2026-10-05",
-   "contentVersion": "41ca8b4c10db0269",
+   "updated": "2026-10-11",
+   "contentVersion": "fa093a9947436ddd",
    "sources": [
-    "g:38187a981e48",
+    "g:5385918cc2ee",
     "g:50f2134f87a3",
     "g:d01226e577ba",
     "g:cb195aed79d9",
     "g:8c62b3ed0de4",
-    "g:a8fd0ffe43b8"
+    "g:a8fd0ffe43b8",
+    "g:5248b8b8ebd3"
    ]
   },
   {
@@ -42,10 +43,10 @@
    "href": "/guides/ultrasound-logbook/",
    "draft": false,
    "reviewed": "2026-10-04",
-   "updated": "2026-10-04",
-   "contentVersion": "531829dc7636e016",
+   "updated": "2026-10-11",
+   "contentVersion": "487913ebe7ca138f",
    "sources": [
-    "g:38187a981e48",
+    "g:5385918cc2ee",
     "g:50f2134f87a3",
     "g:20ee0421f11f",
     "g:5e2f7962ecbf",
@@ -81,8 +82,8 @@
    "href": "/guides/fusic-accreditation/",
    "draft": false,
    "reviewed": "2026-10-04",
-   "updated": "2026-10-05",
-   "contentVersion": "90b24daba05b9f4d",
+   "updated": "2026-10-11",
+   "contentVersion": "c9bf7f20db25e2fd",
    "sources": [
     "g:f92d726b14bb",
     "g:72e381cfe3d4",
@@ -97,7 +98,7 @@
     "g:0cca24cd3c80",
     "g:557d1c20f74e",
     "g:7398ea6be41a",
-    "g:e65461234f12",
+    "g:636829925b46",
     "g:bca82e006163"
    ]
   }
@@ -242,24 +243,6 @@
    "why": null
   },
   {
-   "id": "g:38187a981e48",
-   "kind": "guidance",
-   "body": "RCEM",
-   "name": "RCEM: Ultrasound education and training, 2021 curriculum",
-   "url": "https://rcem.ac.uk/ultrasound/",
-   "mode": "auto",
-   "adapter": "page",
-   "guides": [
-    "pocus-accreditation",
-    "rcem-ultrasound-sign-off",
-    "ultrasound-logbook"
-   ],
-   "pathways": [
-    "rcem"
-   ],
-   "why": null
-  },
-  {
    "id": "g:3a9960f0f8f7",
    "kind": "guidance",
    "body": "SAM",
@@ -326,6 +309,40 @@
    "why": null
   },
   {
+   "id": "g:5248b8b8ebd3",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM: EM curriculum, including the 2025 update effective 6 August 2025",
+   "url": "https://rcem.ac.uk/em-curriculum/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "rcem-ultrasound-sign-off"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": null
+  },
+  {
+   "id": "g:5385918cc2ee",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM: Ultrasound education and training, 2021 curriculum",
+   "url": "https://rcem.ac.uk/ultrasound-education-training-2021-curriculum/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation",
+    "rcem-ultrasound-sign-off",
+    "ultrasound-logbook"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": null
+  },
+  {
    "id": "g:557d1c20f74e",
    "kind": "guidance",
    "body": "ICS",
@@ -374,6 +391,22 @@
     "famus"
    ],
    "why": null
+  },
+  {
+   "id": "g:636829925b46",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC HD: HD summative assessment, November 2026",
+   "url": "https://ics.ac.uk/events/calendar/fusic-hd-summative-assessment-november-2026.html",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": "Event pages expire; an unavailable result is expected after the event."
   },
   {
    "id": "g:72e381cfe3d4",
@@ -648,22 +681,6 @@
    "why": null
   },
   {
-   "id": "g:e65461234f12",
-   "kind": "guidance",
-   "body": "ICS",
-   "name": "FUSIC HD: HD summative assessment, November 2025",
-   "url": "https://ics.ac.uk/learning/events/fusic-hd-summative-assessment-november-2025.html",
-   "mode": "auto",
-   "adapter": "page",
-   "guides": [
-    "fusic-accreditation"
-   ],
-   "pathways": [
-    "fusic"
-   ],
-   "why": "Event pages expire; an unavailable result is expected after the event."
-  },
-  {
    "id": "g:e6590b96d94b",
    "kind": "guidance",
    "body": "ICS",
@@ -684,7 +701,7 @@
    "kind": "guidance",
    "body": "ESC",
    "name": "EACVI certified healthcare professionals in imaging",
-   "url": "https://www.escardio.org/Education/Career-Development/Certification/certified-healthcare-professionals-in-imaging",
+   "url": "https://www.escardio.org/education/career-development/certification-programmes/cv-imaging/certified-healthcare-professionals-in-imaging/",
    "mode": "manual",
    "adapter": "page",
    "guides": [],
@@ -736,7 +753,167 @@
     "fusic"
    ],
    "why": null
+  },
+  {
+   "id": "g:famus-lp-handbook",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "FAMUS ultrasound-assisted LP handbook (v2)",
+   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-US-assisted-LP-Final-handbook-v2.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the FAMUS lumbar puncture module page."
+  },
+  {
+   "id": "g:famus-lp-v14",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "FAMUS ultrasound-assisted LP document (v1.4)",
+   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/US-Assisted-LP-v1.4.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the FAMUS lumbar puncture module page alongside the v2 handbook: the reviewer should confirm which is current."
+  },
+  {
+   "id": "g:famus-pack-abdo",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "FAMUS curriculum pack: abdominal/renal module (v1)",
+   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-abdo_renal-v1.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the FAMUS abdominal/renal module page."
+  },
+  {
+   "id": "g:famus-pack-dvt",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "FAMUS curriculum pack: DVT module (v1.1)",
+   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-DVT-v1.1.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the FAMUS DVT module page."
+  },
+  {
+   "id": "g:famus-pack-uspa",
+   "kind": "guidance",
+   "body": "SAM",
+   "name": "FAMUS curriculum pack: ultrasound-guided peripheral access (v1.3)",
+   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-USPA-v1.3.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "famus-accreditation"
+   ],
+   "pathways": [
+    "famus"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the FAMUS peripheral access module page."
+  },
+  {
+   "id": "g:fusic-hd-form",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC HD reporting form (2026 curriculum)",
+   "url": "https://ics.ac.uk/asset/C1AC4FC9%2D1EC2%2D41C1%2DBE29CECEA6A3F8DA/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. The reporting form required for HD logbook scans from 1 February 2026."
+  },
+  {
+   "id": "g:fusic-hd-guide",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC HD Complete Guide (curriculum from 1 February 2026)",
+   "url": "https://ics.ac.uk/asset/08F17125%2D7601%2D49EB%2DB00D9F2201376D45/",
+   "mode": "manual",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. The new FUSIC HD curriculum took effect on 1 February 2026; linked from the FUSIC HD page. Checked by hand: at 5.3 MB the file is too large to fingerprint within the free plan's CPU allowance. A replacement file is still detected, because the FUSIC HD page's linked documents are compared every day."
+  },
+  {
+   "id": "g:fusic-hd-updates",
+   "kind": "guidance",
+   "body": "ICS",
+   "name": "FUSIC HD updates document (2026 curriculum)",
+   "url": "https://ics.ac.uk/asset/18CFE7A1%2DA0C6%2D440B%2D9F03E03FD387F298/",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "fusic-accreditation"
+   ],
+   "pathways": [
+    "fusic"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. What changed in the 2026 FUSIC HD curriculum; linked from the FUSIC HD page."
+  },
+  {
+   "id": "g:rcem-2025-summary",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM Curriculum 2025 update: summary of changes (v1.0)",
+   "url": "https://rcem.ac.uk/wp-content/uploads/2025/07/RCEM-Curriculum-Updates-Summary-of-changes-v1.0.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "rcem-ultrasound-sign-off"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the RCEM EM curriculum page; SLO6 practical-skills assessment changes."
+  },
+  {
+   "id": "g:rcem-physics-scale",
+   "kind": "guidance",
+   "body": "RCEM",
+   "name": "RCEM Physics, Settings, Ergonomics and Safety entrustment scale (September 2022)",
+   "url": "https://rcem.ac.uk/wp-content/uploads/2022/09/Physics_Settings_Ergonomic_Safety_Entrustment_Scale_Sept_22.pdf",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "rcem-ultrasound-sign-off"
+   ],
+   "pathways": [
+    "rcem"
+   ],
+   "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the RCEM ultrasound education and training page with the two scales the guide cites."
   }
  ],
- "version": "c1988a902a10b661"
+ "version": "52b03b8c1d57d987"
 }

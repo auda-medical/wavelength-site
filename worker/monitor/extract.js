@@ -3,6 +3,7 @@
 // Node). Nothing here republishes anything: the normalised text is kept only to compare with the next check.
 
 const DROP_BLOCKS = ['script', 'style', 'noscript', 'svg', 'iframe', 'template', 'nav', 'header', 'footer', 'aside', 'form', 'button', 'select'];
+const DROP_RE = new RegExp(`<(${DROP_BLOCKS.join('|')})\\b[\\s\\S]*?</\\1>`, 'gi');
 // Whole lines that are page furniture rather than guidance.
 const BOILERPLATE = [
   // Never words that clinical text uses ("consent", "register", "accept"): a guidance line must not be dropped.
@@ -10,6 +11,11 @@ const BOILERPLATE = [
   /^©|copyright|all rights reserved/i, /^print( this page)?$/i, /^(menu|search|log ?in|sign ?in|register|basket|cart|close|home)$/i,
   /registered (charity|company) (no|number)/i, /^page \d+ of \d+$/i, /^(previous|next)$/i, /^read more$/i, /^loading/i,
 ];
+// The same patterns as one expression: one test per line instead of sixteen.
+const BOILERPLATE_RE = new RegExp(BOILERPLATE.map((r) => `(?:${r.source})`).join('|'), 'i');
+// Main text longer than this is not what a guidance page looks like (the longest real source, ACEM P733, is about
+// 23,000 characters): it is reported for checking by hand rather than parsed past the plan's CPU allowance.
+export const TEXT_LIMIT = 60000;
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…', pound: '£', euro: '€', middot: '·', bull: '•', copy: '©', reg: '®', trade: '™', deg: '°', times: '×' };
 export function decode(s) {
   return String(s).replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
@@ -20,22 +26,33 @@ export function decode(s) {
 // The main content of an HTML page as normalised lines: <main> or <article> when the page has one, without scripts,
 // navigation, headers, footers, forms and lines of page furniture; whitespace and typographic quotes made uniform.
 export function htmlToText(html) {
-  let s = String(html || '');
-  for (const t of DROP_BLOCKS) s = s.replace(new RegExp(`<${t}\\b[\\s\\S]*?</${t}>`, 'gi'), '\n');
+  // One pass for all dropped blocks (thirteen separate passes cost four times the CPU on a large page, and the free
+  // plan allows 10 ms per run: tools/monitor-cpu.mjs).
+  let s = String(html || '').replace(DROP_RE, '\n');
   s = s.replace(/<!--[\s\S]*?-->/g, '');
   // Elements marked as cookie, consent or banner furniture (one level: enough for the common banners).
   s = s.replace(/<(div|section|p)\b[^>]*(?:id|class)="[^"]*(?:cookie|consent|gdpr|banner|newsletter|share|social|breadcrumb|advert|promo)[^"]*"[^>]*>[\s\S]*?<\/\1>/gi, '\n');
   const main = s.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i) || s.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
   if (main && main[1].replace(/<[^>]+>/g, '').trim().length > 200) s = main[1];
+  // Official documents the page links to, by file name: a new version of a curriculum pack behind the same link text
+  // ("curriculum pack") changes the file name, so it is a change to this page too.
+  // Files by name (".pdf") and the ICS's document addresses ("/asset/<id>/"), whose id changes with each new file.
+  const docs = [...new Set([...s.matchAll(/<a\b[^>]*href="([^"#?]+\.pdf|[^"#?]*\/asset\/[A-Za-z0-9%-]{8,}\/?)(?:[?#][^"]*)?"/gi)].map((m) => { const f = m[1].replace(/\/$/, '').split('/').pop(); try { return decodeURIComponent(f); } catch { return f; } }))].sort();
   s = s.replace(/<(br|p|div|li|tr|h[1-6]|section|table|ul|ol|dt|dd|blockquote)\b[^>]*>/gi, '\n').replace(/<\/(td|th)>/gi, ' ').replace(/<[^>]+>/g, '');
-  return normaliseLines(decode(s));
+  // Far too much text to be a guidance page: stop here (the caller reports it for checking by hand).
+  if (s.length > TEXT_LIMIT * 4) return null;
+  const text = normaliseLines(decode(s));
+  return docs.length ? [text, ...docs.map((d) => `${LINKED} ${d}`)].join('\n') : text;
 }
+export const LINKED = 'Linked document:';
 export function normaliseLines(text) {
   const out = [];
-  for (let line of String(text).split(/\r?\n/)) {
-    line = line.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  // Character substitutions once for the whole text, then per line (the same result, a third of the CPU).
+  const all = String(text).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/ /g, ' ');
+  for (let line of all.split(/\r?\n/)) {
+    line = line.replace(/\s+/g, ' ').trim();
     if (!line || line.length < 2) continue;
-    if (BOILERPLATE.some((r) => r.test(line)) && line.length < 160) continue;
+    if (line.length < 160 && BOILERPLATE_RE.test(line)) continue;
     if (out[out.length - 1] !== line) out.push(line);
   }
   return out.join('\n');

@@ -4,9 +4,9 @@
 // content/guides/at-a-glance/ changes, then build again and commit the PDFs and at-a-glance.json.
 //   npm i --no-save playwright@1.56 && node build.js && node tools/glance-pdf.mjs && node build.js
 import { chromium } from 'playwright';
-import http from 'http'; import fs from 'fs'; import path from 'path'; import crypto from 'crypto';
+import http from 'http'; import fs from 'fs'; import path from 'path'; import crypto from 'crypto'; import { fileURLToPath } from 'url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); // fileURLToPath: also right on Windows
 const DIST = path.join(ROOT, 'dist');
 const SRC = path.join(ROOT, 'content/guides/at-a-glance');
 const OUT = path.join(ROOT, 'src/assets/guides');

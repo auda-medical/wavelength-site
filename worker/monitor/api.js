@@ -10,7 +10,7 @@
 import SOURCES from './sources.json';
 import { NEEDS_REVIEW } from './classify.js';
 import { norm, orgNorm, editDistance, optedOut } from './directory.js';
-import { monitorRun } from './run.js';
+import { monitorRun, monitorReady } from './run.js';
 import { credentialsForListing } from './claims-admin.js';
 import { json, clip } from '../app-util.js';
 import { ukDate } from '../time.js';
@@ -18,30 +18,48 @@ import { ukDate } from '../time.js';
 const GUIDES = Object.fromEntries(SOURCES.guides.map((g) => [g.slug, g]));
 const STATE_WORDS = { ok: 'Checked', changed: 'Changed: awaiting review', unavailable: 'Could not be checked', format_changed: 'Page changed shape: awaiting review', unsupported: 'Checked by hand (no automated check)', not_authorised: 'Not checked automatically (permission needed)', never: 'Not checked yet', retired: 'No longer cited' };
 
+// On-demand checks: at most one per Worker instance a minute, only for a source of this guide that is already due
+// (so a failing source keeps its back-off) and not held by another run (lease). The status answer never waits for it.
+const ON_DEMAND_GAP_MS = 60e3;
+let lastOnDemand = 0;
+export function resetOnDemand() { lastOnDemand = 0; }
+
 export async function guideStatus(env, slug, ctx = null, { refresh = true } = {}) {
   const g = GUIDES[slug];
   if (!g || g.draft) return null;
   const ids = g.sources;
-  const rows = ids.length ? ((await env.DB.prepare(`SELECT id, name, body, url, mode, status, last_outcome, last_success_at, last_attempt_at, last_change_at, doc_version, published_on, failures FROM monitor_sources WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all()).results || []) : [];
+  const rows = ids.length ? ((await env.DB.prepare(`SELECT id, name, body, url, mode, status, last_outcome, last_success_at, last_attempt_at, last_change_at, next_check_at, lease_until, doc_version, published_on, failures FROM monitor_sources WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all()).results || []) : [];
   const open = ids.length ? ((await env.DB.prepare(`SELECT c.id, c.source_id, c.detected_at, c.classification, c.summary FROM monitor_changes c WHERE c.review_status IN ('open', 'acknowledged') AND c.source_id IN (${ids.map(() => '?').join(',')}) AND c.classification IN ('meaningful', 'important', 'format_changed') ORDER BY c.id DESC LIMIT 10`).bind(...ids).all()).results || []) : [];
   const auto = rows.filter((r) => r.mode === 'auto');
-  const checked = auto.length && auto.every((r) => r.last_success_at) ? auto.map((r) => r.last_success_at).sort()[0] : null;
   const today = ukDate();
-  const checkedOn = checked ? ukDate(Date.parse(checked)) : null;
-  // The latest outcome is kept on each source (last_outcome), so this reads one row per source, never the run history.
-  const noChange = !!checked && !open.length && auto.every((r) => ['no_change', 'minor'].includes(r.last_outcome));
-  // Opening a guide whose sources were not all checked today asks for a background check of one of them (one parse fits the request's CPU allowance): it
-  // never delays the response, and the date shown stays the last genuine success until that check succeeds.
-  const stale = auto.filter((r) => !r.last_success_at || ukDate(Date.parse(r.last_success_at)) < today).filter((r) => !r.last_attempt_at || Date.now() - Date.parse(r.last_attempt_at) > 3600e3);
-  if (refresh && ctx && ctx.waitUntil && stale.length && env.MONITOR_ON_DEMAND !== 'false') ctx.waitUntil(monitorRun(env, ctx, { trigger: 'on_demand', ids: stale.slice(0, 1).map((r) => r.id), limit: 1 }).catch(() => null));
+  const day = (v) => (v ? ukDate(Date.parse(v)) : null);
+  // Each automatic source is in one of three states: checked (its latest check succeeded), unavailable (its latest
+  // check failed; its last success, if any, is kept and shown) or not yet checked (never attempted).
+  const ok = auto.filter((r) => r.last_success_at && !(r.failures > 0));
+  const unavailable = auto.filter((r) => r.failures > 0 || (r.last_attempt_at && !r.last_success_at));
+  const notYet = auto.filter((r) => !r.last_attempt_at && !r.last_success_at);
+  const oldest = (xs) => (xs.length ? day(xs.map((r) => r.last_success_at).sort()[0]) : null);
+  // checkedOn: only when EVERY automatic source's latest check succeeded, the date by which all of them were checked.
+  // Otherwise null, and `partial` gives the date for the ones that were, with the others named in `unavailable`.
+  const allOk = auto.length > 0 && ok.length === auto.length;
+  const checkedOn = allOk ? oldest(ok) : null;
+  const noChange = allOk && !open.length && auto.every((r) => ['no_change', 'minor'].includes(r.last_outcome));
+  if (refresh && ctx && ctx.waitUntil && env.MONITOR_ON_DEMAND !== 'false' && Date.now() - lastOnDemand > ON_DEMAND_GAP_MS) {
+    const nowIso = new Date().toISOString();
+    const due = auto.filter((r) => (!r.next_check_at || r.next_check_at <= nowIso) && (!r.lease_until || r.lease_until < nowIso) && (!r.last_attempt_at || Date.now() - Date.parse(r.last_attempt_at) > 3600e3));
+    if (due.length) { lastOnDemand = Date.now(); ctx.waitUntil(monitorRun(env, ctx, { trigger: 'on_demand', ids: [due[0].id], limit: 1 }).catch(() => null)); }
+  }
   const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
   return {
     slug, title: g.title, href: g.href, contentVersion: g.contentVersion,
     reviewedOn: g.reviewed, updatedOn: g.updated, checkedOn, checkedToday: checkedOn === today,
+    partial: !allOk && ok.length ? { checkedOn: oldest(ok), ok: ok.length, total: auto.length } : null,
+    unavailable: unavailable.map((r) => ({ name: r.name, url: r.url, lastCheckedOn: day(r.last_success_at) })),
+    notYetChecked: notYet.length,
     noChangeLatest: noChange,
-    sources: { total: rows.length, automatic: auto.length, byHand: rows.filter((r) => r.mode !== 'auto').length, failing: auto.filter((r) => r.failures > 0).length },
+    sources: { total: rows.length, automatic: auto.length, byHand: rows.filter((r) => r.mode !== 'auto').length, failing: unavailable.length },
     pendingReview: open.map((c) => ({ source: (byId[c.source_id] || {}).name, url: (byId[c.source_id] || {}).url, detectedOn: ukDate(Date.parse(c.detected_at)), important: c.classification === 'important' })),
-    list: ids.map((id) => byId[id]).filter(Boolean).map((r) => ({ name: r.name, body: r.body, url: r.url, state: r.status, stateLabel: STATE_WORDS[r.status] || r.status, checkedOn: r.last_success_at ? ukDate(Date.parse(r.last_success_at)) : null, changedOn: r.last_change_at ? ukDate(Date.parse(r.last_change_at)) : null, version: r.doc_version, publishedOn: r.published_on })),
+    list: ids.map((id) => byId[id]).filter(Boolean).map((r) => ({ name: r.name, body: r.body, url: r.url, state: r.status, stateLabel: STATE_WORDS[r.status] || r.status, checkedOn: day(r.last_success_at), changedOn: day(r.last_change_at), version: r.doc_version, publishedOn: r.published_on })),
   };
 }
 
@@ -83,7 +101,7 @@ export function score(item, q) {
   return s;
 }
 export async function listingSearch(env, l, url) {
-  if (env.DIRECTORY_SYNC !== 'true') return json({ ok: true, available: false, results: [], note: 'Official directory search is not switched on yet. Enter your supervisor by hand.' });
+  if (env.DIRECTORY_SYNC !== 'true' || !(await monitorReady(env))) return json({ ok: true, available: false, results: [], note: 'Official directory search is not switched on yet. Enter your supervisor by hand.' });
   const q = clip(url.searchParams.get('q'), 80);
   if (norm(q).replace(/ /g, '').length < MIN) return json({ ok: true, available: true, results: [] });
   const pathway = clip(url.searchParams.get('pathway'), 20), module = clip(url.searchParams.get('module'), 40);
@@ -99,7 +117,7 @@ export async function listingSearch(env, l, url) {
 // A supervisor says "this listing is me". A claim only: an administrator confirms identity before it counts, and
 // approval to supervise is still decided separately (worker/supervisors-admin.js).
 export async function listingClaim(env, l, d) {
-  if (env.DIRECTORY_SYNC !== 'true') return json({ ok: false, error: 'Official directory matching is not switched on yet. Add your credential and evidence instead.' }, 503);
+  if (env.DIRECTORY_SYNC !== 'true' || !(await monitorReady(env))) return json({ ok: false, error: 'Official directory matching is not switched on yet. Add your credential and evidence instead.' }, 503);
   if (l.email_status !== 'verified') return json({ ok: false, needVerify: true, error: 'Confirm your email address first.' }, 403);
   const [source, ...rest] = String(d.ref || '').split('|');
   const key = rest.join('|');
@@ -120,16 +138,39 @@ export async function listingClaims(env, l) {
 }
 
 // Routes under /api/app/ (worker/app.js). Guide status is public; listings need a login.
+// Public guide status. Answers are cached at the edge for five minutes (Cache API), so many people opening a guide
+// cost one database read and at most one on-demand check, not one each.
+const PUBLIC_TTL = 300;
+// Before migration 0016 (or after its rollback): no status, so pages show only their own dates. Never cached.
+const notReady = () => json({ ok: false, error: 'Source monitoring is not set up yet.' }, 503);
+async function cached(req, ctx, make) {
+  const cache = typeof caches !== 'undefined' && caches.default;
+  const key = cache ? new Request(new URL(req.url).origin + new URL(req.url).pathname, { method: 'GET' }) : null;
+  if (cache) { const hit = await cache.match(key).catch(() => null); if (hit) return new Response(hit.body, hit); }
+  const res = await make();
+  if (cache && res.status === 200 && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(key, res.clone()).catch(() => null));
+  return res;
+}
 export async function handleMonitorPublic(env, req, url, p, ctx) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return null;
+  if (!/^sources\/guides?(\/|$)/.test(p)) return null;
   if (p === 'sources/guides') {
-    const out = [];
-    for (const g of SOURCES.guides.filter((x) => !x.draft)) out.push(await guideStatus(env, g.slug, null, { refresh: false }));
-    return json({ ok: true, today: ukDate(), guides: out }, 200, { 'Cache-Control': 'public, max-age=300' });
+    return cached(req, ctx, async () => {
+      if (!(await monitorReady(env))) return notReady();
+      const out = [];
+      for (const g of SOURCES.guides.filter((x) => !x.draft)) out.push(await guideStatus(env, g.slug, null, { refresh: false }));
+      return json({ ok: true, today: ukDate(), guides: out }, 200, { 'Cache-Control': `public, max-age=${PUBLIC_TTL}` });
+    });
   }
+  // Only a guide in the build's registry: never an address from the request.
   const m = p.match(/^sources\/guide\/([a-z0-9-]{1,80})$/);
   if (m) {
-    const st = await guideStatus(env, m[1], ctx);
-    return st ? json({ ok: true, today: ukDate(), guide: st }, 200, { 'Cache-Control': 'public, max-age=300' }) : json({ ok: false, error: 'No such guide.' }, 404);
+    if (!GUIDES[m[1]] || GUIDES[m[1]].draft) return json({ ok: false, error: 'No such guide.' }, 404);
+    return cached(req, ctx, async () => {
+      if (!(await monitorReady(env))) return notReady();
+      const st = await guideStatus(env, m[1], ctx);
+      return st ? json({ ok: true, today: ukDate(), guide: st }, 200, { 'Cache-Control': `public, max-age=${PUBLIC_TTL}` }) : json({ ok: false, error: 'No such guide.' }, 404);
+    });
   }
   return null;
 }

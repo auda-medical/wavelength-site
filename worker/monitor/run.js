@@ -1,5 +1,5 @@
-// Source monitoring runs (October 2026). The cron (worker/cron.js, '4,24,44 * * * *', three times an hour) checks one
-// due source each time, so each source is checked once a day within the Workers free plan's per-invocation limits:
+// Source monitoring runs (October 2026). The cron (worker/cron.js, '4,14,24,34,44,54 * * * *', every ten minutes)
+// checks one due source each time (144 chances a day for about 40 sources, so missed slots and retries fit), so each source is checked once a day within the Workers free plan's per-invocation limits:
 // the heaviest real source measured (a 375 KB page) takes about 6 ms of the 10 ms CPU allowed (docs/source-monitoring).
 // Guarantees:
 //   - last_success_at moves only when a check genuinely succeeded; a failure keeps the previous good data and date
@@ -9,7 +9,7 @@
 //   - a directory sync is one validated snapshot written in one statement: never half applied, never emptied
 //   - clinical or accreditation content is never changed here: changes are recorded for a person to review
 import SOURCES from './sources.json';
-import { htmlToText, htmlMeta, pdfMeta, sha256 } from './extract.js';
+import { htmlToText, htmlMeta, pdfMeta, sha256, TEXT_LIMIT } from './extract.js';
 import { classify, NEEDS_REVIEW } from './classify.js';
 import { parseDirectory, validate, sync, optedOut } from './directory.js';
 import { queueStmt, deliverLater } from '../notify.js';
@@ -19,7 +19,12 @@ export const PER_RUN = 1;            // sources per invocation (10 ms CPU on the
 export const DAY_MS = 23 * 3600e3;   // a successful source is due again a day later (an hour early, so the cron keeps the daily rhythm)
 export const LEASE_MS = 10 * 60e3;
 export const TIMEOUT_MS = 15000;
-export const MAX_BYTES = 4 * 1024 * 1024;
+export const MAX_REDIRECTS = 5;
+// Size limits keep one check inside the free plan's 10 ms CPU (measured with tools/monitor-cpu.mjs: the heaviest real
+// page, 366 KB of HTML, about 6 ms; a 1.6 MB PDF about 3 ms). A larger source is reported for checking by hand,
+// never parsed and never counted as checked.
+export const MAX_BYTES = 3 * 1024 * 1024;
+export const MAX_HTML_BYTES = 480 * 1024;
 export const SNAPSHOT_MAX = 200000;  // characters of normalised text kept for the next comparison
 export const ALERT_AFTER = 3;        // consecutive failures before an administrator is told
 const UA = 'WavelengthSourceCheck/1.0 (+https://thewavelength.co.uk/guides/; hello@thewavelength.co.uk)';
@@ -53,8 +58,15 @@ export async function seedSources(env) {
 // ---------- One run ----------
 // opts: { trigger: 'cron' | 'manual' | 'on_demand', ids: only these sources (manual retry, a guide being opened),
 // limit, force: check even if not due (manual retry), acceptDrop: a directory fall an administrator accepted }. Returns a summary.
+// Whether migration 0016 is in place. Before it (a Worker deployed first) or after a rollback, monitoring does nothing
+// and the public status answers 'not set up', so nothing errors and nothing is claimed.
+export async function monitorReady(env) {
+  try { await env.DB.prepare('SELECT 1 FROM monitor_sources LIMIT 0').all(); return true; } catch { return false; }
+}
+
 export async function monitorRun(env, ctx = null, opts = {}) {
   const trigger = opts.trigger || 'cron', now = Date.now();
+  if (!(await monitorReady(env))) return { trigger, checked: [], skipped: [], ready: false };
   await seedSources(env);
   const due = opts.ids && opts.ids.length
     ? ((await env.DB.prepare(`SELECT * FROM monitor_sources WHERE id IN (${opts.ids.map(() => '?').join(',')})`).bind(...opts.ids).all()).results || [])
@@ -88,14 +100,28 @@ async function fetchSource(env, s) {
   const limit = Number(env.MONITOR_TIMEOUT_MS) || TIMEOUT_MS;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), limit) : null;
   try {
-    const res = await f(s.url, { headers, redirect: 'follow', signal: ctrl ? ctrl.signal : undefined });
-    if (res.status === 304) return { status: 304, headers: res.headers };
+    // Redirects are followed by hand, at most five, and only within the source's own site: a source can never lead
+    // the monitor to another host (the allowlist is the registry). A permanent move (301, 308) is recorded so the
+    // citation can be updated; a temporary one (302, 303, 307) is how some bodies serve versioned files.
+    let url = s.url, res = null, moved = null;
+    const site = (u) => new URL(u).hostname.replace(/^www\./, '');
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      res = await f(url, { headers, redirect: 'manual', signal: ctrl ? ctrl.signal : undefined });
+      if (![301, 302, 303, 307, 308].includes(res.status)) break;
+      const loc = res.headers.get('Location');
+      if (!loc || hop === MAX_REDIRECTS) return { status: res.status, error: `too many redirects` };
+      const next = new URL(loc, url).toString();
+      if (!/^https:/.test(next) || site(next) !== site(s.url)) return { status: res.status, error: `redirected to another site (${new URL(next).hostname}): check the citation` };
+      if ((res.status === 301 || res.status === 308) && hop === 0) moved = next;
+      url = next;
+    }
+    if (res.status === 304) return { status: 304, headers: res.headers, finalUrl: url, moved };
     if (!res.ok) return { status: res.status, error: `HTTP ${res.status}` };
     const len = Number(res.headers.get('Content-Length') || 0);
-    if (len > MAX_BYTES) return { status: res.status, error: `too large (${len} bytes)` };
+    if (len > MAX_BYTES) return { status: res.status, error: `too large to check automatically (${Math.round(len / 1024)} KB): check it by hand` };
     const buf = new Uint8Array(await res.arrayBuffer());
-    if (buf.length > MAX_BYTES) return { status: res.status, error: `too large (${buf.length} bytes)` };
-    return { status: res.status, headers: res.headers, bytes: buf, type: (res.headers.get('Content-Type') || '').toLowerCase() };
+    if (buf.length > MAX_BYTES) return { status: res.status, error: `too large to check automatically (${Math.round(buf.length / 1024)} KB): check it by hand` };
+    return { status: res.status, headers: res.headers, bytes: buf, type: (res.headers.get('Content-Type') || '').toLowerCase(), finalUrl: url, moved };
   } catch (e) {
     return { status: 0, error: e && e.name === 'AbortError' ? `no answer within ${Math.round(limit / 1000)} seconds` : String(e && e.message || e).slice(0, 200) };
   } finally { if (timer) clearTimeout(timer); }
@@ -107,15 +133,20 @@ export async function checkSource(env, s, trigger = 'cron', o = {}) {
   if (got.error) return recordFailure(env, s, { outcome: 'unavailable', http: got.status, error: got.error }, trigger, started);
   if (s.kind === 'directory') return checkDirectory(env, s, got, trigger, started, o);
   const meta = JSON.parse(s.meta || '{}');
+  // Where the citation now leads: shown to administrators so a permanently moved source gets its citation updated.
+  if (got.moved) meta.movedTo = got.moved; else delete meta.movedTo;
+  if (got.finalUrl && got.finalUrl !== s.url) meta.finalUrl = got.finalUrl; else delete meta.finalUrl;
   if (got.status === 304) return recordSuccess(env, s, { outcome: 'no_change', http: 304, next: { hash: s.content_hash, text: s.snapshot, version: s.doc_version, publishedOn: s.published_on }, result: { classification: 'no_change', summary: 'Not modified since the last check (confirmed by the source).' }, meta }, trigger, started);
   const isPdf = got.type.includes('pdf') || (got.bytes[0] === 0x25 && got.bytes[1] === 0x50 && got.bytes[2] === 0x44 && got.bytes[3] === 0x46);
   let next;
   if (isPdf) {
-    const pm = pdfMeta(got.bytes, s.url);
+    const pm = pdfMeta(got.bytes, got.finalUrl || s.url); // a versioned file name behind a redirect names the version
     next = { isDocument: true, hash: await sha256(got.bytes), text: null, version: pm.version, publishedOn: pm.publishedOn, title: pm.title };
   } else {
+    if (got.bytes.length > MAX_HTML_BYTES) return recordFailure(env, s, { outcome: 'unsupported', http: got.status, error: `The page is ${Math.round(got.bytes.length / 1024)} KB, more than can be checked automatically within the plan's limits: check it by hand.` }, trigger, started);
     const html = new TextDecoder('utf-8', { fatal: false }).decode(got.bytes);
     const text = htmlToText(html);
+    if (text == null || text.length > TEXT_LIMIT) return recordFailure(env, s, { outcome: 'unsupported', http: got.status, error: 'The page holds far more text than a guidance page: it cannot be compared automatically within the plan\'s limits. Check it by hand.' }, trigger, started);
     if (text.length < 120) return recordFailure(env, s, { outcome: 'format_changed', http: got.status, error: `The page has almost no readable text (${text.length} characters): it may now need JavaScript, a login or a different address.` }, trigger, started);
     const hm = htmlMeta(html, text);
     next = { isDocument: false, hash: await sha256(text), text: text.slice(0, SNAPSHOT_MAX), version: hm.version, publishedOn: hm.publishedOn, title: hm.title };
@@ -146,7 +177,7 @@ export async function recordFailure(env, s, r, trigger, started) {
   const failures = (s.failures || 0) + 1;
   const stmts = [
     // last_success_at, the content hash and the snapshot are left exactly as they were.
-    env.DB.prepare("UPDATE monitor_sources SET status = ?, last_outcome = ?, last_attempt_at = ?, failures = ?, next_check_at = ?, lease_until = NULL, updated_at = datetime('now') WHERE id = ?").bind(r.outcome === 'format_changed' ? 'format_changed' : 'unavailable', r.outcome, now, failures, iso(Date.now() + backoff(failures)), s.id),
+    env.DB.prepare("UPDATE monitor_sources SET status = ?, last_outcome = ?, last_attempt_at = ?, failures = ?, next_check_at = ?, lease_until = NULL, updated_at = datetime('now') WHERE id = ?").bind(['format_changed', 'unsupported'].includes(r.outcome) ? r.outcome : 'unavailable', r.outcome, now, failures, iso(Date.now() + backoff(failures)), s.id),
     env.DB.prepare('INSERT INTO monitor_runs (source_id, trigger, started_at, finished_at, outcome, http_status, error) VALUES (?,?,?,?,?,?,?)').bind(s.id, trigger, started || now, now, r.outcome, r.http || null, (r.error || '').slice(0, 500)),
   ];
   // A format change is worth one review item (not one per retry): only when the source was not already in that state.

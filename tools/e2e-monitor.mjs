@@ -31,7 +31,7 @@ for (const s of SOURCES.sources.filter((x) => x.mode === 'auto')) pages.set(s.ur
 const DIR = SOURCES.sources.find((s) => s.id === 'dir:fusic').url;
 const person = (name, organisation, modules, role) => ({ name, organisation, roles: modules.map((m) => ({ role, module: m })) });
 pages.set(DIR, { body: JSON.stringify({ entries: [person('Sam Patel', 'Westfield Royal Infirmary', ['fusic-heart'], 'mentor'), person('Sam Patel', 'Eastbridge University Hospital', ['fusic-lung'], 'trainer'), person('Alex Example', 'Northtown General Hospital', ['fusic-heart'], 'supervisor'), person('Jo Rivers', 'Northtown General Hospital', ['fusic-lung', 'fusic-dvt'], 'trainer')] }), type: 'application/json' });
-const MONITOR_FETCH = async (url) => { const p = pages.get(url); return p ? new Response(p.body, { headers: { 'Content-Type': p.type || 'text/html' } }) : new Response('nf', { status: 404 }); };
+const MONITOR_FETCH = async (url) => { const p = pages.get(url); return p ? new Response(p.body, { status: p.status || 200, headers: { 'Content-Type': p.type || 'text/html' } }) : new Response('nf', { status: 404 }); };
 
 const DIST = path.resolve('dist');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.webp': 'image/webp', '.jpg': 'image/jpeg' };
@@ -81,7 +81,7 @@ for (const w of [390, 1440]) {
   await page.goto(`${BASE}/guides/${slug}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(800);
   const t = await page.locator('.guide-dates').innerText();
-  check(/Last clinically reviewed: 4 October 2026/.test(t) && /Guidance last updated: 5 October 2026/.test(t), `guide ${w}: reviewed and updated dates from the guide`);
+  check(/Last clinically reviewed: 4 October 2026/.test(t) && /Guidance last updated: 11 October 2026/.test(t), `guide ${w}: reviewed and updated dates from the guide`);
   check(/Official sources not yet checked automatically\./.test(t) && !/Source checked:/.test(t), `guide ${w}: no source-check date before any check`);
   check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)), `guide ${w}: no horizontal overflow`);
   await shot(page, `guide-before-${w}.png`);
@@ -100,6 +100,27 @@ await monitorRun(env, wctx, { trigger: 'cron', ids: g.sources, limit: g.sources.
   await shot(page, 'guide-after.png');
   await cx.close();
 }
+// 2b. One source cannot be checked: the guide is not "checked" as a whole; the date covers the others, the failed
+// source is named with its own last successful check, and the page still opens at once.
+const lung = SOURCES.sources.find((s) => s.name === 'FUSIC Lung');
+const lungPage = pages.get(lung.url);
+pages.set(lung.url, { body: 'unavailable', status: 503 });
+await monitorRun(env, wctx, { trigger: 'manual', ids: [lung.id], force: true });
+for (const w of [390, 1440]) {
+  const { cx, page } = await open(`guide-partial ${w}`, null, w);
+  await page.goto(`${BASE}/guides/${slug}/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.source-unavailable');
+  const t = await page.locator('.guide-dates').innerText(), u = await page.locator('.source-unavailable').innerText();
+  check(t.includes(`Source checked: ${ukToday} for ${g.sources.length - 1} of ${g.sources.length} sources.`) && !/No changes detected/.test(t), `guide partial ${w}: "${t.split('\n').join(' | ')}"`);
+  check(u.includes(`Could not be checked at the latest attempt: FUSIC Lung (last checked ${ukToday}).`), `guide partial ${w}: the failed source is named: "${u}"`);
+  check((await page.locator('.source-unavailable a').getAttribute('href')) === lung.url, `guide partial ${w}: link to the source`);
+  check(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)), `guide partial ${w}: no horizontal overflow`);
+  await page.waitForTimeout(1500);
+  await shot(page, `guide-partial-${w}.png`);
+  await cx.close();
+}
+pages.set(lung.url, lungPage);
+await monitorRun(env, wctx, { trigger: 'manual', ids: [lung.id], force: true });
 // 3. An important source change: the notice, with a link to the original.
 const heart = SOURCES.sources.find((s) => s.name === 'FUSIC Heart');
 pages.set(heart.url, { body: page(BODY.replace('50 supervised scans', '40 supervised scans'), heart.name) });

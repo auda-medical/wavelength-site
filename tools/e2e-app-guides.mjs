@@ -83,6 +83,22 @@ t = await pg.locator('.guide-note').first().innerText();
 check(/Source checked:/.test(t) && /Shown from this device's last connection/.test(t), `app guide offline: stored status, labelled (${t.replace(/\n/g, ' | ')})`);
 await pg.screenshot({ path: path.join(out, 'app-guide-offline.png') });
 await cx.setOffline(false);
+// The bundled copy predates the website's (11 October citation fixes): the app says a newer version exists.
+t = await openGuide();
+check(await pg.locator('[data-srcnewer]').isVisible(), 'app guide: says the website has a newer version');
+// One source cannot be checked: no date for the whole guide; the failed source is named.
+const lung = SOURCES.sources.find((s) => s.name === 'FUSIC Lung');
+const lungPage = pages.get(lung.url);
+pages.delete(lung.url); // the source answers 404
+await monitorRun(env, wctx, { trigger: 'manual', ids: [lung.id], force: true });
+t = await openGuide();
+const bad = await pg.locator('[data-srcbad]').innerText();
+check(/Source checked: .* for 14 of 15 sources\./.test(t) && !/No changes detected/.test(t), `app guide partial: ${t.split('\n').join(' | ')}`);
+check(/Could not be checked at the latest attempt: FUSIC Lung \(last checked/.test(bad) && (await pg.locator('[data-srcbad] a').getAttribute('href')) === lung.url, `app guide partial: failed source named (${bad})`);
+check(!(await pg.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)), 'app guide partial: no horizontal overflow');
+await pg.screenshot({ path: path.join(out, 'app-guide-partial.png') });
+pages.set(lung.url, lungPage);
+await monitorRun(env, wctx, { trigger: 'manual', ids: [lung.id], force: true });
 // An important change at a source: the notice and the original's link.
 const heart = SOURCES.sources.find((s) => s.name === 'FUSIC Heart');
 pages.set(heart.url, page(BODY.replace('50 supervised', '40 supervised'), heart.name));
@@ -126,6 +142,18 @@ await p2.waitForSelector('#svclaim .ok');
 check(/will confirm it is you/.test(await p2.locator('#svclaim').innerText()), 'app application: claim recorded, confirmation pending');
 check((await env.DB.prepare("SELECT status FROM directory_links").first()).status === 'claimed', 'app application: a claim only');
 await p2.screenshot({ path: path.join(out, 'app-claim.png') });
+// Directories switched off (today's production setting): no search box anywhere; the email invitation and the
+// application's own credential and experience fields are the route, exactly as before.
+env.DIRECTORY_SYNC = 'false';
+await pg.goto('about:blank'); await pg.goto(`${BASE}/app/#/supervisors`, { waitUntil: 'domcontentloaded' });
+await pg.waitForSelector('#se2'); await pg.waitForTimeout(1200);
+check(await pg.locator('[data-listing="svfind2"]').isHidden(), 'directories off: no search box on the invitation');
+check(await pg.locator('#se2').isVisible(), 'directories off: the supervisor\'s email is entered by hand');
+await p2.goto('about:blank'); await p2.goto(`${BASE}/app/#/supervisor/apply/experience`, { waitUntil: 'domcontentloaded' });
+await p2.waitForSelector('input[name=credType]'); await p2.waitForTimeout(1200);
+check(await p2.locator('[data-listing="svlst"]').isHidden(), 'directories off: no listing search in the application');
+check(await p2.locator('input[name=credType]').first().isVisible(), 'directories off: credentials ticked by hand');
+await p2.screenshot({ path: path.join(out, 'app-directories-off.png') });
 await browser.close(); server.close();
 console.log(errors.length ? `\n${errors.length} problem(s):\n${errors.join('\n')}` : '\nApp guide checks passed.');
 process.exit(errors.length ? 1 : 0);

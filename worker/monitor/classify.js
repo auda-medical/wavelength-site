@@ -10,6 +10,8 @@
 
 const REQUIREMENT = /\b(minimum|must|required?|requirements?|mandatory|accredit\w*|assess\w*|sign[- ]?off|supervis\w*|mentor\w*|trainers?|logbook|scans?|studies|DOPS|curriculum|modules?|deadlines?|fees?|valid\w*|expir\w*|competen\w*|triggered|summative|formative|portfolio|eligib\w*|entrust\w*|SLO\d*|registration|certif\w*|examination|exam|renewal|months?|years?)\b|£|€|\$/i;
 const NUMBER = /\d/;
+// A linked official document (extract.js) counts as requirement wording: a new file is a new pack or version.
+const isReq = (l) => REQUIREMENT.test(l) || l.startsWith('Linked document:');
 // Words that turn guidance into a rule, or change one.
 const STRONG = /^(must|mandatory|required|requires?|minimum|maximum|only|not|no|never|deadline|fee|fees|expires?|valid|withdrawn|replaced|discontinued)$/i;
 // Lines that change on every visit without saying anything new (a date the page was generated, a visitor counter).
@@ -50,10 +52,10 @@ export function classify(prev, next) {
   const a = words(d.removed), b = words(d.added), changedWords = [];
   for (const [w, n] of a) for (let k = (b.get(w) || 0); k < n; k++) changedWords.push(w);
   for (const [w, n] of b) for (let k = (a.get(w) || 0); k < n; k++) changedWords.push(w);
-  const requirementLines = touched.filter((l) => REQUIREMENT.test(l) && NUMBER.test(l));
-  const numberChanged = changedWords.some((w) => NUMBER.test(w)) && touched.some((l) => REQUIREMENT.test(l));
-  const strongChanged = changedWords.some((w) => STRONG.test(w)) && touched.some((l) => REQUIREMENT.test(l));
-  const termChanged = changedWords.some((w) => REQUIREMENT.test(w));
+  const requirementLines = touched.filter((l) => isReq(l) && NUMBER.test(l));
+  const numberChanged = changedWords.some((w) => NUMBER.test(w)) && touched.some(isReq);
+  const strongChanged = changedWords.some((w) => STRONG.test(w)) && touched.some(isReq);
+  const termChanged = changedWords.some((w) => REQUIREMENT.test(w)) || touched.some((l) => l.startsWith('Linked document:'));
   ev.requirementLines = requirementLines.slice(0, 20);
   ev.changedWords = changedWords.slice(0, 60);
   const summary = (kind) => `${kind}: ${d.addedCount} line${d.addedCount === 1 ? '' : 's'} added, ${d.removedCount} removed, ${changedWords.length} word${changedWords.length === 1 ? '' : 's'} changed${requirementLines.length ? `; ${requirementLines.length} line${requirementLines.length === 1 ? '' : 's'} mention requirements with numbers or dates` : ''}${versionChanged ? `; version ${prev.version} to ${next.version}` : ''}.`;
