@@ -33,7 +33,7 @@ export function reRise(env) { const pk = Math.max(...env), pi = env.indexOf(pk);
 // The decay-rate change: 0 dB until tk, then the extra gain grows at dr dB/s, eased in over 80 ms, and eased out again
 // by tEnd (where the extended sound has fallen 65 dB), after which it holds: nothing that was already inaudible is ever
 // brought back up, and the sound keeps fading at its own rate to silence.
-function extend([L, R], hit, tk, dr, tEnd = Infinity) {
+export function extend([L, R], hit, tk, dr, tEnd = Infinity) {
   const ramp = 0.08, o = [Float32Array.from(L), Float32Array.from(R)];
   let g = 0;
   for (let i = 0; i < L.length; i++) {
@@ -44,7 +44,7 @@ function extend([L, R], hit, tk, dr, tEnd = Infinity) {
   return o;
 }
 // Trim where the sound has fallen 75 dB below its peak (inaudible), with a 30 ms fade there.
-function trim([L, R]) {
+export function trim([L, R]) {
   let pk = 0; for (let i = 0; i < L.length; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i]));
   let end = L.length - 1; const floor = pk * Math.pow(10, -75 / 20);
   while (end > 0 && Math.max(Math.abs(L[end]), Math.abs(R[end])) < floor) end--;
@@ -79,7 +79,7 @@ function sweep() {
 // The intermediate sound: one continuous tone. It begins softly on D5 when the two-note's first note would, holds for
 // a moment, glides (eased) up to A5, arriving exactly on the settle with a gentle swell, then decays with the two-note's
 // timbre (soft second and third partials, a faint glassy partial) and its short room. No second attack, no third note.
-function intermediate() {
+export function intermediate() {
   const n = Math.round((PRE + LONG) * RATE), L = new Float32Array(n), R = new Float32Array(n);
   const start = PRE - 0.24, hold = 0.07, glide = 0.17, T60 = 0.82, P = [[1, 1, 1], [2, 0.22, 0.6], [3, 0.06, 0.4], [4.2, 0.02, 0.25]];
   const ph = P.map(() => 0);

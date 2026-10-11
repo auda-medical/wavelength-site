@@ -46,7 +46,11 @@ const TAGLINE = (args.find((a) => a.startsWith('--tagline=')) || '').slice(10) |
 const TAGLINE_DB = Number((args.find((a) => a.startsWith('--tagline-db=')) || '--tagline-db=0').slice(13));
 const readMeta = (dir, file) => { const f = path.join(ROOT, 'public/audio-v4', dir, file); return fs.existsSync(f) ? Object.fromEntries(Object.entries(JSON.parse(fs.readFileSync(f, 'utf8'))).map(([k, v]) => [k, { ...v, dir }])) : {}; };
 // Logo sounds that can replace the original two-note file: the sonar auditions and the final signature options.
-const SONAR = { ...readMeta('sonar', 'sonar.json'), ...readMeta('signature', 'signature.json'), ...readMeta('decay', 'decay.json') };
+const SONAR = { ...readMeta('sonar', 'sonar.json'), ...readMeta('signature', 'signature.json'), ...readMeta('decay', 'decay.json'), ...readMeta('linger', 'linger.json') };
+// --voice-db=<dB> (audition 2, owner's level note of 11 October 2026): move only the narration bus. Music, logo and the
+// master gain stay exactly as in the same mix without it (no loudness re-normalisation, no extra limiting or make-up
+// gain, the music is not turned down to keep the old contrast), so the voice really is that much quieter.
+const VOICE_DB = Number((args.find((a) => a.startsWith('--voice-db=')) || '--voice-db=0').slice(11));
 const T = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio-v4/timings.json'), 'utf8'));
 const S = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/v4/script.json'), 'utf8'));
 export const MIX = { speechToMusic: 15, lift: 6, down: 0.35, up: 0.9, minGap: 1.0, logoBelowVoice: 5, logoMomentaryBelowVoice: 1, target: -15, ceilingTP: -1.0 };
@@ -141,17 +145,18 @@ export function mixFilm(film, cand) {
     const mm = momentaryMax(hL, hR); if (Number.isFinite(mm)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoMomentaryBelowVoice - mm) / 20));
   } else if (MOMENTARY) { const mm = momentaryMax(sL, sR); if (Number.isFinite(mm)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoMomentaryBelowVoice - mm) / 20)); }
   else { const sfxL = lufs(sL, sR); if (Number.isFinite(sfxL)) scale(sL, sR, Math.pow(10, (-18 - MIX.logoBelowVoice - sfxL) / 20)); }
-  // Sum, master.
+  // Sum, master. With --voice-db the master gain is the one the mix gets without it.
   const L = new Float32Array(n), R = new Float32Array(n);
   for (let i = 0; i < n; i++) { L[i] = voice[i] + amL[i] + sL[i]; R[i] = voice[i] + amR[i] + sR[i]; }
   const g = Math.pow(10, (MIX.target - lufs(L, R)) / 20);
+  if (VOICE_DB) { const kv = Math.pow(10, VOICE_DB / 20); for (let i = 0; i < n; i++) { voice[i] *= kv; L[i] = voice[i] + amL[i] + sL[i]; R[i] = voice[i] + amR[i] + sR[i]; } }
   scale(L, R, g); for (const x of [voice, amL, amR, sL, sR]) for (let i = 0; i < n; i++) x[i] *= g;
   let ceil = -1.6, tp;
   const L0 = Float32Array.from(L), R0 = Float32Array.from(R);
   // Limit, then make up the loudness the limiter took (twice at most), keeping the true peak at or below the ceiling.
   for (let pass = 0; pass < 3; pass++) {
     for (;;) { L.set(L0); R.set(R0); limiter(L, R, ceil); tp = truePeak(L, R); if (tp <= MIX.ceilingTP || ceil < -4) break; ceil -= 0.3; }
-    const short = MIX.target - lufs(L, R); if (short < 0.15 || pass === 2) break;
+    const short = MIX.target - lufs(L, R); if (VOICE_DB || short < 0.15 || pass === 2) break;
     const k = Math.pow(10, short / 20); scale(L0, R0, k); for (const x of [voice, amL, amR, sL, sR]) for (let i = 0; i < n; i++) x[i] *= k;
   }
   // Measurements.
@@ -166,6 +171,8 @@ export function mixFilm(film, cand) {
     musicInPausesVsSpeechDb: musGap.length ? +(lufs(gapSel(amL), gapSel(amR)) - lufs(vS, vS)).toFixed(1) : null,
     monoMinusStereoLU: +(lufs(mono, mono) - lufs(L, R)).toFixed(2),
     speechRegions: sp.length,
+    voiceDb: VOICE_DB, voiceIntegratedLUFS: +lufs(vS, vS).toFixed(1), musicUnderSpeechLUFS: +lufs(sel(amL), sel(amR)).toFixed(1), masterGainDb: +(20 * Math.log10(g)).toFixed(2),
+    limiterMaxReductionDb: (() => { let m = 0; for (let i = 0; i < n; i += 48) { const a = Math.max(Math.abs(L0[i]), Math.abs(R0[i])), b = Math.max(Math.abs(L[i]), Math.abs(R[i])); if (a > 1e-4 && b > 0) m = Math.max(m, 20 * Math.log10(a / b)); } return +m.toFixed(2); })(),
   };
   const dir = path.join(OUT, AS || cand);
   writeWav(path.join(dir, `${film}.wav`), L, R);

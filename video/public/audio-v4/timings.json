@@ -98,5 +98,17 @@
  "tagline/take3": {
   "seconds": 3.25,
   "file": "audio-v4/tagline/take3.wav"
+ },
+ "tagline-a2/T1": {
+  "seconds": 3.14,
+  "file": "audio-v4/tagline-a2/T1.wav"
+ },
+ "tagline-a2/T2": {
+  "seconds": 3.33,
+  "file": "audio-v4/tagline-a2/T2.wav"
+ },
+ "tagline-a2/T3": {
+  "seconds": 3.07,
+  "file": "audio-v4/tagline-a2/T3.wav"
  }
 }

@@ -1,0 +1,29 @@
+[
+ {
+  "id": "T1",
+  "src": "tag-light-0.wav",
+  "label": "Take 1: brighter resolution",
+  "desc": "\"Gain clarity\" lifts slightly above \"Tune in\" and is brighter, then settles gently.",
+  "pauseAfterTuneIn": 0.63,
+  "silenceAdded": 0.02,
+  "seconds": 3.78
+ },
+ {
+  "id": "T2",
+  "src": "full-plain-1.wav",
+  "label": "Take 2: warm and steady",
+  "desc": "Calm \"Tune in\"; \"Gain clarity\" warmer and brighter, settling a little further.",
+  "pauseAfterTuneIn": 0.54,
+  "silenceAdded": 0.11,
+  "seconds": 3.79
+ },
+ {
+  "id": "T3",
+  "src": "full-light-2.wav",
+  "label": "Take 3: lighter and quicker",
+  "desc": "A lighter, quicker reading; \"Gain clarity\" brighter with a clear settle.",
+  "pauseAfterTuneIn": 0.42,
+  "silenceAdded": 0.23,
+  "seconds": 3.51
+ }
+]

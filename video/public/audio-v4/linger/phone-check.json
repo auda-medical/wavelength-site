@@ -1,0 +1,58 @@
+{
+ "settles": {
+  "brand": 10.3,
+  "end": 19.833333333333332
+ },
+ "results": {
+  "TN1": {
+   "brand": {
+    "headphonesHeardFor": 0.26,
+    "phoneHeardFor": 0.32
+   },
+   "end": {
+    "headphonesHeardFor": 0.18,
+    "phoneHeardFor": 0.23
+   }
+  },
+  "MX": {
+   "brand": {
+    "headphonesHeardFor": 0.25,
+    "phoneHeardFor": 0.25
+   },
+   "end": {
+    "headphonesHeardFor": 0.17,
+    "phoneHeardFor": 0.18
+   }
+  },
+  "L1": {
+   "brand": {
+    "headphonesHeardFor": 0.39,
+    "phoneHeardFor": 0.39
+   },
+   "end": {
+    "headphonesHeardFor": 0.23,
+    "phoneHeardFor": 0.29
+   }
+  },
+  "L2": {
+   "brand": {
+    "headphonesHeardFor": 0.52,
+    "phoneHeardFor": 0.64
+   },
+   "end": {
+    "headphonesHeardFor": 0.29,
+    "phoneHeardFor": 0.35
+   }
+  },
+  "L3": {
+   "brand": {
+    "headphonesHeardFor": 0.78,
+    "phoneHeardFor": 0.9
+   },
+   "end": {
+    "headphonesHeardFor": 0.52,
+    "phoneHeardFor": 0.69
+   }
+  }
+ }
+}

@@ -1,0 +1,178 @@
+{
+ "takes": 24,
+ "passed": 5,
+ "finalists": [
+  {
+   "id": "tag-light-0.wav",
+   "heard": "Wavelength. Tune in. Gain Clarity.",
+   "fails": [],
+   "pauseAfterWavelength": 0.6,
+   "pauseAfterTuneIn": 0.64,
+   "tuneInHz": 93.1,
+   "gainClarityHz": 96.9,
+   "gcVsTiSemitones": 0.69,
+   "gcSettleSemitones": -3.35,
+   "brightnessHz": 124,
+   "gcVsTiDb": -0.7,
+   "seconds": 3.76,
+   "score": 1.89
+  },
+  {
+   "id": "full-plain-1.wav",
+   "heard": "Wavelength. Tune in. Gain Clarity.",
+   "fails": [],
+   "pauseAfterWavelength": 0.52,
+   "pauseAfterTuneIn": 0.54,
+   "tuneInHz": 93.1,
+   "gainClarityHz": 90.4,
+   "gcVsTiSemitones": -0.51,
+   "gcSettleSemitones": -5,
+   "brightnessHz": 164,
+   "gcVsTiDb": -2.6,
+   "seconds": 3.68,
+   "score": 0.69
+  },
+  {
+   "id": "full-light-2.wav",
+   "heard": "Wavelength. Tune in. Gain Clarity.",
+   "fails": [],
+   "pauseAfterWavelength": 0.5,
+   "pauseAfterTuneIn": 0.43,
+   "tuneInHz": 104.5,
+   "gainClarityHz": 100.9,
+   "gcVsTiSemitones": -0.61,
+   "gcSettleSemitones": -5.31,
+   "brightnessHz": 176,
+   "gcVsTiDb": -1.8,
+   "seconds": 3.28,
+   "score": 0.27
+  }
+ ],
+ "rejected": [
+  {
+   "id": "full-light-0.wav",
+   "fails": [
+    "heard \"Wave length tune in. Gain clarity.\"",
+    "2 phrases"
+   ]
+  },
+  {
+   "id": "full-light-1.wav",
+   "fails": [
+    "heard \"Wave length. Tune in. Gain clarity.\"",
+    "settle"
+   ]
+  },
+  {
+   "id": "full-light-3.wav",
+   "fails": [
+    "pauses",
+    "\"Gain clarity\" lower"
+   ]
+  },
+  {
+   "id": "full-pause-0.wav",
+   "fails": [
+    "2 phrases"
+   ]
+  },
+  {
+   "id": "full-pause-1.wav",
+   "fails": [
+    "heard \"Wavelength. Tune in. Game Clarity.\"",
+    "settle"
+   ]
+  },
+  {
+   "id": "full-pause-3.wav",
+   "fails": [
+    "\"Gain clarity\" lower"
+   ]
+  },
+  {
+   "id": "full-plain-0.wav",
+   "fails": [
+    "settle"
+   ]
+  },
+  {
+   "id": "full-plain-3.wav",
+   "fails": [
+    "pauses",
+    "\"Gain clarity\" lower"
+   ]
+  },
+  {
+   "id": "tag-light-1.wav",
+   "fails": [
+    "settle"
+   ]
+  },
+  {
+   "id": "tag-light-2.wav",
+   "fails": [
+    "pauses",
+    "\"Gain clarity\" lower"
+   ]
+  },
+  {
+   "id": "tag-light-3.wav",
+   "fails": [
+    "pauses",
+    "settle"
+   ]
+  },
+  {
+   "id": "tag-pause-0.wav",
+   "fails": [
+    "settle"
+   ]
+  },
+  {
+   "id": "tag-pause-1.wav",
+   "fails": [
+    "\"Gain clarity\" lower"
+   ]
+  },
+  {
+   "id": "tag-pause-2.wav",
+   "fails": [
+    "\"Gain clarity\" lower"
+   ]
+  },
+  {
+   "id": "tag-pause-3.wav",
+   "fails": [
+    "heard \"Wave length, tune in. Gain clarity.\"",
+    "2 phrases"
+   ]
+  },
+  {
+   "id": "tag-plain-0.wav",
+   "fails": [
+    "2 phrases"
+   ]
+  },
+  {
+   "id": "tag-plain-1.wav",
+   "fails": [
+    "settle"
+   ]
+  },
+  {
+   "id": "tag-plain-2.wav",
+   "fails": [
+    "\"Gain clarity\" lower",
+    "settle"
+   ]
+  },
+  {
+   "id": "tag-plain-3.wav",
+   "fails": [
+    "pauses",
+    "\"Gain clarity\" lower",
+    "settle"
+   ]
+  }
+ ]
+}

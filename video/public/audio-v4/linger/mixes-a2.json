@@ -1,0 +1,275 @@
+{
+ "a2-TN1": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.56,
+   "voiceLUFS": -14.4,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 1.71,
+   "masterGainDb": 3.24
+  },
+  "lower": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.8,
+   "truePeakDBTP": -1.73,
+   "voiceLUFS": -16.4,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0,
+   "masterGainDb": 3.24
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-MX": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.56,
+   "voiceLUFS": -14.4,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 1.74,
+   "masterGainDb": 3.26
+  },
+  "lower": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.8,
+   "truePeakDBTP": -1.71,
+   "voiceLUFS": -16.4,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0,
+   "masterGainDb": 3.26
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-L1": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.56,
+   "voiceLUFS": -14.4,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 1.72,
+   "masterGainDb": 3.25
+  },
+  "lower": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.8,
+   "truePeakDBTP": -1.72,
+   "voiceLUFS": -16.4,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0,
+   "masterGainDb": 3.25
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-L2": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.56,
+   "voiceLUFS": -14.4,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 1.75,
+   "masterGainDb": 3.27
+  },
+  "lower": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.7,
+   "truePeakDBTP": -1.7,
+   "voiceLUFS": -16.4,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0,
+   "masterGainDb": 3.27
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-L3": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.56,
+   "voiceLUFS": -14.4,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 1.71,
+   "masterGainDb": 3.22
+  },
+  "lower": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.7,
+   "truePeakDBTP": -1.75,
+   "voiceLUFS": -16.4,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0,
+   "masterGainDb": 3.22
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-t-T1": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.2,
+   "truePeakDBTP": -1.57,
+   "voiceLUFS": -12.7,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 3.89,
+   "masterGainDb": 3.9
+  },
+  "lower": {
+   "voiceDb": -0.8,
+   "integratedLUFS": -16.2,
+   "truePeakDBTP": -1.57,
+   "voiceLUFS": -14.7,
+   "speechToMusicDb": 14.2,
+   "limiterMaxReductionDb": 1.91,
+   "masterGainDb": 3.9
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-t-T2": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.3,
+   "truePeakDBTP": -1.57,
+   "voiceLUFS": -12.8,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 3.89,
+   "masterGainDb": 3.96
+  },
+  "lower": {
+   "voiceDb": -0.8,
+   "integratedLUFS": -16.1,
+   "truePeakDBTP": -1.57,
+   "voiceLUFS": -14.8,
+   "speechToMusicDb": 14.2,
+   "limiterMaxReductionDb": 1.89,
+   "masterGainDb": 3.96
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-t-T3": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.2,
+   "truePeakDBTP": -1.57,
+   "voiceLUFS": -12.8,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 3.82,
+   "masterGainDb": 3.95
+  },
+  "lower": {
+   "voiceDb": -0.8,
+   "integratedLUFS": -16.2,
+   "truePeakDBTP": -1.57,
+   "voiceLUFS": -14.8,
+   "speechToMusicDb": 14.2,
+   "limiterMaxReductionDb": 1.9,
+   "masterGainDb": 3.95
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-t-current": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.2,
+   "truePeakDBTP": -1.57,
+   "voiceLUFS": -12.9,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 3.6,
+   "masterGainDb": 3.89
+  },
+  "lower": {
+   "voiceDb": -0.9,
+   "integratedLUFS": -16.2,
+   "truePeakDBTP": -1.58,
+   "voiceLUFS": -14.9,
+   "speechToMusicDb": 14.1,
+   "limiterMaxReductionDb": 1.65,
+   "masterGainDb": 3.89
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-lvl-T1-lower": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.2,
+   "truePeakDBTP": -1.57,
+   "voiceLUFS": -12.7,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 3.89,
+   "masterGainDb": 3.9
+  },
+  "lower": {
+   "voiceDb": -0.8,
+   "integratedLUFS": -16.2,
+   "truePeakDBTP": -1.57,
+   "voiceLUFS": -14.7,
+   "speechToMusicDb": 14.2,
+   "limiterMaxReductionDb": 1.91,
+   "masterGainDb": 3.9
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-c-L1-T1": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.56,
+   "voiceLUFS": -14.4,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 1.82,
+   "masterGainDb": 3.22
+  },
+  "lower": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.8,
+   "truePeakDBTP": -1.66,
+   "voiceLUFS": -16.4,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0,
+   "masterGainDb": 3.22
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-c-L2-T1": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.56,
+   "voiceLUFS": -14.4,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 1.85,
+   "masterGainDb": 3.25
+  },
+  "lower": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.7,
+   "truePeakDBTP": -1.63,
+   "voiceLUFS": -16.4,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0,
+   "masterGainDb": 3.25
+  },
+  "voiceChangeDb": -2
+ },
+ "a2-c-L2-T2": {
+  "current": {
+   "voiceDb": 0,
+   "integratedLUFS": -15.1,
+   "truePeakDBTP": -1.56,
+   "voiceLUFS": -14.3,
+   "speechToMusicDb": 15,
+   "limiterMaxReductionDb": 1.84,
+   "masterGainDb": 3.26
+  },
+  "lower": {
+   "voiceDb": -1.7,
+   "integratedLUFS": -16.7,
+   "truePeakDBTP": -1.62,
+   "voiceLUFS": -16.3,
+   "speechToMusicDb": 13.3,
+   "limiterMaxReductionDb": 0,
+   "masterGainDb": 3.26
+  },
+  "voiceChangeDb": -2
+ }
+}
