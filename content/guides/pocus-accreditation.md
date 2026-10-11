@@ -6,6 +6,7 @@ seoTitle: "POCUS accreditation: UK and international pathways"
 eyebrow: Guide · Accreditation
 summary: Which POCUS pathway fits you: RCEM, FAMUS and FUSIC compared side by side, with links to international pathways and frameworks from EUSEM, ACEM, CPoCUS and ACEP.
 date: 2026-10-05
+updated: 2026-10-11
 author: Dr Firas Abou-Auda
 order: 0
 pathway: all
@@ -133,7 +134,7 @@ Wavelength teaches point-of-care ultrasound and gives you tools to organise your
 
 The UK figures come from the full guides, which were checked against these and further documents on 4 October 2026 and cite every source:
 
-- [RCEM: Ultrasound education and training, 2021 curriculum](https://rcem.ac.uk/ultrasound/)
+- [RCEM: Ultrasound education and training, 2021 curriculum](https://rcem.ac.uk/ultrasound-education-training-2021-curriculum/)
 - [RCEM Point of Care Ultrasound Curriculum 2021, Appendix 3](https://rcemcurriculum.co.uk/wp-content/uploads/2021/06/Appendix-3-PoCUS-for-2021-RCEM-curriculum.pdf)
 - [SAM: FAMUS, how to accredit](https://www.acutemedicine.org.uk/famus/how-to-accredit/)
 - [Intensive Care Society: FUSIC](https://ics.ac.uk/learning/fusic.html)

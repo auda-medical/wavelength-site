@@ -7,7 +7,7 @@ eyebrow: Guide · RCEM
 summary: How emergency medicine trainees and non-training clinicians reach entrustment level 4 in point-of-care ultrasound, stage by stage, with the evidence your supervisor needs to see.
 date: 2026-10-04
 reviewed: 2026-10-04
-updated: 2026-10-05
+updated: 2026-10-11
 author: Dr Firas Abou-Auda
 order: 1
 pathway: rcem
@@ -244,9 +244,10 @@ When you export, choose the RCEM e-portfolio (risr/advance) as the destination. 
 
 Checked against these documents on 4 October 2026. Always confirm against the current RCEM version and your local guidance.
 
-- [RCEM: Ultrasound education and training, 2021 curriculum FAQ](https://rcem.ac.uk/ultrasound/)
+- [RCEM: Ultrasound education and training, 2021 curriculum FAQ](https://rcem.ac.uk/ultrasound-education-training-2021-curriculum/)
 - [RCEM Point of Care Ultrasound Curriculum 2021, Appendix 3](https://rcemcurriculum.co.uk/wp-content/uploads/2021/06/Appendix-3-PoCUS-for-2021-RCEM-curriculum.pdf)
 - [RCEM SLO6 PoCUS Competence Entrustment Scale: guidance for education and training (August 2022)](https://rcem.ac.uk/wp-content/uploads/2022/08/SLO6_POCUS_Ultrasound_Competence_Entrustment_Scale_Aug_2022.pdf)
 - [RCEM Governance and Administration entrustment scale (September 2022)](https://rcem.ac.uk/wp-content/uploads/2022/09/Governance_and_Administration_Entrustment_Scale_Sept_22.pdf)
 - [RCEM Curriculum 2021, version 1.5, updated 6 August 2025](https://rcem.ac.uk/wp-content/uploads/2025/08/RCEM-Emergency-Medicine-Training-Curriculum-%E2%80%93-2025-Update-v1.5-Final.pdf)
 - [RCEM: Training curriculum changes (2025 update)](https://rcem.ac.uk/college-news/rcem-training-curriculum-changes-are-coming/)
+- [RCEM: EM curriculum, including the 2025 update effective 6 August 2025](https://rcem.ac.uk/em-curriculum/)

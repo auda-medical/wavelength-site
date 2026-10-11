@@ -7,6 +7,7 @@ eyebrow: Guide · Logbook
 summary: What to record for every scan, how to keep patient data out of it, and the counting rules RCEM, FAMUS and FUSIC apply before they accept your logbook as evidence.
 date: 2026-10-04
 reviewed: 2026-10-04
+updated: 2026-10-11
 author: Dr Firas Abou-Auda
 order: 2
 pathway: all
@@ -159,7 +160,7 @@ Whichever you choose, log on the day of the scan. A logbook rebuilt from memory 
 
 Checked against these documents on 4 October 2026.
 
-- [RCEM: Ultrasound education and training, 2021 curriculum FAQ](https://rcem.ac.uk/ultrasound/)
+- [RCEM: Ultrasound education and training, 2021 curriculum FAQ](https://rcem.ac.uk/ultrasound-education-training-2021-curriculum/)
 - [RCEM Point of Care Ultrasound Curriculum 2021, Appendix 3](https://rcemcurriculum.co.uk/wp-content/uploads/2021/06/Appendix-3-PoCUS-for-2021-RCEM-curriculum.pdf)
 - [FAMUS curriculum pack: thoracic module (Society for Acute Medicine)](https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-thoracic-v1.pdf)
 - [FAMUS: how to accredit](https://www.acutemedicine.org.uk/famus/how-to-accredit/)

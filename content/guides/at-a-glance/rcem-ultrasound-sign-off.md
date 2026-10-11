@@ -6,7 +6,7 @@ summary: The RCEM point-of-care ultrasound sign-off pathway on one page: modalit
 guide: rcem-ultrasound-sign-off
 reviewed: 2026-10-04
 source: RCEM PoCUS curriculum 2021, Appendix 3, and the SLO6 PoCUS entrustment scale (August 2022)
-sourceUrl: https://rcem.ac.uk/ultrasound/
+sourceUrl: https://rcem.ac.uk/ultrasound-education-training-2021-curriculum/
 owner: RCEM
 ---
 

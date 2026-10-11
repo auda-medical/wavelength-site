@@ -7,7 +7,7 @@ eyebrow: Guide · FUSIC
 summary: How to gain Focused Ultrasound in Intensive Care accreditation from the Intensive Care Society, module by module, within the 12-month logbook window.
 date: 2026-10-04
 reviewed: 2026-10-04
-updated: 2026-10-05
+updated: 2026-10-11
 author: Dr Firas Abou-Auda
 order: 4
 pathway: fusic
@@ -161,5 +161,5 @@ Checked against these pages and documents on 4 October 2026.
 - [FUSIC Abdomen](https://ics.ac.uk/product/fusic-abdomen.html) and [training pack (2025, v11)](https://ics.ac.uk/asset/D7A8D6ED%2DE473%2D4C61%2DB3A396E3BD15A07B/)
 - [FUSIC DVT](https://ics.ac.uk/product/fusic-dvt.html) and [training pack (2026, v1)](https://ics.ac.uk/asset/BEAA5DF0%2DFD47%2D4E83%2D9ED28E72533D2EB6/)
 - [FUSIC Vascular](https://ics.ac.uk/product/fusic-vascular.html) and [training pack (2026, v1)](https://ics.ac.uk/asset/57FBDE91%2D95B6%2D44C9%2D89FBE7BA577CD952/)
-- [FUSIC HD](https://ics.ac.uk/product/fusic-hd.html) and [HD summative assessment, November 2025](https://ics.ac.uk/learning/events/fusic-hd-summative-assessment-november-2025.html)
+- [FUSIC HD](https://ics.ac.uk/product/fusic-hd.html) and [HD summative assessment, November 2026](https://ics.ac.uk/events/calendar/fusic-hd-summative-assessment-november-2026.html)
 - [Become a FUSIC trainer or mentor](https://ics.ac.uk/learning/fusic/fusic-trainer.html)
