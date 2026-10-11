@@ -649,7 +649,7 @@ if (want('G')) {
   const { ctx, page } = await phone();
   await go(page, '#/guides/rcem-ultrasound-sign-off'); await page.waitForSelector('.guide-body h2');
   const g = await page.evaluate(() => ({ note: document.querySelector('.guide-note').textContent, toc: document.querySelectorAll('[data-goto]').length, src: [...document.querySelectorAll('.guide-src a')].map((a) => [a.getAttribute('href'), a.target]), internal: [...document.querySelectorAll('.guide-body a')].map((a) => a.getAttribute('href')).filter((h) => h.startsWith('#/guides/')), ids: [...document.querySelectorAll('.guide-body h2')].map((h) => h.id) }));
-  record('G2', 'A guide says it is Wavelength\'s, not an official document, with its check date and official sources', /not an official document/.test(g.note) && /Checked against official sources 4 Oct 2026/.test(g.note) && g.src.length >= 5 && g.src.every(([h, t]) => /^https:\/\//.test(h) && t === '_blank'), JSON.stringify({ note: g.note.slice(0, 160), sources: g.src.length }));
+  record('G2', 'A guide says it is Wavelength\'s, not an official document, with its check date and official sources', /not an official document/.test(g.note) && /Last clinically reviewed: 4 Oct 2026/.test(g.note) && g.src.length >= 5 && g.src.every(([h, t]) => /^https:\/\//.test(h) && t === '_blank'), JSON.stringify({ note: g.note.slice(0, 160), sources: g.src.length }));
   record('G3', 'Contents list, and links to other guides open inside the app', g.toc >= 10 && g.internal.length >= 1, `${g.toc} sections; ${g.internal.join(', ')}`);
   // Same source as the website: the section ids match the built /guides/ page.
   const site = fs.readFileSync('dist/guides/rcem-ultrasound-sign-off/index.html', 'utf8');
