@@ -41,3 +41,7 @@ the handler with `case`, links from both pages and the queue, not found); approv
 application #1; own record; controls hidden by permission; through the Worker with native accounts (General Manager
 opens the case, decides from it, comes back to it; the decision is recorded as the account; a stray POST changes
 nothing; the owner sees the owner-only control). Full suite: 301 tests, all pass.
+
+Browser: `node build.js && node --import ./test/helpers/register.mjs tools/e2e-case-view.mjs <outdir>` (shared login;
+queue link, sections, to-do link, a decision made on the page that comes back to it, person-page link, not found; 390
+and 1440 px with no horizontal overflow; no console errors): 25/25.
