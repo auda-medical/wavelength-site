@@ -22,6 +22,9 @@ for (const [w, h, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
   const bad = [];
   for (const it of queue) {
     const r = await page.goto(`${BASE}/learn/${it.slug}/`); await page.waitForLoadState('load');
+    // The graphic may be lazy-loaded below the fold on a phone: bring it into view and wait for it.
+    await page.evaluate(() => { const i = document.querySelector('main img[src*="-pearl.webp"]'); if (i) { i.loading = 'eager'; i.scrollIntoView(); } });
+    await page.waitForFunction(() => { const i = document.querySelector('main img[src*="-pearl.webp"]'); return !i || (i.complete && i.naturalWidth > 0); }, null, { timeout: 15000 }).catch(() => {});
     const m = await page.evaluate(() => {
       const img = document.querySelector('main img[src*="-pearl.webp"]');
       return {
