@@ -3,6 +3,7 @@
 // layout. Needs the local Worker serving the built site:
 //   node build.js && node --import ./test/helpers/register.mjs tools/dev-worker.mjs 8801 --site
 //   node tools/e2e-pearls-1012.mjs <outdir> [http://localhost:8801]
+// READ_ONLY=1 skips the Academy section (it registers a learner), for checks against production.
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -86,7 +87,7 @@ for (const [w, h, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
 }
 
 // A: changed Academy lessons for a registered learner (desktop and phone).
-{
+if (process.env.READ_ONLY !== '1') {
   const lessons = [['cardiac', 'pericardium', /Time the collapse/], ['lung', 'b-lines', /Map, then compare/], ['lung', 'effusion', /mirror image/], ['abdomen', 'kidneys', /Twinkle: a clue/], ['abdomen', 'bowel', /Free air: look at the peritoneal stripe/], ['dvt', 'pitfalls', /Tennis leg/], ['msk', 'tendon-ruptures', /The patellar tendon/], ['msk', 'effusions', /The elbow: the posterior recess[\s\S]*The ankle: the anterior recess/], ['msk', 'fractures', /follow the cortex/i], ['airway', 'front-of-neck', /cricothyroid membrane/i]];
   for (const [w, h, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h } }); const page = await ctx.newPage(); watch(page);
