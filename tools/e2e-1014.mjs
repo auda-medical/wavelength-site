@@ -104,7 +104,7 @@ const screenOf = (page, fx, fy) => page.evaluate(([fx, fy]) => { const r = docum
 const dragOn = async (page, a, b) => { const p = await screenOf(page, ...a), q = await screenOf(page, ...b); await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(q.x, q.y, { steps: 6 }); await page.mouse.up(); await sleep(200); };
 const tapOn = async (page, a) => { const p = await screenOf(page, ...a); await page.mouse.click(p.x, p.y); await sleep(200); };
 const chips = (page) => page.$$eval('.editor [data-pick]', (b) => b.map((x) => x.textContent));
-const slider = (page) => page.evaluate(() => { const s = document.querySelector('.editor [data-szr]'); return { v: Number(s.value), min: s.min, max: s.max, disabled: s.disabled, valuetext: s.getAttribute('aria-valuetext'), for: document.querySelector('.editor [data-szfor]').textContent, ends: [...document.querySelectorAll('.editor .sz-end')].map((e) => e.textContent), pct: /%/.test(document.querySelector('.editor .ed-size').textContent) }; });
+const slider = (page) => page.evaluate(() => { const s = document.querySelector('.editor [data-szr]'); return { v: Number(s.value), min: s.min, max: s.max, disabled: s.disabled, valuetext: s.getAttribute('aria-valuetext'), for: document.querySelector('.editor [data-szfor]').textContent, ends: [...document.querySelectorAll('.editor .ed-size .sz-end')].map((e) => e.textContent), pct: /%/.test(document.querySelector('.editor .ed-size').textContent) }; });
 const setSlider = (page, v) => page.evaluate((v) => { const s = document.querySelector('.editor [data-szr]'); s.value = v; s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); }, v);
 // The drafts kept on this phone (the 1.0.14 safety copies), straight from IndexedDB.
 const drafts = (page, accId) => page.evaluate((id) => new Promise((ok) => {
@@ -297,6 +297,8 @@ if (want('S')) {
   const rdo = (await slider(page)).v;
   record('S5', 'One slider drag is one step: Undo returns to the size before it, Redo puts it back', u === 100 && rdo === 30, `undo ${u}, redo ${rdo}`);
   // A position close to the middle snaps to it, so the usual size is easy to find again.
+  // 1.0.17: the snap is for a finger or mouse drag only (keyboard and screen-reader steps are not pulled back).
+  await page.evaluate(() => document.querySelector('.editor [data-szr]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
   await setSlider(page, 2);
   record('S6', 'Near the middle the slider snaps to the usual size', (await slider(page)).v === 0, '');
   // Pictograms: the largest still fits the picture.
