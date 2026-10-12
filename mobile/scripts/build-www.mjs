@@ -50,7 +50,10 @@ cpSync(path.join(MOBILE, 'node_modules/@capacitor/core/dist/capacitor.js'), path
 const build = (readFileSync(path.join(APP, 'config.js'), 'utf8').match(/WL_BUILD = "([^"]+)"/) || [])[1] || 'dev';
 // The store version (the workflows pass their version input), sent to the server as X-Wavelength-App.
 const version = /^\d+(\.\d+){0,3}$/.test(process.env.WL_APP_VERSION || '') ? process.env.WL_APP_VERSION : '';
-writeFileSync(path.join(WWW, 'app/native-config.js'), `window.WL_NATIVE = ${JSON.stringify({ site: SITE, build, version })};\n`);
+// The version code (WL_VERSION_CODE, also read by android/app/build.gradle) is a fallback for About Wavelength,
+// which reads the installed app's own version and build first.
+const versionCode = /^\d{1,9}$/.test(process.env.WL_VERSION_CODE || '') ? process.env.WL_VERSION_CODE : '';
+writeFileSync(path.join(WWW, 'app/native-config.js'), `window.WL_NATIVE = ${JSON.stringify({ site: SITE, build, version, versionCode })};\n`);
 
 // The page. Same as the website's /app/ page, with the web-only tags removed, the runtime and the app settings added,
 // and a Content Security Policy that only lets the app talk to the Wavelength server.

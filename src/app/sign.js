@@ -54,11 +54,14 @@
     var who = sc.label ? '<p class="small"><b>' + esc(T('Signer')) + ':</b> ' + esc(T(sc.label)) + '</p>' : '';
     if (sc.identity !== 'wavelength_account') return '<div class="card"><h3>' + esc(T('Signer verification')) + '</h3>' + who + '<p class="small">' + esc(T('Signed by link or on the learner\'s device. The name, role and any registration were entered by the signer and were not verified by Wavelength.')) + '</p></div>';
     var li = function (x) { return '<li>' + esc(x) + '</li>'; };
-    var items = (sc.registrations || []).map(function (r) { return T('Professional registration verified: {body}', { body: r.regulator }) + (r.verifiedAt ? ' (' + fmt(r.verifiedAt) + ')' : ''); })
+    var items = (sc.registrations || []).map(function (r) { return T('Professional registration ✓ ({body})', { body: r.regulator }) + (r.verifiedAt ? ' (' + T('checked {date}', { date: fmt(r.verifiedAt) }) + ')' : ''); })
       .concat((sc.credentials || []).map(function (c) { return T('{credential}, issued by {issuer}', { credential: c.label + ((c.modules || []).length ? ': ' + c.modules.join(', ') : ''), issuer: c.issuer }) + (c.verifiedAt ? ' (' + T('checked {date}', { date: fmt(c.verifiedAt) }) + ')' : ''); }))
-      .concat((sc.approvedFor || []).map(function (a) { return T('Wavelength verified supervisor for {scope}', { scope: a }); }));
+;
+    var scopes = (sc.approvedFor || []).length ? '<p class="small" style="margin-bottom:0"><b>' + esc(T('Approved to supervise:')) + '</b></p><ul class="small">' + sc.approvedFor.map(li).join('') + '</ul>' : '';
+    // What the status means, one tap away. Same wording as the app (src/app/app.js wvExplain).
+    var explain = sc.wavelengthVerifiedSupervisor || scopes ? '<details class="wv-explain"><summary class="small"><b>' + esc(T('What does Wavelength Verified mean?')) + '</b></summary><p class="small">' + esc(T('A Wavelength Verified Supervisor has completed our verification process. We check professional registration where applicable, review relevant qualifications and ultrasound credentials, and approve the supervisor only for the areas of practice supported by that information.')) + '</p><p class="small">' + esc(T('Verification is performed by Wavelength and does not mean that the supervisor has been accredited or endorsed by GMC, RCEM, FAMUS, FUSIC or another professional body.')) + '</p></details>' : '';
     return '<div class="card"><h3>' + esc(T('Verified when signed')) + '</h3>' + who + '<p class="small muted">' + esc(T('Signed from their own Wavelength account. As verified on {date}:', { date: fmt(sc.capturedAt) })) + '</p>' + (sc.closedNote ? '<p class="small muted">' + esc(T(sc.closedNote)) + '</p>' : '') +
-      (items.length ? '<ul class="small">' + items.map(li).join('') + '</ul>' : '<p class="small">' + esc(T('No professional registration or credential had been verified for this account at that time.')) + '</p>') +
+      (items.length ? '<ul class="small">' + items.map(li).join('') + '</ul>' : scopes ? '' : '<p class="small">' + esc(T('No professional registration or credential had been verified for this account at that time.')) + '</p>') + scopes + explain +
       '<p class="small muted">' + esc(T('External credentials are issued by the named bodies, not by Wavelength. This shows what Wavelength had checked when the record was signed; it does not change if the supervisor\'s status changes later.')) + '</p></div>';
   }
   // A record later amended by its assessor, a correction of an earlier one, or one Wavelength marked as issued in error.

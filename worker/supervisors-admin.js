@@ -20,6 +20,9 @@ import { queueStmt, deliver, deliverLater } from './notify.js';
 import { receiptKey, receiptFor } from './supervisor-apply.js';
 import { auditStmt, audit } from './audit.js';
 import { ukDate, addDays, addMonths, businessDaysSince, longDate } from './time.js';
+import { isGmc, gmcRegisterUrl, gmcReview, restrictionDecision, GMC_SOURCE, RESTRICTION_STATE, MAX_CHECK_AGE_DAYS } from './verification/register-review.js';
+import { directoryOf, directoryPanel, directoryPost } from './verification/directory-admin.js';
+import { capacitiesFor, capacityLabel, CAPACITIES } from './verification/pathways.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
@@ -31,8 +34,10 @@ const BASE = '/admin/supervisors/';
 const CASE = `${BASE}case/`;
 const caseLink = (id, text = 'Whole case') => `<a class="text-link" href="${CASE}?id=${Number(id)}">${esc(text)}</a>`;
 const PATHS = LOGBOOK.pathways.filter((p) => p.modules && p.modules.length);
+// True once migration 0015 (approval capacity) is applied.
+async function hasCapacity(env) { try { await env.DB.prepare('SELECT capacity FROM supervisor_approvals LIMIT 0').all(); return true; } catch { return false; } }
 const REG_QUEUE = ['pending', 'manual_verification_required', 'manual_review', 'mismatch', 'source_unavailable'];
-const CRED_QUEUE = ['claimed', 'evidence_required', 'manual_review', 'more_evidence', 'not_found', 'source_unavailable'];
+const CRED_QUEUE = ['claimed', 'evidence_required', 'manual_review', 'more_evidence', 'not_found', 'source_unavailable', 'directory_match', 'identity_pending'];
 const NAV = `<a class="text-link" href="/admin/volunteers/">Volunteers</a> · <a class="text-link" href="/admin/academy/">Academy</a> · <a class="text-link" href="${BASE}">Supervisor verification</a> · <a class="text-link" href="/admin/organisations/">Organisations</a>`;
 const name = (l) => [l.title, l.first_name, l.last_name].filter(Boolean).join(' ');
 // Who decided. With Cloudflare Access the verified email is recorded instead (worker/index.js), and the field is
@@ -40,7 +45,7 @@ const name = (l) => [l.title, l.first_name, l.last_name].filter(Boolean).join(' 
 const REVIEWER_INPUT = '<input name="reviewer" autocomplete="name" maxlength="80" required>';
 const reviewerField = `<label>Your name (recorded with the decision)${REVIEWER_INPUT}</label>`;
 const form = (action, hidden, inner, button, confirmText) => `<form class="form sv-form" method="post"${confirmText ? ` onsubmit="return confirm(this.dataset.confirm)" data-confirm="${esc(confirmText)}"` : ''}><input type="hidden" name="action" value="${action}">${Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join('')}${inner}${reviewerField}<button class="btn btn-ghost small" type="submit">${esc(button)}</button></form>`;
-const STYLE = '<style>.sv-more{margin:4px 0 8px}.sv-more summary{cursor:pointer;font-size:14px;font-weight:600;padding:4px 0}.sv-list{margin:6px 0 0;padding-left:0;list-style:none;display:grid;gap:4px}.sv-ok-i{color:#2E7D5B;font-weight:700;margin-right:6px}.sv-no-i{color:#B4453A;font-weight:700;margin-right:6px}.sv-na-i{color:#6B7684;font-weight:700;margin-right:8px}.sv-main{grid-template-columns:minmax(0,640px)}.sv-other{margin-top:14px}.sv-other>summary{padding:8px 0}.sv-form button[disabled]{opacity:.6;cursor:progress}.sv-grid{display:grid;gap:18px}.sv-card{background:#fff;border:1px solid #E4E0D7;border-radius:12px;padding:18px}.sv-card h4{margin:0 0 6px}.sv-form{display:grid;gap:8px;margin:10px 0;padding:12px;border:1px dashed #E4E0D7;border-radius:10px}.sv-form label{display:grid;gap:4px;font-size:14px}.sv-actions{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.sv-status{display:inline-block;padding:2px 10px;border-radius:99px;background:#EDEAE3;font-size:13px}.sv-ok{background:#DDEFE9}.sv-bad{background:#F6DEDA}.sv-checks{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0 0 8px}.sv-checks legend{font-weight:600;font-size:14px;margin-bottom:4px}.sv-form .sv-checks label,.sv-form label.consent{display:inline-flex;flex-direction:row;gap:6px;align-items:center}.sv-form input[type=checkbox]{width:18px;height:18px;min-height:0;flex:none;margin:0}.sv-actions{align-items:start}.sv-form button{justify-self:start;align-self:start;width:auto;height:auto;min-height:0}.sv-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.sv-tabs a{padding:6px 12px;border-radius:99px;border:1px solid #E4E0D7;text-decoration:none;color:inherit;font-size:14px}.sv-tabs a[aria-current=page]{background:#0F1E33;color:#fff;border-color:#0F1E33}.sv-banner{padding:12px 14px;border-radius:10px;background:#EDEAE3;margin:10px 0}.sv-warn{background:#F6DEDA}.sv-good{background:#DDEFE9}.sv-text{white-space:pre-wrap;overflow-wrap:anywhere;background:#F7F5F0;border-radius:8px;padding:10px;margin:6px 0}.sv-dl{display:grid;grid-template-columns:minmax(120px,220px) 1fr;gap:6px 14px;margin:8px 0}.sv-dl dt{font-weight:600}.sv-dl dd{margin:0;overflow-wrap:anywhere}@media(max-width:600px){.sv-dl{grid-template-columns:1fr}}</style>';
+const STYLE = '<style>.sv-more{margin:4px 0 8px}.sv-more summary{cursor:pointer;font-size:14px;font-weight:600;padding:4px 0}.sv-list{margin:6px 0 0;padding-left:0;list-style:none;display:grid;gap:4px}.sv-ok-i{color:#2E7D5B;font-weight:700;margin-right:6px}.sv-no-i{color:#B4453A;font-weight:700;margin-right:6px}.sv-na-i{color:#6B7684;font-weight:700;margin-right:8px}.sv-main{grid-template-columns:minmax(0,640px)}.sv-other{margin-top:14px}.sv-other>summary{padding:8px 0}.sv-form button[disabled]{opacity:.6;cursor:progress}.sv-grid{display:grid;gap:18px}.sv-card{background:#fff;border:1px solid #E4E0D7;border-radius:12px;padding:18px;overflow-wrap:anywhere}.sv-card h4{margin:0 0 6px}.sv-form{display:grid;gap:8px;margin:10px 0;padding:12px;border:1px dashed #E4E0D7;border-radius:10px}.sv-form label{display:grid;gap:4px;font-size:14px}.sv-actions{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.sv-status{display:inline-block;padding:2px 10px;border-radius:99px;background:#EDEAE3;font-size:13px}.sv-ok{background:#DDEFE9}.sv-bad{background:#F6DEDA}.sv-checks{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0 0 8px}.sv-checks legend{font-weight:600;font-size:14px;margin-bottom:4px}.sv-form .sv-checks label,.sv-form label.consent{display:inline-flex;flex-direction:row;gap:6px;align-items:center}.sv-form input[type=checkbox]{width:18px;height:18px;min-height:0;flex:none;margin:0}.sv-actions{align-items:start}.sv-form button{justify-self:start;align-self:start;width:auto;height:auto;min-height:0}.sv-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.sv-tabs a{padding:6px 12px;border-radius:99px;border:1px solid #E4E0D7;text-decoration:none;color:inherit;font-size:14px}.sv-tabs a[aria-current=page]{background:#0F1E33;color:#fff;border-color:#0F1E33}.sv-banner{padding:12px 14px;border-radius:10px;background:#EDEAE3;margin:10px 0}.sv-warn{background:#F6DEDA}.sv-good{background:#DDEFE9}.sv-text{white-space:pre-wrap;overflow-wrap:anywhere;background:#F7F5F0;border-radius:8px;padding:10px;margin:6px 0}.sv-dl{display:grid;grid-template-columns:minmax(120px,220px) 1fr;gap:6px 14px;margin:8px 0}.sv-dl dt{font-weight:600}.sv-dl dd{margin:0;overflow-wrap:anywhere}@media(max-width:600px){.sv-dl{grid-template-columns:1fr}}</style>';
 const pill = (s) => `<span class="sv-status ${s === 'verified' || s === 'approved' ? 'sv-ok' : ['rejected', 'revoked', 'mismatch', 'not_current', 'expired'].includes(s) ? 'sv-bad' : ''}">${esc(String(s).replace(/_/g, ' '))}</span>`;
 
 // ---------- Self-approval (supervisor QA, October 2026) ----------
@@ -261,6 +266,7 @@ function scopeBoxes(ticked, requested = []) {
   if (!shown.length) return PATHS.map((p) => pathwayBox(p, ticked)).join('');
   return shown.map((p) => pathwayBox(p, ticked)).join('') + (rest.length ? `<details class="sv-more"><summary>Other pathways (${rest.length})</summary>${rest.map((p) => pathwayBox(p, ticked)).join('')}</details>` : '');
 }
+const roleSelect = () => `<label>Verified role<select name="capacity">${CAPACITIES.map((k) => `<option value="${k}"${k === 'supervisor' ? ' selected' : ''}>${esc(capacityLabel(k))}</option>`).join('')}</select></label>`;
 const basisBoxes = (creds, ticked = []) => (creds.length ? `<fieldset class="sv-checks"><legend>Credentials this approval relies on</legend>${creds.map((c) => `<label><input type="checkbox" name="basis" value="${c.id}"${ticked.includes(c.id) ? ' checked' : ''}>${esc((TYPE[c.credential_type] || {}).label || c.credential_type)}: ${esc(parseList(c.modules).join(', '))}</label>`).join('')}<small class="form-note">If one of these expires or is withdrawn, supervisor status pauses until it is current again.</small></fieldset>` : '<p class="form-note">No verified credentials. The approval rests on the registration and the application.</p>');
 const optionalNote = '<details class="sv-more"><summary>Add a note (optional)</summary><label>Note (internal, not sent)<textarea name="notes" maxlength="1000"></textarea></label></details>';
 const selfBox = '<div class="sv-banner sv-warn"><b>This looks like your own application.</b> Wavelength recommends that another administrator decides it. If you approve it yourself, it is recorded as a self-approval and listed for an independent review.<label class="consent"><input type="checkbox" name="self_ack" value="1"><span>I am approving my own supervisor status</span></label><label>What independent evidence supports it (required, recorded)<textarea name="self_reason" maxlength="1000"></textarea></label></div>';
@@ -326,7 +332,7 @@ async function applicationDetail(env, appId, note, me = '', selfId = 0, { embedd
   // Approve (or confirm a renewal) is the main decision, full width; the rest is one tap away under Other decisions.
   const actions = !open ? '' : `<h3 style="margin:28px 0 10px">Decision</h3><div class="sv-actions sv-main">
     ${renewal && live.length ? form('app_confirm_renewal', H, `<p class="form-note">Renews the same scopes (${esc(live.map((x) => scopeLabel(x.pathway, x.module)).join(', '))}) until ${esc(longDate(until))}, keeping their basis. Use "Approve" instead to change scopes or basis.</p><label>Note (optional)<input name="notes" maxlength="500"></label>`, 'Confirm renewal') : ''}
-    ${form('app_approve', H, `<p class="form-note">Modules: pre-ticked from what was requested${live.length ? ' and the current approval' : ''}. Tick only what the evidence supports.</p>${scopeBoxes(ticked, pathways)}
+    ${form('app_approve', H, `<p class="form-note">Modules: pre-ticked from what was requested${live.length ? ' and the current approval' : ''}. Tick only what the evidence supports.</p>${scopeBoxes(ticked, pathways)}${roleSelect()}
       ${basisBoxes(verifiedCreds, credIds)}
       <label>Approved until (12 months at most)<input type="date" name="review_on" value="${esc(until)}" max="${esc(until)}" required></label>
       ${st.hasReg ? '' : '<label class="consent"><input type="checkbox" name="exempt" value="1"><span>Registration exemption: approve without a verified registration</span></label><label>Reason for the exemption, and how you checked identity and experience instead<textarea name="exempt_reason" maxlength="1000"></textarea></label>'}
@@ -350,7 +356,7 @@ async function applicationDetail(env, appId, note, me = '', selfId = 0, { embedd
   <h3 style="margin:28px 0 10px">Answers</h3>
   ${dl([
     ['Name', esc(a.full_name || name(a))], ['Email', `${esc(a.email)} (${esc(String((st.learner || {}).email_status || '').replace(/_/g, ' '))})`], ['Role or grade', esc(a.role || '')], ['Organisation', esc(a.organisation || '')],
-    ['Registration', reg ? `${esc((REG[reg.regulator] || {}).name || reg.regulator)} ${esc(reg.registration_number)} ${pill(reg.status)}` : a.no_registration ? `Not on a statutory register${a.other_regulator ? `: ${esc(a.other_regulator)}` : ''}<div class="sv-text">${esc(a.no_registration_reason || '')}</div>` : 'None given'],
+    ['Registration', reg ? `${esc((REG[reg.regulator] || {}).name || reg.regulator)} ${esc(reg.registration_number)} ${pill(reg.status)}${reg.failure_state === RESTRICTION_STATE ? ' <small>held for a decision</small>' : ''}${gmcRegisterUrl(reg.regulator, reg.registration_number) ? ` <a class="btn btn-ghost small" href="${esc(gmcRegisterUrl(reg.regulator, reg.registration_number))}" target="_blank" rel="noopener noreferrer">Open GMC register</a> <small>Record the result on the <a class="text-link" href="${BASE}?id=${a.learner_id}">person page</a>.</small>` : ''}` : a.no_registration ? `Not on a statutory register${a.other_regulator ? `: ${esc(a.other_regulator)}` : ''}<div class="sv-text">${esc(a.no_registration_reason || '')}</div>` : 'None given'],
     ['Credentials', creds.length ? creds.map((c) => { const t = TYPE[c.credential_type] || { label: c.credential_type, modules: [] }; const mods = parseList(c.modules).map((m) => (t.modules.find((x) => x.id === m) || { label: m }).label); return `${esc(t.label)}${mods.length ? `: ${esc(mods.join(', '))}` : ''} ${pill(c.status)}`; }).join('<br>') : 'None claimed'],
     ['Years of ultrasound', esc(ex.years || '')], ['Scans (approx.)', esc(ex.scans || '')], ['Teaches ultrasound', ex.teaching == null ? '' : ex.teaching ? 'Yes' : 'No'], ['Supervises now', ex.supervision == null ? '' : ex.supervision ? 'Yes' : 'No'], ['Departmental role', esc(ex.deptRole || '')],
     ['Areas requested', esc(areaNames(areas).join(', '))], ['Pathways requested', esc(pathways.map((x) => PATHWAY_NAMES[x] || x).join(', '))],
@@ -391,14 +397,15 @@ async function detail(env, id, note, life = false, me = '', selfId = 0, { embedd
     <p>Number <b>${esc(r.registration_number)}</b> · ${esc(r.profession || '')} · ${esc(r.organisation || '')} ${esc(r.role || '')}<br>
     Claimed name: ${esc(r.claimed_name)} · Register name: ${esc(r.register_name || 'not returned')} · Register status: ${esc(r.register_status || 'unknown')}<br>
     Source: ${esc(r.verification_source || 'none')} · Method: ${esc(r.verification_method || 'none')} · Name match: ${esc(r.match_result || 'n/a')} (${esc(r.match_method || '')} ${esc(r.match_version || '')})<br>
-    Verified: ${esc(r.verified_at || 'no')} · Last checked: ${esc(r.last_checked_at || 'never')}${r.failure_state ? ` · <b>${esc(r.failure_state.replace(/_/g, ' '))}</b>` : ''}${Object.keys(fields).length ? `<br>Register fields: ${esc(JSON.stringify(fields))}` : ''}
-    <br><a class="text-link" href="${esc(reg.registerUrl || '#')}" target="_blank" rel="noopener noreferrer">Open the official ${esc(reg.short || '')} register</a> (search the number by hand: never script it)</p>
+    Verified: ${esc(r.verified_at || 'no')} · Last checked: ${esc(r.last_checked_at || 'never')}${r.failure_state ? ` · <b>${esc(r.failure_state.replace(/_/g, ' '))}</b>` : ''}${Object.keys(fields).length && fields.source !== 'GMC register' ? `<br>Register fields: ${esc(JSON.stringify(fields))}` : ''}
+    ${isGmc(r.regulator) ? '' : `<br><a class="text-link" href="${esc(reg.registerUrl || '#')}" target="_blank" rel="noopener noreferrer">Open the official ${esc(reg.short || '')} register</a> (search the number by hand: never script it)`}</p>
+    ${isGmc(r.regulator) ? gmcSection(r, fields, history, H) : ''}
     ${evList('registration', r.id)}
     <div class="sv-actions">
-    ${form('reg_verify', { ...H, sid: r.id }, `<label>Name exactly as the register shows it<input name="register_name" required maxlength="160" value="${esc(r.register_name || '')}"></label><label class="consent"><input type="checkbox" name="checked" value="1" required><span>I checked this number and name on the official register today, and the registration is current.</span></label><label>Notes<input name="notes" maxlength="500"></label>`, 'Verify registration')}
+    ${isGmc(r.regulator) ? '' : form('reg_verify', { ...H, sid: r.id }, `<label>Name exactly as the register shows it<input name="register_name" required maxlength="160" value="${esc(r.register_name || '')}"></label><label class="consent"><input type="checkbox" name="checked" value="1" required><span>I checked this number and name on the official register today, and the registration is current.</span></label><label>Notes<input name="notes" maxlength="500"></label>`, 'Verify registration')}
     ${form('reg_reject', { ...H, sid: r.id }, '<label>Reason (shown in the audit trail)<input name="notes" required maxlength="500"></label>', 'Reject')}
     ${form('reg_not_current', { ...H, sid: r.id }, '<label>What the register shows<input name="notes" required maxlength="500"></label>', 'Mark not current')}
-    ${form('reg_recheck', { ...H, sid: r.id }, '', 'Run the automatic check again')}
+    ${isGmc(r.regulator) ? '' : form('reg_recheck', { ...H, sid: r.id }, '', 'Run the automatic check again')}
     </div></div>`;
   }).join('') || '<p class="admin-summary">No registrations.</p>';
   const credCards = allCreds.map((c) => {
@@ -411,6 +418,7 @@ async function detail(env, id, note, life = false, me = '', selfId = 0, { embedd
     Automatic result: ${esc(c.match_result || 'n/a')} (${esc(c.match_method || '')} ${esc(c.match_version || '')}) · Source: ${esc(c.verification_source || 'none')} · Method: ${esc(c.verification_method || 'none')} · Verified by: ${esc(c.verified_by || 'n/a')} ${esc(c.verified_at || '')}${c.failure_state ? ` · <b>${esc(c.failure_state.replace(/_/g, ' '))}</b>` : ''}<br>
     Holder's note: ${esc(c.claim_note || 'none')}<br><small>${esc(t.access || '')}</small></p>
     ${evList('credential', c.id)}
+    ${c.active && directoryOf(c.credential_type) ? directoryPanel(c, { H, evid, form, esc }) : ''}
     ${c.active ? `<div class="sv-actions">
     ${form('cred_approve', { ...H, sid: c.id }, `<div class="sv-checks">${checks}</div><label>How you checked<select name="method"><option value="manual_evidence">From the evidence provided</option><option value="manual_register">Against the body's own public list</option></select></label><label>Evidence relied on<select name="evidence"><option value="">None listed</option>${evOpts}</select></label><label>Issued on<input type="date" name="issued_on" value="${esc(c.issued_on || '')}"></label><label>Expires on<input type="date" name="expires_on" value="${esc(c.expires_on || '')}"></label><label>Review on<input type="date" name="review_on" value="${esc(c.review_on || '')}"></label><label>Notes<input name="notes" required maxlength="500"></label>`, 'Approve credential')}
     ${form('cred_more', { ...H, sid: c.id }, '<label>What evidence you need (emailed to the holder)<textarea name="notes" required maxlength="800"></textarea></label>', 'Request more evidence')}
@@ -419,12 +427,14 @@ async function detail(env, id, note, life = false, me = '', selfId = 0, { embedd
     ${['revoked', 'rejected', 'expired'].includes(c.status) ? form('cred_reinstate', { ...H, sid: c.id }, '<label>Why it is valid again<input name="notes" required maxlength="500"></label><label>Expires on<input type="date" name="expires_on"></label>', 'Reinstate') : ''}
     </div>` : ''}</div>`;
   }).join('') || '<p class="admin-summary">No credentials claimed.</p>';
-  const appRows = allApps.map((a) => `<tr><td>${esc(scopeLabel(a.pathway, a.module))}</td><td>${pill(a.status)}${a.status === 'approved' && !st.hasReg ? '<br><small>Not current: no verified registration</small>' : ''}</td><td>${esc(a.approved_by || '')} ${esc((a.approved_at || '').slice(0, 10))}</td><td>${esc(a.review_on || '')}</td><td>${esc(a.notes || '')}${a.ended_reason ? `<br>Ended: ${esc(a.ended_reason)} (${esc(a.ended_by || '')})` : ''}</td><td>${a.status === 'approved' ? form('appr_revoke', { ...H, sid: a.id }, `<label>Reason (internal)<input name="notes" required maxlength="500"></label>${life ? `<label>Message to the supervisor (optional, emailed)<input name="message" maxlength="500"></label>${allApps.filter((x) => x.status === 'approved').length === 1 ? '<p class="form-note">This is their last scope: revoking it blocks one-off assessor signing through Wavelength unless you tick the box.</p><label class="consent"><input type="checkbox" name="one_off" value="1"><span>One-off assessment remains permitted</span></label><label>Why<input name="one_off_note" maxlength="500"></label>' : ''}` : ''}`, 'Revoke', 'Revoke this supervisor approval? It stops counting at once. Past sign-offs keep what was true when they were signed.') : form('appr_reinstate', { ...H, sid: a.id }, `<label>Why<input name="notes" required maxlength="500"></label><label>Approved until${life ? ' (12 months at most)' : ''}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}" required` : ''}></label>${life ? '<p class="form-note">Reinstating also lifts an active block.</p>' : ''}`, 'Reinstate')}</td></tr>`).join('');
+  const appRows = allApps.map((a) => `<tr><td>${esc(scopeLabel(a.pathway, a.module))}<br><small>${esc(capacityLabel(a.capacity || 'supervisor'))}</small></td><td>${pill(a.status)}${a.status === 'approved' && !st.hasReg ? '<br><small>Not current: no verified registration</small>' : ''}</td><td>${esc(a.approved_by || '')} ${esc((a.approved_at || '').slice(0, 10))}</td><td>${esc(a.review_on || '')}</td><td>${esc(a.notes || '')}${a.ended_reason ? `<br>Ended: ${esc(a.ended_reason)} (${esc(a.ended_by || '')})` : ''}</td><td>${a.status === 'approved' ? form('appr_revoke', { ...H, sid: a.id }, `<label>Reason (internal)<input name="notes" required maxlength="500"></label>${life ? `<label>Message to the supervisor (optional, emailed)<input name="message" maxlength="500"></label>${allApps.filter((x) => x.status === 'approved').length === 1 ? '<p class="form-note">This is their last scope: revoking it blocks one-off assessor signing through Wavelength unless you tick the box.</p><label class="consent"><input type="checkbox" name="one_off" value="1"><span>One-off assessment remains permitted</span></label><label>Why<input name="one_off_note" maxlength="500"></label>' : ''}` : ''}`, 'Revoke', 'Revoke this supervisor approval? It stops counting at once. Past sign-offs keep what was true when they were signed.') : form('appr_reinstate', { ...H, sid: a.id }, `<label>Why<input name="notes" required maxlength="500"></label><label>Approved until${life ? ' (12 months at most)' : ''}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}" required` : ''}></label>${life ? '<p class="form-note">Reinstating also lifts an active block.</p>' : ''}`, 'Reinstate')}</td></tr>`).join('');
   const verifiedCreds = allCreds.filter((c) => c.active && isCurrentCred(c));
   // An open application is decided by an approval here (grantApprovals), and the form says so.
   const openApp = life ? await env.DB.prepare("SELECT id, kind, status, requested_pathways FROM supervisor_applications WHERE learner_id = ? AND status IN ('submitted', 'more_info') ORDER BY id DESC LIMIT 1").bind(id).first() : null;
   const addApproval = form('appr_add', H, `${openApp ? `<p class="sv-banner">Application <a class="text-link" href="${BASE}?app=${openApp.id}">#${openApp.id}</a> is open. Approving here also decides it, and the supervisor is emailed.</p>` : ''}<p class="form-note">Tick only the modules the evidence supports. "All modules" is recorded as its own scope.</p>
     ${scopeBoxes([], openApp ? jsonList(openApp.requested_pathways) : [...new Set(verifiedCreds.flatMap((c) => ((TYPE[c.credential_type] || {}).modules || []).map((m) => String(m.scope || '').split(':')[0]).filter(Boolean)))])}
+    ${roleSelect()}
+    <details class="sv-more"><summary>What each role may sign</summary><p class="form-note">The role decides what they may sign for each module (data/supervision-policy.json). FAMUS and FUSIC Heart mentors review scans and give feedback but never sign the final or triggered assessment; FUSIC modules other than Heart use trainers, one module at a time; FAMUS peripheral access is approved locally. A module that does not recognise the role is refused.</p></details>
     ${basisBoxes(verifiedCreds)}
     <label>${life ? 'Approved until (12 months at most)' : 'Review on'}<input type="date" name="review_on"${life ? ` value="${esc(addMonths(ukDate(), 12))}"` : ''}></label>
     ${isSelf(l, me, selfId) ? selfBoxFor(env) : ''}${optionalNote}`, 'Approve as Wavelength supervisor');
@@ -468,6 +478,34 @@ async function lifecyclePanel(env, id, st, H) {
   ${apps.length ? `<p class="admin-summary">Applications: ${apps.map((x) => `<a class="text-link" href="${BASE}?app=${x.id}">#${x.id} ${esc(KIND[x.kind] || x.kind)}</a> ${pill(x.status)}`).join(' · ')}</p>` : ''}
   ${blocks.filter((b) => b.lifted_at).length ? `<p class="admin-summary">Lifted blocks: ${blocks.filter((b) => b.lifted_at).map((b) => `${esc(b.kind)} ${esc((b.blocked_at || '').slice(0, 10))} to ${esc(b.lifted_at.slice(0, 10))} (${esc(b.lifted_by || '')})`).join('; ')}</p>` : ''}`;
 }
+// GMC registrations only: the official entry link, the last recorded check, any hold for a decision, and the form
+// that records a manual check. Opening the link changes nothing: only the form below records a result.
+function gmcSection(r, fields, history, H) {
+  const url = gmcRegisterUrl(r.regulator, r.registration_number);
+  const link = url
+    ? `<p><a class="btn btn-ghost small" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open GMC register</a> <small>Opens the doctor's entry on gmc-uk.org in a new tab. Opening it changes nothing here: record what you saw below.</small></p>`
+    : '<p class="sv-banner sv-warn">This GMC number is not 7 digits, so no register link is built. Reject the registration, or ask the applicant to correct the number.</p>';
+  const rec = fields && fields.source === 'GMC register'
+    ? `<p class="admin-summary">Last GMC check recorded: ${esc(fields.checkedOn || '')} by ${esc(fields.reviewer || 'unknown')}. Number matched: ${fields.numberMatched ? 'yes' : 'no'} · Registration current: ${fields.registrationCurrent ? 'yes' : 'no'} · Licence to practise current: ${fields.licenceCurrent ? 'yes' : 'no'} · Warning, condition, undertaking or restriction needing consideration: ${fields.restrictionShown ? 'shown' : 'none shown'}. Source: GMC register.</p>` : '';
+  let held = '';
+  if (r.failure_state === RESTRICTION_STATE) {
+    const e = history.find((x) => x.subject_type === 'registration' && x.subject_id === r.id && x.action === GMC_HELD_EVENT);
+    held = `<div class="sv-banner sv-warn"><b>Held for a decision.</b> The GMC register shows a warning, condition, undertaking or restriction that needs further consideration${e ? ` (recorded by ${esc(String(e.actor || '').split(':').slice(2).join(':') || e.actor)} on ${esc(String(e.at || e.created_at || '').slice(0, 10))})` : ''}. The registration is not verified until someone records a decision.${e && e.notes ? `<br>Note: ${esc(e.notes)}` : ''}</div>
+    ${form('reg_gmc_decide', { ...H, sid: r.id }, `<fieldset><legend>Decision</legend><label class="consent"><input type="radio" name="decision" value="verify" required><span>Verify: I have considered what the register shows and it does not prevent this person supervising</span></label><label class="consent"><input type="radio" name="decision" value="not_current"><span>Mark not current</span></label><label class="consent"><input type="radio" name="decision" value="reject"><span>Reject</span></label></fieldset><label>Reason for the decision (internal, 20 characters or more)<textarea name="notes" required minlength="20" maxlength="1000"></textarea></label>`, 'Record decision', 'Record this decision about the GMC registration?')}`;
+  }
+  const today = ukDate();
+  const check = r.failure_state === RESTRICTION_STATE ? '' : form('reg_gmc_check', { ...H, sid: r.id }, `<h5 style="margin:0">Record a GMC register check</h5>
+    <label>Name shown on the GMC register<input name="register_name" required maxlength="160" value="${esc(r.register_name || '')}"></label>
+    <label class="consent"><input type="checkbox" name="number_matched" value="1" required><span>The GMC number on the register matches ${esc(r.registration_number)}</span></label>
+    <label class="consent"><input type="checkbox" name="registration_current" value="1" required><span>The registration is current</span></label>
+    <label class="consent"><input type="checkbox" name="licence_current" value="1" required><span>The licence to practise is current</span></label>
+    <fieldset><legend>Does the register show a warning, condition, undertaking or restriction that needs further consideration?</legend><label class="consent"><input type="radio" name="restriction" value="none" required><span>No, nothing is shown that needs consideration</span></label><label class="consent"><input type="radio" name="restriction" value="shown"><span>Yes: hold the registration for a decision</span></label></fieldset>
+    <label>Date checked<input type="date" name="checked_on" required value="${esc(today)}" max="${esc(today)}" min="${esc(addDays(today, -MAX_CHECK_AGE_DAYS))}"></label>
+    <label>Internal verification note (required if something is shown)<input name="notes" maxlength="500"></label>
+    <p class="form-note">Source: GMC register. Only these answers are stored, never the register page.</p>`, 'Record GMC check');
+  return `<div class="sv-gmc">${link}${rec}${held}${check}</div>`;
+}
+
 async function auditRows(env, id) {
   const apps = ((await env.DB.prepare('SELECT id FROM supervisor_applications WHERE learner_id = ?').bind(id).all()).results || []).map((r) => String(r.id));
   return (await env.DB.prepare(`SELECT * FROM audit_events WHERE (subject_type = 'learner' AND subject_id = ?) OR (actor_type IN ('learner', 'supervisor') AND actor_id = ?)${apps.length ? ` OR (subject_type = 'application' AND subject_id IN (${apps.map(() => '?').join(',')}))` : ''} ORDER BY id DESC LIMIT 300`).bind(String(id), String(id), ...apps).all()).results || [];
@@ -568,6 +606,53 @@ async function caseHistory(env, id) {
   return `<h3 style="margin:28px 0 10px">History</h3>${rows.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Scope</th><th scope="col">Details</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${esc(r.at)}</td><td>${esc(r.who)}</td><td>${esc(r.what)}</td><td>${esc(r.scope)}</td><td><small>${esc(r.details)}</small></td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No history.</p>'}`;
 }
 
+// GMC manual review (worker/verification/register-review.js). Only for a registration whose regulator is GMC. A
+// check that shows something needing consideration holds the registration in manual review (never verified) until a
+// deliberate decision is recorded. Every step goes to verification_events with the reviewer, source and outcome.
+// The verification_events action name for a registration held for a decision (an event, not a form action).
+const GMC_HELD_EVENT = 'admin_gmc_held';
+async function gmcPost(env, f, action, r, { reviewer, back, ev, decided }) {
+  if (!isGmc(r.regulator)) return back('The GMC check applies only to GMC registrations.');
+  const reg = REG[r.regulator] || {};
+  const nextCheck = Date.now() + (reg.recheckDays || 30) * 864e5;
+  const verify = (name, fields) => env.DB.prepare("UPDATE professional_registrations SET status = 'verified', register_name = ?, register_status = 'registered', register_fields = ?, verification_method = 'manual_register', verification_source = ?, verified_at = ?, last_checked_at = ?, next_check_at = ?, failure_state = NULL, failure_count = 0, match_method = 'admin', match_version = NULL, match_result = 'match', updated_at = datetime('now') WHERE id = ?")
+    .bind(name, fields, GMC_SOURCE, nowIso(), nowIso(), nextCheck, r.id).run();
+  const taken = 'Another account already holds this registration number as verified. Resolve that account first.';
+  if (action === 'reg_gmc_check') {
+    if (r.failure_state === RESTRICTION_STATE) return back('This registration is held for a decision. Record the decision first.');
+    if (!gmcRegisterUrl(r.regulator, r.registration_number)) return back('This GMC number is not 7 digits. Reject the registration, or ask the applicant to correct it.');
+    const out = gmcReview(f);
+    if (out.error) return back(out.error);
+    const fields = JSON.stringify({ ...out.fields, reviewer });
+    if (out.outcome === 'verified') {
+      try { await verify(out.registerName, fields); } catch { return back(taken); }
+      await decided('professional_registrations', r.id);
+      await ev({ subjectType: 'registration', subjectId: r.id, action: 'admin_verified', outcome: 'verified', source: GMC_SOURCE, method: 'manual_register', notes: [out.summary, out.note].filter(Boolean).join(' ') });
+      return back('GMC registration verified.');
+    }
+    await env.DB.prepare("UPDATE professional_registrations SET status = 'manual_review', failure_state = ?, register_name = ?, register_status = 'registered', register_fields = ?, verification_source = ?, verification_method = NULL, verified_at = NULL, match_method = NULL, match_version = NULL, match_result = NULL, last_checked_at = ?, next_check_at = NULL, updated_at = datetime('now') WHERE id = ?")
+      .bind(RESTRICTION_STATE, out.registerName, fields, GMC_SOURCE, nowIso(), r.id).run();
+    await ev({ subjectType: 'registration', subjectId: r.id, action: GMC_HELD_EVENT, outcome: 'manual_review', source: GMC_SOURCE, method: 'manual_register', notes: `${out.summary} ${out.note}` });
+    return back('Held for a decision: the GMC register shows something that needs consideration. The registration is not verified.');
+  }
+  // reg_gmc_decide
+  if (r.failure_state !== RESTRICTION_STATE) return back('This registration is not held for a decision.');
+  const d = restrictionDecision(f);
+  if (d.error) return back(d.error);
+  if (d.decision === 'verify') {
+    let fields = {}; try { fields = JSON.parse(r.register_fields || '{}'); } catch { /* none */ }
+    try { await verify(r.register_name, JSON.stringify({ ...fields, decidedBy: reviewer })); } catch { return back(taken); }
+    await decided('professional_registrations', r.id);
+    await ev({ subjectType: 'registration', subjectId: r.id, action: 'admin_verified_after_consideration', outcome: 'verified', source: GMC_SOURCE, method: 'manual_register', notes: d.reason });
+    return back('GMC registration verified after consideration.');
+  }
+  const s = d.decision === 'reject' ? 'rejected' : 'not_current';
+  await env.DB.prepare("UPDATE professional_registrations SET status = ?, failure_state = NULL, last_checked_at = ?, updated_at = datetime('now') WHERE id = ?").bind(s, nowIso(), r.id).run();
+  await decided('professional_registrations', r.id);
+  await ev({ subjectType: 'registration', subjectId: r.id, action: `admin_${s}`, outcome: s, source: GMC_SOURCE, method: 'manual_register', notes: d.reason });
+  return back(s === 'rejected' ? 'Registration rejected.' : 'Registration marked not current.');
+}
+
 // Returns the message to show after the redirect.
 // who (native accounts): { learnerId, canRevokeAll } of the signed-in administrator: the linked logbook account for
 // self-recognition, and whether they hold the owner-only permission to end someone's supervisor status entirely.
@@ -599,6 +684,7 @@ export async function supervisorsAdminPost(env, f, admin, ctx, who = {}) {
     if (!r) return back('Registration not found.');
     const reg = REG[r.regulator] || {};
     if (action === 'reg_verify') {
+      if (isGmc(r.regulator)) return back('GMC registrations are verified with "Record GMC check".');
       if (!f.get('checked')) return back('Tick the box to confirm you checked the official register.');
       try {
         await env.DB.prepare("UPDATE professional_registrations SET status = 'verified', register_name = ?, register_status = 'registered', verification_method = 'manual_register', verification_source = ?, verified_at = ?, last_checked_at = ?, next_check_at = ?, failure_state = NULL, failure_count = 0, match_method = 'admin', match_version = NULL, match_result = 'match', updated_at = datetime('now') WHERE id = ?")
@@ -616,16 +702,25 @@ export async function supervisorsAdminPost(env, f, admin, ctx, who = {}) {
       await ev({ subjectType: 'registration', subjectId: r.id, action: `admin_${s}`, outcome: s, notes });
       return back(s === 'rejected' ? 'Registration rejected.' : 'Registration marked not current.');
     }
-    if (action === 'reg_recheck') { const out = await checkRegistration(env, r, 'admin', actor); return back(`Automatic check: ${out.status.replace(/_/g, ' ')}.`); }
+    if (action === 'reg_gmc_check' || action === 'reg_gmc_decide') return gmcPost(env, f, action, r, { reviewer, back, ev, decided });
+    if (action === 'reg_recheck') {
+      if (isGmc(r.regulator)) return back('GMC registrations have no automatic check. Record a GMC register check instead.');
+      const out = await checkRegistration(env, r, 'admin', actor); return back(`Automatic check: ${out.status.replace(/_/g, ' ')}.`); }
   }
 
   if (action.startsWith('cred_')) {
     const c = await env.DB.prepare('SELECT * FROM credentials WHERE id = ? AND learner_id = ?').bind(sid, learnerId).first();
     if (!c) return back('Credential not found.');
     const t = TYPE[c.credential_type] || { modules: [] };
+    if (action === 'cred_directory_check' || action === 'cred_listing_send') return directoryPost(env, f, action, c, { reviewer, actor, back, ev, decided, ctx });
     // Approving a credential needs no note: the method, modules, dates, evidence and reviewer are recorded.
     if (!notes && action !== 'cred_approve') return back('Add notes or a reason.');
     if (action === 'cred_approve') {
+      // A credential the body lists in an official directory is verified through the directory check, which also
+      // needs identity confirmed separately. Approving from evidence (for example the body's own letter) needs that
+      // evidence named.
+      if (directoryOf(c.credential_type) && f.get('method') === 'manual_register') return back('This credential has an official directory: use "Record directory check", which also needs identity confirmed separately.');
+      if (directoryOf(c.credential_type) && !Number(f.get('evidence'))) return back("Approving from evidence needs the evidence you relied on, such as the body's confirmation or certificate.");
       const modules = f.getAll('modules').map(String).filter((m) => t.modules.some((x) => x.id === m));
       if (!modules.length) return back('Tick at least one module.');
       const method = f.get('method') === 'manual_register' ? 'manual_register' : 'manual_evidence';
@@ -742,8 +837,9 @@ export async function supervisorsAdminPost(env, f, admin, ctx, who = {}) {
       if (reviewOn === false) return back('The approved-until date must be after today and no more than 12 months away.');
       // A new row, so the revoked one and its reason stay in the record.
       try {
-        await env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes${life ? ', required_basis, registration_exempt, exempt_reason, application_id' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?${life ? ',?,?,?,?' : ''})`)
-          .bind(learnerId, a.pathway, a.module, a.basis, reviewOn, actor, nowIso(), `Reinstated from #${a.id}: ${notes}`, ...(life ? [a.required_basis || '[]', a.registration_exempt || 0, a.exempt_reason || null, a.application_id || null] : [])).run();
+        const capCol = await hasCapacity(env);
+        await env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes${life ? ', required_basis, registration_exempt, exempt_reason, application_id' : ''}${capCol ? ', capacity' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?${life ? ',?,?,?,?' : ''}${capCol ? ',?' : ''})`)
+          .bind(learnerId, a.pathway, a.module, a.basis, reviewOn, actor, nowIso(), `Reinstated from #${a.id}: ${notes}`, ...(life ? [a.required_basis || '[]', a.registration_exempt || 0, a.exempt_reason || null, a.application_id || null] : []), ...(capCol ? [a.capacity || 'supervisor'] : [])).run();
       } catch { return back('This scope is already approved.'); }
       await ev({ subjectType: 'approval', subjectId: a.id, action: 'admin_reinstated', outcome: 'approved', scope: `${a.pathway}:${a.module}`, notes });
       if (life) {
@@ -943,6 +1039,7 @@ function approvalInput(f, st) {
     scopes: validScopes(f),
     reviewOn: date(f.get('review_on')),
     basis: f.getAll('basis').map(Number).filter((x) => st.credentials.some((c) => c.id === x && isCurrentCred(c))),
+    capacity: CAPACITIES.includes(f.get('capacity')) ? String(f.get('capacity')) : 'supervisor',
     exempt: !!f.get('exempt'), exemptReason: clip(f.get('exempt_reason'), 1000),
     selfAck: !!f.get('self_ack'), selfReason: clip(f.get('self_reason'), 1000),
   };
@@ -961,15 +1058,18 @@ async function grantApprovals(env, { st, l, application: a = null, input, actor,
   const live = st.approvals;
   const base = renewal && live.length ? (live.map((x) => x.review_on).filter(Boolean).sort()[0] || day) : day;
   const maxUntil = addMonths(base > day ? base : day, 12);
+  const capCol = await hasCapacity(env);
   const { scopes, confirmRenewal = false } = input;
   const basis = confirmRenewal ? [] : input.basis || [];
-  // Production approves in one role: supervisor (approval roles arrive with migration 0015, not applied).
-  const capacity = 'supervisor';
+  const capacity = input.capacity || 'supervisor';
   let reviewOn = maxUntil, exempt = 0, exemptReason = null;
   if (!confirmRenewal) {
     if (!scopes.length) return 'Tick at least one module scope.';
     reviewOn = input.reviewOn || maxUntil;
     if (reviewOn <= day || reviewOn > maxUntil) return `The approved-until date must be after today and no later than ${maxUntil}.`;
+    if (capacity !== 'supervisor' && !capCol) return 'Approving in a capacity other than supervisor needs migration 0015.';
+    const unfit = scopes.filter((sc) => { const [p, m] = sc.split(':'); return m === '*' ? !(PATHS.find((x) => x.id === p) || { modules: [] }).modules.every((mm) => capacitiesFor(p, mm.id).includes(capacity)) : !capacitiesFor(p, m).includes(capacity); });
+    if (unfit.length) return `${capacityLabel(capacity)} is not a role for ${unfit.map((sc) => scopeLabel(...sc.split(':'))).join(', ')}. Choose another role or untick those modules.`;
     if (!st.hasReg) {
       if (!input.exempt) return 'The registration is not verified. Verify it on the person page, or tick the registration exemption and give your reason.';
       if (input.exemptReason.length < 20) return 'Give the reason for the registration exemption, and how you checked identity and experience instead.';
@@ -994,8 +1094,8 @@ async function grantApprovals(env, { st, l, application: a = null, input, actor,
       stmts.push(env.DB.prepare('UPDATE supervisor_approvals SET review_on = ?, last_renewed_at = ?, application_id = ?, basis = ?, required_basis = ?, registration_exempt = ?, exempt_reason = ?, notes = ? WHERE id = ? AND status = ?').bind(reviewOn, at, a.id, JSON.stringify(basis), JSON.stringify(basis), exempt, exemptReason, notes || null, row.id, 'approved'));
       renewed.push(sc); capOf[sc] = row.capacity || 'supervisor';
     } else if (!row) {
-      stmts.push(env.DB.prepare("INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes, application_id, registration_exempt, exempt_reason, required_basis) VALUES (?,?,?,'approved',?,?,?,?,?,?,?,?,?)")
-        .bind(lid, p, m, JSON.stringify(basis), reviewOn, actor, at, notes || (a ? `Approved with application #${a.id}` : 'Approved from the person page'), a ? a.id : null, exempt, exemptReason, JSON.stringify(basis)));
+      stmts.push(env.DB.prepare(`INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes, application_id, registration_exempt, exempt_reason, required_basis${capCol ? ', capacity' : ''}) VALUES (?,?,?,'approved',?,?,?,?,?,?,?,?,?${capCol ? ',?' : ''})`)
+        .bind(lid, p, m, JSON.stringify(basis), reviewOn, actor, at, notes || (a ? `Approved with application #${a.id}` : 'Approved from the person page'), a ? a.id : null, exempt, exemptReason, JSON.stringify(basis), ...(capCol ? [capacity] : [])));
       added.push(sc); capOf[sc] = capacity;
     }
   }

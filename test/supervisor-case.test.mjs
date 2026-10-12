@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeEnv, ctx } from './helpers/env.mjs';
-import { verifiedAccount, idOf, adminForm } from './helpers/verify.mjs';
+import { verifiedAccount, idOf, adminForm, gmcCheck } from './helpers/verify.mjs';
 import { setupEnv, bootstrapOwner, activateAndEnrol, addAdmin, advance } from './helpers/admin-accounts.mjs';
 import { supervisorsAdminPost, supervisorsAdminHtml, supervisorCaseHtml } from '../worker/supervisors-admin.js';
 
@@ -28,7 +28,8 @@ async function applicant(env, email = 'jordan.case@example.test') {
   assert.equal((await sup.call('/api/app/supervisor/submit', { declaration: true })).status, 200);
   const sid = await idOf(env, email);
   const reg = await env.DB.prepare('SELECT id FROM professional_registrations WHERE learner_id = ?').bind(sid).first();
-  assert.equal((await admin(env, { action: 'reg_verify', learner: sid, sid: reg.id, register_name: 'Jordan Example', checked: '1' })).m, 'Registration verified.');
+  // This line has the GMC manual review: a GMC registration is verified with "Record GMC check".
+  assert.equal((await admin(env, { action: 'reg_gmc_check', learner: sid, sid: reg.id, ...gmcCheck({ register_name: 'Jordan Example' }) })).m, 'GMC registration verified.');
   const app = await env.DB.prepare('SELECT * FROM supervisor_applications WHERE learner_id = ? ORDER BY id DESC').bind(sid).first();
   return { sid, app };
 }
@@ -43,7 +44,7 @@ test('a new applicant: one page with the state, what needs doing, the decision, 
   assert.match(html, /data-case-state="applying"/);
   assert.match(html, new RegExp(`New application #${app.id} is waiting for a decision`));
   for (const id of ['case-application', 'case-registration', 'case-credentials', 'case-approvals', 'case-standing', 'case-history']) assert.ok(html.includes(`id="${id}"`), id);
-  assert.ok(actions(html).includes('app_approve') && actions(html).includes('reg_verify') && actions(html).includes('appr_add'), actions(html).join(','));
+  assert.ok(actions(html).includes('app_approve') && actions(html).includes('reg_gmc_check') && actions(html).includes('appr_add'), actions(html).join(','));
   // One history (the application page's and the person page's are merged), and one title.
   assert.equal((html.match(/>History</g) || []).length, 1);
   assert.equal((html.match(/<h2 /g) || []).length, 1);

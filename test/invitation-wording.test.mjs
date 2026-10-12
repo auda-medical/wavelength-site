@@ -33,8 +33,8 @@ for (const supervisorHasAccount of [false, true]) {
     const m = await invite(env, { supervisorHasAccount });
     assert.doesNotMatch(m.html, MANDATORY);
     assert.doesNotMatch(m.text, MANDATORY);
-    assert.match(m.html, /apply in the app to become a Wavelength-approved supervisor/);
-    assert.match(m.html, /sees whether you are Wavelength-approved or not yet verified/);
+    assert.match(m.html, /apply in the app to become a Wavelength Verified Supervisor/);
+    assert.match(m.html, /sees whether you are a Wavelength Verified Supervisor or not yet verified/);
     assert.match(m.html, supervisorHasAccount ? /Log in and accept/ : /Create your account/);
   });
 

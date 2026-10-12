@@ -81,5 +81,83 @@
     return zip(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   }
 
-  window.WLZip = { zip: zip, unzip: unzip, xlsx: xlsx, crc32: crc32 };
+  // The same stored ZIP, written one file at a time to sink(Uint8Array) so a large backup never sits in memory whole.
+  // add(name, data) and finish() return promises (the sink may be slow: encryption, writing to a file).
+  function zipWriter(sink) {
+    var central = [], offset = 0, count = 0, chain = Promise.resolve();
+    var now = new Date();
+    var time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    var date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    function add(fname, data) {
+      chain = chain.then(function () {
+        var name = enc.encode(fname), d = u8(data), crc = crc32(d);
+        if (offset + 30 + name.length + d.length > 0xffffffff) throw new Error('The backup is larger than 4 GB.');
+        var h = new DataView(new ArrayBuffer(30));
+        h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+        h.setUint16(10, time, true); h.setUint16(12, date, true); h.setUint32(14, crc, true);
+        h.setUint32(18, d.length, true); h.setUint32(22, d.length, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+        var c = new DataView(new ArrayBuffer(46));
+        c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+        c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true); c.setUint32(20, d.length, true); c.setUint32(24, d.length, true);
+        c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+        central.push(new Uint8Array(c.buffer), name);
+        offset += 30 + name.length + d.length; count++;
+        return Promise.resolve(sink(new Uint8Array(h.buffer))).then(function () { return sink(name); }).then(function () { return sink(d); });
+      });
+      return chain;
+    }
+    function finish() {
+      return chain.then(function () {
+        var size = central.reduce(function (s, p) { return s + p.length; }, 0);
+        var all = new Uint8Array(size + 22), at = 0;
+        central.forEach(function (p) { all.set(p, at); at += p.length; });
+        var e = new DataView(all.buffer, size, 22);
+        e.setUint32(0, 0x06054b50, true); e.setUint16(8, count, true); e.setUint16(10, count, true);
+        e.setUint32(12, size, true); e.setUint32(16, offset, true);
+        return sink(all);
+      });
+    }
+    return { add: add, finish: finish };
+  }
+
+  // Reads a stored ZIP as it arrives (push pieces in order, then end()), calling onFile(name, Uint8Array) for each
+  // file. Only one file is held in memory at a time. Checks each file's CRC. onFile may return a promise.
+  function unzipReader(onFile) {
+    var buf = new Uint8Array(0), cur = null, done = false, chain = Promise.resolve();
+    var dec = new TextDecoder();
+    function take(n) { var out = buf.subarray(0, n); buf = buf.subarray(n); return out; }
+    function step() {
+      for (;;) {
+        if (done) return;
+        if (!cur) {
+          if (buf.length < 4) return;
+          var sig = new DataView(buf.buffer, buf.byteOffset, 4).getUint32(0, true);
+          if (sig === 0x02014b50 || sig === 0x06054b50) { done = true; return; } // central directory: all files read
+          if (sig !== 0x04034b50) throw new Error('The backup file is damaged.');
+          if (buf.length < 30) return;
+          var v = new DataView(buf.buffer, buf.byteOffset, 30);
+          var flags = v.getUint16(6, true), method = v.getUint16(8, true), crc = v.getUint32(14, true), size = v.getUint32(22, true), nlen = v.getUint16(26, true), xlen = v.getUint16(28, true);
+          if (method !== 0 || (flags & 8)) throw new Error('This backup was changed by another program. Use the original file.');
+          if (buf.length < 30 + nlen + xlen) return;
+          take(30); var name = dec.decode(take(nlen)); take(xlen);
+          cur = { name: name, crc: crc, size: size, data: new Uint8Array(size), got: 0 };
+        }
+        var n = Math.min(cur.size - cur.got, buf.length);
+        cur.data.set(take(n), cur.got); cur.got += n;
+        if (cur.got < cur.size) return;
+        if (crc32(cur.data) !== cur.crc) throw new Error('The backup file is damaged.');
+        chain = chain.then(onFile.bind(null, cur.name, cur.data));
+        cur = null;
+      }
+    }
+    return {
+      push: function (piece) {
+        var b = new Uint8Array(buf.length + piece.length); b.set(buf); b.set(piece, buf.length); buf = b;
+        step(); return chain;
+      },
+      end: function () { step(); if (cur || !done) return Promise.reject(new Error('The backup file is incomplete.')); return chain; }
+    };
+  }
+
+  window.WLZip = { zip: zip, unzip: unzip, xlsx: xlsx, crc32: crc32, zipWriter: zipWriter, unzipReader: unzipReader };
 })();

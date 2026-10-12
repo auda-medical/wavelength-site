@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeEnv, client, ctx } from './helpers/env.mjs';
-import { verifiedAccount, signup, idOf, adminForm, SIG, PASSWORD } from './helpers/verify.mjs';
+import { verifiedAccount, signup, idOf, adminForm, SIG, PASSWORD, gmcCheck } from './helpers/verify.mjs';
 import { handleApp } from '../worker/app.js';
 import { supervisorsAdminPost, supervisorsAdminHtml, evidenceFile } from '../worker/supervisors-admin.js';
 import { dailyLifecycle, supervisorEligibility } from '../worker/supervisor-lifecycle.js';
@@ -50,8 +50,8 @@ async function fillDraft(sup, extra = {}) {
 const appOf = async (env, sid) => env.DB.prepare('SELECT * FROM supervisor_applications WHERE learner_id = ? ORDER BY id DESC').bind(sid).first();
 async function verifyReg(env, sid) {
   const reg = await env.DB.prepare('SELECT id FROM professional_registrations WHERE learner_id = ?').bind(sid).first();
-  const r = await admin(env, { action: 'reg_verify', learner: sid, sid: reg.id, register_name: 'John Smith', checked: '1', notes: 'GMC register' });
-  assert.equal(r.m, 'Registration verified.');
+  const r = await admin(env, { action: 'reg_gmc_check', learner: sid, sid: reg.id, ...gmcCheck() });
+  assert.equal(r.m, 'GMC registration verified.');
 }
 // Applies, gets the registration verified and is approved for FAMUS Thoracic.
 async function approvedSupervisor(env, email = 'sup@x.co') {
@@ -217,7 +217,7 @@ test('an invited supervisor claims the link, applies, and is approved for a subs
 
   link = (await p.learner.call('/api/app/supervisors')).body.supervisors[0];
   assert.equal(link.state, 'active');
-  assert.equal(link.stateLabel, 'Wavelength-approved supervisor');
+  assert.equal(link.stateLabel, 'Wavelength Verified ✓');
   assert.ok(link.areas.length);
   assert.equal((await p.sup.call('/api/app/supervise/learner?id=' + p.lid)).status, 200);
 

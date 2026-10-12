@@ -15,6 +15,7 @@ import { ukDate, inDate, addDays } from './time.js';
 import { adapterFor, isMockSource } from './verification/adapters.js';
 import { matchNames } from './verification/names.js';
 import { orgField, saveOrgId } from './organisations.js';
+import { authorityReport, credentialState, STATES, capacityLabel } from './verification/pathways.js';
 
 export const REG = Object.fromEntries(CFG.regulators.map((r) => [r.id, r]));
 export const TYPE = Object.fromEntries(CFG.credentialTypes.map((t) => [t.id, t]));
@@ -80,11 +81,13 @@ export async function currentStatus(env, learnerId) {
   //   every credential the administrator marked as required is still current; and the review date has not passed,
   //   or a complete renewal is within its 30-day grace period (graceFor below).
   const emailOk = !!l && l.email_status === 'verified';
-  const credOk = (ids) => parseList(ids).every((id) => credentials.some((c) => c.id === Number(id) && isCurrentCred(c)));
+  // A required credential must be current and, where its type maps modules to this pathway, still list the approved
+  // module: a FAMUS supervisor whose directory entry drops DVT stops counting for FAMUS DVT, not for Thoracic.
+  const credOk = (ids, a = null) => parseList(ids).every((id) => credentials.some((c) => c.id === Number(id) && isCurrentCred(c) && (!a || credentialCovers(c, a.pathway, a.module))));
   const approvals = (apps.results || []).map((a) => {
     if (!life) return { ...a, current: hasReg && inDate(a.review_on, day) };
     const regOk = hasReg || !!a.registration_exempt;
-    const basisOk = credOk(a.required_basis);
+    const basisOk = credOk(a.required_basis, a);
     const inTerm = inDate(a.review_on, day);
     const grace = !inTerm && regOk && basisOk && emailOk && !block && graceFor(a, renewal, day);
     const lapse = !emailOk ? 'email' : !regOk ? 'registration' : !basisOk ? 'credential' : null;
@@ -102,6 +105,16 @@ function graceFor(a, renewal, day) {
   if (!renewal || renewal.status !== 'submitted' || !renewal.current_at_submit || renewal.grace_blocked) return false;
   if (!a.review_on || ukDate(renewal.submitted_at) > a.review_on) return false;
   return day <= addDays(a.review_on, GRACE_DAYS);
+}
+// Does a credential still cover a pathway module? Only checked when the credential's type maps any of its modules to
+// that pathway; credentials with no mapping there (a regulator-style or local credential) are not narrowed.
+export function credentialCovers(c, pathway, module) {
+  const t = TYPE[c.credential_type];
+  if (!t) return true;
+  const mapped = (t.modules || []).filter((m) => m.scope && m.scope.split(':')[0] === pathway);
+  if (!mapped.length) return true;
+  const held = parseList(c.modules);
+  return mapped.some((m) => held.includes(m.id) && (module === '*' || m.scope === `${pathway}:${module}` || m.scope === `${pathway}:*`));
 }
 export const scopeLabel = (pathway, module) => {
   const pw = PATHS[pathway]; if (!pw) return `${pathway} ${module}`;
@@ -127,7 +140,7 @@ export function badgesFrom(env, st) {
   for (const r of st.registrations.filter(isCurrentReg)) {
     if (!showSource(env, r.verification_source)) continue;
     const reg = REG[r.regulator] || { short: r.regulator, name: r.regulator };
-    out.push({ kind: 'registration', label: `${reg.short} registration verified`, issuer: reg.name, credential: r.profession || 'Registered professional', source: sourceText(r, `the ${reg.short} register`), verifiedAt: r.verified_at, lastChecked: r.last_checked_at });
+    out.push({ kind: 'registration', label: 'Professional registration ✓', regulator: reg.short, issuer: reg.name, credential: r.profession || 'Registered professional', source: sourceText(r, `the ${reg.short} register`), verifiedAt: r.verified_at, lastChecked: r.last_checked_at });
   }
   for (const c of st.credentials.filter(isCurrentCred)) {
     if (!showSource(env, c.verification_source)) continue;
@@ -136,7 +149,7 @@ export function badgesFrom(env, st) {
     out.push({ kind: 'credential', label: `${t.label} verified`, issuer: b.name, credential: t.label, modules: moduleLabels(t, parseList(c.modules)), source: sourceText(c, `the ${b.short} record`), verifiedAt: c.verified_at, expiresOn: c.expires_on, reviewOn: c.review_on, note: 'Issued by ' + b.name + ', not by Wavelength.' });
   }
   const scopes = st.approvals.filter((a) => a.current);
-  if (scopes.length) out.push({ kind: 'wavelength-supervisor', label: 'Wavelength verified supervisor', issuer: 'Wavelength', scopes: scopes.map((a) => ({ pathway: a.pathway, module: a.module, label: scopeLabel(a.pathway, a.module), approvedAt: a.approved_at, reviewOn: a.review_on })) });
+  if (scopes.length) out.push({ kind: 'wavelength-supervisor', label: 'Wavelength Verified Supervisor', issuer: 'Wavelength', scopes: scopes.map((a) => ({ pathway: a.pathway, module: a.module, capacity: a.capacity || 'supervisor', capacityLabel: capacityLabel(a.capacity || 'supervisor'), label: scopeLabel(a.pathway, a.module), approvedAt: a.approved_at, reviewOn: a.review_on })) });
   return out;
 }
 
@@ -153,8 +166,9 @@ export async function checkRegistration(env, row, kind = 'claim', actor = 'syste
   const u = { last_checked_at: nowIso(), verification_source: res.source || null };
   let outcome = res.outcome, match = null;
   if (outcome === 'manual') {
-    // No supported source. A verified registration stays verified (an administrator checked it); anything else waits.
-    if (row.status === 'verified') return row;
+    // No supported source. A verified registration stays verified (an administrator checked it), and one held for an
+    // administrator's decision stays held; anything else waits.
+    if (row.status === 'verified' || row.failure_state === 'register_restriction') return row;
     Object.assign(u, { status: 'manual_verification_required', next_check_at: null, failure_state: null });
   } else if (outcome === 'unavailable') {
     // A source outage is never a lapse: keep the current status and try again later.
@@ -234,7 +248,7 @@ export async function submitRegistration(env, l, d) {
 }
 
 const REG_MESSAGES = {
-  verified: 'Verified against the register.',
+  verified: 'Checked by Wavelength against the public register.',
   pending: 'Waiting to be checked.',
   manual_verification_required: 'Wavelength cannot check this register automatically yet. The Wavelength team will check it by hand against the public register.',
   manual_review: UNAVAILABLE,
@@ -357,11 +371,14 @@ const CRED_MESSAGES = {
   not_found: 'We could not find a matching record. Add evidence and the Wavelength team will review it.',
   source_unavailable: 'The source could not be reached. We will try again automatically.',
   expired: 'This credential has expired.', rejected: 'The Wavelength team could not verify this credential.', revoked: 'Withdrawn by the Wavelength team.', withdrawn: 'Withdrawn.',
+  directory_match: 'The Wavelength team found a matching entry in the official directory. Your identity still needs to be confirmed separately before this is verified.',
+  identity_pending: 'We have emailed the address the official directory lists for you. Use the link in that email to confirm it is you.',
 };
 export function publicCredential(c, evidence = []) {
   const t = TYPE[c.credential_type] || { label: c.credential_type, modules: [] };
   const expired = c.status === 'verified' && !isCurrentCred(c);
-  return { id: c.id, type: c.credential_type, label: t.label, issuer: (BODY[c.issuer] || {}).name || c.issuer, modules: parseList(c.modules), moduleLabels: moduleLabels(t, parseList(c.modules)), status: expired ? 'expired' : c.status, message: CRED_MESSAGES[expired ? 'expired' : c.status] || '', reference: c.reference, issuedOn: c.issued_on, expiresOn: c.expires_on, reviewOn: c.review_on, verifiedAt: c.verified_at, method: c.verification_method, evidence: evidence.map((e) => ({ id: e.id, kind: e.kind, description: e.description, url: e.url, fileName: e.file_name, at: e.created_at, purged: !!e.purged_at })) };
+  const state = credentialState(c);
+  return { id: c.id, type: c.credential_type, label: t.label, issuer: (BODY[c.issuer] || {}).name || c.issuer, modules: parseList(c.modules), moduleLabels: moduleLabels(t, parseList(c.modules)), status: expired ? 'expired' : c.status, state, stateLabel: STATES[state], message: CRED_MESSAGES[expired ? 'expired' : c.status] || '', reference: c.reference, issuedOn: c.issued_on, expiresOn: c.expires_on, reviewOn: c.review_on, verifiedAt: c.verified_at, method: c.verification_method, evidence: evidence.map((e) => ({ id: e.id, kind: e.kind, description: e.description, url: e.url, fileName: e.file_name, at: e.created_at, purged: !!e.purged_at })) };
 }
 
 // ---------- Evidence ----------
@@ -449,6 +466,8 @@ async function saveDirectory(env, l, d) {
   await env.DB.prepare(`INSERT INTO directory_profiles (learner_id, listed, display_name, profession, specialty, organisation, region, country, contact_email, show_contact, listed_at) VALUES (?,?,?,?,?,?,?,?,?,?, CASE WHEN ? = 1 THEN datetime('now') END)
     ON CONFLICT (learner_id) DO UPDATE SET listed = excluded.listed, display_name = excluded.display_name, profession = excluded.profession, specialty = excluded.specialty, organisation = excluded.organisation, region = excluded.region, country = excluded.country, contact_email = excluded.contact_email, show_contact = excluded.show_contact, updated_at = datetime('now'), listed_at = CASE WHEN excluded.listed = 1 THEN COALESCE(directory_profiles.listed_at, datetime('now')) END`)
     .bind(l.id, listed, v.display_name, v.profession, v.specialty, v.organisation, v.region, v.country, v.contact_email, v.show_contact, listed).run();
+  // Whether they accept new requests through Wavelength (migration 0015). Their own choice; default yes.
+  if (d && d.acceptingRequests !== undefined && await hasAccepting(env)) await env.DB.prepare('UPDATE directory_profiles SET accepting_requests = ? WHERE learner_id = ?').bind(d.acceptingRequests ? 1 : 0, l.id).run();
   await saveOrgId(env, 'directory_profiles', l.id, org, v.organisation, before ? before.organisation : null);
   await logEvent(env, { learnerId: l.id, subjectType: 'directory', subjectId: l.id, action: listed ? 'listed' : 'unlisted', actor: 'learner' });
   return json({ ok: true, listed: !!listed, ...el });
@@ -459,7 +478,8 @@ export async function directorySearch(env, url) {
   if (env.DIRECTORY_PUBLIC !== 'true' || !professionalOn(env)) return json({ ok: false, error: 'The supervisor directory is not open yet.' }, 404);
   if (!(await verificationReady(env))) return json({ ok: false, error: 'The supervisor directory is not open yet.' }, 404);
   const q = (k) => clip(url.searchParams.get(k), 80).toLowerCase();
-  const f = { country: q('country'), region: q('region'), text: q('q'), pathway: q('pathway'), module: q('module'), credential: q('credential'), profession: q('profession') };
+  const f = { country: q('country'), region: q('region'), text: q('q'), pathway: q('pathway'), module: q('module'), credential: q('credential'), profession: q('profession'), role: q('role'), organisation: q('organisation'), accepting: q('accepting') === '1', verification: q('verification') };
+  const acceptCol = await hasAccepting(env);
   const { results = [] } = await env.DB.prepare('SELECT * FROM directory_profiles WHERE listed = 1 ORDER BY updated_at DESC LIMIT 500').all();
   const out = [];
   for (const p of results) {
@@ -476,12 +496,26 @@ export async function directorySearch(env, url) {
     if (f.pathway && !scopes.some((s) => s.startsWith(f.pathway + ':')) && !st.credentials.some((c) => isCurrentCred(c) && String(c.programme || '').toLowerCase() === f.pathway)) continue;
     if (f.module && !scopes.some((s) => s.endsWith(':' + f.module) || (f.pathway && s === `${f.pathway}:*`)) && !st.credentials.some((c) => isCurrentCred(c) && parseList(c.modules).includes(f.module))) continue;
     if (f.credential && !st.credentials.some((c) => isCurrentCred(c) && c.credential_type === f.credential)) continue;
+    // Role: the capacity of a current approval (supervisor, trainer, mentor, local_supervisor) for the module asked about.
+    const current = st.approvals.filter((a) => a.current && (!f.pathway || a.pathway === f.pathway) && (!f.module || a.module === f.module || a.module === '*'));
+    if (f.role && !current.some((a) => (a.capacity || 'supervisor') === f.role)) continue;
+    if (f.organisation && !String(org).toLowerCase().includes(f.organisation)) continue;
+    const accepting = acceptCol ? p.accepting_requests !== 0 : true;
+    if (f.accepting && !accepting) continue;
+    if (f.verification === 'approved' && !st.approvals.some((a) => a.current)) continue;
     const dates = [...st.registrations.filter(isCurrentReg).map((r) => r.last_checked_at || r.verified_at), ...st.credentials.filter(isCurrentCred).map((c) => c.verified_at)].filter(Boolean).sort();
-    out.push({ name, profession: p.profession || (st.registrations.find(isCurrentReg) || {}).profession || '', organisation: org, region: p.region || '', country: p.country || '', specialty: p.specialty || '', badges, lastVerified: dates[dates.length - 1] || null, contact: p.show_contact ? p.contact_email : null });
+    out.push({ name, profession: p.profession || (st.registrations.find(isCurrentReg) || {}).profession || '', organisation: org, region: p.region || '', country: p.country || '', specialty: p.specialty || '', badges, roles: st.approvals.filter((a) => a.current).map((a) => ({ scope: `${a.pathway}:${a.module}`, label: scopeLabel(a.pathway, a.module), capacity: a.capacity || 'supervisor', capacityLabel: capacityLabel(a.capacity || 'supervisor') })), accepting, enrolled: true, lastVerified: dates[dates.length - 1] || null, contact: p.show_contact ? p.contact_email : null });
     if (out.length >= 50) break;
   }
-  return json({ ok: true, supervisors: out });
+  return json({ ok: true, supervisors: out, notice: 'Everyone here chose to be listed and has a Wavelength account. Being listed is not a promise that they can take on new learners: they decide each request.', external: externalDirectories() });
 }
+// The bodies' own directories, linked (never copied). People listed there may not use Wavelength.
+export function externalDirectories() {
+  const seen = new Map();
+  for (const t of CFG.credentialTypes) if (t.directory && t.directory.url && !seen.has(t.directory.url)) seen.set(t.directory.url, { name: t.directory.name, url: t.directory.url, body: (BODY[t.body] || {}).name || t.body, programme: t.programme });
+  return [...seen.values()].map((x) => ({ ...x, note: `Run by ${x.body}. People listed there may not use Wavelength, and Wavelength does not copy or republish this directory.` }));
+}
+async function hasAccepting(env) { try { await env.DB.prepare('SELECT accepting_requests FROM directory_profiles LIMIT 0').all(); return true; } catch { return false; } }
 
 // ---------- Snapshot of supervisor status at the moment of signing ----------
 // Written once, with the signature, and never changed. Later changes to the supervisor's status change what they can
@@ -493,9 +527,14 @@ export function scopesForTypes(types) {
 }
 // Schema v2 (migration 0012) adds: learnerName (the learner's name when signed, so verify pages need not read the live
 // account), signer ('approved' | 'account_not_approved' | 'self_declared': the label every page shows), and standing.
-export async function supervisorSnapshot(env, { accountId, declared, method, scopes = [], learnerName = null }) {
+// actions (data/supervision-policy.json): what the signer is doing, for example ['review'] for an asynchronous scan
+// review or ['final'] for a triggered assessment. approvedFor then lists only scopes where a current approval's
+// capacity allows those actions, and authority records the capacity per scope (for example a FUSIC Heart mentor
+// signing a final assessment: capacity mentor, allowed false).
+export async function supervisorSnapshot(env, { accountId, declared, method, scopes = [], learnerName = null, actions = null }) {
   const life = await lifecycleReady(env);
   const snap = { v: life ? 2 : 1, capturedAt: nowIso(), method, identity: accountId ? 'wavelength_account' : 'self_declared', declared: { name: declared.name || '', role: declared.role || '', registration: declared.reg || '', accreditation: declared.accreditation || '' }, relevantScopes: scopes };
+  if (actions && actions.length) snap.actions = actions;
   if (life) { snap.signer = 'self_declared'; if (learnerName) snap.learnerName = learnerName; }
   if (!accountId) return snap;
   const st = await currentStatus(env, accountId);
@@ -507,9 +546,12 @@ export async function supervisorSnapshot(env, { accountId, declared, method, sco
   snap.professionalName = reg && reg.register_name ? reg.register_name : fullName(st.learner);
   snap.registrations = st.registrations.filter((r) => r.status !== 'withdrawn').map((r) => ({ regulator: r.regulator, regulatorName: (REG[r.regulator] || {}).name || r.regulator, number: r.registration_number, profession: r.profession, status: r.status, verified: isCurrentReg(r) && live(r.verification_source), source: r.verification_source, method: r.verification_method, verifiedAt: r.verified_at, lastCheckedAt: r.last_checked_at }));
   snap.credentials = st.credentials.filter((c) => isCurrentCred(c) && live(c.verification_source)).map((c) => ({ type: c.credential_type, label: (TYPE[c.credential_type] || {}).label || c.credential_type, issuer: (BODY[c.issuer] || {}).name || c.issuer, modules: parseList(c.modules), status: 'verified', source: c.verification_source, method: c.verification_method, verifiedAt: c.verified_at, expiresOn: c.expires_on }));
-  snap.approvals = st.approvals.filter((a) => a.current).map((a) => ({ pathway: a.pathway, module: a.module, label: scopeLabel(a.pathway, a.module), approvedAt: a.approved_at, reviewOn: a.review_on }));
+  snap.approvals = st.approvals.filter((a) => a.current).map((a) => ({ pathway: a.pathway, module: a.module, label: scopeLabel(a.pathway, a.module), capacity: a.capacity || 'supervisor', approvedAt: a.approved_at, reviewOn: a.review_on }));
   const covers = (sc) => snap.approvals.some((a) => sc === `${a.pathway}:${a.module}` || sc.startsWith(`${a.pathway}:`) && a.module === '*');
-  snap.approvedFor = scopes.filter(covers);
+  if (actions && actions.length) {
+    snap.authority = authorityReport(snap.approvals, scopes, actions);
+    snap.approvedFor = snap.authority.filter((x) => x.allowed).map((x) => x.scope);
+  } else snap.approvedFor = scopes.filter(covers);
   snap.wavelengthVerifiedSupervisor = snap.approvedFor.length > 0;
   if (life) {
     snap.signer = snap.wavelengthVerifiedSupervisor ? 'approved' : 'account_not_approved';
@@ -518,14 +560,14 @@ export async function supervisorSnapshot(env, { accountId, declared, method, sco
   return snap;
 }
 // The snapshot for a sign-off or assessment, or null before migration 0011. entries: the signed snapshot entries.
-export async function snapshotFor(env, { entries = [], pathway, module, declared, method, accountId = null, learnerName = null }) {
+export async function snapshotFor(env, { entries = [], pathway, module, declared, method, accountId = null, learnerName = null, actions = null }) {
   if (!(await verificationReady(env))) return null;
   const scopes = pathway ? [`${pathway}:${module}`] : scopesForTypes([...new Set(entries.map((e) => e.type))]);
-  return supervisorSnapshot(env, { accountId, declared, method, scopes, learnerName });
+  return supervisorSnapshot(env, { accountId, declared, method, scopes, learnerName, actions });
 }
 // The three labels used on verify pages, the app and exports.
 export const SIGNER_LABELS = {
-  approved: 'Wavelength-approved supervisor',
+  approved: 'Wavelength Verified Supervisor',
   account_not_approved: 'Wavelength account, not approved as a supervisor at the time of signing',
   self_declared: 'Self-declared (not verified by Wavelength)',
 };
@@ -543,7 +585,10 @@ export function publicSnapshot(text) {
     emailVerified: (s.email || {}).status === 'verified',
     registrations: (s.registrations || []).filter((r) => r.verified).map((r) => ({ regulator: r.regulatorName, profession: r.profession, verifiedAt: r.verifiedAt })),
     credentials: (s.credentials || []).map((c) => ({ label: c.label, issuer: c.issuer, modules: moduleLabels(TYPE[c.type] || { modules: [] }, c.modules || []), verifiedAt: c.verifiedAt, expiresOn: c.expiresOn })),
-    approvedFor: (s.approvedFor || []).map((sc) => { const [p, m] = sc.split(':'); return scopeLabel(p, m); }),
+    approvedFor: (s.approvedFor || []).map((sc) => { const [p, m] = sc.split(':'); const a = (s.authority || []).find((x) => x.scope === sc); return scopeLabel(p, m) + (a && a.capacity && a.capacity !== 'supervisor' ? ` (${capacityLabel(a.capacity).toLowerCase()})` : ''); }),
+    // Approved for the module, but in a capacity that does not cover what was signed (for example a mentor signing a
+    // final assessment). Shown so a reviewer is never misled about the signer's authority.
+    notAuthorisedFor: (s.authority || []).filter((x) => !x.allowed && x.recognised && x.recognised.length).map((x) => { const [p, m] = x.scope.split(':'); return `${scopeLabel(p, m)}: approved as ${x.recognised.map((c) => capacityLabel(c).toLowerCase()).join(', ')}, which does not cover ${x.actions.join(' and ')}`; }),
     wavelengthVerifiedSupervisor: !!s.wavelengthVerifiedSupervisor,
   };
 }

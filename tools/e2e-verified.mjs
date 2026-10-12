@@ -7,9 +7,7 @@
 // (test/helpers/env.mjs: node:sqlite, every migration), serving dist/. Every outbound request the Worker makes
 // (ZeptoMail) is answered here and recorded: nothing leaves the machine. All people and numbers are fictional.
 // Run: node build.js && node --import ./test/helpers/register.mjs tools/e2e-verified.mjs <outdir>
-// Production branch: the Worker is production's (generic registration check, supervisor role only).
-// UI=web (default): the website app built from this branch (dist/). UI=android DIST=<dist of an Android-line build>:
-// that app against this Worker, as installed and upcoming store apps will meet it after deployment.
+// DIST=<another build>: run the same checks against that build of the app (for example an Android-line build).
 // OLD_WORKER=1: the app against a Worker without this work (no `verification` field, no admin changes), as an
 // installed app meets production before the Worker is deployed. Role and credential details, the admin console and
 // the repair are then skipped; the app must still show one consistent status.
@@ -19,14 +17,13 @@ import path from 'node:path';
 import { webcrypto as crypto } from 'node:crypto';
 import { chromium } from 'playwright';
 import { makeEnv, ctx as wctx, ORIGIN } from '../test/helpers/env.mjs';
-import { verifiedAccount, idOf, adminForm } from '../test/helpers/verify.mjs';
+import { verifiedAccount, idOf, adminForm, gmcCheck } from '../test/helpers/verify.mjs';
 import worker from '../worker/index.js';
 import { supervisorsAdminPost } from '../worker/supervisors-admin.js';
 import { ukDate, addMonths, addDays } from '../worker/time.js';
 
 const out = process.argv[2] || 'shots-verified';
 const OLD = process.env.OLD_WORKER === '1';
-const WEB = (process.env.UI || 'web') === 'web';
 fs.mkdirSync(out, { recursive: true });
 const errors = [];
 const fail = (m) => { errors.push(m); console.log('FAIL', m); };
@@ -113,7 +110,7 @@ async function applicant(email, first, last, { learner = null } = {}) {
   await c.call('/api/app/supervisor/submit', { declaration: true });
   const id = await idOf(env, email);
   const reg = await env.DB.prepare('SELECT id FROM professional_registrations WHERE learner_id = ?').bind(id).first();
-  await admin({ action: 'reg_verify', learner: id, sid: reg.id, register_name: `${first} ${last}`, checked: '1' });
+  await admin({ action: 'reg_gmc_check', learner: id, sid: reg.id, ...gmcCheck({ register_name: `${first} ${last}` }) });
   const app = await env.DB.prepare('SELECT * FROM supervisor_applications WHERE learner_id = ? ORDER BY id DESC').bind(id).first();
   return { c, id, app };
 }
@@ -123,7 +120,7 @@ await ready(learner);
 const A = await applicant('jordan.example@example.test', 'Jordan', 'Example', { learner });
 const cred = (await env.DB.prepare("INSERT INTO credentials (learner_id, credential_type, issuer, programme, role, modules, status, verified_at, verified_by, verification_method, expires_on) VALUES (?, 'famus-supervisor', 'sam', 'famus', 'supervisor', '[\"thoracic\",\"dvt\"]', 'verified', ?, 'admin:wavelength:Alex Reviewer', 'manual_evidence', '2029-06-30')").bind(A.id, new Date().toISOString()).run()).meta.last_row_id;
 await admin({ action: 'app_approve', app: A.app.id, scope: ['famus:famus-thoracic', 'famus:famus-dvt'], basis: String(cred), notes: 'PRIVATE ADMIN NOTE: never shown outside the console' });
-await admin({ action: 'appr_add', learner: A.id, scope: ['fusic:fusic-heart'] });
+await admin({ action: 'appr_add', learner: A.id, scope: ['fusic:fusic-heart'], capacity: 'mentor', notes: 'Seed: ICS mentor letter (fictional)' });
 // B: the reported production state: approved by the old person-page route, application still "submitted".
 const B = await applicant('riley.legacy@example.test', 'Riley', 'Legacy');
 await env.DB.prepare("INSERT INTO supervisor_approvals (learner_id, pathway, module, status, basis, review_on, approved_by, approved_at, notes) VALUES (?, 'famus', 'famus-thoracic', 'approved', '[]', ?, 'admin:wavelength:Alex Reviewer', ?, 'old route')").bind(B.id, addMonths(ukDate(), 12), new Date().toISOString()).run();
@@ -182,7 +179,7 @@ for (const [label, w, h] of SIZES) for (const theme of ['light', 'dark']) {
   const info = await dlg.innerText();
   const op = await page.evaluate(() => { const d = document.querySelector('.sheet-bg [role=dialog]'); return { o: getComputedStyle(d).opacity, top: d.scrollTop, bg: getComputedStyle(d).backgroundColor }; });
   check(op.o === '1' && op.top === 0 && !/rgba\(.*, 0(\.\d+)?\)$/.test(op.bg), `${name}: More info opaque and opens at its top (${JSON.stringify(op)})`);
-  for (const s of OLD ? ['FAMUS pathway', 'Thoracic', 'DVT', 'FUSIC pathway', 'Heart', 'Approved until'] : ['FAMUS pathway', 'Thoracic', 'DVT', 'FUSIC pathway', 'Heart', 'Verified role', 'Supervisor', 'Approved until', 'Verified on', 'Credentials relied on', 'FAMUS supervisor']) check(info.includes(s), `${name}: More info shows "${s}"`);
+  for (const s of OLD ? ['FAMUS pathway', 'Thoracic', 'DVT', 'FUSIC pathway', 'Heart', 'Approved until'] : ['FAMUS pathway', 'Thoracic', 'DVT', 'FUSIC pathway', 'Heart', 'Verified role', 'Supervisor', 'Mentor', 'Approved until', 'Verified on', 'Credentials relied on', 'FAMUS supervisor']) check(info.includes(s), `${name}: More info shows "${s}"`);
   if (!OLD) check(/Expires \d{1,2} \S+ 2029/.test(info), `${name}: More info shows the credential's expiry`);
   check(!/PRIVATE ADMIN NOTE|7200001|evidence/i.test(info), `${name}: no admin notes, registration number or evidence`);
   check(!/Also in progress/.test(info), `${name}: nothing pending is mixed in`);
@@ -249,29 +246,8 @@ for (const [label, w, h] of SIZES) for (const theme of ['light', 'dark']) {
   await cx.close();
 }
 
-// The learner (website app): A verified (compact, no modules in the list, More info in the card), C not verified.
-for (const [label, w, h] of WEB ? [['phone', 390, 844], ['desktop', 1440, 900]] : []) {
-  const name = `learner ${label}`;
-  const { cx, page } = await open(name, learner, { w, h });
-  await page.goto(BASE + '/app/#/supervisors');
-  await page.waitForSelector('.vs-line');
-  const cards = await page.locator('main .card').allInnerTexts();
-  const a = cards.find((t) => /Jordan/.test(t)) || '', c = cards.find((t) => /Morgan/.test(t)) || '';
-  check(/Verified Supervisor/.test(a) && /More info/.test(a) && !/Thoracic|Approved by Wavelength to supervise/.test(a), `${name}: A verified, compact, no module list`);
-  check(!/Verified Supervisor/.test(c), `${name}: C not verified`);
-  await noOverflow(page, name);
-  await shot(page, `learner-list-${label}.png`);
-  await page.locator('main .card', { hasText: 'Jordan' }).locator('[data-vinfo]').click();
-  await page.waitForTimeout(300);
-  const info = await page.locator('.sheet-bg [role=dialog]').innerText();
-  check(/FAMUS pathway/.test(info) && /Thoracic/.test(info) && /Supervisor/.test(info) && /Approved until/.test(info), `${name}: More info explains pathways, modules and roles`);
-  check(!/Credentials relied on|Also in progress|PRIVATE|Expires/.test(info), `${name}: nothing beyond what a learner should see`);
-  await shot(page, `learner-more-info-${label}.png`);
-  await page.keyboard.press('Escape');
-  await cx.close();
-}
 // The learner: A verified (compact, no modules in the list), C awaiting approval; A's details and More info.
-for (const [label, w, h] of WEB ? [] : [['phone', 390, 844], ['desktop', 1440, 900]]) {
+for (const [label, w, h] of [['phone', 390, 844], ['desktop', 1440, 900]]) {
   const name = `learner ${label}`;
   const { cx, page } = await open(name, learner, { w, h });
   await page.goto(BASE + '/app/#/supervisors');
@@ -279,7 +255,7 @@ for (const [label, w, h] of WEB ? [] : [['phone', 390, 844], ['desktop', 1440, 9
   const cards = await page.locator('.sv-link').allInnerTexts();
   const a = cards.find((t) => /Jordan/.test(t)) || '', c = cards.find((t) => /Morgan/.test(t)) || '';
   check(/Verified Supervisor/.test(a) && !/Thoracic|Approved to supervise/.test(a), `${name}: A verified, compact, no module list`);
-  check(!/Verified Supervisor/.test(c), `${name}: C not verified`);
+  check(!/Verified Supervisor/.test(c) && /Awaiting/.test(c), `${name}: C not verified, stage shown`);
   await noOverflow(page, name);
   const line = await page.locator('.sv-link', { hasText: 'Jordan' }).evaluate((a) => { const l = a.querySelector('.vs-line').getBoundingClientRect(), m = a.querySelector('.link-more').getBoundingClientRect(); return l.bottom <= m.top + 1 || l.right <= m.left; });
   check(line, `${name}: the verified line and "Details and options" do not overlap`);
@@ -289,7 +265,7 @@ for (const [label, w, h] of WEB ? [] : [['phone', 390, 844], ['desktop', 1440, 9
   await page.locator('.card.vs [data-vinfo]').click();
   await page.waitForTimeout(300);
   const info = await page.locator('.sheet-bg [role=dialog]').innerText();
-  check(/FAMUS pathway/.test(info) && /Thoracic/.test(info) && (OLD || (/Supervisor/.test(info) && /Approved until/.test(info))), `${name}: More info explains pathways, modules and roles`);
+  check(/FAMUS pathway/.test(info) && /Thoracic/.test(info) && (OLD || (/Mentor/.test(info) && /Approved until/.test(info))), `${name}: More info explains pathways, modules and roles`);
   check(!/Credentials relied on|Also in progress|PRIVATE|Expires/.test(info), `${name}: nothing beyond what a learner should see`);
   await shot(page, `learner-more-info-${label}.png`);
   await cx.close();

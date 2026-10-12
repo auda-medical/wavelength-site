@@ -13,6 +13,7 @@ import { currentStatus, scopeLabel, logEvent, PURGE_EVIDENCE_DAYS, recheckDue } 
 import { queueStmt, deliver, deliverLater } from './notify.js';
 import { auditStmt, audit } from './audit.js';
 import { nowIso, ukDate, addDays, daysBetween, parseTs } from './time.js';
+import { capacitiesFor, allowedActions } from './verification/pathways.js';
 import { verificationView } from './verification/status.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
@@ -32,11 +33,19 @@ export function typesOf(a) {
   const mods = a.module === '*' ? pw.modules || [] : (pw.modules || []).filter((m) => m.id === a.module);
   return [...new Set(mods.flatMap((m) => m.types || []))];
 }
-// Plain labels for approved areas, never naming RCEM, FAMUS, FUSIC or any international body as the approver.
+// What a supervisor is approved to supervise, shown under "Approved to supervise:": one label per approval row passed
+// in (callers pass only current approvals), naming the exact pathway module, e.g. "Thoracic (FAMUS pathway)". Never
+// wider than the approval, and never derived from requested areas or suggested scopes. The pathway names the
+// logbook pathway the module belongs to, not an approver: approval is always Wavelength's own.
+export function approvedScopeLabel(pathway, module) {
+  const pw = PATHS[pathway];
+  if (!pw) return scopeLabel(pathway, module);
+  if (module === '*') return `All modules (${pw.label} pathway)`;
+  const m = (pw.modules || []).find((x) => x.id === module);
+  return `${m ? m.label : module} (${pw.label} pathway)`;
+}
 export function areaLabels(approvals) {
-  const types = new Set(approvals.flatMap(typesOf));
-  const out = AREAS.filter((ar) => (ar.types.length && ar.types.every((t) => types.has(t))) || (ar.modules || []).some((sc) => approvals.some((a) => coversScope(a, sc)))).map((a) => a.label);
-  return out.length ? out : approvals.map((a) => scopeLabel(a.pathway, a.module));
+  return [...new Set(approvals.map((a) => approvedScopeLabel(a.pathway, a.module)))];
 }
 // Pathway modules to pre-tick for requested areas and pathways: every module whose scan types all fall within the
 // requested areas (plus an area's explicit modules). The administrator can change the selection.
@@ -88,21 +97,34 @@ export async function verificationOf(env, learnerId, audience = 'self', s = null
 // An old 'active' row in supervisor_links is necessary but never sufficient.
 // force: check even when SUPERVISOR_APPROVAL_REQUIRED is off (supervisor search must only ever show people who are
 // approved now). With force, callers must also require enforced to be true: before migration 0012 nothing is checked.
-export async function supervisorEligibility(env, accountId, { scopes = [], types = [], force = false } = {}) {
+// actions: what the supervisor is about to do (data/supervision-policy.json), for example ['review'] or ['final']. Only
+// approvals whose capacity allows every action count for the scope: a FUSIC Heart mentor approval covers scan review
+// but never the triggered assessment, and a FUSIC trainer approval covers only the module it names.
+export async function supervisorEligibility(env, accountId, { scopes = [], types = [], force = false, actions = null } = {}) {
   if ((!approvalRequired(env) && !force) || !(await lifecycleReady(env))) return { ok: true, enforced: false, reasons: [], approvedFor: [] };
   const st = await currentStatus(env, accountId);
   const current = st.approvals.filter((a) => a.current);
+  const capable = actions && actions.length ? current.filter((a) => capacityAllows(a, actions)) : current;
   const reasons = [];
   if (!st.learner) reasons.push('no_account');
   else if (st.learner.email_status !== 'verified') reasons.push('email');
   if (!current.length) reasons.push(st.approvals.length ? 'paused' : 'not_approved');
-  const missingScopes = scopes.filter((sc) => !current.some((a) => coversScope(a, sc)));
-  const coveredTypes = new Set(current.flatMap(typesOf));
+  const missingScopes = scopes.filter((sc) => !capable.some((a) => coversScope(a, sc)));
+  const coveredTypes = new Set(capable.flatMap(typesOf));
   const missingTypes = [...new Set(types)].filter((t) => !coveredTypes.has(t));
-  if (current.length && (missingScopes.length || missingTypes.length)) reasons.push('out_of_scope');
-  return { ok: !reasons.length, enforced: true, reasons, missingScopes, missingTypes, approvedFor: current.map((a) => `${a.pathway}:${a.module}`), areas: areaLabels(current) };
+  const capacityOnly = current.length && (missingScopes.length || missingTypes.length) && scopes.every((sc) => current.some((a) => coversScope(a, sc))) && types.every((t) => new Set(current.flatMap(typesOf)).has(t));
+  if (current.length && (missingScopes.length || missingTypes.length)) reasons.push(capacityOnly ? 'capacity' : 'out_of_scope');
+  return { ok: !reasons.length, enforced: true, reasons, missingScopes, missingTypes, approvedFor: capable.map((a) => `${a.pathway}:${a.module}`), areas: areaLabels(current) };
+}
+// Does an approval's capacity allow these actions on its module (or on every module of its pathway, for '*')?
+function capacityAllows(a, actions) {
+  const cap = a.capacity || 'supervisor';
+  if (a.module !== '*' && !capacitiesFor(a.pathway, a.module).includes(cap)) return false;
+  const allowed = allowedActions(a.pathway, a.module, cap);
+  return actions.every((x) => allowed.includes(x));
 }
 export function eligibilityError(el) {
+  if (el.reasons.includes('capacity')) return 'Your Wavelength approval for this module is in a role that does not cover this kind of sign-off or assessment (for example a mentor cannot sign a final or triggered assessment). Ask the learner to send it to a supervisor or trainer for the module.';
   if (el.reasons.includes('out_of_scope')) return `You are not approved by Wavelength to supervise ${el.missingTypes && el.missingTypes.length ? 'every scan in this request' : 'this module'}. Ask the learner to send it to another supervisor or a one-off assessor.`;
   if (el.reasons.includes('email')) return 'Confirm your email address first.';
   if (el.reasons.includes('paused')) return 'Your Wavelength supervisor status is paused or has expired, so you cannot complete supervisor actions at present. Open Me, Supervisor, to see why.';
@@ -378,10 +400,37 @@ export function linkState(link, sup, enforced) {
     return { state: 'verifying', label: 'Supervisor verification in progress' };
   }
   // active
-  if (sup && sup.current.length) return { state: 'active', label: 'Wavelength-approved supervisor', areas: areaLabels(sup.current), renewal: sup.standing === 'renewal_review' };
+  if (sup && sup.current.length) return { state: 'active', label: 'Wavelength Verified ✓', areas: areaLabels(sup.current), renewal: sup.standing === 'renewal_review' };
   if (!enforced) return { state: 'not_verified', label: 'Not yet verified by Wavelength' };
   if (sup && sup.open && sup.open.status !== 'draft') return { state: 'verifying', label: 'Supervisor verification in progress' };
   return { state: 'unavailable', label: 'Not available for new supervision' };
+}
+// 1.0.12: the stage of one supervision relationship, finer than linkState's label, so the app can say what is
+// happening and what comes next. Derived on every read from the link and the supervisor's standing; never stored.
+// It keeps the relationship (invitation, acceptance, ended) apart from the supervisor's verification (application,
+// professional registration check, Wavelength approval, pause). Private reasons are never exposed: a block, a
+// revocation or a rejection all read as 'unavailable'.
+//   awaiting_acceptance                 invitation sent, the supervisor has not accepted
+//   verification_not_submitted          accepted (approval required), no supervisor application sent yet
+//   awaiting_professional_verification  application sent, professional registration not yet verified
+//   awaiting_approval                   application sent, registration verified (or not needed), decision pending
+//   approved                            active link, current Wavelength approval
+//   not_verified                        active link without approval while approval is not enforced
+//   paused                              reserved (sent by no current Worker: a lapse reads as not_verified or unavailable)
+//   unavailable                         not available for supervision through Wavelength at present
+//   ended                               the relationship has ended
+export function relationshipStage(link, sup, enforced) {
+  if (link.status === 'ended') return 'ended';
+  if (link.status === 'pending' && (!link.supervisor_id || !link.claimed_at)) return 'awaiting_acceptance';
+  if (sup && sup.block) return 'unavailable';
+  if (sup && sup.current.length) return link.status === 'active' ? 'approved' : 'awaiting_approval';
+  const open = sup && sup.open && sup.open.status !== 'draft' ? sup.open : null;
+  if (open) return sup.status && !sup.status.hasReg ? 'awaiting_professional_verification' : 'awaiting_approval';
+  // A lapse is the supervisor's own business: the learner sees what linkState showed (not verified, or unavailable).
+  if (sup && sup.standing === 'paused') return enforced || link.status === 'pending' ? 'unavailable' : 'not_verified';
+  if (sup && ['expired', 'withdrawn', 'revoked'].includes(sup.standing) && (enforced || link.status === 'pending')) return 'unavailable';
+  if (link.status === 'pending') return 'verification_not_submitted';
+  return enforced ? 'unavailable' : 'not_verified';
 }
 export const SITE_APP = `${SITE}/app/#`;
 export { parseTs };

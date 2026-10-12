@@ -12,7 +12,6 @@
   var OUTCOME = {}; (C.assessmentOutcomes || []).forEach(function (o) { OUTCOME[o.id] = o; });
   var F = window.WLForms;
   // Store apps (mobile/): server address, login token, website links, haptics and app lock. Inert on the website.
-  var WLV = window.WLVerified; // supervisor verification for display (src/app/verified.js)
   var NAT = window.WLNative || { on: false, origin: location.origin, host: location.host, site: function (p) { return p; }, net: function (p, o) { return fetch(p, o); }, haptic: function () {}, openExternal: function (u) { window.open(u, '_blank'); }, lockOn: function () { return false; }, plugin: function () { return null; } };
   var app = document.getElementById('app');
   var S = { account: null, me: null, entries: [], kv: {}, db: null, online: navigator.onLine, syncing: false, installEvt: null, urls: {}, assessments: [], links: null };
@@ -94,13 +93,17 @@
     var t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
     document.body.appendChild(t); setTimeout(function () { t.remove(); }, ms || 2600);
   }
-  function api(path, data) {
+  // o.timeout: milliseconds before a call with no answer fails as offline (native.js, default 20 s).
+  function api(path, data, o) {
     var opt = { credentials: 'same-origin', headers: { Accept: 'application/json', 'Accept-Language': LANG } };
     if (data !== undefined) { opt.method = 'POST'; opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(data); }
+    if (o && o.timeout) opt.timeout = o.timeout;
     return NAT.net(path, opt).then(function (r) {
-      return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { signedOut(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
+      return r.json().catch(function (ex) { if (ex && ex.name === 'AbortError') { ex.network = true; ex.timeout = true; throw ex; } return { _nojson: true }; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { authExpired(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
     });
   }
+  // A network failure or a call that got no answer, as opposed to an answer from the server.
+  function netFail(ex) { return !!(ex && (ex.network || ex.timeout || ex.name === 'TypeError' || ex.name === 'AbortError')); }
   // ---------- Store app updates ----------
   // The server names a minimum and a recommended store version. Recommended: a banner the learner can dismiss.
   // Required (only for a security or data-integrity reason): a banner that stays, and sync pauses, but the logbook
@@ -232,21 +235,195 @@
   }
   function strip(e) { var o = {}; for (var k in e) if (k.charAt(0) !== '_') o[k] = e[k]; return o; }
   function saveLocal(e) { var i = S.entries.findIndex(function (x) { return x.id === e.id; }); if (i >= 0) S.entries[i] = e; else S.entries.push(e); return put('entries', e); }
-  function setSyncDot() { var d = $('.sync-dot'); if (!d) return; d.classList.toggle('off', !S.online); d.classList.toggle('busy', S.syncing); d.title = !S.online ? T('Offline. Changes save on this device and sync when you reconnect.') : S.syncing ? T('Syncing') : T('Synced'); }
-  function sync() {
-    if (!S.account || !navigator.onLine || updateLevel() === 'required') return Promise.resolve();
-    if (S.syncing) { S.again = S.again || S.syncP.then(function () { S.again = null; return sync(); }); return S.again; }
-    S.syncing = true; setSyncDot();
-    S.syncP = doSync();
+  // ---------- Sync status ----------
+  // The status comes from what the last attempt actually did, combined with what the phone says about its network
+  // (netstate.js): never from navigator.onLine alone. "Offline" means this device has no network; "Can't sync" means
+  // it has one but the Wavelength server could not be reached (a VPN, firewall or network filter, or the server).
+  // Each device shows its own status. Logbook entries only; photos and clips stay on this device and are backed up
+  // separately (Back up and restore).
+  var NETR = window.WLNet;
+  var WLV = window.WLVerified; // supervisor verification for display (src/app/verified.js)
+  var SY = { lastOk: 0, lastTry: 0, fail: '', tries: 0, timer: 0, ran: false, err: null };
+  S.net = null; // the phone's network (WLNetwork plugin), or null where only navigator.onLine is known
+  function deviceNet() { return S.net || { known: false, online: navigator.onLine !== false }; }
+  function pendingList() { return S.entries.filter(function (e) { return e._dirty; }); }
+  function refused() { return S.entries.filter(function (e) { return e._dirty && e._syncError; }); }
+  function syncState() {
+    return NETR.state({ account: !!S.account, update: SY.fail === 'update', syncing: S.syncing, auto: !S.syncManual, fail: SY.fail, dev: deviceNet(), pending: pendingList().length, refused: refused().length, ran: SY.ran });
+  }
+  function syncText(st) {
+    var n = pendingList().length;
+    if (st === 'offline') return T('You\'re offline. Your entries are saved on this device and will sync when you\'re back online.');
+    if (st === 'unreachable') return T('Can\'t connect to Wavelength. Your entries remain saved on this device.');
+    if (st === 'pending') return N(n, 'Saved on this device. {n} entry awaiting sync.', 'Saved on this device. {n} entries awaiting sync.');
+    if (st === 'syncing') return n ? N(n, 'Synchronising {n} entry…', 'Synchronising {n} entries…') : T('Synchronising…');
+    if (st === 'synced') return T('All changes synced.');
+    if (st === 'failed') return T('Unable to sync. Your entries remain saved on this device.');
+    if (st === 'auth') return T('Sign in again to continue synchronising. Your local entries are safe.');
+    if (st === 'update') return T('Update Wavelength to keep syncing. Your logbook stays on this phone and you can still read and export it.');
+    return '';
+  }
+  // Small line icons for the status pill and banners (stroke follows the text colour).
+  var SI = {
+    check: ic('<path d="M5 12.5l4.2 4.2L19 7"/>', 14),
+    clock: ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', 14),
+    sync: ic('<path d="M20 12a8 8 0 0 1-14.3 4.9M4 12a8 8 0 0 1 14.3-4.9"/><path d="M18.5 3.5v3.8h-3.8M5.5 20.5v-3.8h3.8"/>', 14),
+    offline: ic('<path d="M3 3l18 18"/><path d="M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 4-2.4M19 12.9a10 10 0 0 0-2.2-1.6M2 9.3a15 15 0 0 1 4.3-2.8M22 9.3A15 15 0 0 0 10.6 5"/><circle cx="12" cy="20" r=".6"/>', 14),
+    alert: ic('<path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.2M12 17.2v.3"/>', 14),
+    lock: ic('<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>', 14),
+    chev: '<svg class="chev flip" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>'
+  };
+  function pillInner(st) {
+    var p = NETR.pill(st);
+    return '<span class="sp-ic" aria-hidden="true">' + SI[p.icon] + '</span><span class="sp-tx">' + esc(T(p.label, { n: pendingList().length })) + '</span>' + SI.chev;
+  }
+  // Banner below the header. Pending and syncing wait a moment before showing, so a save that syncs at once never
+  // flashes a warning; "All changes synced." shows briefly after a warning, then goes, leaving the pill.
+  var BAN = { st: null, at: 0, shown: false, okUntil: 0, timer: 0 };
+  function bannerHtml(b, n) {
+    var line = b.wait ? N(n, b.wait[0], b.wait[1]) : b.body ? T(b.body) : b.note ? T(b.note) : '';
+    var det = b.details ? '<button type="button" class="link small" data-syncpill>' + esc(T('Connection details')) + '</button>' : '';
+    if (b.compact) return '<div class="sb sb-' + b.tone + ' sb-compact"><span class="sb-ic" aria-hidden="true">' + SI[b.icon] + '</span><p class="sb-tx"><b>' + esc(T(b.title)) + '</b> ' + esc(line) + '</p>' + det + '</div>';
+    return '<div class="sb sb-' + b.tone + '"><span class="sb-ic" aria-hidden="true">' + SI[b.icon] + '</span><div class="sb-tx"><b>' + esc(T(b.title)) + '</b>' +
+      (line ? '<p>' + esc(line) + '</p>' : '') +
+      (b.progress ? '<span class="sb-prog" aria-hidden="true"><i></i></span>' : '') +
+      (b.retry || b.details ? '<div class="sb-act">' + (b.retry ? retryButton('btn sm', 'data-sbretry') : '') + det + '</div>' : '') +
+      '</div></div>';
+  }
+  // Retry sync. Disabled with "Trying…" (and aria-busy) only while an attempt the learner asked for is running; a
+  // quiet automatic retry leaves it as it is, so it does not flicker. Unavailable, with the reason beside it, while
+  // the device has no network at all (a retry could not reach anything).
+  function userBusy() { return !!(S.syncing && S.syncManual) || !!SY.userWaiting; }
+  function retryButton(cls, attr) {
+    if (userBusy()) return '<button type="button" class="' + cls + '" ' + attr + ' disabled aria-busy="true">' + esc(T('Trying…')) + '</button>';
+    if (!NETR.deviceOnline(deviceNet())) return '<button type="button" class="' + cls + '" ' + attr + ' disabled aria-describedby="rt-why">' + esc(T('Retry sync')) + '</button><span class="small muted" id="rt-why">' + esc(T('Available once this device has a network.')) + '</span>';
+    return '<button type="button" class="' + cls + '" ' + attr + '>' + esc(T('Retry sync')) + '</button>';
+  }
+  function setSyncDot() {
+    var st = syncState(), text = syncText(st), n = pendingList().length, now = Date.now();
+    // While a retry the learner asked for runs, the warning it came from stays (with Trying…) instead of vanishing.
+    var bst = st === 'syncing' && SY.userWaiting && SY.fail ? (SY.fail === 'timeout' ? 'unreachable' : SY.fail) : st;
+    if (bst !== BAN.st) { if (bst === 'synced') { if (BAN.shown) BAN.okUntil = now + 3000; BAN.shown = false; } BAN.st = bst; BAN.at = now; }
+    var settle = bst === 'pending' ? 3000 : bst === 'syncing' ? 800 : 0, age = now - BAN.at;
+    var b = NETR.banner(bst, n, { settled: age >= settle, justSynced: now < BAN.okUntil });
+    clearTimeout(BAN.timer);
+    if (settle && age < settle) BAN.timer = setTimeout(setSyncDot, settle - age + 20);
+    else if (b && bst === 'synced') BAN.timer = setTimeout(setSyncDot, BAN.okUntil - now + 20);
+    if (b && bst !== 'synced') BAN.shown = true; // a warning was on screen: confirm briefly once everything has synced
+    var cls = NETR.pill(st).cls, inner = pillInner(st);
+    $$('button.sync-pill').forEach(function (a) {
+      a.className = 'sync-pill p-' + cls;
+      if (a.dataset.k !== inner) { a.innerHTML = inner; a.dataset.k = inner; }
+      // The accessible name starts with the words on the pill, so voice control ("tap Can't sync") finds it.
+      a.setAttribute('aria-label', T(NETR.pill(st).label, { n: n }) + '. ' + (text ? T('Sync status: {status}', { status: text }) : T('Sync status')) + ' ' + T('Open sync details.'));
+    });
+    $$('[data-syncbanner]').forEach(function (el) {
+      var html = b ? bannerHtml(b, n) : '', key = (b ? bst + n + (userBusy() ? 's' : '') + (NETR.deviceOnline(deviceNet()) ? '' : 'o') : '');
+      if (el.dataset.k === key) return;
+      el.dataset.k = key;
+      if (!b) { el.hidden = true; el.innerHTML = ''; return; }
+      el.innerHTML = html; el.hidden = false;
+      // Fades in only when the status itself changes, not every time a screen is drawn.
+      el.classList.toggle('in', BAN.key !== key);
+    });
+    BAN.key = b ? bst + n + (userBusy() ? 's' : '') + (NETR.deviceOnline(deviceNet()) ? '' : 'o') : '';
+    $$('[data-syncpanel]').forEach(fillSyncPanel);
+  }
+  // Retry Sync from a banner or the details panel: start the back-off again and send entries the server refused.
+  function retryNow() {
+    SY.tries = 0; if (SY.fail === 'offline') SY.fail = '';
+    // Tapped while a quiet automatic attempt is running: this one runs straight after it, and the button says so.
+    SY.userWaiting = true; setSyncDot();
+    return sync(true).then(function () { SY.userWaiting = false; setSyncDot(); }, function () { SY.userWaiting = false; setSyncDot(); });
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest ? ev.target.closest('[data-syncpill],[data-sbretry]') : null; if (!t) return;
+    ev.preventDefault();
+    if (t.hasAttribute('data-sbretry')) { if (!t.disabled) retryNow(); return; }
+    openSyncSheet();
+  });
+  function openSyncSheet() {
+    if ($('.sheet-bg .sheet [data-syncpanel]')) return;
+    sheet('<h2>' + esc(T('Sync on this device')) + '</h2><div data-syncpanel></div><div class="btns"><button class="btn ghost block" type="button" data-close>' + esc(T('Close')) + '</button></div>', function (root) { fillSyncPanel($('[data-syncpanel]', root)); });
+  }
+  // One timer at most. While the app is in the background (wl:pause, or the web page hidden) no timer runs, so a long
+  // disconnection does not keep waking the phone: returning to the app, a network change or Retry sync starts again.
+  function scheduleRetry() {
+    clearTimeout(SY.timer); SY.timer = 0;
+    if (SY.paused) { SY.due = true; return; }
+    SY.timer = setTimeout(function () { SY.timer = 0; sync(); }, NETR.retryDelay(SY.tries, Math.random(), SY.fail));
+  }
+  function pauseRetries() { SY.paused = true; if (SY.timer) { clearTimeout(SY.timer); SY.timer = 0; SY.due = true; } }
+  // Back in the app: read the network afresh, then follow the resume plan (netstate.js): retry at once only when the
+  // last attempt is not recent, and start the back-off again only after a longer time away or a network change.
+  function resumeSync(away) {
+    SY.paused = false;
+    var was = S.net;
+    return (NAT.netStatus ? NAT.netStatus() : Promise.resolve(null)).then(function (v) {
+      if (v) S.net = v;
+      if (!S.account) return;
+      var now = Date.now(), changed = !!(v && NETR.netChanged(was, v));
+      var plan = NETR.resumePlan({ away: away || 0, sinceTry: now - (SY.lastTry || 0), sinceOk: now - (SY.lastOk || 0), failing: !!SY.fail, pending: pendingList().length, netChanged: changed });
+      if (changed) setSyncDot();
+      if (plan.reset) SY.tries = 0;
+      if (plan.sync) { SY.due = false; sync(); } else if (SY.due || SY.fail || pendingList().length) { SY.due = false; scheduleRetry(); }
+    });
+  }
+  // The phone's network changed (Wi-Fi or mobile data back, a VPN connected, reconnected or switched off): try again
+  // soon, from the start of the back-off. Changes arrive in bursts while a VPN reconnects, so wait for them to settle.
+  function onNet(v) {
+    var was = S.net; S.net = v;
+    if (!NETR.netChanged(was, v)) return;
+    setSyncDot();
+    if (!S.account || !NETR.deviceOnline(v)) return;
+    netKick();
+  }
+  // A network that keeps flapping (a VPN in a reconnect loop) must not become a retry storm: the back-off starts
+  // again at most once a minute, and network-triggered syncs run at most every 10 seconds.
+  function netKick() {
+    var now = Date.now();
+    if (now - (SY.netResetAt || 0) > 60e3) { SY.tries = 0; SY.netResetAt = now; }
+    clearTimeout(SY.netTimer);
+    SY.netTimer = setTimeout(function () { SY.netSyncAt = Date.now(); if (SY.fail || pendingList().length) sync(); }, Math.max(1500, (SY.netSyncAt || 0) + 10e3 - now));
+  }
+  window.addEventListener('wl:net', function (e) { onNet(e.detail); });
+  if (NAT.netStatus) NAT.netStatus().then(function (v) { if (v) { S.net = v; setSyncDot(); } });
+  // manual: the learner pressed Retry sync. Entries the server refused are only sent again then, or after an edit.
+  function sync(manual) {
+    if (!S.account) return Promise.resolve();
+    if (updateLevel() === 'required') { SY.fail = 'update'; setSyncDot(); return Promise.resolve(); }
+    if (SY.fail === 'update') SY.fail = '';
+    if (S.syncing) { if (manual) S.againManual = true; S.again = S.again || S.syncP.then(function () { var m = S.againManual; S.again = null; S.againManual = false; return sync(m); }); return S.again; }
+    clearTimeout(SY.timer); SY.timer = 0;
+    S.syncing = true; S.syncManual = !!manual; setSyncDot();
+    S.syncP = doSync(manual);
     return S.syncP;
   }
-  function doSync() {
-    var dirty = S.entries.filter(function (e) { return e._dirty; });
-    var pushed = {}; dirty.forEach(function (e) { pushed[e.id] = e; });
+  // The Worker takes at most 200 entries and 600 KB per call: send smaller batches, one after another.
+  var BATCH = 50, BATCH_BYTES = 400000;
+  function batches(list) {
+    var out = [], cur = [], size = 0;
+    list.forEach(function (e) {
+      var n = JSON.stringify(strip(e)).length;
+      if (cur.length && (cur.length >= BATCH || size + n > BATCH_BYTES)) { out.push(cur); cur = []; size = 0; }
+      cur.push(e); size += n;
+    });
+    if (cur.length) out.push(cur);
+    return out;
+  }
+  // Bumped on every log-out. A sync answer that arrives after a log-out (or a log-in to another account) is
+  // dropped, so it can never be written into the next account's logbook.
+  var SESSION = 0;
+  function stale(gen) { if (gen !== SESSION) { var e = new Error('signed out'); e.stale = true; throw e; } }
+  function pushBatch(group, gen) {
+    var pushed = {}; group.forEach(function (e) { pushed[e.id] = e; });
     var conflicts = 0;
-    var push = dirty.length ? api('/api/app/sync', { entries: dirty.map(strip) }).then(function (res) {
-      if (!res.ok) throw new Error(res.error || 'Sync failed');
-      return Promise.all((res.saved || []).map(function (s) {
+    return api('/api/app/sync', { entries: group.map(strip) }, { timeout: 30000 }).then(function (res) {
+      stale(gen);
+      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; er.nojson = !!res._nojson; er.auth = res.auth === false; throw er; }
+      var answered = {};
+      var jobs = (res.saved || []).map(function (s) {
+        answered[s.id] = true;
         var local = S.entries.find(function (x) { return x.id === s.id; });
         if (s.conflict) return resolveConflict(local, s.server) && ++conflicts;
         // Edited again while this push was in flight: keep the newer local edit and send it next time.
@@ -254,12 +431,65 @@
         if (s.deleted) { S.entries = S.entries.filter(function (x) { return x.id !== s.id; }); return del('entries', s.id); }
         var merged = Object.assign({}, s); if (local && local._new) delete merged._new;
         return saveLocal(merged);
-      }));
-    }) : Promise.resolve();
-    return push.then(function () { return pullAll(); }).then(function () {
-      return api('/api/app/signoffs').then(function (r) { if (r.ok) return setPending(r.signoffs); });
-    }).then(loadAssessments).catch(function () { /* offline or server error: try again later */ }).then(function () {
-      S.syncing = false; setSyncDot(); resumeShares();
+      });
+      // Only the server's answer marks an entry as synced. One it refused, or left out of its answer, stays
+      // unsynced on this device with the reason, and is not sent again until it is edited or Retry sync is pressed.
+      group.forEach(function (e) {
+        if (answered[e.id]) return;
+        var why = (res.rejected || []).filter(function (x) { return x.id === e.id; })[0];
+        var local = S.entries.find(function (x) { return x.id === e.id; });
+        if (local && local === pushed[e.id]) { local._syncError = (why && why.reason) || 'not-accepted'; jobs.push(put('entries', local)); }
+      });
+      return Promise.all(jobs).then(function () { return conflicts; });
+    });
+  }
+  // The last 12 sync attempts on this device, for the details panel: time, result kind, how long it took and the kind
+  // of network (Wi-Fi, mobile data, VPN). No entry content, server text, addresses or account details. Capped, so it
+  // never grows.
+  var LOG_MAX = 12;
+  function attemptLog() { try { var a = JSON.parse(localStorage.getItem('wl-synclog') || '[]'); return Array.isArray(a) ? a.slice(-LOG_MAX) : []; } catch (e) { return []; } }
+  function logAttempt(ok, kind) {
+    var d = deviceNet(), t = d.known ? (d.transports || []).filter(function (x) { return x !== 'vpn'; }) : [];
+    var net = !d.known ? '' : !d.connected ? 'none' : (t[0] || (NETR.vpnOnly(d) ? 'none' : '')) + (d.vpn ? '+vpn' : '');
+    var a = attemptLog(); a.push({ at: Date.now(), ok: !!ok, kind: kind || '', ms: SY.lastTry ? Date.now() - SY.lastTry : 0, net: net });
+    try { localStorage.setItem('wl-synclog', JSON.stringify(a.slice(-LOG_MAX))); } catch (e) { /* storage blocked */ }
+  }
+  function doSync(manual) {
+    var dirty = S.entries.filter(function (e) { return e._dirty && (manual || !e._syncError); });
+    var conflicts = 0, gen = SESSION;
+    SY.lastTry = Date.now();
+    var push = batches(dirty).reduce(function (p, group) { return p.then(function () { return pushBatch(group, gen).then(function (c) { conflicts += c; }); }); }, Promise.resolve());
+    return push.then(function () { return pullAll(0, gen); }).then(function () {
+      return api('/api/app/signoffs').then(function (r) { stale(gen); if (r.ok) return setPending(r.signoffs); });
+    }).then(function () { return loadAssessments(gen); }).then(function () {
+      SY.fail = ''; SY.ran = true; SY.lastOk = Date.now(); SY.err = null; logAttempt(true, '');
+      // Started offline: the account details and supervisor links could not load then, so fetch them now.
+      if (!S.me) loadMe();
+      // Supervisor links carry each supervisor's verification: refreshed with sync at most every five minutes, so an
+      // approval (or a pause) reaches the learner without restarting the app.
+      if (!S.links || linksStale(300e3)) loadLinks();
+      return setKv('lastSyncOk', SY.lastOk);
+    }, function (ex) {
+      if (ex && ex.stale) return;
+      // Kept on this device either way. Offline or no answer: wait for the connection. Anything else: show it.
+      // Which failure it was decides the words shown: no network here, server unreachable from here, no answer in
+      // time, the login ended, or a refusal. Only the kind and time are kept, never server text or entry content.
+      SY.ran = true;
+      SY.fail = !S.account ? '' : NETR.classify(ex, deviceNet());
+      SY.err = SY.fail ? { kind: SY.fail, at: Date.now(), status: (ex && ex.status) || 0, vpn: !!(S.net && S.net.vpn) } : null;
+      if (SY.fail) logAttempt(false, SY.fail);
+    }).then(function () {
+      S.syncing = false; S.syncManual = false;
+      if (!S.account || gen !== SESSION) return;
+      // The server answered although the phone last said "no network": that reading is stale, so read it again.
+      // Likewise a VPN reported with nothing under it: the server answered, so there is a network. Until the phone says
+      // otherwise the reading is treated as unknown (never Offline while syncs are succeeding).
+      if (!SY.fail && S.net && NETR.vpnOnly(S.net)) S.net = Object.assign({}, S.net, { underlying: null });
+      if (!SY.fail && S.net && S.net.known && (!S.net.connected || S.net.underlying === null) && NAT.netStatus) NAT.netStatus().then(function (v) { if (v) { S.net = NETR.vpnOnly(v) ? Object.assign({}, v, { underlying: null }) : v; setSyncDot(); } });
+      var left = S.entries.some(function (e) { return e._dirty && !e._syncError; });
+      if (SY.fail === 'auth') { /* signed out: nothing to retry until the learner signs in */ }
+      else if (SY.fail || left) { SY.tries++; scheduleRetry(); } else SY.tries = 0;
+      setSyncDot(); resumeShares();
       // Send rebased edits straight away, at most twice in a row so a misbehaving server cannot loop us.
       if (!conflicts) S.rebases = 0; else if (!S.again && (S.rebases = (S.rebases || 0) + 1) <= 2) sync();
       if (['home', 'log', 'progress', 'entry', 'assess'].indexOf(route().name) >= 0 && !document.querySelector('form[data-dirty]') && !document.querySelector('.sheet-bg')) render(true);
@@ -277,10 +507,11 @@
     return true;
   }
   // Pull every change since the last sync, a page at a time.
-  function pullAll(guard) {
+  function pullAll(guard, gen) {
     var q = '/api/app/sync?since=' + (S.kv.lastSync || 0) + (S.kv.lastSyncAfter ? '&after=' + encodeURIComponent(S.kv.lastSyncAfter) : '');
     return api(q).then(function (res) {
-      if (!res.ok) throw new Error(res.error || 'Sync failed');
+      stale(gen);
+      if (!res.ok) { var er = new Error(res.error || 'Sync failed'); er.status = res._status; er.nojson = !!res._nojson; er.auth = res.auth === false; throw er; }
       var fresh = [];
       return Promise.all((res.entries || []).map(function (e) {
         var local = S.entries.find(function (x) { return x.id === e.id; });
@@ -295,13 +526,14 @@
         toast(newsText(fresh), 4000);
         return setKv('news', keep.concat(fresh).slice(-50));
       }).then(function () { return setKv('lastSyncAfter', res.after || ''); }).then(function () { return setKv('lastSync', res.now); }).then(function () {
-        if (res.more && (guard || 0) < 200) return pullAll((guard || 0) + 1);
+        if (res.more && (guard || 0) < 200) return pullAll((guard || 0) + 1, gen);
       });
     });
   }
   function dropImages(entryId) { return imagesFor(entryId).then(function (list) { return Promise.all(list.map(function (r) { return del('images', r.id); })); }).catch(function () {}); }
-  function loadAssessments() {
-    return api('/api/app/assessments').then(function (res) { if (res.ok) { S.assessments = res.assessments || []; setKv('assessments', S.assessments); } });
+  function loadAssessments(gen) {
+    if (gen === undefined) gen = SESSION;
+    return api('/api/app/assessments').then(function (res) { stale(gen); if (res.ok) { S.assessments = res.assessments || []; setKv('assessments', S.assessments); } });
   }
   function signedAssessments() { return S.assessments.filter(function (a) { return a.status === 'signed'; }); }
 
@@ -334,14 +566,104 @@
     var bits = s.gaps.map(gapText);
     return T('Still needed: {list}', { list: bits.slice(0, 2).join(', ') + (bits.length > 2 ? ' …' : '') });
   }
-  // The module most worth working on next: unmet, closest to done first so learners finish things.
-  function focusNext() {
-    var best = null;
-    myPaths().forEach(function (pid) {
-      if (pid === 'general') return;
-      pathwayStats(pid).stats.forEach(function (s) { if (!s.met && (s.total || s.gaps.length) && (!best || s.frac > best.s.frac)) best = { pid: pid, s: s }; });
+  // 1.0.12: outstanding requirements, replacing "Focus next". 1.0.11 picked the unmet module with the highest share
+  // done, keeping the first on a tie. Every RCEM module needs a DOPS judged competent, so until one was signed every
+  // module scored 0 and the first in the curriculum (AAA) was always shown. Now every open requirement of the chosen
+  // pathway is listed, in the pathway's own (curriculum) order, with nothing ranked by clinical importance, and the
+  // carousel reopens where the learner last left it. Uses the one progress engine, so counts match Progress.
+  function outstanding(pid) {
+    var ps = pathwayStats(pid), items = [];
+    ps.stats.forEach(function (s, i) {
+      if (s.met || !(s.gaps || []).length) return;
+      items.push({ pid: pid, s: s, order: i, left: s.gaps.reduce(function (a, g) { return a + g.n; }, 0) });
     });
-    return best;
+    // A minimum training period still running (FUSIC) is a requirement too, though no scan meets it.
+    var win = ps.win, waits = win ? ps.stats.filter(function (s) { return s.mod.minDays && win.day < s.mod.minDays; }) : [];
+    return { pw: ps.pw, items: items, tracked: ps.stats.some(function (s) { return s.total || s.sup || s.assessments.length || s.rules.length || s.mod.reflections; }), metAll: !items.length && ps.stats.length > 0, waits: waits, win: win };
+  }
+  // Pathways with something to track: 'general' only once the learner has set a target of their own.
+  function focusPaths() { return myPaths().filter(function (p) { return p !== 'general' || ENG.modulesFor('general', live(), profile().targets).some(function (m) { var t = (profile().targets || {})[m.id]; return t && t.total; }); }); }
+  function focusPid() { var mine = focusPaths(), want = S.kv.focusPw; return mine.indexOf(want) >= 0 ? want : mine[0] || null; }
+  function reqCard(it, n, of) {
+    var s = it.s, pw = PATHS[it.pid], label = T(s.mod.label);
+    var bars = (s.total ? barRow(T('Scans'), s.counted, s.total) : '') + (s.sup ? barRow(T('Directly supervised'), s.supervised, s.sup) : '') + s.assessments.filter(function (a) { return a.n < a.min; }).map(function (a) { return barRow(T(a.label), a.n, a.min); }).join('');
+    var asm = s.gaps.some(function (g) { return g.k === 'assessment'; });
+    return '<article class="req" role="group" aria-roledescription="' + esc(T('requirement')) + '" aria-label="' + esc(T('{n} of {m}: {label}', { n: n, m: of, label: label })) + '"' + (of > 1 ? ' data-req-i="' + (n - 1) + '"' : '') + ' data-mod="' + esc(s.mod.id) + '">' +
+      '<p class="eyebrow">' + esc(pwName(pw)) + (of > 1 ? ' · ' + esc(T('{n} of {m}', { n: n, m: of })) : '') + '</p><h3>' + esc(label) + '</h3>' +
+      '<p class="small req-need">' + esc(T('Still needed: {list}', { list: s.gaps.map(gapText).join(', ') })) + '</p>' + (bars ? '<div class="mini">' + bars + '</div>' : '') +
+      '<p class="small muted req-why">' + esc(s.ownTarget ? T('Shown because it is still open against the targets you set for this module.') : T('Shown because it is still open on your {pathway} pathway.', { pathway: pwName(pw) })) + '</p>' +
+      '<div class="btns"><a class="btn teal sm" href="#/new?type=' + esc(s.mod.types[0]) + '">' + esc(T('Log one')) + '</a>' + (asm ? '<a class="btn ghost sm" href="#/assess?p=' + it.pid + '&m=' + s.mod.id + '">' + esc(T('Request assessment')) + '</a>' : '') + '<a class="btn ghost sm" href="#/progress/' + it.pid + '">' + esc(T('Details')) + '</a></div></article>';
+  }
+  function reqDone(o, pid) {
+    if (!o.tracked) return '<div class="card"><h3>' + esc(pwName(PATHS[pid])) + '</h3><p class="small muted">' + esc(T('This pathway has no fixed targets. Set your own under Progress, Targets, and what is still open appears here.')) + '</p><div class="btns"><a class="btn ghost sm" href="#/targets/' + pid + '">' + esc(T('Set targets')) + '</a></div></div>';
+    return '<div class="card req-done"><h3>' + esc(T('Every tracked requirement is met')) + '</h3><p class="small">' + esc(T('All the targets Wavelength tracks for {pathway} are met in your logbook.', { pathway: pwName(PATHS[pid]) })) + (o.waits.length ? ' ' + esc(T('Minimum training period: {n} days to go.', { n: Math.max.apply(null, o.waits.map(function (s) { return s.mod.minDays; })) - o.win.day })) : '') + '</p><p class="small muted">' + esc(T('Your programme decides whether you are signed off. Check its current requirements with your supervisor.')) + '</p><div class="btns"><a class="btn teal sm" href="#/export">' + esc(T('Export your evidence')) + '</a></div></div>';
+  }
+  function focusHtmlFor() {
+    var pid = focusPid(); if (!pid) return '';
+    var o = outstanding(pid), mine = focusPaths();
+    var pick = mine.length > 1 ? '<div class="pw-pick" role="tablist" aria-label="' + esc(T('Pathway')) + '">' + mine.map(function (p) { return '<button type="button" role="tab" data-fpw="' + p + '" aria-selected="' + (p === pid) + '">' + esc(pwName(PATHS[p])) + '</button>'; }).join('') + '</div>' : '';
+    var head = '<h2 class="sec">' + esc(T('Still to do')) + (o.items.length ? ' <a href="#/outstanding/' + pid + '">' + esc(T('View all ({n})', { n: o.items.length })) + '</a>' : '') + '</h2>' + pick;
+    if (!o.items.length) return head + reqDone(o, pid);
+    var n = o.items.length;
+    return head + '<section class="reqs" aria-roledescription="' + esc(T('carousel')) + '" aria-label="' + esc(T('Outstanding requirements for {pathway}', { pathway: pwName(PATHS[pid]) })) + '" data-reqs="' + pid + '">' +
+      '<div class="req-track" tabindex="0">' + o.items.map(function (it, i) { return reqCard(it, i + 1, n); }).join('') + '</div>' +
+      (n > 1 ? '<div class="req-nav"><button type="button" class="req-btn" data-reqstep="-1" aria-label="' + esc(T('Previous requirement')) + '">' + SI.chev.replace('class="chev flip"', 'class="chev"').replace('class="chev"', 'class="chev back"') + '</button><div class="req-dots">' + o.items.map(function (it, i) { return '<button type="button" data-reqdot="' + i + '" aria-label="' + esc(T('Requirement {n} of {m}: {label}', { n: i + 1, m: n, label: T(it.s.mod.label) })) + '"></button>'; }).join('') + '</div><button type="button" class="req-btn" data-reqstep="1" aria-label="' + esc(T('Next requirement')) + '">' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</button></div>' : '') +
+      '<p class="small muted req-order">' + esc(T('In the order of your pathway\'s curriculum, opening where you left off. Nothing here is ranked by clinical importance.')) + '</p></section>';
+  }
+  // Swipe (native scrolling with snap points), the arrows, the dots or the keyboard move it. It never moves on its
+  // own. The card in view is found by IntersectionObserver (no scroll handler), and remembered per pathway.
+  var focusIO = null;
+  function bindFocus() {
+    $$('[data-fpw]').forEach(function (b) { b.onclick = function () { setKv('focusPw', b.dataset.fpw).then(function () { render(true); }); }; });
+    var box = $('[data-reqs]'); if (!box) return;
+    var pid = box.dataset.reqs, track = $('.req-track', box), cards = $$('.req', track), dots = $$('[data-reqdot]', box), cur = 0;
+    var mark = function (i) {
+      cur = i;
+      dots.forEach(function (d, j) { d.setAttribute('aria-current', j === i ? 'true' : 'false'); });
+      cards.forEach(function (c, j) { c.setAttribute('aria-hidden', j === i ? 'false' : 'true'); c.inert = j !== i && cards.length > 1; });
+      var at = Object.assign({}, S.kv.focusAt || {}); if (cards[i] && at[pid] !== cards[i].dataset.mod) { at[pid] = cards[i].dataset.mod; setKv('focusAt', at); }
+    };
+    var show = function (i, smooth) {
+      i = Math.max(0, Math.min(cards.length - 1, i));
+      var c = cards[i]; if (!c) return;
+      // Only the track scrolls (never the page): the distance from the card's leading edge to the track's, which
+      // works the same way in right-to-left layouts.
+      var tr = track.getBoundingClientRect(), cr = c.getBoundingClientRect(), rtl = getComputedStyle(track).direction === 'rtl';
+      var dx = rtl ? cr.right - tr.right : cr.left - tr.left;
+      if (Math.abs(dx) > 1) track.scrollBy({ left: dx, behavior: smooth && !reducedMotion() ? 'smooth' : 'auto' });
+      mark(i);
+    };
+    if (window.IntersectionObserver && cards.length > 1) {
+      // One observer at a time: Home is redrawn on every sync, and the old cards are gone.
+      if (focusIO) focusIO.disconnect();
+      var io = focusIO = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && e.intersectionRatio > 0.6) mark(cards.indexOf(e.target)); }); }, { root: track, threshold: [0.6] });
+      cards.forEach(function (c) { io.observe(c); });
+    }
+    $$('[data-reqstep]', box).forEach(function (b) { b.onclick = function () { show(cur + Number(b.dataset.reqstep), true); }; });
+    dots.forEach(function (d) { d.onclick = function () { show(Number(d.dataset.reqdot), true); }; });
+    track.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); var dir = (e.key === 'ArrowRight' ? 1 : -1) * (getComputedStyle(track).direction === 'rtl' ? -1 : 1); show(cur + dir, true); } });
+    // Where it opens: the card the learner last looked at, if still open; otherwise the open requirement they most
+    // recently logged a scan for; otherwise the first in curriculum order.
+    var start = cards.findIndex(function (c) { return c.dataset.mod === (S.kv.focusAt || {})[pid]; });
+    if (start < 0) {
+      var latest = live().slice().sort(sortEntries)[0];
+      if (latest) start = cards.findIndex(function (c) { var m = PATHS[pid].modules.find(function (x) { return x.id === c.dataset.mod; }); return m && m.types.indexOf(latest.type) >= 0; });
+    }
+    show(start < 0 ? 0 : start, false);
+  }
+  // Every open requirement for one pathway, with a choice of order. Curriculum order is the default.
+  function viewOutstanding(r) {
+    var pid = r.arg && Object.prototype.hasOwnProperty.call(PATHS, r.arg) ? r.arg : focusPid() || myPaths()[0];
+    var o = outstanding(pid), sort = r.q.get('sort') || 'curriculum';
+    var items = o.items.slice();
+    if (sort === 'most') items.sort(function (a, b) { return b.left - a.left || a.order - b.order; });
+    if (sort === 'least') items.sort(function (a, b) { return a.left - b.left || a.order - b.order; });
+    var opts = [['curriculum', T('Curriculum order')], ['least', T('Fewest still needed')], ['most', T('Most still needed')]];
+    mount(shell({ title: T('Still to do'), back: '' },
+      '<p class="small muted">' + esc(T('{n} open requirements on your {pathway} pathway, from your logbook and the targets in force.', { n: o.items.length, pathway: pwName(PATHS[pid]) })) + '</p>' +
+      (o.items.length ? '<div class="seg" role="radiogroup" aria-label="' + esc(T('Order')) + '" style="margin:0 0 10px">' + opts.map(function (x) { return '<input type="radio" name="osort" id="os' + x[0] + '" value="' + x[0] + '"' + (x[0] === sort ? ' checked' : '') + '><label for="os' + x[0] + '">' + esc(x[1]) + '</label>'; }).join('') + '</div>' + items.map(function (it) { return '<div class="card">' + reqCard(it, 0, 1) + '</div>'; }).join('') : reqDone(o, pid)) +
+      '<p class="small muted" style="margin-top:14px">' + esc(T('"Fewest" and "Most" count every scan, supervised scan, reflection, rule and assessment still needed. Neither is a clinical priority.')) + '</p>'));
+    $$('input[name=osort]').forEach(function (i) { i.onchange = function () { history.replaceState(null, '', '#/outstanding/' + pid + '?sort=' + i.value); viewOutstanding(route()); }; });
   }
   function learnLink(mod) { var t = TYPES[mod.types[0]]; return t && t.learn ? t.learn : '/learn/'; }
 
@@ -373,11 +695,36 @@
   }
   // Scrolls a field into view just below the sticky header (and above the sticky Save bar), so nothing the
   // learner still has to fill in sits hidden under either.
+  // 1.0.11: a guided glide rather than a jump. One programmatic scroll at a time, eased over 260 to 460 ms depending
+  // on the distance (Android WebView's own smooth scrolling is instant on some phones). The learner's own touch,
+  // wheel or key stops it at once, and ordinary swiping is untouched: this only runs when the app moves the form on
+  // purpose (Log one, a new application, a missing required field). With reduced motion it jumps. Returns a promise
+  // that settles when the glide ends.
+  // glide.timer: a glide waiting to start (the pause after Log one). The learner's input, or any newer glide (a
+  // missing required field), cancels it, so a late "go to the date" never pulls the form away from what they are doing.
+  var glide = { id: 0, timer: 0 };
+  function stopGlide() { glide.id++; clearTimeout(glide.timer); glide.timer = 0; }
+  ['touchstart', 'wheel', 'keydown', 'pointerdown'].forEach(function (t) { window.addEventListener(t, stopGlide, { passive: true, capture: true }); });
+  function reducedMotion() { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
   function scrollToField(el, smooth) {
-    if (!el) return;
+    if (!el) return Promise.resolve();
     var top = $('.top'), head = top ? top.getBoundingClientRect().bottom : 0;
-    var y = el.getBoundingClientRect().top + window.pageYOffset - Math.max(0, head) - 14;
-    window.scrollTo({ top: Math.max(0, y), behavior: smooth ? 'smooth' : 'auto' });
+    var to = Math.max(0, Math.min(el.getBoundingClientRect().top + window.pageYOffset - Math.max(0, head) - 14, document.documentElement.scrollHeight - window.innerHeight));
+    clearTimeout(glide.timer); glide.timer = 0;
+    var from = window.pageYOffset, dist = to - from, id = ++glide.id;
+    if (!smooth || reducedMotion() || Math.abs(dist) < 4) { window.scrollTo(0, to); return Promise.resolve(); }
+    var ms = Math.max(260, Math.min(460, 180 + Math.abs(dist) * 0.25)), t0 = 0;
+    var ease = function (x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+    return new Promise(function (done) {
+      var step = function (now) {
+        if (id !== glide.id) return done();
+        if (!t0) t0 = now;
+        var k = Math.min(1, (now - t0) / ms);
+        window.scrollTo(0, Math.round(from + dist * ease(k)));
+        if (k < 1) requestAnimationFrame(step); else done();
+      };
+      requestAnimationFrame(step);
+    });
   }
   function go(h) { if (location.hash === '#/' + h) render(); else location.hash = '#/' + h; }
   // A scan form with unsaved changes asks before any navigation (header back, tabs, links, the Android back button).
@@ -396,15 +743,27 @@
     leaving = false; lastHash = location.hash;
     render(); window.scrollTo(0, 0);
   });
-  window.addEventListener('online', function () { S.online = true; setSyncDot(); sync(); });
+  window.addEventListener('online', function () { S.online = true; if (SY.fail === 'offline') SY.fail = ''; setSyncDot(); if (S.account) netKick(); });
   window.addEventListener('offline', function () { S.online = false; setSyncDot(); });
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync(); });
+  // In the store apps, returning to the app arrives as wl:resume (below), which also reads the network first.
+  var hiddenAt = 0;
+  document.addEventListener('visibilitychange', function () {
+    if (NAT.on) return;
+    if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); pauseRetries(); return; }
+    var away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
+    resumeSync(away);
+  });
 
+  // The sync status pill in the header: icon, short label and chevron; opens the sync details for this device.
+  function syncInd() { var st = syncState(); return '<button type="button" class="sync-pill p-' + NETR.pill(st).cls + '" data-syncpill>' + pillInner(st) + '</button>'; }
+  // The connection banner under the header. Left out of the scan form (the pill still shows the status), so a change
+  // of status never moves the fields while someone is typing, and out of Settings, which shows the full panel.
+  function syncBanner() { return ['new', 'edit', 'settings'].indexOf(route().name) >= 0 ? '' : '<div class="sync-banner" data-syncbanner role="status" aria-live="polite" hidden></div>'; }
   function shell(opts, body) {
     var r = route().name;
     var tab = function (name, href, icon, label, dot) { return '<a href="#/' + href + '"' + (r === name || (opts.tab === name) ? ' aria-current="page"' : '') + '>' + icon + '<span>' + esc(label) + '</span>' + (dot ? '<i class="nd" aria-label="' + esc(T('New sign-off')) + '"></i>' : '') + '</a>'; };
-    var top = opts.hero ? '' : '<header class="top">' + (opts.back != null ? '<a class="back" href="#/' + opts.back + '" aria-label="' + esc(T('Back')) + '">' + I.back + '</a>' : MARK(34, 'rgba(247,245,240,.5)')) + '<h1>' + esc(opts.title) + '</h1>' + (opts.action || '') + '<span class="sync-dot" aria-hidden="true"></span></header>';
-    return top + (opts.hero || '') + '<main class="' + (opts.hero ? 'flush' : '') + '">' + updateBanner() + body + '</main>' +
+    var top = opts.hero ? '' : '<header class="top">' + (opts.back != null ? '<a class="back" href="#/' + opts.back + '" aria-label="' + esc(T('Back')) + '">' + I.back + '</a>' : MARK(34, 'rgba(247,245,240,.5)')) + '<h1>' + esc(opts.title) + '</h1>' + (opts.action || '') + syncInd() + '</header>';
+    return top + (opts.hero || '') + '<main class="' + (opts.hero ? 'flush' : '') + '">' + updateBanner() + syncBanner() + body + '</main>' +
       '<nav class="tabs" aria-label="App">' + tab('home', '', I.home, T('Home')) + tab('log', 'log', I.book, T('Logbook'), news().length) + '<a class="plus" href="#/new" aria-label="' + esc(T('Log a scan')) + '">' + I.plus + '<span>' + esc(T('Log')) + '</span></a>' + tab('progress', 'progress', I.chart, T('Progress')) + tab('me', 'me', I.user, T('Me')) + '</nav>';
   }
 
@@ -418,11 +777,49 @@
       return (authViews[r.name] || viewWelcome)(r);
     }
     if (!S.account.declarationAt || !(profile().onboarded)) return viewOnboard(r);
-    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute };
+    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute, guides: viewGuides, outstanding: viewOutstanding };
     (views[r.name] || viewHome)(r);
     setSyncDot();
-    if (!soft) announce();
+    // A new screen fades in once (CSS, 180 ms, none with reduced motion). A redraw of the same screen does not.
+    if (!soft) { var mn = $('main', app); if (mn) mn.classList.add('enter'); }
     if (soft) window.scrollTo(0, keepScroll);
+    revealIn(soft);
+    if (!soft) announce();
+  }
+  // 1.0.12: sections rise and fade in once as they first scroll into view, a restrained version of the website's
+  // (14 px and 260 ms here, 28 px and 1 s there). Only what starts below the visible screen is held back, so nothing
+  // already on screen is delayed; nothing in the scan form or the logbook list animates; once shown it stays shown,
+  // so scrolling back never replays it. One IntersectionObserver, no scroll handler; opacity and transform only.
+  // Off with reduced motion, without IntersectionObserver, and on soft redraws (sync updates do not replay it).
+  var REVEAL_VIEWS = { home: 1, progress: 1, supervise: 1, supervisors: 1, guides: 1, outstanding: 1, supervisor: 1, me: 1, assess: 1, evidence: 1 };
+  var REVEAL_SEL = 'main > .card, main > h2.sec, main > .reqs, main > .mod, main > .entry, main > details.card, main > .guide-sec, main > .btns, main > section.card, main > .legend, main > a.card';
+  // revealSeen: how far down this screen (page y) has already been shown. A redraw of the same screen (a sync, the
+  // account arriving) holds back only what lies below that line and below the visible screen, so content already seen
+  // never animates twice. A new screen starts again at the bottom of what is visible.
+  var revealIO = null, revealSeen = 0;
+  function revealIn(soft) {
+    if (revealIO) { revealIO.disconnect(); revealIO = null; }
+    var y0 = window.pageYOffset, vh = window.innerHeight;
+    if (!soft) revealSeen = y0 + vh;
+    if (!window.IntersectionObserver || reducedMotion() || !REVEAL_VIEWS[route().name]) return;
+    var line = Math.max(revealSeen, y0 + vh) - 8, els = $$(REVEAL_SEL, app);
+    // Read every position first, then write: one layout pass.
+    var below = els.filter(function (el) { return el.getBoundingClientRect().top + y0 > line; });
+    if (!below.length) return;
+    below.forEach(function (el) { el.classList.add('rv'); });
+    revealIO = new IntersectionObserver(function (es) {
+      var k = 0, py = window.pageYOffset;
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        revealIO.unobserve(e.target);
+        revealSeen = Math.max(revealSeen, e.boundingClientRect.bottom + py);
+        e.target.style.setProperty('--rv-d', Math.min(k++, 3) * 55 + 'ms');
+        e.target.classList.add('in');
+        // Afterwards the element carries no transform at all, so later layout and stacking are unchanged.
+        setTimeout(function () { e.target.classList.remove('rv', 'in'); e.target.style.removeProperty('--rv-d'); }, 520);
+      });
+    }, { rootMargin: '0px 0px -6% 0px', threshold: 0.01 });
+    below.forEach(function (el) { revealIO.observe(el); });
   }
   // A small live region announces each new screen by its title; the screen itself is not a live region.
   function announce(text) {
@@ -440,7 +837,7 @@
   function viewWelcome() {
     var f = function (icon, t, d) { return '<div class="feature"><span class="fi">' + icon + '</span><div><b>' + esc(t) + '</b><span>' + esc(d) + '</span></div></div>'; };
     authFrame(T('Your ultrasound logbook.'), T('Log every scan, watch your accreditation targets fill up, and get signed off and assessed. Built by consultant ultrasound supervisors.'),
-      '<div class="features">' + f(I.globe, T('Pathways from around the world'), T('The verified UK pathways, RCEM, FAMUS and FUSIC, plus editable trackers for international pathways and frameworks. One scan can count towards several trackers when it meets their criteria.')) + f(I.camera, T('Photos and clips stay on your phone'), T('Crop and cover identifiers before you save. If you share images with a supervisor, they are encrypted on your phone first and Wavelength never receives the key.')) + f(I.pen, T('Sign-off and assessments in seconds'), T('Your supervisor signs on your phone, from a link or from their own dashboard, with a code anyone can verify.')) + f(I.file, T('Your portfolio, tailored to your accrediting body'), T('Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body\'s portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.')) + '</div>' +
+      '<div class="features">' + f(I.globe, T('Pathways from around the world'), T('The verified UK pathways, RCEM, FAMUS and FUSIC, plus editable trackers for international pathways and frameworks. One scan can count towards several trackers when it meets their criteria.')) + f(I.camera, T('Photos and clips stay on your phone'), T('Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first and Wavelength never receives the key.')) + f(I.pen, T('Sign-off and assessments in seconds'), T('Your supervisor signs on your phone, from a link or from their own dashboard, with a code anyone can verify.')) + f(I.file, T('Your portfolio, tailored to your accrediting body'), T('Choose your accrediting body and Wavelength arranges your scans, assessments and sign-offs to match that body\'s portfolio requirements, ready to submit. Export as PDF, Excel or CSV with a QR-verified summary.')) + '</div>' +
       '<a class="btn teal block" href="#/signup">' + esc(T('Create your free account')) + '</a><div class="btns" style="justify-content:center"><a class="link" href="#/login">' + esc(T('I already have an account')) + '</a></div>' +
       '<div style="margin-top:22px">' + installButton() + '</div>');
     $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); });
@@ -537,7 +934,7 @@
   }
   function viewLogin(r) {
     var pre = r.q.get('email') || new URLSearchParams(location.search).get('login') || '';
-    authFrame(T('Welcome back.'), '', '<form id="f" novalidate><div class="err" hidden></div>' +
+    authFrame(T('Welcome back.'), '', authNoteHtml() + '<form id="f" novalidate><div class="err" hidden></div>' +
       '<div class="field"><label for="em">' + esc(T('Email')) + '</label><input id="em" name="email" type="email" autocomplete="email" value="' + esc(pre) + '" required></div>' +
       '<div class="field"><label for="pw">' + esc(T('Password')) + '</label><input id="pw" name="password" type="password" autocomplete="current-password" required></div>' +
       '<button class="btn teal block" type="submit">' + esc(T('Log in')) + '</button><div class="btns" style="justify-content:space-between"><a class="link" href="#/reset">' + esc(T('Forgotten your password?')) + '</a><a class="link" href="#/signup">' + esc(T('Create an account')) + '</a></div><p class="small muted" style="margin-top:14px">' + esc(T('First time in the app after a Wavelength Academy module? Create your account with the same email.')) + '</p></form>');
@@ -547,7 +944,7 @@
       api('/api/app/login', formData(f)).then(function (res) {
         if (!res.ok) { var ex = new Error(res.error); ex.noPassword = res.noPassword; throw ex; }
         return signedIn(res.account);
-      }).catch(function (ex) { busy(b, false); err.innerHTML = esc(ex.message || T('Something went wrong.')) + (ex.noPassword ? ' <a href="#/signup">' + esc(T('Create your account')) + '</a>' : ''); err.hidden = false; });
+      }).catch(function (ex) { busy(b, false); err.innerHTML = esc(netFail(ex) ? T('Could not reach Wavelength. Check your connection and try again.') : (ex.message || T('Something went wrong.'))) + (ex.noPassword ? ' <a href="#/signup">' + esc(T('Create your account')) + '</a>' : ''); err.hidden = false; });
     });
   }
   function viewReset() {
@@ -586,6 +983,8 @@
     return openDb(acc.id).then(function (db) { S.db = db; return Promise.all([all('entries'), all('kv')]); }).then(function (r) {
       S.entries = r[0] || []; S.kv = {}; (r[1] || []).forEach(function (x) { S.kv[x.k] = x.v; });
       S.assessments = S.kv.assessments || [];
+      clearTimeout(SY.timer); clearTimeout(SY.netTimer); SY = { lastOk: S.kv.lastSyncOk || 0, fail: '', tries: 0, timer: 0, ran: false, paused: !!SY.paused };
+      var was = authNote(); if (was && was.id === acc.id) authNote(null);
       var next = new URLSearchParams(location.search).get('next');
       if (next && /^\/elearning\//.test(next)) { location.href = next; return; }
       if (location.search) history.replaceState(null, '', '/app/' + location.hash);
@@ -603,8 +1002,24 @@
       else if (res.error) toast(res.error, 5000);
     }).catch(function () { /* offline: try again next time */ });
   }
-  function signedOut() { cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.assessments = []; S.links = null; location.hash = '#/welcome'; render(); }
-  function loadMe() { return api('/api/app/me').then(function (res) { if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); } }).catch(function () { /* offline: the cached account stays */ }); }
+  // Logging out, or a login the server no longer accepts, never deletes this device's logbook: it stays in this
+  // account's local database and syncs when the same account logs in here again.
+  function signedOut(to) { SESSION++; clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.sv = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
+  // The server says this login has ended (expired, password changed, logged out from another device).
+  function authExpired() {
+    var acc = S.account; if (!acc) return;
+    authNote({ id: acc.id, email: acc.email || '', pending: pendingList().length });
+    signedOut('#/login?email=' + encodeURIComponent(acc.email || ''));
+  }
+  function authNote(v) {
+    try { if (v === undefined) return JSON.parse(localStorage.getItem('wl-auth') || 'null'); if (v) localStorage.setItem('wl-auth', JSON.stringify(v)); else localStorage.removeItem('wl-auth'); } catch (e) { /* storage blocked */ }
+    return null;
+  }
+  function authNoteHtml() {
+    var a = authNote(); if (!a) return '';
+    return '<div class="warn" role="status"><p style="margin:0">' + esc(T('Sign in again to continue synchronising. Your local entries are safe.')) + '</p>' + (a.pending ? '<p class="small" style="margin:6px 0 0">' + esc(N(a.pending, '{n} entry is waiting on this device.', '{n} entries are waiting on this device.')) + '</p>' : '') + '</div>';
+  }
+  function loadMe() { var t0 = Date.now(); return api('/api/app/me', undefined, { timeout: 15000 }).then(function (res) { if (!DIAG.me) { diag('me', String(res._status)); diag('meMs', Date.now() - t0); } if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); } }).catch(function (ex) { if (!DIAG.me) diag('me', ex && ex.timeout ? 'timeout' : 'offline'); /* offline: the cached account stays */ }); }
   function linksStale(ms) { return !S.linksAt || Date.now() - S.linksAt > ms; }
   function loadLinks() { return api('/api/app/supervisors').then(function (res) { if (res.ok) { S.links = res; S.linksAt = Date.now(); if (['home', 'me', 'supervise', 'supervisors'].indexOf(route().name) >= 0 && !document.querySelector('.sheet-bg')) render(true); } }).catch(function () { /* offline: try again on the next sync */ }); }
 
@@ -660,21 +1075,17 @@
     var pending = ents.length - signed;
     var name = S.account.firstName;
     var hour = new Date().getHours(), hi = hour < 12 ? T('Good morning, {name}.', { name: name }) : hour < 18 ? T('Good afternoon, {name}.', { name: name }) : T('Good evening, {name}.', { name: name });
-    var hero = '<header class="top" style="padding-bottom:4px"><a class="brand-link" href="/">' + MARK(34, 'rgba(247,245,240,.5)') + '<h1 style="font:600 13px var(--sans);letter-spacing:.38em">WAVELENGTH</h1></a><span class="sync-dot" aria-hidden="true"></span></header>' +
+    var hero = '<header class="top" style="padding-bottom:4px"><a class="brand-link" href="/">' + MARK(34, 'rgba(247,245,240,.5)') + '<h1 style="font:600 13px var(--sans);letter-spacing:.38em">WAVELENGTH</h1></a>' + syncInd() + '</header>' +
       '<section class="hero"><p class="hi">' + esc(hi) + '</p><p class="sub">' + esc(ents.length ? T('{scans} in your logbook.', { scans: plural(ents.length, 'scan') }) : T('Log your first scan to start tracking your targets.')) + '</p>' +
-      '<div class="stats"><div class="stat"><b>' + ents.length + '</b><span>' + esc(T('Scans')) + '</span></div><div class="stat"><b>' + ents.filter(function (e) { return e.date.slice(0, 7) === month; }).length + '</b><span>' + esc(T('This month')) + '</span></div><div class="stat"><b>' + signed + '</b><span>' + esc(T('Signed off')) + '</span></div><div class="stat"><b>' + signedAssessments().length + '</b><span>' + esc(T('Assessments')) + '</span></div></div></section>';
+      // Each count opens the records it counts: the same filters, so the numbers match (homeCounts).
+      '<div class="stats">' + homeCounts(ents, month).map(function (c) { return '<a class="stat" href="#/' + c.href + '" aria-label="' + esc(T('{label}: {n}. Show these records.', { label: c.label, n: c.n })) + '"><b>' + c.n + '</b><span>' + esc(c.label) + '</span>' + SI.chev.replace('class="chev flip"', 'class="stat-go flip"') + '</a>'; }).join('') + '</div></section>';
     var quick = '<div class="card" style="margin-top:16px;padding:10px"><div class="quick">' +
       [['new', I.plus, T('Log a scan')], ['signoff', I.pen, T('Sign-off')], ['assess', I.star, T('Assessment')], ['export', I.file, T('Export')]].map(function (q) { return '<a href="#/' + q[0] + '"><span>' + q[1] + '</span>' + esc(q[2]) + '</a>'; }).join('') + '</div></div>';
     var install = canInstall() ? '<div style="margin:0 0 12px">' + installButton() + '</div>' : '';
     var nw = news(), nq = nw.some(function (n) { return n.status === 'query'; });
     var newsCard = nw.length ? '<div class="card" style="border-color:var(--green-line);background:var(--green-bg)"><div class="row"><span style="color:var(--green)">' + I.pen + '</span><div class="grow"><h3>' + esc(T('New sign-off')) + '</h3><p class="small" style="margin:0">' + esc(newsText(nw)) + '</p></div></div><div class="btns"><a class="btn sm" href="#/log' + (nq ? '?s=todo' : '?s=signed') + '">' + esc(T('See scans')) + '</a><button class="btn ghost sm" type="button" id="nwx">' + esc(T('Dismiss')) + '</button></div></div>' : '';
     var sup = newsCard + emailCard() + superviseCard();
-    var focus = focusNext(), focusHtml = '';
-    if (focus) {
-      var fs = focus.s;
-      focusHtml = '<h2 class="sec">' + esc(T('Focus next')) + '</h2><div class="card focus"><p class="eyebrow">' + esc(PATHS[focus.pid].label) + '</p><h3>' + esc(T(fs.mod.label)) + '</h3><p class="small" style="margin:2px 0 10px">' + esc(needText(fs)) + '</p>' + (fs.total ? barRow(T('Scans'), fs.counted, fs.total) : '') +
-        '<div class="btns"><a class="btn teal sm" href="#/new?type=' + fs.mod.types[0] + '">' + esc(T('Log one')) + '</a><a class="btn ghost sm" href="' + esc(learnLink(fs.mod)) + '">' + esc(T('Learn: Pearls and Academy')) + '</a>' + (fs.gaps.some(function (g) { return g.k === 'assessment'; }) ? '<a class="btn ghost sm" href="#/assess?p=' + focus.pid + '&m=' + fs.mod.id + '">' + esc(T('Request assessment')) + '</a>' : '') + '</div></div>';
-    }
+    var focusHtml = focusHtmlFor();
     var paths = myPaths().map(function (pid) {
       var ps = pathwayStats(pid);
       var rows = ps.stats.filter(function (s) { return s.total || s.list.length; }).sort(function (a, b) { return b.list.length - a.list.length; }).slice(0, 4);
@@ -690,7 +1101,17 @@
       academyCard() +
       (course ? '<h2 class="sec">' + esc(T('Next course')) + '</h2><a class="card teal" href="/courses/' + esc(course.slug) + '/" style="display:block;text-decoration:none"><p class="eyebrow" style="color:var(--teal-l)">' + esc(fmt(course.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })) + '</p><h3>' + esc(course.title) + '</h3><p class="muted" style="color:#cfe3e6">' + esc([course.venue, course.city].filter(Boolean).join(', ')) + '</p><span class="btn light sm">' + esc(T('See the course')) + '</span></a>' : '')));
     var nx = $('#nwx'); if (nx) nx.onclick = function () { setKv('news', []).then(function () { render(true); }); };
+    bindFocus();
     loadThumbs();
+  }
+  // The four Home counts and where each opens. Own logbook only (supervised learners' scans are never in S.entries).
+  function homeCounts(ents, month) {
+    return [
+      { n: ents.length, label: T('Scans'), href: 'log' },
+      { n: ents.filter(function (e) { return (e.date || '').slice(0, 7) === month; }).length, label: T('This month'), href: 'log?m=' + month },
+      { n: ents.filter(function (e) { return stateMatch(e, 'signed'); }).length, label: T('Signed off'), href: 'log?s=signed' },
+      { n: signedAssessments().length, label: T('Assessments'), href: 'assess?view=signed' }
+    ];
   }
   function superviseCard() {
     var L2 = S.links; if (!L2) return '';
@@ -707,12 +1128,13 @@
       (certs.length ? '<div style="margin-top:12px;display:grid;gap:6px">' + certs.slice(0, 3).map(function (c) { return '<a href="/elearning/certificate/' + esc(c.code) + '/" style="color:var(--cream);text-decoration:none;display:flex;justify-content:space-between;gap:10px;font-size:14px;border-top:1px solid rgba(247,245,240,.1);padding-top:8px"><span>' + esc(c.module_title) + '</span><span style="color:var(--teal-l)">' + esc(T('View')) + '</span></a>'; }).join('') + '</div>' : '') +
       '<div class="btns"><a class="btn light sm" href="/elearning/">' + esc(certs.length ? T('Continue learning') : T('Start a free module')) + '</a></div></div>';
   }
+  // Home: a calm reminder (not a warning) while photos or clips exist and no backup file was made in 14 days.
   function backupNudge() {
     var withImg = live().filter(function (e) { return (e.images || []).length; }).length;
     if (!withImg) return '';
     var last = S.kv.lastBackup, days = last ? daysBetween(last.slice(0, 10), today()) : null;
     if (last && days < 14) return '';
-    return '<div class="card" style="border-color:var(--amber-line);background:var(--amber-bg)"><div class="row"><span style="color:var(--warn-ink)">' + I.cloud + '</span><div class="grow"><h3>' + esc(T('Back up your photos')) + '</h3><p class="small" style="margin:0">' + esc((last ? T('Last backup {days} ago.', { days: plural(days, 'day') }) : T('Your scan photos live only on this phone.')) + ' ' + T('Save a copy to iCloud, Google Drive or OneDrive.')) + '</p></div></div><div class="btns"><a class="btn sm" href="#/backup">' + esc(T('Back up now')) + '</a></div></div>';
+    return '<div class="card"><div class="row"><span class="muted">' + I.cloud + '</span><div class="grow"><h3>' + esc(T('Photos and clips are only on this phone')) + '</h3><p class="small muted" style="margin:0">' + esc((last ? T('Last backup file created {days} ago.', { days: plural(days, 'day') }) : T('No backup file has been created on this device yet.')) + ' ' + T('An encrypted backup keeps a copy wherever you choose.')) + '</p></div></div><div class="btns"><a class="btn sm ghost" href="#/backup">' + esc(T('Back up')) + '</a></div></div>';
   }
 
   // ---------- Logbook list ----------
@@ -734,7 +1156,7 @@
     var t = TYPES[e.type] || { label: e.type, short: e.type };
     var clips = (e.images || []).filter(function (x) { return x.kind === 'clip'; }).length;
     var col = STATES[signState(e)][0], isNew = news().some(function (n) { return n.id === e.id; });
-    return '<a class="entry' + (col ? ' s-' + col : '') + '" href="#/entry/' + esc(e.id) + '"><span class="thumb" data-thumb="' + esc(e.id) + '">' + esc(T(t.short)) + '</span><div class="grow"><h3>' + esc(T(t.label)) + '</h3><p>' + esc(fmt(e.date)) + (e.setting ? ' · ' + esc(T(e.setting)) : '') + '</p><div class="meta">' + (isNew ? '<span class="chip teal">' + esc(T('New')) + '</span>' : '') + statusChip(e) + (e.supervision === 'direct' ? '<span class="chip teal">' + esc(T('Supervised')) + '</span>' : '') + (clips ? '<span class="chip">' + I.video.replace(/22/g, '14') + ' ' + clips + '</span>' : '') + (e._dirty ? '<span class="chip">' + esc(T('Not synced')) + '</span>' : '') + '</div></div></a>';
+    return '<a class="entry' + (col ? ' s-' + col : '') + '" href="#/entry/' + esc(e.id) + '"><span class="thumb" data-thumb="' + esc(e.id) + '">' + esc(T(t.short)) + '</span><div class="grow"><h3>' + esc(T(t.label)) + '</h3><p>' + esc(fmt(e.date)) + (e.setting ? ' · ' + esc(T(e.setting)) : '') + '</p><div class="meta">' + (isNew ? '<span class="chip teal">' + esc(T('New')) + '</span>' : '') + statusChip(e) + (e.supervision === 'direct' ? '<span class="chip teal">' + esc(T('Supervised')) + '</span>' : '') + (clips ? '<span class="chip">' + I.video.replace(/22/g, '14') + ' ' + clips + '</span>' : '') + (e._dirty ? '<span class="chip' + (e._syncError ? ' red' : '') + '">' + esc(T('Not synced')) + '</span>' : '') + '</div></div></a>';
   }
   function loadThumbs() {
     $$('[data-thumb]').forEach(function (el) {
@@ -745,7 +1167,9 @@
   }
   function viewLog(r) {
     var f = r.q.get('type') || 'all', q = (r.q.get('q') || '').toLowerCase(), st = r.q.get('s') || '';
-    var ents = live().sort(sortEntries);
+    var m = /^\d{4}-\d{2}$/.test(r.q.get('m') || '') ? r.q.get('m') : '';
+    // A month (from Home's "This month") narrows everything on the page, counts included, by the scan's date.
+    var ents = live().filter(function (e) { return !m || (e.date || '').slice(0, 7) === m; }).sort(sortEntries);
     var used = {}; ents.forEach(function (e) { used[e.type] = (used[e.type] || 0) + 1; });
     var list = ents.filter(function (e) {
       if (f !== 'all' && e.type !== f) return false;
@@ -757,16 +1181,28 @@
     var filt = function (k, label, n) { return '<button type="button" data-f="' + k + '" aria-pressed="' + (f === k) + '">' + esc(label) + (n != null ? ' · ' + n : '') + '</button>'; };
     mount(shell({ title: T('Logbook'), action: '<a class="act" href="#/signoff" style="text-decoration:none">' + esc(T('Sign-off')) + '</a>' },
       '<div class="search"><input type="search" id="q" placeholder="' + esc(T('Search your logbook')) + '" value="' + esc(q) + '" aria-label="' + esc(T('Search')) + '"><a class="btn ghost sm" href="#/export" style="flex:none">' + esc(T('Export')) + '</a></div>' +
+      activeFilters(m, f, st, q) +
       '<div class="filters">' + filt('all', T('All'), ents.length) + Object.keys(used).map(function (t) { return filt(t, T((TYPES[t] || {}).short || t), used[t]); }).join('') + '</div>' +
       '<div class="seg" style="margin:0 0 6px">' + [['', T('All')], ['todo', T('Not sent')], ['waiting', T('Awaiting')], ['signed', T('Signed off')], ['none', T('No sign-off')]].map(function (o) { var n = o[0] ? ents.filter(function (e) { return stateMatch(e, o[0]); }).length : ents.length; return (o[0] === 'none' && !n && st !== 'none') ? '' : '<input type="radio" name="st" id="st' + o[0] + '" value="' + o[0] + '"' + (st === o[0] ? ' checked' : '') + '><label for="st' + o[0] + '">' + esc(o[1]) + ' · ' + n + '</label>'; }).join('') + '</div>' +
-      (list.length ? Object.keys(groups).map(function (m) { return '<p class="month">' + esc(fmt(m + '-15', { month: 'long', year: 'numeric' })) + ' · ' + groups[m].length + '</p>' + groups[m].map(entryRow).join(''); }).join('') :
-        '<div class="empty">' + I.book.replace('width="24" height="24"', 'width="48" height="48"') + '<p>' + esc(ents.length ? T('No scans match.') : T('Your logbook is empty.')) + '</p><a class="btn teal" href="#/new">' + esc(T('Log a scan')) + '</a></div>')));
+      (list.length ? Object.keys(groups).map(function (m) { return '<p class="month">' + esc(fmt(m + '-15', { month: 'long', year: 'numeric' })) + ' · ' + groups[m].length + '</p>' + groups[m].map(entryRow).join(''); }).join('') + '<p class="small muted log-guides"><a class="link" href="#/guides/' + guideFor(myPaths()[0]) + '">' + esc(T('What evidence does my pathway need?')) + '</a></p>' :
+        '<div class="empty">' + I.book.replace('width="24" height="24"', 'width="48" height="48"') + '<p>' + esc(m && !ents.length ? T('No scans logged in {month}.', { month: fmt(m + '-15', { month: 'long', year: 'numeric' }) }) : ents.length ? T('No scans match.') : T('Your logbook is empty.')) + '</p>' + (m || f !== 'all' || st || q ? '<a class="btn ghost" href="#/log">' + esc(T('Clear filters')) + '</a> ' : '') + '<a class="btn teal" href="#/new">' + esc(T('Log a scan')) + '</a></div>')));
     var upd = function (k, v) { var p = route().q; if (v) p.set(k, v); else p.delete(k); history.replaceState(null, '', '#/log?' + p.toString()); viewLog(route()); };
     $$('[data-f]').forEach(function (b) { b.addEventListener('click', function () { upd('type', b.dataset.f === 'all' ? '' : b.dataset.f); }); });
     $$('input[name=st]').forEach(function (i) { i.addEventListener('change', function () { upd('s', i.value); }); });
     if (news().length) setKv('news', []).then(function () { var d = $('.tabs .nd'); if (d) d.remove(); });
     var qi = $('#q'), tmr; qi.addEventListener('input', function () { clearTimeout(tmr); tmr = setTimeout(function () { upd('q', qi.value); var n = $('#q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); });
     loadThumbs();
+  }
+
+  // The filters in force, in words, with one way to clear them all.
+  function activeFilters(m, f, st, q) {
+    var bits = [];
+    if (m) bits.push(fmt(m + '-15', { month: 'long', year: 'numeric' }));
+    if (f !== 'all') bits.push(T((TYPES[f] || {}).short || f));
+    var stl = { todo: 'Not sent', waiting: 'Awaiting', signed: 'Signed off', none: 'No sign-off', unsigned: 'Not signed off' }[st]; if (stl) bits.push(T(stl));
+    if (q) bits.push('“' + q + '”');
+    if (!bits.length) return '';
+    return '<div class="active-f" role="status"><span class="muted small">' + esc(T('Showing')) + '</span>' + bits.map(function (b) { return '<span class="chip teal">' + esc(b) + '</span>'; }).join('') + '<a class="link small" href="#/log">' + esc(bits.length > 1 ? T('Clear filters') : T('Clear filter')) + '</a></div>';
   }
 
   // ---------- Entry form ----------
@@ -786,16 +1222,17 @@
     texts.forEach(function (t) { GUARD.forEach(function (g) { if (t && g[0].test(t) && hits.indexOf(g[1]) < 0) hits.push(g[1]); }); });
     return hits.map(function (h) { return T(h); });
   }
-  function seg(name, opts, v, cls) {
-    return '<div class="seg ' + (cls || '') + '">' + opts.map(function (o, i) {
+  // labId: the id of the question's label, so screen readers announce the answers as one labelled group.
+  function seg(name, opts, v, cls, labId) {
+    return '<div class="seg ' + (cls || '') + '"' + (labId ? ' role="radiogroup" aria-labelledby="' + labId + '"' : '') + '>' + opts.map(function (o, i) {
       var id2 = typeof o === 'string' ? o : o.id, l = typeof o === 'string' ? o : o.label, id = name.replace(/\W/g, '') + i;
       return '<input type="radio" name="' + name + '" id="' + id + '" value="' + esc(id2) + '"' + (v === id2 ? ' checked' : '') + '><label for="' + id + '">' + esc(T(l)) + '</label>';
     }).join('') + '</div>';
   }
   function fieldHtml(fd, v) {
     var n = 'f.' + fd.id, id = 'f_' + fd.id;
-    if (fd.type === 'choice') return '<div class="field"><span class="lab">' + esc(T(fd.label)) + '</span>' + seg(n, fd.options, v) + '</div>';
-    if (fd.type === 'multi') return '<div class="field"><span class="lab">' + esc(T(fd.label)) + '</span><div class="seg">' + fd.options.map(function (o, i) { return '<input type="checkbox" name="' + n + '" id="' + id + i + '" value="' + esc(o) + '"' + ((v || []).indexOf(o) >= 0 ? ' checked' : '') + '><label for="' + id + i + '">' + esc(T(o)) + '</label>'; }).join('') + '</div></div>';
+    if (fd.type === 'choice') return '<div class="field"><span class="lab" id="q-' + fd.id + '">' + esc(T(fd.label)) + '</span>' + seg(n, fd.options, v, '', 'q-' + fd.id) + '</div>';
+    if (fd.type === 'multi') return '<div class="field"><span class="lab" id="q-' + fd.id + '">' + esc(T(fd.label)) + '<span class="lab-note">' + esc(T('Choose all that apply')) + '</span></span><div class="seg multi" role="group" aria-labelledby="q-' + fd.id + '">' + fd.options.map(function (o, i) { return '<input type="checkbox" name="' + n + '" id="' + id + i + '" value="' + esc(o) + '"' + ((v || []).indexOf(o) >= 0 ? ' checked' : '') + '><label for="' + id + i + '">' + esc(T(o)) + '</label>'; }).join('') + '</div></div>';
     if (fd.type === 'number') return '<div class="field"><label for="' + id + '">' + esc(T(fd.label)) + (fd.unit ? ' (' + fd.unit + ')' : '') + '</label><input id="' + id + '" name="' + n + '" type="number" inputmode="decimal" step="any" value="' + esc(v == null ? '' : v) + '"></div>';
     return '<div class="field"><label for="' + id + '">' + esc(T(fd.label)) + '</label><input id="' + id + '" name="' + n + '" type="text" value="' + esc(v || '') + '"></div>';
   }
@@ -803,6 +1240,47 @@
     var out = [];
     myPaths().forEach(function (pid) { PATHS[pid].modules.forEach(function (m) { if (m.types.indexOf(type) >= 0) out.push({ id: m.id, label: PATHS[pid].label + ' ' + T(m.label) }); }); });
     return out;
+  }
+  // Required scan fields: is this one filled in?
+  function fieldOk(form, k) {
+    if (k === 'type' || k === 'supervision') return !!form.querySelector('input[name=' + k + ']:checked');
+    if (k === 'date') { var v = (form.querySelector('#date') || {}).value; return !!v && v <= today(); }
+    return true;
+  }
+  // Marks a field as missing (msg) or clears it (''): red border, a short line of help tied to the controls.
+  function markField(fl, msg) {
+    if (!fl) return;
+    var id = 'err-' + fl.dataset.req, p = $('#' + id, fl);
+    fl.classList.toggle('invalid', !!msg);
+    // The error joins any description the control already has (the supervision levels' explanations), and leaves it.
+    $$('input,select,textarea', fl).forEach(function (c) {
+      var ds = (c.getAttribute('aria-describedby') || '').split(/\s+/).filter(function (x) { return x && x !== id; });
+      if (msg) { c.setAttribute('aria-invalid', 'true'); ds.unshift(id); } else c.removeAttribute('aria-invalid');
+      if (ds.length) c.setAttribute('aria-describedby', ds.join(' ')); else c.removeAttribute('aria-describedby');
+    });
+    if (!msg) { if (p) p.remove(); ['tabindex', 'role', 'aria-describedby', 'aria-labelledby'].forEach(function (a) { fl.removeAttribute(a); }); return; }
+    if (!p) { p = document.createElement('p'); p.className = 'ferr'; p.id = id; fl.appendChild(p); }
+    p.innerHTML = '<span aria-hidden="true">' + SI.alert + '</span>' + esc(msg);
+    // The field itself takes focus (not a control), so no keyboard or picker opens, and screen readers read the help.
+    fl.setAttribute('tabindex', '-1'); fl.setAttribute('role', 'group'); fl.setAttribute('aria-describedby', id);
+    var lab = $('.lab,label', fl); if (lab) { if (!lab.id) lab.id = 'lab-' + fl.dataset.req; fl.setAttribute('aria-labelledby', lab.id); }
+  }
+  // The note after saving a scan: what is true now, then (after the sync that follows) whether the server has it.
+  function savedNote(id, isNew) {
+    var t = document.createElement('div'); t.className = 'toast act'; t.setAttribute('role', 'status');
+    var words = function () {
+      var e = S.entries.find(function (x) { return x.id === id; });
+      if (e && !e._dirty) return isNew ? T('Scan saved and synced.') : T('Changes saved and synced.');
+      var off = !NETR.deviceOnline(deviceNet()) || ['offline', 'unreachable', 'timeout'].indexOf(SY.fail) >= 0;
+      return off ? T('Saved on this device. Awaiting sync.') : isNew ? T('Scan saved.') : T('Changes saved.');
+    };
+    t.innerHTML = '<span data-msg></span>' + (isNew ? '<a href="#/entry/' + esc(id) + '">' + esc(T('View scan')) + '</a><a href="#/new?copy=' + esc(id) + '">' + esc(T('Same patient')) + '</a>' : '');
+    $('[data-msg]', t).textContent = words();
+    $$('a', t).forEach(function (a) { a.addEventListener('click', function () { t.remove(); }); });
+    $$('.toast.act').forEach(function (x) { x.remove(); });
+    document.body.appendChild(t);
+    var timer = setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 200); }, 6000);
+    return { update: function () { if (!document.body.contains(t)) return; var w = words(); if (w !== $('[data-msg]', t).textContent) { $('[data-msg]', t).textContent = w; clearTimeout(timer); timer = setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 200); }, 4000); } } };
   }
   var draftImages = []; // images and clips added in the form but not yet saved: { id, blob, thumb, w, h, kind }
   function viewEdit(r) {
@@ -814,30 +1292,43 @@
     var mine = {}; myPaths().forEach(function (pid) { PATHS[pid].modules.forEach(function (m) { m.types.forEach(function (t) { mine[t] = 1; }); }); });
     var ordered = C.types.slice().sort(function (a, b) { return (mine[b.id] || 0) - (mine[a.id] || 0); });
     var supNames = []; live().forEach(function (x) { if (x.supervisor && supNames.indexOf(x.supervisor) < 0) supNames.push(x.supervisor); });
-    var body = '<form id="ef" novalidate>' +
+    // 1.0.11: the form in clearly marked sections (presentation only: every field, value and name is unchanged).
+    // Level 1, a section with a numbered header; level 2, each question's label; level 3, its answers and hints.
+    var secN = 0;
+    var section = function (key, title, inner, sub) { secN++; return '<section class="fs" id="fs-' + key + '" aria-labelledby="fsh-' + key + '"><header class="fs-h"><span class="fs-n" aria-hidden="true">' + secN + '</span><div class="fs-t"><h2 id="fsh-' + key + '">' + esc(title) + '</h2>' + (sub ? '<p class="fs-sub" id="fss-' + key + '">' + esc(sub) + '</p>' : '') + '</div></header><div class="fs-b">' + inner + '</div></section>'; };
+    var req = '<span class="req">' + esc(T('Required')) + '</span>';
+    var supOpts = '<div class="seg col sup" role="radiogroup" aria-labelledby="lab-supervision">' + C.supervision.map(function (o, i) { return '<input type="radio" name="supervision" id="supervision' + i + '" value="' + esc(o.id) + '"' + (e.supervision === o.id ? ' checked' : '') + ' aria-describedby="suph' + i + '"><label for="supervision' + i + '"><b>' + esc(T(o.label)) + '</b>' + (o.help ? '<span id="suph' + i + '">' + esc(T(o.help)) + '</span>' : '') + '</label>'; }).join('') + '</div>';
+    var body = '<form id="ef" class="scanform" novalidate>' +
       (copyFrom ? '<div class="ok">' + esc(T('Same patient as your {type} scan. Choose the next application.', { type: T((TYPES[copyFrom.type] || {}).label || '') })) + '</div>' : '') +
-      '<div class="field"><span class="lab">' + esc(T('Application')) + '</span><div class="seg types">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>' +
+      section('type', T('Application'), '<div class="field" data-req="type"><span class="lab" id="lab-type">' + esc(T('Which scan did you do?')) + req + '</span><div class="seg types" role="radiogroup" aria-labelledby="lab-type">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>') +
       '<div id="rest"' + (e.type ? '' : ' hidden') + '>' +
-      '<div class="two"><div class="field"><label for="date">' + esc(T('Date')) + '</label><input id="date" name="date" type="date" max="' + today() + '" value="' + esc(e.date) + '" required></div>' +
-      '<div class="field"><label for="setting">' + esc(T('Setting')) + '</label><select id="setting" name="setting"><option value="">' + esc(T('Choose')) + '</option>' + C.settings.map(function (s) { return '<option value="' + esc(s) + '"' + (e.setting === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
-      '<div class="two"><div class="field"><label for="age">' + esc(T('Age band')) + '</label><select id="age" name="age"><option value="">' + esc(T('Not recorded')) + '</option>' + C.ageBands.map(function (s) { return '<option value="' + esc(s) + '"' + (e.age === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="field"><label for="sex">' + esc(T('Sex')) + '</label><select id="sex" name="sex"><option value="">' + esc(T('Not recorded')) + '</option>' + ['Female', 'Male'].map(function (s) { return '<option value="' + s + '"' + (e.sex === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
-      '<div class="field"><label for="ind">' + esc(T('Indication')) + '</label><input id="ind" name="indication" type="text" placeholder="' + esc(T('Clinical question, no identifiers')) + '" value="' + esc(e.indication || '') + '"></div>' +
-      '<div id="findings" class="card" style="padding:16px 14px 2px"></div>' +
-      '<div class="field"><span class="lab">' + esc(T('Overall')) + '</span>' + seg('overall', ['Normal', 'Abnormal', 'Indeterminate'], e.overall) + '</div>' +
-      '<div class="field"><span class="lab">' + esc(T('Image quality (your rating)')) + '</span>' + seg('quality', ['Good', 'Adequate', 'Limited', 'Inadequate'], e.quality, 'q4') + '</div>' +
-      '<div class="field"><label for="interp">' + esc(T('Your interpretation')) + '</label><textarea id="interp" name="interpretation" placeholder="' + esc(T('What you saw and what it means')) + '">' + esc(e.interpretation || '') + '</textarea></div>' +
-      '<div class="two"><div class="field"><label for="conf">' + esc(T('Confirmed by')) + '</label><select id="conf" name="confirmation"><option value="">' + esc(T('Not yet')) + '</option>' + C.confirmation.map(function (s) { return '<option value="' + esc(s) + '"' + (e.confirmation === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="field"><label for="conc">' + esc(T('Agreement')) + '</label><select id="conc" name="concordant"><option value="">' + esc(T('Not applicable')) + '</option>' + ['Agreed', 'Partly agreed', 'Disagreed'].map(function (s) { return '<option value="' + s + '"' + (e.concordant === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
-      '<div class="field"><label for="impact">' + esc(T('Impact on management')) + '</label><input id="impact" name="impact" type="text" placeholder="' + esc(T('For example, changed fluid plan, avoided CT')) + '" value="' + esc(e.impact || '') + '"></div>' +
-      '<div class="field"><span class="lab">' + esc(T('Supervision')) + '</span>' + seg('supervision', C.supervision, e.supervision) + '</div>' +
-      '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" list="supl" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"><datalist id="supl">' + supNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></div>' +
-      '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>' + esc(T('No sign-off needed for this scan')) + '</span></label></div>' +
-      '<div class="field"><span class="lab">' + esc(T('Images and clips')) + '</span><p class="hint">' + esc(T('Stay on this phone only. Crop and cover identifiers before you save. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
-      '<input type="file" accept="image/*" capture="environment" id="cam" hidden><input type="file" accept="image/*" id="pick" hidden multiple><input type="file" accept="video/*" capture="environment" id="vcam" hidden><input type="file" accept="video/*" id="vpick" hidden></div>' +
-      '<div class="field"><label for="refl">' + esc(T('Reflection')) + '</label><p class="hint">' + esc(T('What you learned and what you will do differently. Counts as a reflective note.')) + '</p><textarea id="refl" name="reflection">' + esc(e.reflection || '') + '</textarea></div>' +
+      '<p class="type-ok" id="typeok" aria-live="polite"></p>' +
+      section('details', T('Scan details'),
+        '<div class="two"><div class="field" data-req="date"><label for="date">' + esc(T('Date')) + req + '</label><input id="date" name="date" type="date" max="' + today() + '" value="' + esc(e.date) + '" required></div>' +
+        '<div class="field"><label for="setting">' + esc(T('Setting')) + '</label><select id="setting" name="setting"><option value="">' + esc(T('Choose')) + '</option>' + C.settings.map(function (s) { return '<option value="' + esc(s) + '"' + (e.setting === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
+        '<div class="two"><div class="field"><label for="age">' + esc(T('Age band')) + '</label><select id="age" name="age"><option value="">' + esc(T('Not recorded')) + '</option>' + C.ageBands.map(function (s) { return '<option value="' + esc(s) + '"' + (e.age === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field"><label for="sex">' + esc(T('Sex')) + '</label><select id="sex" name="sex"><option value="">' + esc(T('Not recorded')) + '</option>' + ['Female', 'Male'].map(function (s) { return '<option value="' + s + '"' + (e.sex === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
+        '<div class="field"><label for="ind">' + esc(T('Indication')) + '</label><input id="ind" name="indication" type="text" placeholder="' + esc(T('Clinical question, no identifiers')) + '" value="' + esc(e.indication || '') + '"></div>') +
+      section('findings', T('Examination findings'), '<div id="findings"></div>', ' ') +
+      section('interp', T('Interpretation and quality'),
+        '<div class="field"><span class="lab" id="q-overall">' + esc(T('Overall')) + '</span>' + seg('overall', ['Normal', 'Abnormal', 'Indeterminate'], e.overall, '', 'q-overall') + '</div>' +
+        '<div class="field"><span class="lab" id="q-quality">' + esc(T('Image quality (your rating)')) + '</span>' + seg('quality', ['Good', 'Adequate', 'Limited', 'Inadequate'], e.quality, 'q4', 'q-quality') + '</div>' +
+        '<div class="field"><label for="interp">' + esc(T('Your interpretation')) + '</label><textarea id="interp" name="interpretation" placeholder="' + esc(T('What you saw and what it means')) + '">' + esc(e.interpretation || '') + '</textarea></div>') +
+      section('confirm', T('Confirmation and clinical impact'),
+        '<div class="two"><div class="field"><label for="conf">' + esc(T('Confirmed by')) + '</label><select id="conf" name="confirmation"><option value="">' + esc(T('Not yet')) + '</option>' + C.confirmation.map(function (s) { return '<option value="' + esc(s) + '"' + (e.confirmation === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field"><label for="conc">' + esc(T('Agreement')) + '</label><select id="conc" name="concordant"><option value="">' + esc(T('Not applicable')) + '</option>' + ['Agreed', 'Partly agreed', 'Disagreed'].map(function (s) { return '<option value="' + s + '"' + (e.concordant === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
+        '<div class="field"><label for="impact">' + esc(T('Impact on management')) + '</label><input id="impact" name="impact" type="text" placeholder="' + esc(T('For example, changed fluid plan, avoided CT')) + '" value="' + esc(e.impact || '') + '"></div>') +
+      section('supervision', T('Supervision'),
+        '<div class="field" data-req="supervision"><span class="lab" id="lab-supervision">' + esc(T('Level of supervision')) + req + '</span>' + supOpts + '</div>' +
+        '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" list="supl" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"><datalist id="supl">' + supNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></div>' +
+        '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>' + esc(T('No sign-off needed for this scan')) + '</span></label></div>') +
+      section('media', T('Images and clips'),
+        '<div class="field"><p class="hint" id="media-hint">' + esc(T('Stay on this phone only. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
+        '<input type="file" accept="image/*" capture="environment" id="cam" hidden><input type="file" accept="image/*" id="pick" hidden multiple><input type="file" accept="video/*" capture="environment" id="vcam" hidden><input type="file" accept="video/*" id="vpick" hidden></div>') +
+      section('reflection', T('Reflection'),
+        '<div class="field"><label for="refl">' + esc(T('Your reflection')) + '</label><p class="hint">' + esc(T('What you learned and what you will do differently. Counts as a reflective note.')) + '</p><textarea id="refl" name="reflection">' + esc(e.reflection || '') + '</textarea></div>') +
       '<div id="counts"></div>' +
-      '<div class="err" hidden></div><div class="btns" style="position:sticky;bottom:calc(var(--tab) + var(--safe-b) + 8px)"><button class="btn teal block" type="submit">' + esc(editing ? T('Save changes') : T('Save scan')) + '</button></div>' +
+      '<div class="err" hidden></div><div class="btns savebar"><button class="btn teal block" type="submit">' + esc(editing ? T('Save changes') : T('Save scan')) + '</button></div>' +
       '</div></form>';
     mount(shell({ title: editing ? T('Edit scan') : copyFrom ? T('Another scan') : T('Log a scan'), back: editing ? 'entry/' + editing.id : '', tab: 'new' }, body));
     var form = $('#ef');
@@ -845,48 +1336,86 @@
       var t = TYPES[(form.querySelector('input[name=type]:checked') || {}).value];
       $('#rest').hidden = !t;
       if (!t) return;
+      $('#typeok').innerHTML = '<span class="ok-ic" aria-hidden="true">' + SI.check + '</span><span>' + esc(T('{type} selected', { type: T(t.label) })) + '</span><button type="button" class="link small" data-chgtype>' + esc(T('Change')) + '</button>';
+      $('[data-chgtype]', form).onclick = function () { var c = form.querySelector('input[name=type]:checked') || form.querySelector('input[name=type]'); scrollToField(c.closest('.field'), true); c.focus({ preventScroll: true }); };
       var cur = readFindings();
-      $('#findings').innerHTML = '<p class="eyebrow">' + esc(T('{type} findings', { type: T(t.label) })) + '</p>' + t.fields.map(function (fd) { return fieldHtml(fd, cur[fd.id] != null ? cur[fd.id] : (e.type === t.id ? (e.findings || {})[fd.id] : null)); }).join('');
+      $('#fss-findings').textContent = T(t.label);
+      $('#findings').innerHTML = t.fields.map(function (fd) { return fieldHtml(fd, cur[fd.id] != null ? cur[fd.id] : (e.type === t.id ? (e.findings || {})[fd.id] : null)); }).join('');
       var mods = modulesForType(t.id), ex = e.exclude || [];
-      $('#counts').innerHTML = mods.length ? '<div class="field"><span class="lab">' + esc(T('Counts towards')) + '</span><p class="hint">' + esc(T('Untick any target this scan should not count towards.')) + '</p><div class="seg">' + mods.map(function (m, i) { return '<input type="checkbox" name="count" id="cm' + i + '" value="' + m.id + '"' + (ex.indexOf(m.id) < 0 ? ' checked' : '') + '><label for="cm' + i + '">' + esc(m.label) + '</label>'; }).join('') + '</div></div>' : '';
+      $('#counts').innerHTML = mods.length ? '<section class="fs" id="fs-counts" aria-labelledby="fsh-counts"><header class="fs-h"><span class="fs-n" aria-hidden="true">' + (secN + 1) + '</span><div class="fs-t"><h2 id="fsh-counts">' + esc(T('Accreditation pathways')) + '</h2></div></header><div class="fs-b"><div class="field"><span class="lab" id="q-counts">' + esc(T('Counts towards')) + '</span><p class="hint">' + esc(T('Untick any target this scan should not count towards.')) + '</p><div class="seg multi" role="group" aria-labelledby="q-counts">' + mods.map(function (m, i) { return '<input type="checkbox" name="count" id="cm' + i + '" value="' + m.id + '"' + (ex.indexOf(m.id) < 0 ? ' checked' : '') + '><label for="cm' + i + '">' + esc(m.label) + '</label>'; }).join('') + '</div></div></div></section>' : '';
     };
     var readFindings = function () {
       var out = {}, fd = new FormData(form);
       fd.forEach(function (v, k) { if (k.indexOf('f.') !== 0) return; var id = k.slice(2); var t = TYPES[(form.querySelector('input[name=type]:checked') || {}).value]; var def = t && t.fields.find(function (x) { return x.id === id; }); if (def && def.type === 'multi') (out[id] = out[id] || []).push(v); else if (v !== '') out[id] = def && def.type === 'number' ? Number(v) : v; });
       return out;
     };
-    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; setTimeout(function () {
-      // The next inputs after the application are the Date and Setting row: its labels land just below the header.
-      scrollToField($('#date').closest('.two'), true);
-    }, 60); }); });
+    // After the application, the next thing to fill in is the date: bring the Date and Setting row up just below the
+    // header and mark it briefly. Nothing is focused, so no keyboard or date picker opens by itself.
+    // 1.0.11: guided, not abrupt. The chosen application is marked first, held for a moment so it can be seen, then
+    // the form glides to the confirmation and the date. A later change of state never restarts it (one timer, one
+    // glide); nothing is focused, so no keyboard or date picker opens.
+    var toDate = function (hold) {
+      clearTimeout(glide.timer);
+      var picked = form.querySelector('input[name=type]:checked + label');
+      if (picked) { picked.classList.remove('picked'); void picked.offsetWidth; picked.classList.add('picked'); }
+      glide.timer = setTimeout(function () {
+        glide.timer = 0;
+        if (!document.body.contains(form)) return;
+        var row = $('#date').closest('.two');
+        scrollToField($('#typeok') && $('#typeok').textContent ? $('#typeok') : row, true).then(function () {
+          row.classList.remove('next-up'); void row.offsetWidth; row.classList.add('next-up');
+          setTimeout(function () { row.classList.remove('next-up'); }, 1600);
+        });
+      }, reducedMotion() ? 0 : hold);
+    };
+    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; toDate(260); }); });
     form.addEventListener('input', function () { form.dataset.dirty = '1'; });
+    // A required field marked as missing clears as soon as it is filled in.
+    var clearInvalid = function (ev) { var fl = ev.target.closest && ev.target.closest('.field.invalid'); if (fl && fieldOk(form, fl.dataset.req)) markField(fl, ''); };
+    form.addEventListener('change', clearInvalid); form.addEventListener('input', clearInvalid);
     drawFindings();
+    // "Log one" from a pathway (#/new?type=...): the application is already chosen, so go straight on to the date,
+    // after the screen has settled at the top (the router scrolls to the top after drawing).
+    if (!editing && !copyFrom && e.type && TYPES[e.type]) {
+      setTimeout(function () { if (document.body.contains(form)) { toDate(420); announce(T('{type} selected. Next: the date of the scan.', { type: T(TYPES[e.type].label) })); } }, 80);
+    }
     // Images and clips
     var existing = editing ? (editing.images || []).slice() : [];
     var removed = [];
     var count = function () { return existing.length - removed.length + draftImages.length; };
     var drawGallery = function () {
       var g = $('#gal');
-      var items = existing.filter(function (x) { return removed.indexOf(x.id) < 0; }).map(function (x) { return '<button type="button" data-old="' + x.id + '"><img alt="' + esc(T('Scan image')) + '" data-img="' + x.id + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : '') + '<span class="x" data-rm="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; })
-        .concat(draftImages.map(function (x) { return '<button type="button"><img alt="' + esc(T('Scan image')) + '" src="' + URL.createObjectURL(x.thumb) + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : '') + '<span class="x" data-rmd="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; }));
+      // 1.0.12: a photo can be opened again to change its annotations, crop, orientation or add redactions. It
+      // opens from its redacted copy, so redactions already made stay; clips cannot be edited after preparing.
+      var edBtn = function (attr, id) { return '<span class="ed" ' + attr + '="' + id + '" role="button" tabindex="0" aria-label="' + esc(T('Edit image')) + '">' + ET.annotate + '</span>'; };
+      var items = existing.filter(function (x) { return removed.indexOf(x.id) < 0; }).map(function (x) { return '<button type="button" data-old="' + x.id + '"><img alt="' + esc(T('Scan image')) + '" data-img="' + x.id + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : edBtn('data-edold', x.id)) + '<span class="x" data-rm="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; })
+        .concat(draftImages.map(function (x) { return '<button type="button"><img alt="' + esc(T('Scan image')) + '" src="' + URL.createObjectURL(x.thumb) + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : edBtn('data-eddr', x.id)) + '<span class="x" data-rmd="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; }));
       g.innerHTML = items.join('') + '<button type="button" class="add" id="addcam">' + I.camera + esc(T('Take photo')) + '</button><button type="button" class="add" id="addpick">' + I.file + esc(T('Choose')) + '</button><button type="button" class="add" id="addclip">' + I.video + esc(T('Clip')) + '</button>';
       $$('[data-img]', g).forEach(function (im) { getOne('images', im.dataset.img).then(function (rec) { if (rec) im.src = imgUrl(rec, true); }); });
       $('#addcam').onclick = function () { $('#cam').click(); };
       $('#addpick').onclick = function () { $('#pick').click(); };
       $('#addclip').onclick = function () {
         if (!clipSupported()) { toast(T('This phone cannot prepare clips. Save a still image instead.'), 4000); return; }
-        sheet('<h2>' + esc(T('Add a clip')) + '</h2><p class="muted small">' + esc(T('Record the ultrasound screen for up to 10 seconds, or choose a clip from your phone. You then crop it and cover any identifiers. Sound is removed.')) + '</p><div class="btns"><button class="btn teal block" data-v="vcam">' + esc(T('Record a clip')) + '</button><button class="btn ghost block" data-v="vpick">' + esc(T('Choose a clip')) + '</button></div>', function (root) { $$('[data-v]', root).forEach(function (b) { b.onclick = function () { closeSheet(); $('#' + b.dataset.v).click(); }; }); });
+        sheet('<h2>' + esc(T('Add a clip')) + '</h2><p class="muted small">' + esc(T('Record the ultrasound screen for up to 10 seconds, or choose a clip from your phone. You then crop it, redact any identifiers and annotate it if you wish. Sound is removed.')) + '</p><div class="btns"><button class="btn teal block" data-v="vcam">' + esc(T('Record a clip')) + '</button><button class="btn ghost block" data-v="vpick">' + esc(T('Choose a clip')) + '</button></div>', function (root) { $$('[data-v]', root).forEach(function (b) { b.onclick = function () { closeSheet(); $('#' + b.dataset.v).click(); }; }); });
       };
       $$('[data-rm]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); removed.push(x.dataset.rm); form.dataset.dirty = '1'; drawGallery(); }; });
       $$('[data-rmd]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); draftImages = draftImages.filter(function (d) { return d.id !== x.dataset.rmd; }); drawGallery(); }; });
+      var bindEd = function (x, go2) { x.onclick = function (ev) { ev.stopPropagation(); go2(); }; x.onkeydown = function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); go2(); } }; };
+      $$('[data-edold]', g).forEach(function (x) { bindEd(x, function () { var id = x.dataset.edold; getOne('images', id).then(function (rec) { if (!rec) return; reEdit(rec, function (res) { res.id = uid(); draftImages.push(res); removed.push(id); form.dataset.dirty = '1'; drawGallery(); }); }); }); });
+      $$('[data-eddr]', g).forEach(function (x) { bindEd(x, function () { var i = draftImages.findIndex(function (d) { return d.id === x.dataset.eddr; }); if (i < 0) return; reEdit(draftImages[i], function (res) { res.id = uid(); draftImages[i] = res; form.dataset.dirty = '1'; drawGallery(); }); }); });
     };
+    var scanType = function () { var c = form.querySelector('input[name=type]:checked'); return c ? c.value : ''; };
+    // Re-editing starts from the unannotated base when there is one. Without it (no annotations, or a backup that lost the
+    // base file) the saved picture is the starting point and any annotations are already in its pixels, so none are
+    // offered again. The earlier turns are carried forward, so the orientation stated is the change from the original.
+    var reEdit = function (rec, done) { editImage(rec.base || rec.blob, { type: scanType(), annot: rec.base && rec.annot ? rec.annot : { ann: [] }, prov: rec.prov, prior: rec.edits || { r: 0, m: false } }).then(function (res) { if (res) done(res); }); };
     drawGallery();
     var onFiles = function (inp, clip) {
       var files = Array.prototype.slice.call(inp.files || []); inp.value = '';
       var nextFile = function () {
         var f = files.shift(); if (!f) return;
         if (count() >= 12) { toast(T('Up to 12 images or clips per scan.')); return; }
-        (clip ? editClip(f) : editImage(f)).then(function (res) { if (res) { res.id = uid(); draftImages.push(res); form.dataset.dirty = '1'; drawGallery(); } nextFile(); });
+        (clip ? editClip(f, { type: scanType() }) : editImage(f, { type: scanType() })).then(function (res) { if (res) { res.id = uid(); draftImages.push(res); form.dataset.dirty = '1'; drawGallery(); } nextFile(); });
       };
       nextFile();
     };
@@ -895,8 +1424,10 @@
     $('#vcam').addEventListener('change', function () { onFiles(this, true); });
     $('#vpick').addEventListener('change', function () { onFiles(this, true); });
     // Save
+    var saving = false;
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
+      if (saving) return; // a second tap while the first save is still running
       var err = $('.err', form); err.hidden = true;
       var d = formData(form);
       var out = editing ? Object.assign({}, strip(editing)) : { id: uid(), createdAt: Date.now() };
@@ -907,11 +1438,24 @@
       var mods = modulesForType(out.type).map(function (m) { return m.id; });
       var ticked = $$('input[name=count]:checked', form).map(function (i) { return i.value; });
       out.exclude = mods.filter(function (m) { return ticked.indexOf(m) < 0; });
-      if (!out.type) { err.textContent = T('Choose the application.'); err.hidden = false; return; }
-      if (!out.date || out.date > today()) { err.textContent = T('Enter the date of the scan.'); err.hidden = false; return; }
-      if (!out.supervision) { err.textContent = T('Choose the level of supervision.'); err.hidden = false; scrollToField($('input[name=supervision]').closest('.field')); return; }
+      // Required fields (unchanged from 1.0.9: application, a date not in the future, supervision): each one missing is
+      // marked where it is, and the first is brought into view and focused for screen readers. Nothing is cleared.
+      var missing = [['type', T('Choose the application.')], ['date', out.date > today() ? T('The date cannot be in the future.') : T('Enter the date of the scan.')], ['supervision', T('Choose the level of supervision.')]].filter(function (x) { return !fieldOk(form, x[0]); });
+      $$('.field.invalid', form).forEach(function (fl) { markField(fl, ''); });
+      if (missing.length) {
+        missing.forEach(function (x) { markField($('[data-req="' + x[0] + '"]', form), x[1]); });
+        var first = $('[data-req="' + missing[0][0] + '"]', form);
+        scrollToField(first, true);
+        first.focus({ preventScroll: true });
+        NAT.haptic('warning');
+        return;
+      }
+      // The server refuses an entry over 20,000 characters, so say so here rather than keep one that cannot sync.
+      if (JSON.stringify(strip(out)).length > 19000) { err.textContent = T('This scan has too much text to sync. Shorten the reflection or other notes.'); err.hidden = false; return; }
       var hits = guard(out);
       var finish = function () {
+        var btn = $('button[type=submit]', form);
+        saving = true; busy(btn, true, T('Saving…'));
         var keepImgs = existing.filter(function (x) { return removed.indexOf(x.id) < 0; });
         out.images = keepImgs.concat(draftImages.map(function (x) { var o = { id: x.id, w: x.w, h: x.h, declared: true }; if (x.kind === 'clip') { o.kind = 'clip'; o.dur = x.dur; } return o; }));
         out._dirty = true; if (!editing) out._new = true;
@@ -919,16 +1463,27 @@
         if (draftImages.length && navigator.storage && navigator.storage.persist) navigator.storage.persist();
         fingerprints(out.images, draftImages, editing && editing.media).then(function (media) {
           if (media.length) out.media = media; else delete out.media;
-          var jobs = draftImages.map(function (x) { return put('images', { id: x.id, entryId: out.id, blob: x.blob, thumb: x.thumb, w: x.w, h: x.h, kind: x.kind || 'image', dur: x.dur, sha256: x.sha256, created: Date.now() }); })
+          var jobs = draftImages.map(function (x) { var rec = { id: x.id, entryId: out.id, blob: x.blob, thumb: x.thumb, w: x.w, h: x.h, kind: x.kind || 'image', dur: x.dur, sha256: x.sha256, edits: x.edits, created: Date.now() }; if (x.base) rec.base = x.base; if (x.annot) rec.annot = x.annot; if (x.prov) rec.prov = x.prov; return put('images', rec); })
             .concat(removed.map(function (id) { return del('images', id); }));
           return Promise.all(jobs);
         }).then(function () { return saveLocal(out); }).then(function () {
-          setKv('lastSetting', out.setting); draftImages = []; NAT.haptic('success');
-          delete form.dataset.dirty;
-          sheet('<h2>' + esc(T('Scan saved')) + '</h2><p class="muted">' + esc(T((TYPES[out.type] || {}).label || '')) + ', ' + esc(fmt(out.date)) + '.</p>' + nextTargetsHtml(out) +
-            '<div class="btns"><a class="btn teal block" href="#/new?copy=' + out.id + '" data-close>' + esc(T('Another scan, same patient')) + '</a><a class="btn ghost block" href="#/new" data-close data-fresh>' + esc(T('New patient')) + '</a><a class="btn ghost block" href="#/entry/' + out.id + '" data-close>' + esc(T('View this scan')) + '</a></div>');
-          go('entry/' + out.id); sync();
-        }).catch(function (ex) { err.textContent = T('Could not save on this device: {why}', { why: (ex && ex.message) || ex }); err.hidden = false; });
+          // Saved on this device. Nothing after this point may report the save as failed (a second Save would then
+          // make a duplicate), so the screen change runs on its own.
+          delete form.dataset.dirty; draftImages = [];
+          try { setKv('lastSetting', out.setting); NAT.haptic('success'); } catch (e) { /* not essential */ }
+          setTimeout(function () {
+            // A new scan goes back Home; an edit goes back to the scan. A short note says what actually happened,
+            // and changes to "synced" only once the server has acknowledged this scan.
+            var note = savedNote(out.id, !editing);
+            go(editing ? 'entry/' + out.id : '');
+            sync().then(function () { note.update(); });
+          }, 0);
+        }, function (ex) {
+          // Not saved: stay on the form with everything as entered.
+          saving = false; busy(btn, false);
+          err.textContent = T('Could not save on this device: {why}', { why: (ex && ex.message) || ex }); err.hidden = false;
+          scrollToField(err, true);
+        });
       };
       if (hits.length) {
         sheet('<h2>' + esc(T('Check for identifiers')) + '</h2><p>' + esc(T('Your text looks like it includes {what}. Your logbook must never hold patient-identifiable information.', { what: hits.join(', ') })) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Go back and edit')) + '</button><button class="btn ghost block" data-ok>' + esc(T('It is not an identifier, save')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); finish(); }; });
@@ -960,80 +1515,405 @@
       return (images || []).map(function (im, i) { return hs[i] ? { id: im.id, sha256: hs[i], kind: im.kind === 'clip' ? 'clip' : 'image' } : null; }).filter(Boolean);
     });
   }
-  function nextTargetsHtml(e) {
-    var rows = [];
-    myPaths().forEach(function (pid) { var ps = pathwayStats(pid); ps.stats.forEach(function (s) { if (s.mod.types.indexOf(e.type) >= 0 && (e.exclude || []).indexOf(s.mod.id) < 0 && s.total) rows.push('<div class="mod ' + s.colour + '" style="margin:0 0 8px;padding:12px"><div class="row"><b class="grow">' + esc(ps.pw.label + ' ' + T(s.mod.label)) + '</b><span>' + s.counted + ' / ' + s.total + '</span></div><p class="need small" style="margin:4px 0 0">' + esc(needText(s)) + '</p></div>'); }); });
-    return rows.length ? '<div style="margin:12px 0">' + rows.join('') + '</div>' : '';
+  // ---------- Media editor (1.0.12): Annotate | Adjust | Redact, for photos and clips ----------
+  // The model, drawing and geometry live in editor.js (window.WLEditor), shared by both editors and tested in Node.
+  // Every change is held as state (crop, orientation, redactions, annotations) and drawn by one function into the
+  // preview, the saved photo and every recorded clip frame, so what is saved is what was shown. Redaction is a solid
+  // black or grey fill in the pixels, placed in source coordinates so it stays on the identifier through any crop,
+  // turn or flip; a label, crop or turn is never taken to have removed an identifier, and the declaration stays
+  // mandatory. Annotations are drawn over the redacted picture and kept as data, so a photo's annotations can be
+  // changed later from a copy that is already redacted: no unredacted original is ever stored. The original file
+  // stays where it was on the phone. Nothing measures anything: there are no calibrated distance or area tools.
+  var EDT = window.WLEditor;
+  var ET = {
+    crop: ic('<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>', 20),
+    redact: ic('<rect x="3" y="5" width="18" height="14" rx="2"/><rect x="6" y="8" width="8" height="4" fill="currentColor" stroke="none"/>', 20),
+    annotate: ic('<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M14 8l3 3"/>', 20),
+    trim: ic('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18" stroke-dasharray="2 2"/><path d="M12 13v5M9.5 15.5 12 13l2.5 2.5"/>', 20),
+    rotate: ic('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>', 20),
+    fliph: ic('<path d="M12 3v18" stroke-dasharray="2 2"/><path d="M9 7 3 17h6zM15 7l6 10h-6z"/>', 20),
+    flipv: ic('<path d="M3 12h18" stroke-dasharray="2 2"/><path d="M7 9 17 3v6zM7 15l10 6v-6z"/>', 20),
+    text: ic('<path d="M5 6V4h14v2M12 4v16M9 20h6"/>', 20),
+    label: ic('<path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9-9-9z"/><circle cx="7.5" cy="7.5" r="1.5"/>', 20),
+    arrow: ic('<path d="M5 19 19 5M10 5h9v9"/>', 20),
+    dot: '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>',
+    circle: ic('<circle cx="12" cy="12" r="8"/>', 20),
+    box: ic('<rect x="4" y="6" width="16" height="12" rx="1"/>', 20),
+    picto: ic('<circle cx="12" cy="5" r="2"/><path d="M8 10h8l-1 5h-2l-1 6-1-6H9z"/>', 20),
+    play: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>',
+    pause: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>'
+  };
+  var orientAfter = EDT.orientAfter;
+  function orientWords(o) {
+    if (!o.m) return ['', 'Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise'][o.r] ? T(['', 'Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise'][o.r]) : '';
+    return T(['Flipped horizontally', 'Flipped horizontally, then rotated 90° clockwise', 'Flipped vertically', 'Flipped horizontally, then rotated 90° anticlockwise'][o.r]);
   }
-
-  // ---------- Image editor: crop, cover identifiers, rotate. Re-encoding strips hidden photo data. ----------
-  function editorFrame(title, extraTools, declText, saveLabel) {
-    var el = document.createElement('div'); el.className = 'editor';
-    el.innerHTML = '<div class="bar-top"><button class="tool" data-a="cancel">' + esc(T('Cancel')) + '</button><b style="flex:1;text-align:center">' + esc(title) + '</b><button class="tool" data-a="undo">' + esc(T('Undo')) + '</button></div>' +
-      '<div class="stage"><canvas></canvas><div class="sel" hidden></div></div>' +
-      '<p class="tip" data-tip>' + esc(T('Drag to choose the area to keep, then tap Apply crop. Most machines show patient details along the top: Trim top removes that strip.')) + '</p>' +
-      '<div class="bar-bot"><button class="tool" data-m="crop" aria-pressed="true">' + esc(T('Crop')) + '</button><button class="tool" data-m="cover" aria-pressed="false">' + esc(T('Cover')) + '</button><button class="tool" data-a="trim">' + esc(T('Trim top')) + '</button>' + extraTools + '<button class="tool" data-a="apply">' + esc(T('Apply crop')) + '</button>' +
-      '<label class="check" style="width:100%;color:#fff;padding:8px 4px 4px;font-size:14px"><input type="checkbox" data-decl><span>' + esc(declText) + '</span></label>' +
-      '<button class="btn teal block" data-a="save" disabled>' + esc(saveLabel) + '</button></div>';
+  var COLOUR_NAMES = { white: 'White', yellow: 'Yellow', cyan: 'Cyan', red: 'Red' };
+  var EDP = { mode: 'adjust', color: 'yellow', size: 'm', bg: 'outline', redact: 'black' }; // colour, size and fill are remembered while the app is open
+  // cfg: kind ('image' | 'clip'), title, declText, saveLabel, media (clip controls), type (scan type), w and h (source
+  // size), state (initial crop, orient, redact, ann), source() (what to draw), time() (clip seconds into the kept
+  // selection, or null), locked() (true while a clip is being prepared), onState(), save(state, el), close(value).
+  function mediaEditor(cfg) {
+    $$('.toast').forEach(function (t) { t.remove(); }); // nothing may sit over the declaration or the tools
+    var st = JSON.parse(JSON.stringify(cfg.state)), st0 = JSON.stringify(st), undo = [], redo = [], sel = -1, tool = '', pending = null;
+    var clip = cfg.kind === 'clip';
+    var tb = function (k, label, full, attrs) { return '<button type="button" class="tool et" ' + attrs + ' aria-label="' + esc(full || label) + '">' + ET[k] + '<span>' + esc(label) + '</span></button>'; };
+    var el = document.createElement('div'); el.className = 'editor' + (clip ? ' clip' : ''); el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', cfg.title);
+    el.innerHTML = '<div class="bar-top"><button type="button" class="tool" data-a="cancel">' + esc(T('Cancel')) + '</button><b class="ed-title">' + esc(cfg.title) + '</b><button type="button" class="tool" data-a="undo" disabled>' + esc(T('Undo')) + '</button><button type="button" class="tool" data-a="redo" disabled>' + esc(T('Redo')) + '</button></div>' +
+      '<div class="stage"><canvas tabindex="0" aria-label="' + esc(T('Picture being edited')) + '"></canvas><div class="sel" hidden></div><div class="ann-sel" hidden><span class="h" data-h="a"></span><span class="h" data-h="b"></span></div></div>' +
+      (cfg.media || '') +
+      '<div class="bar-bot">' +
+      '<div class="ed-modes" role="tablist" aria-label="' + esc(T('Editing mode')) + '">' +
+        '<button type="button" role="tab" class="ed-mode" data-tab="annotate" aria-selected="false">' + ET.annotate + '<span>' + esc(T('Annotate')) + '</span></button>' +
+        '<button type="button" role="tab" class="ed-mode" data-tab="adjust" data-m="crop" aria-selected="false" aria-label="' + esc(T('Adjust: crop, trim, rotate and flip')) + '">' + ET.crop + '<span>' + esc(T('Adjust')) + '</span></button>' +
+        '<button type="button" role="tab" class="ed-mode" data-tab="redact" data-m="cover" aria-selected="false" aria-label="' + esc(T('Redact: cover patient identifiers')) + '">' + ET.redact + '<span>' + esc(T('Redact')) + '</span></button></div>' +
+      '<p class="tip" data-tip aria-live="polite"></p>' +
+      '<div class="ed-panel" data-panel="adjust" hidden><div class="ed-tools" role="toolbar" aria-label="' + esc(T('Adjust tools')) + '">' + tb('trim', T('Trim top'), T('Trim the top strip'), 'data-a="trim"') + tb('rotate', T('Rotate'), T('Rotate 90° clockwise'), 'data-a="rotate"') + tb('fliph', T('Flip H'), T('Flip horizontally'), 'data-a="fliph"') + tb('flipv', T('Flip V'), T('Flip vertically'), 'data-a="flipv"') + '</div>' +
+        '<div class="ed-row"><p class="ed-applied" data-applied aria-live="polite"></p><button type="button" class="tool" data-a="reset" hidden>' + esc(T('Reset')) + '</button><button type="button" class="tool apply" data-a="apply" hidden>' + esc(T('Apply crop')) + '</button></div></div>' +
+      '<div class="ed-panel" data-panel="redact" hidden><div class="ed-row"><span class="ed-lab">' + esc(T('Fill')) + '</span><div class="ed-seg" role="radiogroup" aria-label="' + esc(T('Redaction colour')) + '"><button type="button" role="radio" data-rc="black">' + esc(T('Black')) + '</button><button type="button" role="radio" data-rc="grey">' + esc(T('Grey')) + '</button></div><p class="ed-applied" data-rcount aria-live="polite"></p></div>' +
+        '<p class="ed-note2">' + esc(T('Redaction is solid and is saved in the picture itself. Blurring is not offered, because it can leave identifiers readable.')) + '</p></div>' +
+      '<div class="ed-panel" data-panel="annotate" hidden><div class="ed-tools ann-tools" role="toolbar" aria-label="' + esc(T('Annotation tools')) + '">' + tb('text', T('Text'), T('Add your own text'), 'data-at="text"') + tb('label', T('Label'), T('Add a clinical label'), 'data-at="label"') + tb('arrow', T('Arrow'), T('Draw an arrow'), 'data-at="arrow"') + tb('dot', T('Dot'), T('Place a pointer dot'), 'data-at="dot"') + tb('circle', T('Circle'), T('Draw a circle'), 'data-at="circle"') + tb('box', T('Box'), T('Draw a box'), 'data-at="rect"') + tb('picto', T('Pictogram'), T('Add a pictogram'), 'data-at="picto"') + '</div>' +
+        '<div class="ed-row ed-opts"><div class="ed-swatches" role="radiogroup" aria-label="' + esc(T('Colour')) + '">' + Object.keys(EDT.COLOURS).map(function (c) { return '<button type="button" role="radio" class="sw" data-col="' + c + '" style="--sw:' + EDT.COLOURS[c] + '" aria-label="' + esc(T(COLOUR_NAMES[c])) + '"></button>'; }).join('') + '</div><div class="ed-seg" role="radiogroup" aria-label="' + esc(T('Size')) + '">' + [['s', 'S', 'Small'], ['m', 'M', 'Medium'], ['l', 'L', 'Large']].map(function (z) { return '<button type="button" role="radio" data-sz="' + z[0] + '" aria-label="' + esc(T(z[2])) + '">' + z[1] + '</button>'; }).join('') + '</div></div>' +
+        '<div class="ed-selbar" hidden><p class="ed-applied" data-selname aria-live="polite"></p><div class="ed-selacts"><button type="button" class="tool" data-sa="edit">' + esc(T('Edit text')) + '</button><button type="button" class="tool" data-sa="bg">' + esc(T('Background')) + '</button><button type="button" class="tool" data-sa="turn">' + esc(T('Turn')) + '</button><button type="button" class="tool" data-sa="flip">' + esc(T('Mirror')) + '</button><button type="button" class="tool" data-sa="del">' + esc(T('Delete')) + '</button><button type="button" class="tool apply" data-sa="done">' + esc(T('Done')) + '</button></div>' +
+        (clip ? '<div class="ed-seg ed-when" role="radiogroup" aria-label="' + esc(T('When it shows')) + '"><button type="button" role="radio" data-when="all">' + esc(T('Whole clip')) + '</button><button type="button" role="radio" data-when="from">' + esc(T('From here')) + '</button><button type="button" role="radio" data-when="until">' + esc(T('Until here')) + '</button></div><p class="ed-note2" data-whentext></p>' : '') + '</div>' +
+        '<div class="ann-list" data-annlist></div></div>' +
+      '<p class="ed-err" data-err role="alert" hidden></p>' +
+      '<label class="check ed-decl"><input type="checkbox" data-decl><span>' + esc(cfg.declText) + '</span></label>' +
+      '<button type="button" class="btn teal block" data-a="save" disabled>' + esc(cfg.saveLabel) + '</button>' +
+      '<p class="ed-note">' + esc(T('Your original stays where it is on your phone. Wavelength keeps only this edited copy.')) + '</p></div>' +
+      '<div class="ed-pop" hidden role="dialog" aria-modal="true"></div>';
     document.body.appendChild(el);
-    return el;
+    var cv = $('canvas', el), stage = $('.stage', el), box = $('.sel', el), asel = $('.ann-sel', el), pop = $('.ed-pop', el);
+    var undoBtn = $('[data-a=undo]', el), redoBtn = $('[data-a=redo]', el), resetBtn = $('[data-a=reset]', el), applyBtn = $('[data-a=apply]', el), save = $('[data-a=save]', el), decl = $('[data-decl]', el);
+    var mctx = document.createElement('canvas').getContext('2d'); // for measuring text
+    var snap = function () { return JSON.stringify(st); };
+    var change = function () { undo.push(snap()); if (undo.length > 60) undo.shift(); redo = []; };
+    var size = function () { return EDT.outSize(st.crop, st.orient, 1); };
+    var paint = function () { cfg.paint(cv, st); drawSel(); };
+    // While a finger drags, the picture is redrawn at most once a frame (a full 2048 px repaint per pointer event is wasted).
+    var paintRaf = 0;
+    var paintSoon = function () { if (paintRaf) return; paintRaf = requestAnimationFrame(function () { paintRaf = 0; paint(); }); };
+    var tip = function (s) { $('[data-tip]', el).textContent = s; };
+    // ---- state helpers ----
+    var setFrame = function (crop, orient) {
+      var r = EDT.mapAnnotations(st.ann, { crop: st.crop, orient: st.orient }, { crop: crop, orient: orient });
+      st.crop = crop; st.orient = orient; st.ann = r.ann; sel = -1;
+      if (r.dropped) toastIn(T('{n} annotations were outside the new crop and were removed. Undo brings them back.', { n: r.dropped }));
+    };
+    var toastIn = function (msg) { var t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg; el.appendChild(t); setTimeout(function () { t.remove(); }, 3600); };
+    var state = function () {
+      $('[data-applied]', el).textContent = orientWords(EDT.composeOrient(cfg.prior, st.orient));
+      undoBtn.disabled = !undo.length; redoBtn.disabled = !redo.length; resetBtn.hidden = snap() === st0;
+      var nr = st.redact.length;
+      $('[data-rcount]', el).textContent = nr ? T('{n} areas redacted', { n: nr }) : '';
+      $$('[data-rc]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.rc === EDP.redact)); });
+      $$('[data-col]', el).forEach(function (b) { var a = st.ann[sel]; b.setAttribute('aria-checked', String(b.dataset.col === (a ? a.color : EDP.color))); });
+      $$('[data-sz]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.sz === EDP.size)); });
+      $$('[data-at]', el).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.at === tool)); });
+      var a = st.ann[sel], sb = $('.ed-selbar', el);
+      sb.hidden = !a;
+      if (a) {
+        $('[data-selname]', el).textContent = T('Selected: {what}', { what: EDT.describe(a, T) });
+        $('[data-sa=edit]', el).hidden = a.type !== 'text'; $('[data-sa=bg]', el).hidden = a.type !== 'text';
+        $('[data-sa=turn]', el).hidden = ['text', 'picto', 'rect'].indexOf(a.type) < 0; $('[data-sa=flip]', el).hidden = a.type !== 'picto';
+        if (clip) {
+          var w = a.t0 == null && a.t1 == null ? 'all' : a.t0 != null && a.t1 == null ? 'from' : a.t1 != null && a.t0 == null ? 'until' : 'range';
+          $$('[data-when]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.when === w)); });
+          $('[data-whentext]', el).textContent = a.t0 == null && a.t1 == null ? T('Shows for the whole clip.') : a.t1 == null ? T('Shows from {a} s to the end of the kept clip.', { a: (a.t0 || 0).toFixed(1) }) : T('Shows from {a} s to {b} s of the kept clip.', { a: (a.t0 || 0).toFixed(1), b: a.t1.toFixed(1) });
+        }
+      }
+      $('[data-annlist]', el).innerHTML = st.ann.length ? '<span class="ed-lab">' + esc(T('On the picture')) + '</span>' + st.ann.map(function (x, i) { return '<button type="button" class="chipb" data-pick="' + i + '" aria-pressed="' + (i === sel) + '">' + esc(EDT.describe(x, T)) + '</button>'; }).join('') : '';
+      if (cfg.onState) cfg.onState(st);
+    };
+    var redraw = function () { paint(); state(); };
+    // ---- modes ----
+    var TIPS = { adjust: T('Drag to choose the area to keep, then tap Apply crop. Most machines show patient details along the top: Trim top removes that strip.'), redact: clip ? T('Drag over any name, number, date or label. The redaction stays on every frame.') : T('Drag over any name, number, date or label to cover it.'), annotate: T('Choose a tool, then tap or drag on the picture. Tap an annotation to move, change or delete it.') };
+    var setMode = function (m) {
+      EDP.mode = m; tool = ''; sel = -1; pending = null; box.hidden = true; applyBtn.hidden = true; el.dataset.mode = m;
+      $$('[data-tab]', el).forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === m)); b.setAttribute('aria-pressed', String(b.dataset.tab === m)); });
+      $$('[data-panel]', el).forEach(function (p) { p.hidden = p.dataset.panel !== m; });
+      tip(TIPS[m]); redraw();
+    };
+    // ---- pointer: crop and redaction boxes, drawing and moving annotations ----
+    var at = function (ev) { var r = cv.getBoundingClientRect(); return { x: Math.max(0, Math.min(cv.width, (ev.clientX - r.left) * cv.width / r.width)), y: Math.max(0, Math.min(cv.height, (ev.clientY - r.top) * cv.height / r.height)) }; };
+    var showBox = function (s) {
+      if (!s) { box.hidden = true; return; }
+      var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / cv.width;
+      box.hidden = false; box.className = 'sel' + (EDP.mode === 'redact' ? ' box' + (EDP.redact === 'grey' ? ' grey' : '') : '');
+      box.style.left = (r.left - sr.left + s.x * k) + 'px'; box.style.top = (r.top - sr.top + s.y * k) + 'px'; box.style.width = s.w * k + 'px'; box.style.height = s.h * k + 'px';
+    };
+    var k0 = function () { return cv.width / size().w; }; // preview pixels per output pixel
+    var drag = null, cropSel = null;
+    cv.addEventListener('pointerdown', function (ev) {
+      if (cfg.locked()) return;
+      ev.preventDefault(); try { cv.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ }
+      var p = at(ev), W = cv.width, H = cv.height;
+      if (EDP.mode === 'adjust' || EDP.mode === 'redact') { cropSel = null; drag = { kind: 'box', start: p, s: { x: p.x, y: p.y, w: 0, h: 0 } }; showBox(drag.s); applyBtn.hidden = true; return; }
+      var t = cfg.time(), i = EDT.hit(mctx, st.ann, W, H, p.x, p.y, t);
+      if (i >= 0 && (!tool || tool === 'text' || tool === 'label' || tool === 'picto')) { sel = i; drag = { kind: 'move', start: p, orig: JSON.stringify(st.ann[i]), before: snap() }; redraw(); return; }
+      var nx = p.x / W, ny = p.y / H;
+      if (tool === 'dot') { change(); st.ann.push(newAnn({ type: 'dot', x: nx, y: ny })); sel = st.ann.length - 1; redraw(); return; }
+      if (tool === 'arrow' || tool === 'circle' || tool === 'rect') { drag = { kind: 'draw', start: p, before: snap() }; st.ann.push(newAnn(tool === 'arrow' ? { type: 'arrow', x: nx, y: ny, x2: nx, y2: ny } : { type: tool, x: nx, y: ny, w: 0, h: 0 })); sel = st.ann.length - 1; redraw(); return; }
+      if (sel >= 0) { sel = -1; redraw(); }
+    });
+    cv.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      var p = at(ev), W = cv.width, H = cv.height;
+      if (drag.kind === 'box') { var s0 = drag.start; drag.s = { x: Math.min(s0.x, p.x), y: Math.min(s0.y, p.y), w: Math.abs(p.x - s0.x), h: Math.abs(p.y - s0.y) }; showBox(drag.s); if (EDP.mode === 'adjust') applyBtn.hidden = !(drag.s.w >= 20 && drag.s.h >= 20); return; }
+      var a = st.ann[sel]; if (!a) return;
+      var dx = (p.x - drag.start.x) / W, dy = (p.y - drag.start.y) / H, o = JSON.parse(drag.orig || '{}');
+      if (drag.kind === 'move') {
+        var cl = function (v) { return Math.max(0, Math.min(1, v)); };
+        a.x = cl(o.x + dx); a.y = cl(o.y + dy);
+        if (a.type === 'arrow') { a.x2 = cl(o.x2 + dx); a.y2 = cl(o.y2 + dy); }
+        if (a.type === 'circle' || a.type === 'rect') { a.x = Math.max(0, Math.min(1 - a.w, o.x + dx)); a.y = Math.max(0, Math.min(1 - a.h, o.y + dy)); }
+      } else if (drag.kind === 'draw') {
+        if (a.type === 'arrow') { a.x2 = p.x / W; a.y2 = p.y / H; }
+        else { var sx = drag.start.x / W, sy = drag.start.y / H; a.x = Math.min(sx, p.x / W); a.y = Math.min(sy, p.y / H); a.w = Math.abs(p.x / W - sx); a.h = Math.abs(p.y / H - sy); }
+      }
+      paintSoon();
+    });
+    var endDrag = function () {
+      if (!drag) return;
+      var d = drag; drag = null;
+      if (d.kind === 'box') {
+        var s = d.s;
+        if (EDP.mode === 'redact' && s && s.w > 4 && s.h > 4) { change(); var k = k0(); st.redact.push(Object.assign(EDT.rectToSrc({ x: s.x / k, y: s.y / k, w: s.w / k, h: s.h / k }, st.crop, st.orient), { c: EDP.redact })); box.hidden = true; NAT.haptic(); redraw(); }
+        else if (EDP.mode === 'redact') box.hidden = true;
+        else { cropSel = s && s.w >= 20 && s.h >= 20 ? s : null; applyBtn.hidden = !cropSel; if (!cropSel) box.hidden = true; }
+        return;
+      }
+      var a = st.ann[sel];
+      if (d.kind === 'draw') {
+        var small = !a || (a.type === 'arrow' ? Math.hypot((a.x2 - a.x) * cv.width, (a.y2 - a.y) * cv.height) < 12 : a.w * cv.width < 10 || a.h * cv.height < 10);
+        if (small) { st.ann.pop(); sel = -1; } else { undo.push(d.before); redo = []; }
+      } else if (d.kind === 'move' && a && JSON.stringify(a) !== d.orig) { undo.push(d.before); redo = []; }
+      redraw();
+    };
+    cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+    // Handles on the selected annotation: resize (or move an arrow's ends).
+    var drawSel = function () {
+      var a = st.ann[sel];
+      if (!a || EDP.mode !== 'annotate' || !EDT.annAt(a, cfg.time())) { asel.hidden = true; return; }
+      var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / cv.width, b = EDT.annBounds(mctx, a, cv.width, cv.height);
+      asel.hidden = false;
+      asel.style.left = (r.left - sr.left + b.x * k) + 'px'; asel.style.top = (r.top - sr.top + b.y * k) + 'px'; asel.style.width = b.w * k + 'px'; asel.style.height = b.h * k + 'px';
+      var ha = $('[data-h=a]', asel), hb = $('[data-h=b]', asel);
+      if (a.type === 'arrow') {
+        ha.hidden = false; hb.hidden = false;
+        ha.style.left = (a.x * cv.width - b.x) * k + 'px'; ha.style.top = (a.y * cv.height - b.y) * k + 'px';
+        hb.style.left = (a.x2 * cv.width - b.x) * k + 'px'; hb.style.top = (a.y2 * cv.height - b.y) * k + 'px';
+      } else { ha.hidden = true; hb.hidden = false; hb.style.left = b.w * k + 'px'; hb.style.top = b.h * k + 'px'; }
+    };
+    $$('.h', asel).forEach(function (h) {
+      h.addEventListener('pointerdown', function (ev) {
+        ev.preventDefault(); ev.stopPropagation(); try { h.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ }
+        var a = st.ann[sel]; if (!a) return;
+        var before = snap(), orig = JSON.parse(JSON.stringify(a)), which = h.dataset.h, p0 = at(ev), d0 = Math.hypot(p0.x - a.x * cv.width, p0.y - a.y * cv.height);
+        var move = function (e2) {
+          var p = at(e2), W = cv.width, H = cv.height, m = Math.min(W, H);
+          if (a.type === 'arrow') { if (which === 'a') { a.x = p.x / W; a.y = p.y / H; } else { a.x2 = p.x / W; a.y2 = p.y / H; } }
+          else if (a.type === 'circle' || a.type === 'rect') { a.w = Math.max(0.02, p.x / W - a.x); a.h = Math.max(0.02, p.y / H - a.y); }
+          else {
+            // Text, dots and pictograms keep their centre; the handle scales them from where the drag began.
+            var dist = Math.hypot(p.x - a.x * W, p.y - a.y * H), lo = a.type === 'picto' ? 0.08 : 0.02, hi = a.type === 'picto' ? 0.6 : 0.2;
+            a.size = Math.max(lo, Math.min(hi, (orig.size || 0.058) * dist / Math.max(4, d0)));
+          }
+          paintSoon();
+        };
+        var up = function () { h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); if (JSON.stringify(a) !== JSON.stringify(orig)) { undo.push(before); redo = []; } redraw(); };
+        h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+      });
+    });
+    // Keyboard: arrows move the selected annotation, Delete removes it, Escape lets go of it.
+    cv.addEventListener('keydown', function (e) {
+      var a = st.ann[sel]; if (!a || cfg.locked()) return;
+      var step = e.shiftKey ? 0.05 : 0.01, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+      if (d) { e.preventDefault(); change(); a.x = Math.max(0, Math.min(1, a.x + d[0])); a.y = Math.max(0, Math.min(1, a.y + d[1])); if (a.type === 'arrow') { a.x2 += d[0]; a.y2 += d[1]; } redraw(); }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); change(); st.ann.splice(sel, 1); sel = -1; redraw(); }
+    });
+    var newAnn = function (o) {
+      var a = Object.assign({ color: EDP.color, size: o.type === 'picto' ? 0.24 : EDT.SIZES[EDP.size] }, o);
+      if (a.type === 'text') a.bg = a.bg || EDP.bg;
+      return a;
+    };
+    // ---- the small panels for text, labels and pictograms (inside the editor, above everything in it) ----
+    var closePop = function () { pop.hidden = true; pop.innerHTML = ''; var f = $('[data-at=' + (pending || 'text') + ']', el); pending = null; if (f) f.focus({ preventScroll: true }); };
+    var openPop = function (html, bind) { delete pop.dataset.ok; pop.innerHTML = '<div class="ed-popin">' + html + '</div>'; pop.hidden = false; bind(pop); var f = $('input,button', pop); if (f) setTimeout(function () { f.focus(); }, 30); };
+    var placeText = function (text) {
+      text = String(text || '').trim().slice(0, 80); if (!text) return;
+      change();
+      var a = st.ann[sel];
+      if (pending === 'edit' && a && a.type === 'text') a.text = text;
+      else { st.ann.push(newAnn({ type: 'text', text: text, x: 0.5, y: 0.5 })); sel = st.ann.length - 1; }
+      closePop(); redraw();
+      tip(T('Drag the label where you want it. The corner handle changes its size.'));
+    };
+    var textPop = function (initial) {
+      openPop('<form data-tf><label class="ed-lab" for="edtx">' + esc(T('Your text')) + '</label><input id="edtx" type="text" maxlength="80" autocomplete="off" value="' + esc(initial || '') + '"><p class="ed-note2">' + esc(T('Never type a patient name, number or date of birth.')) + '</p><div class="ed-popbtns"><button type="button" class="tool" data-x>' + esc(T('Cancel')) + '</button><button class="tool apply">' + esc(initial ? T('Change') : T('Add')) + '</button></div></form>', function (p) {
+        $('[data-x]', p).onclick = closePop;
+        $('[data-tf]', p).addEventListener('submit', function (e) {
+          e.preventDefault(); var v = $('#edtx', p).value;
+          // The same identifier check as the scan's own text fields.
+          var hits = guard({ indication: v });
+          if (hits.length && p.dataset.ok !== v) { var w = $('.ed-note2', p); w.textContent = T('This looks like it includes {what}. Change it, or tap Add again if it is not an identifier.', { what: hits.join(', ') }); w.className = 'ed-err'; p.dataset.ok = v; return; }
+          placeText(v);
+        });
+      });
+    };
+    var labelPop = function () {
+      var groups = EDT.groupsFor(cfg.type), all = Object.keys(EDT.PRESETS).filter(function (g) { return groups.indexOf(g) < 0; });
+      var chips = function (g) { return '<p class="ed-lab">' + esc(T(EDT.GROUP_LABEL[g])) + '</p><div class="ed-chips">' + EDT.PRESETS[g].map(function (x) { return '<button type="button" class="chipb" data-lbl="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>'; };
+      openPop('<form data-tf><label class="ed-lab" for="edtx">' + esc(T('Type your own')) + '</label><div class="ed-inrow"><input id="edtx" type="text" maxlength="80" autocomplete="off"><button class="tool apply">' + esc(T('Add')) + '</button></div></form>' + groups.map(chips).join('') +
+        '<details class="ed-more"><summary>' + esc(T('Other label sets')) + '</summary>' + all.map(chips).join('') + '</details><p class="ed-note2">' + esc(T('Labels are added as text you can move, resize and change.')) + '</p><div class="ed-popbtns"><button type="button" class="tool" data-x>' + esc(T('Cancel')) + '</button></div>', function (p) {
+        $('[data-x]', p).onclick = closePop;
+        $('[data-tf]', p).addEventListener('submit', function (e) { e.preventDefault(); var v = $('#edtx', p).value; var hits = guard({ indication: v }); if (hits.length) { toastIn(T('This looks like it includes {what}.', { what: hits.join(', ') })); return; } placeText(v); });
+        $$('[data-lbl]', p).forEach(function (b) { b.onclick = function () { placeText(b.dataset.lbl); }; });
+      });
+    };
+    var pictoPop = function () {
+      var ids = EDT.pictosFor(cfg.type);
+      openPop('<p class="ed-lab">' + esc(T('Pictograms')) + '</p><div class="ed-pictos">' + ids.map(function (id) { return '<button type="button" class="pic" data-pic="' + id + '"><canvas width="96" height="96" aria-hidden="true"></canvas><span>' + esc(T(EDT.PICTO[id].label)) + '</span></button>'; }).join('') + '</div><p class="ed-note2">' + esc(T('A pictogram is a marker you add. It does not record how the scan was actually done: place it to match your scan, and check left and right.')) + '</p><div class="ed-popbtns"><button type="button" class="tool" data-x>' + esc(T('Cancel')) + '</button></div>', function (p) {
+        $('[data-x]', p).onclick = closePop;
+        $$('[data-pic]', p).forEach(function (b) {
+          var c = $('canvas', b), g = c.getContext('2d'); EDT.drawAnn(g, { type: 'picto', picto: b.dataset.pic, x: 0.5, y: 0.5, size: 1, color: 'white' }, 96, 96);
+          b.onclick = function () { change(); st.ann.push(newAnn({ type: 'picto', picto: b.dataset.pic, x: 0.8, y: 0.2 })); sel = st.ann.length - 1; closePop(); redraw(); tip(T('Drag the pictogram where you want it. The corner handle changes its size.')); };
+        });
+      });
+    };
+    pop.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePop(); } });
+    // ---- buttons ----
+    decl.addEventListener('change', function () { save.disabled = !decl.checked || cfg.locked(); });
+    el.addEventListener('click', function (ev) {
+      var t = ev.target.closest('button'); if (!t || t.disabled || pop.contains(t)) return;
+      var d = t.dataset;
+      if (d.a === 'cancel') return cfg.close(null);
+      if (cfg.locked()) return; // the tools wait while a clip is being prepared or a photo saved
+      if (d.tab) return setMode(d.tab);
+      // Undo, redo and reset can bring back a covered or cropped-out area: the declaration is asked for again.
+      if ((d.a === 'undo' && undo.length) || (d.a === 'redo' && redo.length) || d.a === 'reset') { decl.checked = false; save.disabled = true; }
+      if (d.a === 'undo' && undo.length) { redo.push(snap()); st = JSON.parse(undo.pop()); sel = -1; return redraw(); }
+      if (d.a === 'redo' && redo.length) { undo.push(snap()); st = JSON.parse(redo.pop()); sel = -1; return redraw(); }
+      if (d.a === 'reset') { change(); st = JSON.parse(st0); sel = -1; return redraw(); }
+      if (d.a === 'apply' && drag === null) { var s = cropSel; cropSel = null; if (s) { change(); var k = k0(); setFrame(EDT.rectToSrc({ x: s.x / k, y: s.y / k, w: s.w / k, h: s.h / k }, st.crop, st.orient), st.orient); box.hidden = true; applyBtn.hidden = true; } return redraw(); }
+      if (d.a === 'trim') { var o = size(), cut = o.h * 0.12; change(); setFrame(EDT.rectToSrc({ x: 0, y: cut, w: o.w, h: o.h - cut }, st.crop, st.orient), st.orient); return redraw(); }
+      if (d.a === 'rotate' || d.a === 'fliph' || d.a === 'flipv') { change(); setFrame(st.crop, orientAfter(st.orient, d.a)); NAT.haptic(); return redraw(); }
+      if (d.a === 'save') return cfg.save(st, el);
+      if (d.rc) { EDP.redact = d.rc; return state(); }
+      if (d.at) {
+        tool = tool === d.at ? '' : d.at; sel = -1;
+        if (d.at === 'text') { tool = ''; pending = 'text'; textPop(''); }
+        else if (d.at === 'label') { tool = ''; pending = 'label'; labelPop(); }
+        else if (d.at === 'picto') { tool = ''; pending = 'picto'; pictoPop(); }
+        else tip(tool === 'arrow' ? T('Drag from the tail to the point of the arrow.') : tool === 'dot' ? T('Tap where the dot should go.') : tool ? T('Drag to draw it.') : TIPS.annotate);
+        return redraw();
+      }
+      if (d.col) { EDP.color = d.col; var a0 = st.ann[sel]; if (a0) { change(); a0.color = d.col; } return redraw(); }
+      if (d.sz) { EDP.size = d.sz; var a1 = st.ann[sel]; if (a1 && a1.type !== 'picto' && a1.type !== 'circle' && a1.type !== 'rect' && a1.type !== 'arrow') { change(); a1.size = EDT.SIZES[d.sz]; } return redraw(); }
+      if (d.pick != null) { sel = Number(d.pick); return redraw(); }
+      var a = st.ann[sel];
+      if (d.sa && a) {
+        if (d.sa === 'done') { sel = -1; return redraw(); }
+        if (d.sa === 'del') { change(); st.ann.splice(sel, 1); sel = -1; return redraw(); }
+        if (d.sa === 'edit') { pending = 'edit'; return textPop(a.text); }
+        if (d.sa === 'bg') { change(); a.bg = a.bg === 'box' ? 'outline' : 'box'; EDP.bg = a.bg; return redraw(); }
+        if (d.sa === 'turn') { change(); a.rot = ((a.rot || 0) + 15) % 360; return redraw(); }
+        if (d.sa === 'flip') { change(); a.flip = !a.flip; return redraw(); }
+      }
+      if (d.when && a) {
+        var now = cfg.time() || 0; change();
+        if (d.when === 'all') { delete a.t0; delete a.t1; }
+        if (d.when === 'from') { a.t0 = now; if (a.t1 != null && a.t1 <= now) delete a.t1; }
+        if (d.when === 'until') { a.t1 = now; if (a.t0 != null && a.t0 >= now) delete a.t0; }
+        return redraw();
+      }
+    });
+    // Escape and the Android back button: close a panel, let go of a selection, then cancel.
+    el.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      e.preventDefault(); e.stopPropagation();
+      if (!pop.hidden) return closePop();
+      if (sel >= 0) { sel = -1; return redraw(); }
+      var c = $('[data-a=cancel]', el); if (c) c.click();
+    });
+    window.addEventListener('resize', drawSel);
+    setTimeout(function () { var f = $('[data-a=cancel]', el); if (f && el.isConnected) f.focus({ preventScroll: true }); }, 30);
+    if (document.fonts && document.fonts.load) document.fonts.load('600 40px "DM Sans"').then(function () { if (el.isConnected) paint(); }, function () {});
+    setMode('adjust');
+    return {
+      el: el, paint: paint, state: function () { return st; }, refresh: redraw,
+      fail: function (msg) { var er = $('[data-err]', el); er.textContent = msg; er.hidden = false; el.classList.remove('working'); save.textContent = cfg.saveLabel; save.disabled = !decl.checked; },
+      busy: function (on, label) { el.classList.toggle('working', !!on); save.disabled = !!on || !decl.checked; if (label) save.textContent = label; $('[data-err]', el).hidden = true; },
+      remove: function () { if (paintRaf) cancelAnimationFrame(paintRaf); paintRaf = 0; window.removeEventListener('resize', drawSel); el.remove(); cv.width = 0; cv.height = 0; }
+    };
   }
-  function editImage(file) {
+  // Encodes a canvas as JPEG: 2048 px at quality 0.9 keeps fine text and speckle, stepping down only past the 1.5 MB
+  // limit for encrypted sharing.
+  function canvasOf(w, h) { var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
+  function jpegOf(c, q) { return new Promise(function (ok) { c.toBlob(function (b) { ok(b); }, 'image/jpeg', q); }); }
+  function renderOut(source, st, maxSide, withAnn) {
+    var o = EDT.outSize(st.crop, st.orient, 1), k = Math.min(1, maxSide / Math.max(o.w, o.h)), c = canvasOf(o.w * k, o.h * k);
+    EDT.drawFrame(c.getContext('2d'), source, st, k, null, withAnn);
+    return c;
+  }
+  function encodeBest(c) { var qs = [0.9, 0.85, 0.8, 0.72]; var tryQ = function (i) { return jpegOf(c, qs[i]).then(function (b) { return b && b.size > IMG_LIMIT && i < qs.length - 1 ? tryQ(i + 1) : b; }); }; return tryQ(0); }
+  function freeCanvas(c) { if (c) { c.width = 0; c.height = 0; } }
+
+  // ---------- Photo editor ----------
+  // file: a new photo; opts.annot and opts.type: re-editing a saved photo from its redacted copy (opts.file is that
+  // copy) with its annotations, and the scan type for the label sets.
+  function editImage(file, opts) {
+    opts = opts || {};
     return new Promise(function (resolve) {
       var url = URL.createObjectURL(file), img = new Image();
       img.onerror = function () { URL.revokeObjectURL(url); toast(T('That file is not an image this phone can open.')); resolve(null); };
       img.onload = function () {
         URL.revokeObjectURL(url);
+        // The browser applies the photo's own orientation tag when it decodes it, so the preview starts the way the
+        // phone's gallery shows the photo. Up to 2200 px: the working copy, in memory only.
         var max = 2200, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-        var work = document.createElement('canvas'); work.width = Math.round(img.naturalWidth * sc); work.height = Math.round(img.naturalHeight * sc);
+        var work = canvasOf(img.naturalWidth * sc, img.naturalHeight * sc);
         work.getContext('2d').drawImage(img, 0, 0, work.width, work.height);
-        var undo = [], mode = 'crop', sel = null, start = null;
-        var el = editorFrame(T('Prepare image'), '<button class="tool" data-a="rotate">' + esc(T('Rotate')) + '</button>', T('I have removed or covered every patient identifier in this image.'), T('Use this image'));
-        var cv = $('canvas', el), box = $('.sel', el), stage = $('.stage', el);
-        var draw = function () { cv.width = work.width; cv.height = work.height; cv.getContext('2d').drawImage(work, 0, 0); sel = null; box.hidden = true; };
-        var snap = function () { var c = document.createElement('canvas'); c.width = work.width; c.height = work.height; c.getContext('2d').drawImage(work, 0, 0); undo.push(c); if (undo.length > 8) undo.shift(); };
-        var replace = function (c) { work = c; draw(); };
-        var crop = function (x, y, w, h) { if (w < 20 || h < 20) return; snap(); var c = document.createElement('canvas'); c.width = Math.round(w); c.height = Math.round(h); c.getContext('2d').drawImage(work, x, y, w, h, 0, 0, w, h); replace(c); };
-        var toWork = function (ev) { var r = cv.getBoundingClientRect(); return { x: Math.max(0, Math.min(work.width, (ev.clientX - r.left) * work.width / r.width)), y: Math.max(0, Math.min(work.height, (ev.clientY - r.top) * work.height / r.height)) }; };
-        var showSel = function () {
-          if (!sel) { box.hidden = true; return; }
-          var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / work.width;
-          box.hidden = false; box.className = 'sel' + (mode === 'cover' ? ' box' : '');
-          box.style.left = (r.left - sr.left + sel.x * k) + 'px'; box.style.top = (r.top - sr.top + sel.y * k) + 'px'; box.style.width = sel.w * k + 'px'; box.style.height = sel.h * k + 'px';
-        };
-        cv.addEventListener('pointerdown', function (ev) { ev.preventDefault(); cv.setPointerCapture(ev.pointerId); start = toWork(ev); sel = { x: start.x, y: start.y, w: 0, h: 0 }; showSel(); });
-        cv.addEventListener('pointermove', function (ev) { if (!start) return; var p = toWork(ev); sel = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) }; showSel(); });
-        cv.addEventListener('pointerup', function () {
-          start = null;
-          if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { snap(); var g = work.getContext('2d'); g.fillStyle = '#000'; g.fillRect(sel.x, sel.y, sel.w, sel.h); draw(); }
-        });
-        var decl = $('[data-decl]', el), save = $('[data-a=save]', el);
-        decl.addEventListener('change', function () { save.disabled = !decl.checked; });
-        $$('[data-m]', el).forEach(function (b) { b.onclick = function () { mode = b.dataset.m; $$('[data-m]', el).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); $('[data-a=apply]', el).hidden = mode !== 'crop'; $('[data-tip]', el).textContent = mode === 'crop' ? T('Drag to choose the area to keep, then tap Apply crop.') : T('Drag over any name, number, date or label to black it out.'); sel = null; showSel(); }; });
-        var close = function (v) { el.remove(); resolve(v); };
-        el.addEventListener('click', function (ev) {
-          var a = ev.target.closest('[data-a]'); if (!a) return;
-          var act = a.dataset.a;
-          if (act === 'cancel') close(null);
-          if (act === 'undo' && undo.length) replace(undo.pop());
-          if (act === 'apply' && sel) crop(sel.x, sel.y, sel.w, sel.h);
-          if (act === 'trim') { var h = Math.round(work.height * 0.12); crop(0, h, work.width, work.height - h); }
-          if (act === 'rotate') { snap(); var c = document.createElement('canvas'); c.width = work.height; c.height = work.width; var g = c.getContext('2d'); g.translate(c.width, 0); g.rotate(Math.PI / 2); g.drawImage(work, 0, 0); replace(c); }
-          if (act === 'save') {
-            // 2048 px at quality 0.9 keeps fine text and speckle; step quality down only past the 1.5 MB share limit.
-            var best = function () { var qs = [0.9, 0.85, 0.8, 0.72]; var tryQ = function (i) { return out(2048, qs[i]).then(function (r) { return r.b && r.b.size > IMG_LIMIT && i < qs.length - 1 ? tryQ(i + 1) : r; }); }; return tryQ(0); };
-            var out = function (maxSide, q) { return new Promise(function (ok) { var s = Math.min(1, maxSide / Math.max(work.width, work.height)); var c = document.createElement('canvas'); c.width = Math.round(work.width * s); c.height = Math.round(work.height * s); var g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.drawImage(work, 0, 0, c.width, c.height); c.toBlob(function (b) { ok({ b: b, w: c.width, h: c.height }); }, 'image/jpeg', q); }); };
-            Promise.all([best(), out(360, 0.72)]).then(function (r) { close({ blob: r[0].b, thumb: r[1].b, w: r[0].w, h: r[0].h, declared: true, kind: 'image' }); });
+        // Let go of the decoded original (its error handler first: clearing src would otherwise fire it).
+        img.onerror = null; img.onload = null; img.removeAttribute('src');
+        var st0 = { crop: { x: 0, y: 0, w: work.width, h: work.height }, orient: { r: 0, m: false }, redact: [], ann: EDT.cleanAnn((opts.annot || {}).ann) };
+        var saving = false, ed;
+        var close = function (v) { ed.remove(); freeCanvas(work); resolve(v); };
+        ed = mediaEditor({
+          kind: 'image', prior: opts.prior || null, title: opts.annot || opts.prior ? T('Edit image') : T('Prepare image'), declText: T('I have removed or covered every patient identifier in this image.'), saveLabel: T('Use this image'), type: opts.type, state: st0,
+          paint: function (cv, st) { var o = EDT.outSize(st.crop, st.orient, 1); if (cv.width !== Math.round(o.w) || cv.height !== Math.round(o.h)) { cv.width = Math.round(o.w); cv.height = Math.round(o.h); } EDT.drawFrame(cv.getContext('2d'), work, st, 1, null, true); },
+          time: function () { return null; }, locked: function () { return saving; },
+          close: close,
+          save: function (st) {
+            // The picture as it is now is what is saved: the tools are locked until saving ends, so an Undo during
+            // encoding can never save an unredacted image under the ticked declaration.
+            saving = true; ed.busy(true, T('Saving…'));
+            var fin = JSON.parse(JSON.stringify(st)), hasAnn = fin.ann.length > 0;
+            var outC = renderOut(work, fin, 2048, true), baseC = hasAnn ? renderOut(work, fin, 2048, false) : null;
+            var thumbC = canvasOf(outC.width * Math.min(1, 360 / Math.max(outC.width, outC.height)), outC.height * Math.min(1, 360 / Math.max(outC.width, outC.height)));
+            thumbC.getContext('2d').drawImage(outC, 0, 0, thumbC.width, thumbC.height);
+            Promise.all([encodeBest(outC), jpegOf(thumbC, 0.72), baseC ? jpegOf(baseC, 0.9) : null]).then(function (r) {
+              if (!r[0] || !r[1] || (baseC && !r[2])) throw new Error('encode');
+              var w = outC.width, h = outC.height;
+              [outC, baseC, thumbC].forEach(freeCanvas);
+              var prov = (opts.prov || []).concat([{ on: today(), crop: JSON.stringify(fin.crop) !== JSON.stringify(st0.crop), r: fin.orient.r, m: fin.orient.m, redact: fin.redact.length, ann: fin.ann.length }]).slice(-10);
+              // The orientation change made here is kept with the image on this phone (turns and a mirror only).
+              close({ blob: r[0], thumb: r[1], w: w, h: h, declared: true, kind: 'image', edits: EDT.composeOrient(opts.prior, fin.orient), base: r[2] || null, annot: hasAnn ? { v: 1, ann: EDT.cleanAnn(fin.ann) } : null, prov: prov });
+            }).catch(function () { saving = false; ed.fail(T('Could not prepare the image. Try again.')); });
           }
         });
-        draw();
       };
       img.src = url;
     });
   }
 
-  // ---------- Clip editor: choose up to 10 seconds, crop, cover identifiers. The clip is re-recorded from a canvas,
-  // which drops sound and every piece of hidden file data, and burns the covers into every frame. ----------
+  // ---------- Clip editor: choose up to 10 seconds, play it back, adjust, redact and annotate ----------
+  // The clip is re-recorded from a canvas, which drops sound and every piece of hidden file data. The same drawing
+  // function makes the preview and every recorded frame, so redactions and annotations are burnt into every frame
+  // they apply to, in the right place after each change. Annotations can show for the whole clip or from or until a
+  // moment; they do not follow anatomy as it moves (no tracking). A saved clip keeps its annotations as data for the
+  // record, but they cannot be changed later: there is no unannotated copy of a clip.
+  var CLIP_MAX = 10, CLIP_MIN = 1;
   function clipMime() {
     if (!window.MediaRecorder) return null;
     var list = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
@@ -1041,78 +1921,149 @@
     return null;
   }
   function clipSupported() { var c = document.createElement('canvas'); return !!(clipMime() && c.captureStream); }
-  function editClip(file) {
+  // Many recorded clips (MediaRecorder WebM files among them) carry no duration, so the player reports Infinity.
+  // Seeking far past the end makes the browser find the real length. Resolves with seconds, or 0 if it cannot tell.
+  function clipDuration(vid) {
+    var d = vid.duration;
+    if (isFinite(d) && d > 0) return Promise.resolve(d);
+    return new Promise(function (ok) {
+      var done = false, finish = function () {
+        if (done) return; done = true; vid.removeEventListener('durationchange', check); clearTimeout(t);
+        var v = vid.duration, back = function () { clearTimeout(t2); vid.removeEventListener('seeked', back); ok(isFinite(v) && v > 0 ? v : 0); }, t2 = setTimeout(back, 3000);
+        // Back to the start, and wait until the first frame is there, so the first preview is not blank.
+        vid.addEventListener('seeked', back); vid.currentTime = 0;
+      };
+      var check = function () { if (isFinite(vid.duration) && vid.duration > 0) finish(); };
+      var t = setTimeout(finish, 4000);
+      vid.addEventListener('durationchange', check);
+      try { vid.currentTime = 1e7; } catch (e) { finish(); }
+    });
+  }
+  function editClip(file, opts) {
+    opts = opts || {};
     return new Promise(function (resolve) {
       if (file.size > 200 * 1048576) { toast(T('That clip is too large. Choose a shorter one.')); resolve(null); return; }
       var url = URL.createObjectURL(file), vid = document.createElement('video');
       vid.muted = true; vid.playsInline = true; vid.preload = 'auto'; vid.src = url; vid.setAttribute('playsinline', '');
-      vid.onerror = function () { URL.revokeObjectURL(url); toast(T('That file is not a clip this phone can open.')); resolve(null); };
+      var opened = false;
+      vid.onerror = function () { if (opened) return; URL.revokeObjectURL(url); toast(T('That file is not a clip this phone can open.')); resolve(null); };
       vid.onloadedmetadata = function () {
-        var W = vid.videoWidth, H = vid.videoHeight, dur = vid.duration || 0;
+        var W = vid.videoWidth, H = vid.videoHeight;
         if (!W || !H) { vid.onerror(); return; }
-        var crop = { x: 0, y: 0, w: W, h: H }, covers = [], mode = 'crop', sel = null, start = null, history = [];
-        var startAt = 0, len = Math.min(10, dur || 10);
-        var el = editorFrame(T('Prepare clip'), '', T('I have removed or covered every patient identifier in this clip, in every frame.'), T('Use this clip'));
-        $('.bar-bot', el).insertAdjacentHTML('afterbegin', '<div class="trim" style="width:100%;color:#fff;font-size:13px"><label>' + esc(T('Start')) + ' <span data-st>0.0</span> s<input type="range" data-start min="0" max="' + Math.max(0, dur - 1).toFixed(1) + '" step="0.1" value="0"></label><label>' + esc(T('Length')) + ' <span data-ln>' + len.toFixed(1) + '</span> s<input type="range" data-len min="1" max="' + Math.min(10, dur || 10).toFixed(1) + '" step="0.1" value="' + len.toFixed(1) + '"></label></div>');
-        var cv = $('canvas', el), box = $('.sel', el), stage = $('.stage', el);
-        var paint = function () {
-          cv.width = crop.w; cv.height = crop.h; var g = cv.getContext('2d');
-          g.drawImage(vid, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
-          g.fillStyle = '#000'; covers.forEach(function (c) { g.fillRect(c.x - crop.x, c.y - crop.y, c.w, c.h); });
-          sel = null; box.hidden = true;
-        };
-        var seek = function (t) { return new Promise(function (ok) { var done = function () { vid.removeEventListener('seeked', done); ok(); }; vid.addEventListener('seeked', done); vid.currentTime = Math.min(Math.max(0, t), Math.max(0, dur - 0.05)); }); };
-        var toSrc = function (ev) { var r = cv.getBoundingClientRect(); return { x: crop.x + Math.max(0, Math.min(crop.w, (ev.clientX - r.left) * crop.w / r.width)), y: crop.y + Math.max(0, Math.min(crop.h, (ev.clientY - r.top) * crop.h / r.height)) }; };
-        var showSel = function () {
-          if (!sel) { box.hidden = true; return; }
-          var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / crop.w;
-          box.hidden = false; box.className = 'sel' + (mode === 'cover' ? ' box' : '');
-          box.style.left = (r.left - sr.left + (sel.x - crop.x) * k) + 'px'; box.style.top = (r.top - sr.top + (sel.y - crop.y) * k) + 'px'; box.style.width = sel.w * k + 'px'; box.style.height = sel.h * k + 'px';
-        };
-        var keep = function () { history.push({ crop: Object.assign({}, crop), covers: covers.slice() }); };
-        cv.addEventListener('pointerdown', function (ev) { ev.preventDefault(); cv.setPointerCapture(ev.pointerId); start = toSrc(ev); sel = { x: start.x, y: start.y, w: 0, h: 0 }; showSel(); });
-        cv.addEventListener('pointermove', function (ev) { if (!start) return; var p = toSrc(ev); sel = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) }; showSel(); });
-        cv.addEventListener('pointerup', function () { start = null; if (mode === 'cover' && sel && sel.w > 4 && sel.h > 4) { keep(); covers.push(sel); paint(); } });
-        $$('[data-m]', el).forEach(function (b) { b.onclick = function () { mode = b.dataset.m; $$('[data-m]', el).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); $('[data-a=apply]', el).hidden = mode !== 'crop'; $('[data-tip]', el).textContent = mode === 'crop' ? T('Drag to choose the area to keep, then tap Apply crop.') : T('Drag over any name, number, date or label. The cover stays on every frame.'); sel = null; showSel(); }; });
-        var sIn = $('[data-start]', el), lIn = $('[data-len]', el);
-        sIn.oninput = function () { startAt = Number(sIn.value); $('[data-st]', el).textContent = startAt.toFixed(1); var mx = Math.min(10, Math.max(1, dur - startAt)); lIn.max = mx.toFixed(1); if (len > mx) { len = mx; lIn.value = mx; $('[data-ln]', el).textContent = mx.toFixed(1); } seek(startAt).then(paint); };
-        lIn.oninput = function () { len = Number(lIn.value); $('[data-ln]', el).textContent = len.toFixed(1); };
-        var decl = $('[data-decl]', el), save = $('[data-a=save]', el);
-        decl.addEventListener('change', function () { save.disabled = !decl.checked; });
-        var close = function (v) { vid.pause(); URL.revokeObjectURL(url); el.remove(); resolve(v); };
-        el.addEventListener('click', function (ev) {
-          var a = ev.target.closest('[data-a]'); if (!a) return;
-          var act = a.dataset.a;
-          if (act === 'cancel') close(null);
-          if (act === 'undo' && history.length) { var h = history.pop(); crop = h.crop; covers = h.covers; paint(); }
-          if (act === 'apply' && sel && sel.w > 20 && sel.h > 20) { keep(); crop = { x: sel.x, y: sel.y, w: sel.w, h: sel.h }; paint(); }
-          if (act === 'trim') { keep(); var cut = Math.round(crop.h * 0.12); crop = { x: crop.x, y: crop.y + cut, w: crop.w, h: crop.h - cut }; paint(); }
-          if (act === 'save') {
-            save.disabled = true; save.textContent = T('Preparing clip… 0%');
-            record().then(close).catch(function (ex) { save.disabled = false; save.textContent = T('Use this clip'); toast(ex.message || T('Could not prepare the clip.'), 4000); });
-          }
-        });
-        function record() {
-          var mime = clipMime();
-          var sc = Math.min(1, 1280 / Math.max(crop.w, crop.h));
-          var out = document.createElement('canvas'); out.width = Math.round(crop.w * sc / 2) * 2; out.height = Math.round(crop.h * sc / 2) * 2;
-          var g = out.getContext('2d');
-          var frame = function () { g.drawImage(vid, crop.x, crop.y, crop.w, crop.h, 0, 0, out.width, out.height); g.fillStyle = '#000'; covers.forEach(function (c) { g.fillRect((c.x - crop.x) * sc, (c.y - crop.y) * sc, c.w * sc, c.h * sc); }); };
-          return seek(startAt).then(function () {
-            frame();
-            var thumbP = new Promise(function (ok) { var s = Math.min(1, 360 / Math.max(out.width, out.height)); var c = document.createElement('canvas'); c.width = Math.round(out.width * s); c.height = Math.round(out.height * s); c.getContext('2d').drawImage(out, 0, 0, c.width, c.height); c.toBlob(ok, 'image/jpeg', 0.72); });
-            var stream = out.captureStream(30), chunks = [];
-            var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4000000 });
-            rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-            var stopAt = startAt + len, raf = 0;
-            var tick = function () { frame(); save.textContent = T('Preparing clip… {p}%', { p: Math.min(99, Math.round(100 * (vid.currentTime - startAt) / len)) }); if (vid.currentTime >= stopAt || vid.ended) { vid.pause(); rec.stop(); return; } raf = requestAnimationFrame(tick); };
-            var done = new Promise(function (ok, no) { rec.onstop = function () { cancelAnimationFrame(raf); var blob = new Blob(chunks, { type: mime.split(';')[0] }); if (blob.size > 12 * 1048576) no(new Error(T('The clip came out larger than 12 MB. Choose a shorter length or crop tighter.'))); else ok(blob); }; rec.onerror = function () { no(new Error(T('Could not prepare the clip.'))); }; });
-            rec.start(250);
-            return vid.play().then(function () { tick(); return Promise.all([done, thumbP]); });
-          }).then(function (r) { return { blob: r[0], thumb: r[1], w: out.width, h: out.height, kind: 'clip', dur: Math.round(len * 10) / 10, declared: true }; });
-        }
-        seek(0).then(paint);
+        opened = true;
+        clipDuration(vid).then(function (dur) { open(W, H, dur); });
       };
+      function open(W, H, dur) {
+        // dur 0: the phone could not tell the length. The selection still stops at the end of the clip.
+        var known = dur > 0, total = known ? dur : CLIP_MAX;
+        var startAt = 0, len = Math.min(CLIP_MAX, total), playing = false, raf = 0, busyRec = null, ed, el;
+        var f1 = function (n) { return (Math.round(n * 10) / 10).toFixed(1); };
+        var media = '<div class="clipbar">' +
+          '<div class="cb-row"><button type="button" class="tool play" data-a="play" aria-label="' + esc(T('Play the selection')) + '">' + ET.play + '</button>' +
+          '<input type="range" data-scrub min="0" max="' + f1(total) + '" step="0.05" value="0" aria-label="' + esc(T('Position in the clip')) + '"><span class="cb-pos"><span data-pos>0.0</span> / <span data-total>' + (known ? f1(total) : '?') + '</span> s</span></div>' +
+          '<div class="cb-sel"><label>' + esc(T('Start')) + ' <b><span data-st>0.0</span> s</b><input type="range" data-start min="0" max="' + f1(Math.max(0, total - CLIP_MIN)) + '" step="0.1" value="0"></label>' +
+          '<label>' + esc(T('Length')) + ' <b><span data-ln>' + f1(len) + '</span> s</b><input type="range" data-len min="' + CLIP_MIN + '" max="' + f1(Math.min(CLIP_MAX, total)) + '" step="0.1" value="' + f1(len) + '"></label></div>' +
+          '<p class="cb-ends">' + esc(T('Selected')) + ' <b><span data-st2>0.0</span> – <span data-en>' + f1(len) + '</span> s</b></p>' +
+          '<p class="cb-sum" data-sum></p></div>';
+        var st0 = { crop: { x: 0, y: 0, w: W, h: H }, orient: { r: 0, m: false }, redact: [], ann: [] };
+        // Seconds into the kept selection: annotation times are stored this way, so they match the saved clip.
+        var rel = function () { return Math.max(0, vid.currentTime - startAt); };
+        var summary = function () {
+          var end = Math.min(total, startAt + len);
+          $('[data-st2]', el).textContent = f1(startAt); $('[data-en]', el).textContent = f1(end);
+          $('[data-sum]', el).textContent = (known ? T('Keeps {a} s to {b} s ({n} s) of a {t} s clip.', { a: f1(startAt), b: f1(end), n: f1(end - startAt), t: f1(total) }) : T('Keeps {n} s from {a} s. This phone could not read the clip\'s full length.', { a: f1(startAt), n: f1(len) })) + (known && total > CLIP_MAX + 0.05 ? ' ' + T('Clips can be up to {m} seconds: nothing outside the selection is saved.', { m: CLIP_MAX }) : '');
+        };
+        var close = function (v) { stopPlay(); if (busyRec) busyRec.abort(); vid.removeAttribute('src'); vid.load(); URL.revokeObjectURL(url); ed.remove(); resolve(v); };
+        ed = mediaEditor({
+          kind: 'clip', title: T('Prepare clip'), declText: T('I have removed or covered every patient identifier in this clip, in every frame.'), saveLabel: T('Use this clip'), media: media, type: opts.type, state: st0,
+          paint: function (cv, st) { var o = EDT.outSize(st.crop, st.orient, 1); if (cv.width !== Math.round(o.w) || cv.height !== Math.round(o.h)) { cv.width = Math.round(o.w); cv.height = Math.round(o.h); } EDT.drawFrame(cv.getContext('2d'), vid, st, 1, rel(), true); },
+          time: rel, locked: function () { return !!busyRec; },
+          onState: function () { if (el) summary(); },
+          close: function (v) { close(v); },
+          save: function (st) { record(JSON.parse(JSON.stringify(st))); }
+        });
+        el = ed.el;
+        var scrub = $('[data-scrub]', el), sIn = $('[data-start]', el), lIn = $('[data-len]', el), playBtn = $('[data-a=play]', el);
+        // Seeks and waits for the frame (at most 3 s, so a clip that never answers cannot hang the editor).
+        var seek = function (t) { return new Promise(function (ok) { var target = Math.min(Math.max(0, t), Math.max(0, total - 0.05)); if (!vid.seeking && vid.readyState >= 2 && Math.abs(vid.currentTime - target) < 0.01) return ok(); var tm, done = function () { clearTimeout(tm); vid.removeEventListener('seeked', done); ok(); }; tm = setTimeout(done, 3000); vid.addEventListener('seeked', done); vid.currentTime = target; }); };
+        var showPos = function () { scrub.value = vid.currentTime; $('[data-pos]', el).textContent = f1(vid.currentTime); };
+        var stopPlay = function () { if (!playing) return; playing = false; vid.pause(); cancelAnimationFrame(raf); playBtn.innerHTML = ET.play; playBtn.setAttribute('aria-label', T('Play the selection')); };
+        var playLoop = function () { ed.paint(); showPos(); if (vid.currentTime >= startAt + len - 0.02 || vid.ended) { stopPlay(); ed.refresh(); return; } raf = requestAnimationFrame(playLoop); };
+        var startPlay = function () {
+          var from = vid.currentTime >= startAt && vid.currentTime < startAt + len - 0.1 ? vid.currentTime : startAt;
+          seek(from).then(function () { playing = true; playBtn.innerHTML = ET.pause; playBtn.setAttribute('aria-label', T('Pause')); return vid.play(); }).then(function () { raf = requestAnimationFrame(playLoop); }, function () { stopPlay(); });
+        };
+        playBtn.addEventListener('click', function (e) { e.stopPropagation(); if (busyRec) return; if (playing) { stopPlay(); ed.refresh(); } else startPlay(); });
+        sIn.oninput = function () {
+          stopPlay(); startAt = Number(sIn.value); $('[data-st]', el).textContent = f1(startAt);
+          var mx = Math.max(CLIP_MIN, Math.min(CLIP_MAX, total - startAt)); lIn.max = f1(mx);
+          if (len > mx) { len = mx; lIn.value = f1(mx); $('[data-ln]', el).textContent = f1(mx); }
+          seek(startAt).then(function () { ed.refresh(); showPos(); });
+        };
+        lIn.oninput = function () { stopPlay(); len = Math.min(Number(lIn.value), Math.max(CLIP_MIN, total - startAt)); $('[data-ln]', el).textContent = f1(len); seek(Math.min(total, startAt + len) - 0.05).then(function () { ed.refresh(); showPos(); }); };
+        scrub.oninput = function () { stopPlay(); seek(Number(scrub.value)).then(function () { ed.refresh(); showPos(); }); };
+        function record(st) {
+          stopPlay();
+          var mime = clipMime();
+          if (!mime) return ed.fail(T('This phone cannot prepare clips. Save a still image instead.'));
+          var o1 = EDT.outSize(st.crop, st.orient, 1), k = Math.min(1, 1280 / Math.max(o1.w, o1.h)), o = EDT.outSize(st.crop, st.orient, k);
+          var out = canvasOf(Math.round(o.w / 2) * 2, Math.round(o.h / 2) * 2);
+          var og = out.getContext('2d');
+          ed.busy(true, T('Preparing clip… {p}%', { p: 0 }));
+          var save = $('[data-a=save]', el);
+          var stopAt = Math.min(total, startAt + len), aborted = false, rec = null, stream = null, chunks = [], rafR = 0, lastT = -1, stallAt = 0;
+          var release = function () { if (stream) stream.getTracks().forEach(function (tr) { tr.stop(); }); stream = null; };
+          busyRec = { abort: function () { aborted = true; cancelAnimationFrame(rafR); try { vid.pause(); if (rec && rec.state !== 'inactive') rec.stop(); } catch (e) { /* already stopped */ } } };
+          seek(startAt).then(function () {
+            EDT.drawFrame(og, vid, st, k, 0, true);
+            var thumbP = new Promise(function (ok) { var s = Math.min(1, 360 / Math.max(out.width, out.height)); var c = canvasOf(out.width * s, out.height * s); c.getContext('2d').drawImage(out, 0, 0, c.width, c.height); c.toBlob(ok, 'image/jpeg', 0.72); });
+            stream = out.captureStream(30);
+            rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4000000 });
+            rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+            var done = new Promise(function (ok, no) {
+              rec.onstop = function () {
+                cancelAnimationFrame(rafR);
+                if (aborted) return no(new Error('cancelled'));
+                var blob = new Blob(chunks, { type: mime.split(';')[0] });
+                if (!blob.size) no(new Error(T('Could not prepare the clip.')));
+                else if (blob.size > 12 * 1048576) no(new Error(T('The clip came out larger than 12 MB. Choose a shorter length or crop tighter.')));
+                else ok(blob);
+              };
+              rec.onerror = function () { aborted = true; cancelAnimationFrame(rafR); try { vid.pause(); if (rec.state !== 'inactive') rec.stop(); } catch (e) { /* already stopped */ } no(new Error(T('Could not prepare the clip.'))); };
+            });
+            var tick = function (now) {
+              if (aborted) return;
+              EDT.drawFrame(og, vid, st, k, Math.max(0, vid.currentTime - startAt), true);
+              var t = vid.currentTime;
+              save.textContent = T('Preparing clip… {p}%', { p: Math.max(0, Math.min(99, Math.round(100 * (t - startAt) / Math.max(0.1, stopAt - startAt)))) });
+              // A clip that stops advancing for 8 seconds (a decoding problem) fails rather than hanging.
+              if (t !== lastT) { lastT = t; stallAt = now; } else if (stallAt && now - stallAt > 8000) { aborted = true; vid.pause(); rec.stop(); return; }
+              if (t >= stopAt - 0.01 || vid.ended) { vid.pause(); rec.stop(); return; }
+              rafR = requestAnimationFrame(tick);
+            };
+            rec.start(250);
+            return vid.play().then(function () { rafR = requestAnimationFrame(tick); return Promise.all([done, thumbP]); }, function () {
+              if (busyRec) busyRec.abort();
+              throw new Error(T('Could not prepare the clip.'));
+            });
+          }).then(function (r) {
+            busyRec = null; release();
+            // The length actually recorded, from the clip's own clock (not the slider), so what is stored is true.
+            var got = Math.max(0, Math.min(stopAt, vid.currentTime) - startAt);
+            if (got < 0.5) { chunks = []; ed.fail(T('Could not prepare the clip.')); seek(startAt).then(ed.refresh); return; }
+            var w = out.width, h = out.height; freeCanvas(out);
+            var ann = EDT.cleanAnn(st.ann);
+            close({ blob: r[0], thumb: r[1], w: w, h: h, kind: 'clip', dur: Math.round(got * 10) / 10, declared: true, edits: { r: st.orient.r, m: st.orient.m }, annot: ann.length ? { v: 1, ann: ann, burnt: true } : null, prov: [{ on: today(), crop: JSON.stringify(st.crop) !== JSON.stringify(st0.crop), r: st.orient.r, m: st.orient.m, redact: st.redact.length, ann: ann.length, from: Math.round(startAt * 10) / 10, len: Math.round(got * 10) / 10 }] });
+          }, function (ex) {
+            busyRec = null; chunks = []; release();
+            if (ex && ex.message === 'cancelled' && !el.isConnected) return;
+            // Nothing is kept from a failed or stopped preparation: the clip is not added to the scan.
+            ed.fail(ex && ex.message && ex.message !== 'cancelled' ? ex.message : T('Could not prepare the clip.'));
+            seek(startAt).then(ed.refresh);
+          });
+        }
+        seek(0).then(function () { ed.refresh(); showPos(); summary(); });
+      }
     });
   }
 
@@ -1186,12 +2137,14 @@
         s.rules.map(function (rl) { return rl.min ? barRow(T(rl.label), rl.n, rl.min) : barRow(T(rl.label), rl.n, rl.max, 'max'); }).join('') + asmBars +
         (s.list.length ? '<div class="bar-row"><div class="lbl"><span>' + esc(T('Signed off')) + '</span><b>' + esc(T('{n} of {m}', { n: s.signed, m: s.list.length })) + '</b></div></div>' : '') + '</div>' +
         (s.mod.minDays && ps.win ? '<p class="window">' + esc(T('Minimum training period {days}: {state}', { days: plural(s.mod.minDays, 'day'), state: ps.win.day >= s.mod.minDays ? T('met.') : T('{n} days to go.', { n: s.mod.minDays - ps.win.day }) })) + '</p>' : '') + topics +
-        '<div class="btns" style="margin-top:10px"><a class="btn ghost sm" href="#/log?type=' + s.mod.types[0] + '">' + esc(T('See scans')) + '</a><a class="btn ghost sm" href="#/new?type=' + s.mod.types[0] + '">' + esc(T('Log one')) + '</a>' + (s.assessments.length ? '<a class="btn ghost sm" href="#/assess?p=' + pid + '&m=' + s.mod.id + '">' + esc(T('Assessment')) + '</a>' : '') + (!s.met ? '<a class="btn ghost sm" href="' + esc(learnLink(s.mod)) + '">' + esc(T('Learn')) + '</a>' : '') + '</div></div>';
+        '<div class="btns" style="margin-top:10px"><a class="btn ghost sm" href="#/log?type=' + s.mod.types[0] + '">' + esc(T('See scans')) + '</a><a class="btn ghost sm" href="#/new?type=' + s.mod.types[0] + '">' + esc(T('Log one')) + '</a>' + (s.assessments.length ? '<a class="btn ghost sm" href="#/assess?p=' + pid + '&m=' + s.mod.id + '">' + esc(T('Assessment')) + '</a>' : '') + (!s.met ? '<a class="btn ghost sm" href="' + esc(learnLink(s.mod)) + '">' + esc(T('Learn')) + '</a>' : '') + (GUIDE_FOR[pid] ? '<a class="btn ghost sm" href="#/guides/' + GUIDE_FOR[pid] + '">' + esc(T('Guide')) + '</a>' : '') + '</div></div>';
     }).join('');
     var win = ps.win ? '<div class="card"><h3>' + esc(ps.pw.windowFrom === 'firstSupervised' ? T('Training window') : T('Logbook window')) + '</h3><p class="small" style="margin:0">' + esc(T('Started {start}. Complete by {end}.', { start: fmt(ps.win.start), end: fmt(ps.win.end) })) + ' ' + (ps.win.day > ps.win.days ? '<b style="color:var(--red)">' + esc(T('Window passed.')) + '</b>' : esc(T('{days} left.', { days: plural(Math.max(0, ps.win.days - ps.win.day), 'day') }))) + '</p><div class="bar ' + (ps.win.day / ps.win.days > 0.8 ? '' : 'green') + '" style="margin-top:10px"><i style="width:' + Math.min(100, 100 * ps.win.day / ps.win.days) + '%"></i></div></div>' : '';
     mount(shell({ title: T('Progress'), action: '<a class="act" href="#/targets/' + pid + '" style="text-decoration:none">' + esc(T('Targets')) + '</a>' },
       '<nav class="pw-tabs">' + mine.map(function (p) { return '<a href="#/progress/' + p + '"' + (p === pid ? ' aria-current="page"' : '') + '>' + esc(pwName(PATHS[p])) + '</a>'; }).join('') + '<a href="#/me?edit=pathways">+ ' + esc(T('Pathway')) + '</a></nav>' +
       (pid !== 'general' ? '<div class="legend"><span>' + esc(T('Under a third')) + '</span><span class="a">' + esc(T('On the way')) + '</span><span class="g">' + esc(T('Target met')) + '</span></div>' : '') + win +
+      // 1.0.12: the guide for this pathway, and the whole library, one tap from Progress.
+      '<a class="card sv-link guide-link" href="#/guides/' + guideFor(pid) + '"><div class="row"><span class="gl-ic" aria-hidden="true">' + I.book + '</span><div class="grow"><h3>' + esc(T('Guides and accreditation')) + '</h3><p class="small muted" style="margin:0">' + esc(GUIDE_FOR[pid] ? T('What {pathway} asks for, step by step, with the official sources.', { pathway: pwName(ps.pw) }) : T('Compare pathways and find the official pages for yours.')) + '</p></div>' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</div></a>' +
       (mods || '<div class="empty"><p>' + esc(pid === 'general' ? T('Log any scan and it appears here. Tap Targets to set your own.') : T('No modules.')) + '</p><a class="btn teal" href="#/new">' + esc(T('Log a scan')) + '</a></div>') +
       '<p class="small muted" style="margin-top:18px">' + esc(ps.pw.source) + ' ' + esc(T('Targets checked {date}. Always confirm requirements with your supervisor and the current curriculum. You can adjust any target.', { date: fmt(ps.pw.checked) })) + '</p>'));
   }
@@ -1237,7 +2190,7 @@
         var n = s.entry_ids.length, conf = Object.values(s.decisions || {}).filter(function (x) { return x === 'confirmed'; }).length;
         var st = s.status === 'signed' ? '<span class="chip green">' + esc(T('Signed')) + '</span>' : s.status === 'pending' ? (s.expires_at < Date.now() ? '<span class="chip">' + esc(T('Expired')) + '</span>' : '<span class="chip amber">' + esc(T('Waiting')) + '</span>') : '<span class="chip">' + esc(T('Cancelled')) + '</span>';
         var how = s.method === 'in-person' ? T('In person') : s.method === 'dashboard' ? T('Dashboard') : s.supervisor_id ? T('Dashboard and link') : T('By link');
-        return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([plural(n, 'scan'), how, fmt(s.signed_at || s.created_at), s.supervisor_name || '', s.status === 'signed' ? T('{n} confirmed', { n: conf }) : ''].filter(Boolean).join(' · ')) + '</p></div>' + st + '</div>' + (s.status === 'signed' && s.signer ? '<p class="small muted" style="margin:6px 0 0">' + esc(signerText(s.signer)) + '</p>' : '') + (s.issuedInError ? '<div class="warn" style="margin-top:8px">' + esc(T('Marked as issued in error by Wavelength.')) + '</div>' : '') + (s.comment ? '<p class="small" style="margin:8px 0 0">“' + esc(s.comment) + '”</p>' : '') + (s.status === 'pending' && s.returned ? '<p class="small" style="margin:8px 0 0">' + esc(T('Came back to you: the supervisor is no longer available.')) + '</p><div class="btns"><button class="btn teal sm" data-back="' + esc(s.id) + '">' + esc(T('Send on')) + '</button></div>' : '') + (s.status === 'pending' && s.expires_at > Date.now() && !s.returned ? '<div class="btns"><button class="btn ghost sm" data-cancel="' + esc(s.id) + '">' + esc(T('Cancel request')) + '</button></div>' : '') + '</div>';
+        return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([plural(n, 'scan'), how, fmt(s.signed_at || s.created_at), s.supervisor_name || '', s.status === 'signed' ? T('{n} confirmed', { n: conf }) : ''].filter(Boolean).join(' · ')) + '</p></div>' + st + '</div>' + (s.status === 'signed' && s.signer ? '<p class="small muted" style="margin:6px 0 0">' + esc(signerText(s.signer)) + '</p>' : '') + (s.issuedInError ? '<div class="warn" style="margin-top:8px">' + esc(T('Marked as issued in error by Wavelength.')) + '</div>' : '') + (s.comment ? '<p class="small" style="margin:8px 0 0">“' + esc(s.comment) + '”</p>' : '') + (s.status === 'pending' && !s.returned && s.reviewState === 'under_review' ? '<p class="small" style="margin:8px 0 0">' + esc(T('Under review: your supervisor has opened this request.')) + '</p>' : '') + (s.status === 'pending' && s.returned ? '<p class="small" style="margin:8px 0 0">' + esc(returnedText(s.returned)) + '</p><div class="btns"><button class="btn teal sm" data-back="' + esc(s.id) + '">' + esc(T('Send on')) + '</button></div>' : '') + (s.status === 'pending' && s.expires_at > Date.now() && !s.returned ? '<div class="btns"><button class="btn ghost sm" data-cancel="' + esc(s.id) + '">' + esc(T('Cancel request')) + '</button></div>' : '') + '</div>';
       }).join('') : '<p class="muted small">' + esc(T('No sign-offs yet.')) + '</p>';
       $$('[data-cancel]', h).forEach(function (b) { b.onclick = function () { api('/api/app/signoff/cancel', { code: b.dataset.cancel }).then(function () { toast(T('Request cancelled.')); viewSignoff(route()); }); }; });
       $$('[data-back]', h).forEach(function (b) { b.onclick = function () { returnedSheet('signoff', b.dataset.back, T('This sign-off request')); }; });
@@ -1411,6 +2364,8 @@
         '<p class="hint">' + esc(T('Images are encrypted on this phone. Wavelength cannot open them. They delete when your supervisor signs, when you cancel the request, or after 14 days.')) + '</p>' +
         '<label class="check"><input type="checkbox" id="decl"><span>' + esc(T('I have checked every image above. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them follows my hospital\'s information governance policy.')) + '</span></label></div></div>' : '';
       var supPart = sups.length ? '<div class="field"><label for="tosup">' + esc(T('Send to')) + '</label><select id="tosup"><option value="">' + esc(T('A link I send myself')) + '</option>' + sups.map(function (s) { return '<option value="' + s.id + '" data-uid="' + esc(s.id) + '">' + esc(T('{name}\'s dashboard (and a link)', { name: s.name || s.email })) + '</option>'; }).join('') + '</select><p class="hint">' + esc(T('A linked supervisor sees the request in their app. Images open only from the link, so send it too if you include images.')) + '</p></div>' : '';
+      var pendingSups = ((S.links || {}).supervisors || []).length - sups.length;
+      if (pendingSups > 0) supPart += '<p class="hint">' + esc(T('Supervisors who have not yet accepted, or whose verification is still pending, do not appear here.')) + ' ' + guideLink() + '</p>';
       sheet('<h2>' + esc(T('Request sign-off')) + '</h2><p class="muted small">' + esc(T('Your supervisor sees the record of {scans}. The link works for 14 days. Anyone with the link sees what it holds, so send it only to your supervisor.', { scans: plural(ids.length, 'scan') })) + '</p><form id="lf">' + supPart + '<div class="field"><label for="ln2">' + esc(T('Supervisor name (optional)')) + '</label><input id="ln2" name="supervisorName" type="text"></div>' + imgPart + '<div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Create request')) + '</button></div></form>', function (root) {
         var incl = $('#incl', root);
         if (incl) incl.onchange = function () { $('#inclbox', root).hidden = !incl.checked; };
@@ -1431,7 +2386,7 @@
             .catch(function (ex) {
               if (ex.share) { shareFailed(ex.share, ex, function (k) { ready({ link: ex.share.link + '.' + k, images: ex.share.files.length, dash: ex.share.dash }); }); return; }
               if (code) api('/api/app/signoff/cancel', { code: code }).then(function () { del('shares', code); });
-              busy(b, false); b.textContent = T('Create request'); err.textContent = ex.message || T('Could not create the request. Check the connection.'); err.hidden = false;
+              busy(b, false); b.textContent = T('Create request'); err.textContent = ex.message || T('Could not create the request. Check the connection.'); if (supId && ex.message) err.insertAdjacentHTML('beforeend', ' ' + guideLink()); err.hidden = false;
             });
         });
       });
@@ -1461,7 +2416,7 @@
     var txt = function (k, label) { return d[k] ? '<h3 style="margin:12px 0 4px">' + esc(T(label)) + '</h3><p style="white-space:pre-wrap;margin:0">' + esc(d[k]) + '</p>' : ''; };
     sheet('<h2>' + esc(kindLabel(a.kind)) + '</h2><p class="muted small">' + esc((PATHS[a.pathway] || {}).name || '') + ' · ' + esc(m ? T(m.label) : '') + '</p>' +
       (a.status === 'signed' ? '<div class="ok"><b>' + esc(T((OUTCOME[a.outcome] || {}).label || '')) + '</b><br>' + esc(T('Assessed by {name}{role} on {date}. Code {code}.', { name: a.supervisor_name, role: a.supervisor_role ? ', ' + a.supervisor_role : '', date: fmt(a.assessed_on), code: a.id })) + '</div><div class="detail"><dl>' + (d.topic ? '<dt>' + esc(T('Focus')) + '</dt><dd>' + esc(T(d.topic)) + '</dd>' : '') + dom + '</dl></div>' + txt('strengths', 'What went well') + txt('development', 'What to develop') + txt('actions', 'Agreed actions') + (a.signature ? '<img alt="' + esc(T('Signature')) + '" src="' + a.signature + '" style="max-width:220px;background:#fff;border-radius:8px;margin-top:12px">'  + (a.signatureKind === 'typed' ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('Typed signature')) + '</p>' : '') : '') + '<div class="btns"><button class="btn ghost block" data-copyas>' + esc(T('Copy verification link')) + '</button></div>'
-        : a.returned ? '<p>' + esc(T('Came back to you: the supervisor is no longer available.')) + '</p><div class="btns"><button class="btn teal block" data-backas>' + esc(T('Send on')) + '</button></div>'
+        : a.returned ? '<p>' + esc(returnedText(a.returned)) + '</p><div class="btns"><button class="btn teal block" data-backas>' + esc(T('Send on')) + '</button></div>'
         : '<p>' + esc(T('Waiting for your assessor.')) + '</p><div class="btns"><button class="btn ghost block" data-cancelas>' + esc(T('Cancel request')) + '</button></div>') +
       '<div class="btns"><button class="btn block" data-close>' + esc(T('Close')) + '</button></div>', function (root) {
       var c = $('[data-copyas]', root); if (c) c.onclick = function () { copy(NAT.origin + '/app/verify/?code=' + a.id); };
@@ -1472,7 +2427,7 @@
   }
   // Who signed (approved supervisor, account not approved, or self-declared), and any amendment history. A supervisor
   // can amend their own dashboard assessment within 30 days: a new signed version with a reason, never an overwrite.
-  var SIGNER_TEXT = { approved: 'Wavelength-approved supervisor', account_not_approved: 'Wavelength account, not approved as a supervisor at the time of signing', self_declared: 'Self-declared (not verified by Wavelength)' };
+  var SIGNER_TEXT = { approved: 'Wavelength Verified Supervisor', account_not_approved: 'Wavelength account, not approved as a supervisor at the time of signing', self_declared: 'Self-declared (not verified by Wavelength)' };
   function signerText(sg) { return sg && SIGNER_TEXT[sg.kind] ? T(SIGNER_TEXT[sg.kind]) : ''; }
   function entrySigner(so) {
     var v = so && so.verification; if (!v) return '';
@@ -1517,9 +2472,12 @@
   function viewAssess(r) {
     var pre = r.q.get('p') && r.q.get('m') ? r.q.get('p') + '|' + r.q.get('m') : '';
     var preE = r.q.get('e');
-    var list = S.assessments.slice().sort(function (a, b) { return (b.assessed_on || b.created_at || '').localeCompare(a.assessed_on || a.created_at || ''); });
+    var only = r.q.get('view') === 'signed';
+    var list = (only ? signedAssessments() : S.assessments).slice().sort(function (a, b) { return (b.assessed_on || b.created_at || '').localeCompare(a.assessed_on || a.created_at || ''); });
     var hasMods = myPaths().some(function (p) { return PATHS[p].modules.length; });
-    mount(shell({ title: T('Assessments'), back: '' },
+    // From Home's Assessments count: the signed assessments it counts, first, with the filter shown.
+    var hist = '<h2 class="sec" id="ahist">' + esc(T('Your assessments')) + '</h2>' + (only ? '<div class="active-f" role="status"><span class="muted small">' + esc(T('Showing')) + '</span><span class="chip teal">' + esc(T('Signed')) + ' · ' + list.length + '</span><a class="link small" href="#/assess">' + esc(T('Clear filter')) + '</a></div>' : '') + (list.length ? list.map(asmRow).join('') : '<p class="muted small">' + esc(only ? T('No signed assessments yet.') : T('None yet.')) + '</p>');
+    mount(shell({ title: T('Assessments'), back: '' }, (only ? hist : '') +
       '<div class="card dark"><h3>' + esc(T('Structured assessments')) + '</h3><p class="muted small">' + esc(T('Your assessor rates preparation, image acquisition, optimisation, interpretation, clinical integration and documentation, then records an outcome and feedback. Formative assessments guide your learning. Summative, DOPS and final assessments count towards your targets when judged competent. Each one gets a code anyone can verify.')) + '</p></div>' +
       (hasMods ? '<form id="af" class="card"><h3>' + esc(T('New assessment')) + '</h3>' +
         '<div class="field"><label for="am">' + esc(T('Pathway module')) + '</label><select id="am" name="mod">' + moduleOptions(pre) + '</select></div>' +
@@ -1528,7 +2486,7 @@
         '<div class="field"><label for="arf">' + esc(T('Note for your assessor (optional)')) + '</label><textarea id="arf" name="learnerReflection" style="min-height:70px" placeholder="' + esc(T('What you want feedback on')) + '"></textarea></div>' +
         '<div class="btns"><button class="btn teal" type="button" data-m="person" style="flex:1">' + esc(T('Assessor is with me')) + '</button><button class="btn" type="button" data-m="link" style="flex:1">' + esc(T('Send a request')) + '</button></div></form>'
         : '<div class="card"><p class="muted small">' + esc(T('Choose a pathway with modules in Me to record assessments against it.')) + '</p><a class="btn sm" href="#/me?edit=pathways">' + esc(T('Choose pathways')) + '</a></div>') +
-      '<h2 class="sec">' + esc(T('Your assessments')) + '</h2>' + (list.length ? list.map(asmRow).join('') : '<p class="muted small">' + esc(T('None yet.')) + '</p>')));
+      (only ? '' : hist)));
     $$('[data-asm]').forEach(function (el) { el.onclick = function () { var a = S.assessments.find(function (x) { return x.id === el.dataset.asm; }); if (a) asmDetail(a); }; });
     var f = $('#af'); if (!f) return;
     var drawScans = function () {
@@ -1580,23 +2538,58 @@
           if (!res.ok) throw new Error(res.error);
           closeSheet(); loadAssessments().then(function () { render(true); });
           linkReady({ link: res.link, dash: res.toDashboard }, T('Please complete my ultrasound assessment on Wavelength: {link}', { link: res.link }), T('Ultrasound assessment'));
-        }).catch(function (ex) { busy(b, false); err.textContent = ex.message; err.hidden = false; });
+        }).catch(function (ex) { busy(b, false); err.textContent = ex.message; if (tos && tos.value && ex.message) err.insertAdjacentHTML('beforeend', ' ' + guideLink()); err.hidden = false; });
       });
     });
   }
 
   // ---------- Supervisors (learner side) ----------
-  function viewSupervisors() {
+  // ---------- Supervision relationships (1.0.12) ----------
+  // The stage of each relationship comes from the server (worker/supervisor-lifecycle.js relationshipStage). Against
+  // an older Worker without stages, the 1.0.11 state is mapped onto the nearest stage, so nothing claims more than
+  // the server said. Each stage has a label, a plain explanation and, where there is one, what happens next.
+  var STAGE = {
+    awaiting_acceptance: ['amber', 'Invitation sent', 'Waiting for them to accept. They log in to Wavelength, or create a free account, with the email address you invited. A pending invitation is normal while they do this: it does not mean the invitation failed.', 'If they cannot find the email, resend it or share the message yourself.'],
+    verification_not_submitted: ['amber', 'Accepted, verification not yet submitted', 'They have accepted. Before they can supervise you through Wavelength, they complete supervisor verification in their own app.', 'Nothing for you to do. Wavelength cannot say how long this takes.'],
+    awaiting_professional_verification: ['amber', 'Awaiting professional verification', 'They have applied to be a Wavelength supervisor. The Wavelength team is checking their professional registration.', 'Nothing for you to do. You can keep logging scans while you wait.'],
+    awaiting_approval: ['amber', 'Awaiting Wavelength approval', 'They have applied. The Wavelength team is reviewing their application and the areas they asked to supervise.', 'Nothing for you to do. You can keep logging scans while you wait.'],
+    verifying: ['amber', 'Supervisor verification in progress', 'They have accepted and their supervisor verification is in progress.', 'Nothing for you to do. You can keep logging scans while you wait.'],
+    approved: ['green', 'Verified Supervisor', 'Credentials and approved scope confirmed by Wavelength.', ''],
+    not_verified: ['', 'Not yet verified by Wavelength', 'They can see your written records and receive your requests. A sign-off from them is recorded as from a Wavelength account not approved as a supervisor. Whether that counts is decided by your programme and its rules, not by Wavelength.', 'They can apply to become a Wavelength Verified Supervisor in their own app.'],
+    paused: ['amber', 'Approval paused', 'Their Wavelength approval is not current at present, so they cannot complete verified supervision through Wavelength. Records they signed earlier keep the status they had when signed.', 'Choose another supervisor for anything urgent.'],
+    unavailable: ['red', 'Not available for supervision through Wavelength at present', 'They cannot supervise through Wavelength at present. Open requests to them come back to you.', 'Please arrange another suitable supervisor.'],
+    ended: ['', 'Supervision ended', 'This supervision relationship has ended.', '']
+  };
+  function stageOf(s) {
+    if (s.stage && STAGE[s.stage]) return s.stage;
+    var st = s.state || (s.status === 'active' ? 'not_verified' : 'invited');
+    return { invited: 'awaiting_acceptance', verifying: 'verifying', active: 'approved', not_verified: 'not_verified', unavailable: 'unavailable', ended: 'ended' }[st] || 'not_verified';
+  }
+  function stageChip(stage) { var g = STAGE[stage]; return '<span class="chip ' + g[0] + '" style="white-space:normal;text-align:right;max-width:52%">' + esc(T(g[1])) + '</span>'; }
+  function guideLink(label) { return '<a class="link small" href="#/guides/supervisor-verification">' + esc(label || T('How supervisor verification works')) + '</a>'; }
+  // Before an invitation goes: what happens next, from the verification workflow as it is (worker/supervise.js).
+  function inviteExplain() {
+    return '<details class="card wv-explain"><summary>' + esc(T('What happens after I invite someone?')) + '</summary><ol class="small steps-list"><li>' + esc(T('They get an email and accept in their own Wavelength app.')) + '</li><li>' + esc(T('To become a Wavelength Verified Supervisor, they apply in the app. Wavelength checks their professional registration where it applies, and their ultrasound credentials or evidence.')) + '</li><li>' + esc(T('The Wavelength team approves them for specific areas only.')) + '</li></ol><p class="small">' + esc(T('While this happens their status shows as pending. That is expected and does not mean the invitation failed. Wavelength cannot promise how long a review takes.')) + '</p><p class="small">' + esc(T('Wavelength approval is not accreditation by RCEM, FAMUS, FUSIC or a regulator, and your programme may have its own rules about who can supervise or assess you.')) + '</p>' + guideLink() + '</details>';
+  }
+  function viewSupervisors(r) {
+    if (r && r.arg) return viewSupervisorDetail(r.arg);
     var L2 = S.links || { supervisors: [] };
+    var ended = ((S.links || {}).ended || []).filter(function (x) { return x.role === 'learner'; });
     mount(shell({ title: T('Your supervisors'), back: 'me' },
       '<div class="card dark"><h3>' + esc(T('Link your supervisors')) + '</h3><p class="muted small">' + esc(T('A linked supervisor sees your progress and your written scan records in their own Wavelength app, never your images. Send sign-off and assessment requests straight to their dashboard. Remove a supervisor at any time.')) + '</p></div>' +
-      (S.me && S.me.supervisor && S.me.supervisor.search ? '<form id="svsf" class="card" role="search"><div class="field"><label for="svq">' + esc(T('Find a Wavelength-approved supervisor')) + '</label><input id="svq" type="search" autocomplete="off" minlength="3" placeholder="' + esc(T('Name, at least 3 letters')) + '" aria-describedby="svq-h"><p class="hint" id="svq-h">' + esc(T('Shows only supervisors approved by Wavelength who chose to be found.')) + '</p></div><div id="svres" aria-live="polite"></div></form><p class="small muted" style="margin:-4px 0 12px">' + esc(T('Can\'t find them? Invite a supervisor by email.')) + '</p>' : '') +
-      '<form id="addf" class="card">' + listingBox('svfind2', T('Find your supervisor in an official directory (optional)'), T('Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.')) + '<div id="svpicked"></div><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off"></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
-      ((L2.supervisors || []).length ? L2.supervisors.map(function (s) { var vv = WLV.fromLink(s); return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.name || s.email) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div>' + (vv.verified ? '' : linkChip(s)) + '</div>' + (vv.verified ? verifiedLine() + '<button type="button" class="vs-more" data-vinfo="' + s.id + '" aria-haspopup="dialog">' + esc(T('More info')) + '</button>' : '') + (s.state === 'unavailable' ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('Please arrange another suitable supervisor.')) + '</p>' : '') + '<div class="btns">' + (s.status === 'active' || !s.email ? '' : '<button class="btn ghost sm" data-resend="' + esc(s.email) + '">' + esc(T('Resend or share')) + '</button>') + '<button class="btn ghost sm" data-rm="' + s.id + '">' + esc(T('Remove')) + '</button></div></div>'; }).join('') : '<p class="muted small">' + esc(T('No supervisors linked yet.')) + '</p>') +
-      '<div id="backreqs"></div>'));
-    // The list carries each supervisor's verification: read again when the copy is more than 30 seconds old.
+      (S.me && S.me.supervisor && S.me.supervisor.search ? '<form id="svsf" class="card" role="search"><div class="field"><label for="svq">' + esc(T('Find a Wavelength Verified Supervisor')) + '</label><input id="svq" type="search" autocomplete="off" minlength="3" placeholder="' + esc(T('Name, at least 3 letters')) + '" aria-describedby="svq-h"><p class="hint" id="svq-h">' + esc(T('Shows only supervisors approved by Wavelength who chose to be found.')) + '</p></div><div id="svres" aria-live="polite"></div></form><p class="small muted" style="margin:-4px 0 12px">' + esc(T('Can\'t find them? Invite a supervisor by email.')) + '</p>' : '') +
+      '<form id="addf" class="card">' + listingBox('svfind2', T('Find your supervisor in an official directory (optional)'), T('Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.')) + '<div id="svpicked"></div><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off" aria-describedby="se2-h"><p class="hint" id="se2-h">' + esc(T('They may need checks and Wavelength approval before they can provide verified supervision. Their status shows as pending until then.')) + '</p></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
+      inviteExplain() +
+      (!S.links ? '<p class="muted small" role="status">' + esc(T('Checking…')) + '</p>' : (L2.supervisors || []).length ? '<h2 class="sec">' + esc(T('Linked and invited')) + '</h2>' + L2.supervisors.map(function (s) {
+        // A verified supervisor shows the compact status only; what they are approved for is in their details.
+        var stage = stageOf(s), g = STAGE[stage], vv = WLV.fromLink(s);
+        if (vv.verified) return '<a class="card sv-link" href="#/supervisors/' + s.id + '" aria-label="' + esc((s.name || s.email || T('Supervisor')) + ': ' + T('Verified Supervisor') + '. ' + T('Open details')) + '"><div class="row"><div class="grow"><b>' + esc(s.name || s.email || T('Supervisor')) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div></div>' + verifiedLine() + '<span class="small link-more">' + esc(T('Details and options')) + ' ' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</span></a>';
+        return '<a class="card sv-link" href="#/supervisors/' + s.id + '" aria-label="' + esc((s.name || s.email || T('Supervisor')) + ': ' + T(g[1]) + '. ' + T('Open details')) + '"><div class="row"><div class="grow"><b>' + esc(s.name || s.email || T('Supervisor')) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div>' + stageChip(stage) + '</div><p class="small" style="margin:6px 0 0">' + esc(T(g[2])) + '</p><span class="small link-more">' + esc(T('Details and options')) + ' ' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</span></a>';
+      }).join('') : '<p class="muted small">' + esc(T('No supervisors linked yet.')) + '</p>') +
+      (ended.length ? '<h2 class="sec">' + esc(T('Ended recently')) + '</h2><div class="card">' + ended.map(function (x) { return '<p class="small" style="margin:0 0 6px">' + esc(T('{name}: supervision ended on {date} ({who}).', { name: x.name || T('Supervisor'), date: fmt(x.endedAt), who: x.endedBy === 'you' ? T('ended by you') : x.endedBy === 'them' ? T('ended by the supervisor') : T('ended by Wavelength') })) + '</p>'; }).join('') + '<p class="small muted" style="margin:0">' + esc(T('Your scans and completed sign-offs and assessments are kept. To work with them again, send a new invitation.')) + '</p></div>' : '') +
+      wvExplain() + '<div class="btns">' + guideLink() + '</div><div id="backreqs"></div>'));
+    // Opening the list reads the server again if the copy is more than 30 seconds old (it re-renders once loaded).
     if (!S.links || linksStale(30e3)) loadLinks();
-    bindVerifiedInfo(document, function (id) { var s = (L2.supervisors || []).filter(function (x) { return String(x.id) === String(id); })[0]; return s ? WLV.fromLink(s) : null; }, false);
     returnedRequests();
     bindSupSearch();
     // Picking a listed supervisor fills in who they are; the invitation still goes to the email the learner types.
@@ -1610,11 +2603,166 @@
         if (!res.ok) throw new Error(res.error);
         var to = $('#se2').value.trim().toLowerCase();
         return loadLinks().then(function () { viewSupervisors(); inviteSent(to, res); });
-      }).catch(function (ex) { busy(b, false); err.textContent = ex.message; err.hidden = false; });
+      }).catch(function (ex) { busy(b, false); err.textContent = netFail(ex) ? T('Could not send. Check your connection.') : ex.message; err.hidden = false; });
     });
-    $$('[data-resend]').forEach(function (b) { b.onclick = function () { var to = b.dataset.resend; busy(b, true); api('/api/app/supervisors/add', { email: to }).then(function (res) { busy(b, false); if (!res.ok) { toast(res.error, 5000); return; } inviteSent(to, res); }).catch(function (ex) { busy(b, false); toast(ex.message); }); }; });
-    $$('[data-rm]').forEach(function (b) { b.onclick = function () { if (!confirm(T('Remove this supervisor? They stop seeing your logbook at once.'))) return; api('/api/app/supervisors/remove', { id: Number(b.dataset.rm) }).then(function () { loadLinks().then(viewSupervisors); }); }; });
   }
+  // One supervisor, from the learner's side: status in words, what it means, dates, and the options.
+  function viewSupervisorDetail(id) {
+    var s = ((S.links || {}).supervisors || []).find(function (x) { return String(x.id) === String(id); });
+    if (!s) {
+      mount(shell({ title: T('Supervisor'), back: 'supervisors' }, '<p class="muted" role="status">' + esc(S.links ? T('This supervisor is no longer linked to you.') : T('Loading…')) + '</p>' + (S.links ? '<div class="btns"><a class="btn" href="#/supervisors">' + esc(T('Your supervisors')) + '</a></div>' : '')));
+      if (!S.links) loadLinks().then(function () { if (route().name === 'supervisors' && route().arg === String(id)) viewSupervisorDetail(id); });
+      return;
+    }
+    var stage = stageOf(s), g = STAGE[stage], vv = WLV.fromLink(s), dl = function (k, v) { return v ? '<dt>' + esc(T(k)) + '</dt><dd>' + esc(v) + '</dd>' : ''; };
+    mount(shell({ title: s.name || s.email || T('Supervisor'), back: 'supervisors' },
+      (vv.verified ? verifiedCard({ key: 'link' }) : '') +
+      '<div class="card"><div class="row"><div class="grow"><h3>' + esc(s.name || s.email || T('Supervisor')) + '</h3><p class="small muted" style="margin:2px 0 0">' + esc([s.name ? s.email : '', s.role].filter(Boolean).join(' · ')) + '</p></div>' + (vv.verified ? '' : stageChip(stage)) + '</div>' +
+      (vv.verified ? '' : '<div class="sv-stage"><p class="small"><b>' + esc(T('What this means')) + '</b><br>' + esc(T(g[2])) + '</p>' + (g[3] ? '<p class="small"><b>' + esc(T('Next')) + '</b><br>' + esc(T(g[3])) + '</p>' : '') + '</div>') +
+      '<div class="detail" style="margin-top:12px"><dl>' + dl('Invited', fmt(s.invitedAt || s.since)) + dl('Accepted', s.acceptedAt ? fmt(s.acceptedAt) : s.status === 'active' ? fmt(s.since) : '') + dl('Requests waiting with them', s.pending ? String(s.pending) : '') + '</dl></div>' +
+      '<div class="btns">' + (s.status === 'active' || !s.email ? '' : '<button class="btn ghost sm" data-resend="' + esc(s.email) + '">' + esc(T('Resend or share')) + '</button>') + guideLink() + '</div></div>' +
+      '<h2 class="sec">' + esc(T('Supervision')) + '</h2><div class="card"><p class="small">' + esc(s.status === 'active' ? T('Removing this supervisor ends your supervision relationship with them through Wavelength.') : T('Removing this supervisor cancels the invitation.')) + '</p><div class="btns"><button class="btn ghost block danger-text" style="color:var(--red)" data-end>' + esc(s.status === 'active' ? T('Remove supervisor') : T('Cancel invitation')) + '</button></div></div>'));
+    bindVerifiedInfo(document, function () { return vv; }, false);
+    var rs = $('[data-resend]'); if (rs) rs.onclick = function () { var to = rs.dataset.resend; busy(rs, true); api('/api/app/supervisors/add', { email: to }).then(function (res) { busy(rs, false); if (!res.ok) { toast(res.error, 5000); return; } inviteSent(to, res); }).catch(function (ex) { busy(rs, false); toast(netFail(ex) ? T('Could not send. Check your connection.') : ex.message); }); };
+    $('[data-end]').onclick = function () { endSupervision({ linkId: s.id, side: 'learner', name: s.name || s.email || T('this supervisor'), active: s.status === 'active', pending: s.pending || 0 }); };
+  }
+  // Ending a relationship from either side. Nothing is said to have ended until the server confirms it: offline, or
+  // with no answer, the relationship is unchanged and the person is told so. The request is never queued.
+  function endSupervision(o) {
+    var learner = o.side === 'learner';
+    var title = learner ? (o.active ? T('Remove {name}?', { name: o.name }) : T('Cancel the invitation to {name}?', { name: o.name })) : o.active ? T('End supervision of {name}?', { name: o.name }) : T('Decline the invitation from {name}?', { name: o.name });
+    var points = o.active ? [
+      learner ? T('Your supervision relationship with them ends, and they stop seeing your progress and written records.') : T('Your supervision relationship ends, and you stop seeing their progress and written records.'),
+      T('No scan records are deleted.'),
+      T('Completed sign-offs and assessments stay recorded, with the details they had when they were signed.'),
+      learner ? T('They can no longer supervise you through this relationship.') : T('You can no longer supervise them through this relationship.'),
+      learner ? (o.pending ? T('{n} open requests waiting with them come back to you, to send to someone else or cancel.', { n: o.pending }) : T('Any open requests waiting with them come back to you, to send to someone else or cancel.')) : T('Open requests from them come back to them, to send to someone else or cancel.'),
+      T('To work together again, the learner sends a new invitation, which needs accepting again (and any approval Wavelength requires).')
+    ] : [learner ? T('They will not be able to accept this invitation.') : T('The learner sees that the invitation was declined. Nothing else changes.'), T('A new invitation can be sent later.')];
+    var confirmLabel = learner ? (o.active ? T('Remove supervisor') : T('Cancel invitation')) : o.active ? T('End supervision') : T('Decline invitation');
+    sheet('<h2>' + esc(title) + '</h2><ul class="small end-points">' + points.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul><div class="err" hidden role="alert"></div><div class="btns"><button class="btn danger block" data-go>' + esc(confirmLabel) + '</button><button class="btn ghost block" data-close>' + esc(T('Keep supervision')) + '</button></div>', function (root) {
+      var go2 = $('[data-go]', root), err = $('.err', root);
+      if (!o.active) $('[data-close]', root).textContent = T('Go back');
+      go2.onclick = function () {
+        err.hidden = true;
+        if (!NETR.deviceOnline(deviceNet())) { err.textContent = T('You are offline. Nothing has changed: supervision continues until you try again with a connection.'); err.hidden = false; return; }
+        busy(go2, true, T('Ending…'));
+        api('/api/app/supervisors/remove', { id: Number(o.linkId) }).then(function (res) {
+          if (!res.ok) { busy(go2, false); err.textContent = res.notFound ? T('This supervision link was not found. It may already have ended.') : (res.error || T('Something went wrong.')); err.hidden = false; return; }
+          // An older Worker answers { ok: true } only: the link list, read again, is the server's confirmation.
+          return loadLinks().then(function () {
+            var L3 = S.links || {}, still = (L3.supervisors || []).some(function (x) { return String(x.id) === String(o.linkId); }) || (L3.learners || []).some(function (x) { return String(x.linkId) === String(o.linkId); }) || (L3.invites || []).some(function (x) { return String(x.id) === String(o.linkId); });
+            if (res.ended === false || (res.ended === undefined && still)) { busy(go2, false); err.textContent = T('Wavelength could not confirm the change. Supervision has not been ended. Try again.'); err.hidden = false; return; }
+            NAT.haptic('success');
+            S.sv = null;
+            var when = res.link && res.link.endedAt ? fmt(res.link.endedAt) : fmt(today());
+            var msg = o.active ? T('Supervision ended on {date}. Wavelength has recorded the change.', { date: when }) : learner ? T('Invitation cancelled.') : T('Invitation declined.');
+            var back = learner && res.returned ? '<p class="small">' + esc(T('{n} open requests came back to you. Send them to another supervisor or cancel them under Your supervisors.', { n: res.returned })) + '</p>' : '';
+            sheet('<h2>' + esc(o.active ? T('Supervision ended') : msg) + '</h2>' + (o.active ? '<div class="ok" role="status">' + esc(msg) + '</div>' : '') + back +
+              (learner && o.active ? '<p class="small">' + esc(T('You can invite another supervisor at any time.')) + '</p>' : '') +
+              '<div class="btns">' + (learner ? '<a class="btn teal block" href="#/supervisors" data-close>' + esc(T('Invite or choose another supervisor')) + '</a>' : '<a class="btn teal block" href="#/supervise" data-close>' + esc(T('Back to your learners')) + '</a>') + '<button class="btn ghost block" data-close>' + esc(T('Done')) + '</button></div>');
+            if (learner) go('supervisors'); else go('supervise');
+          });
+        }).catch(function (ex) {
+          busy(go2, false);
+          err.textContent = netFail(ex) ? T('Could not reach Wavelength. Nothing has changed: supervision continues until you try again.') : T('Something went wrong. Supervision has not been ended.');
+          err.hidden = false;
+        });
+      };
+    });
+  }
+
+  // "How supervisor verification works": a permanent guide, written from the workflow as built (worker/supervise.js,
+  // supervisor-lifecycle.js, supervisor-apply.js). The sign-off paragraph follows the live switch the server reports
+  // (SUPERVISOR_APPROVAL_REQUIRED), so the guide never describes rules that are not in force.
+  function supervisionGuideHtml() {
+    var req = !!((S.me && S.me.supervisor && S.me.supervisor.required) || (S.links && S.links.me && S.links.me.enforced));
+    var sec = function (id, h, ps) { return '<section class="card guide-sec" id="g-' + id + '"><h3>' + esc(T(h)) + '</h3>' + ps.map(function (p) { return '<p class="small">' + esc(T(p)) + '</p>'; }).join('') + '</section>'; };
+    return '<div class="card dark"><h3>' + esc(T('How supervisor verification works')) + '</h3><p class="muted small">' + esc(T('Five separate things: the invitation, the supervisor\'s professional registration, Wavelength\'s approval, your programme\'s own rules, and the supervision relationship itself.')) + '</p></div>' +
+      sec('invite', 'Invitations', ['You invite a supervisor by email from Me, Your supervisors. They get an email from Wavelength with your name on it. The invitation link works for 30 days, and you can resend it or share a message yourself.', 'Hospital and NHS email often files a first message from a new sender as junk, so ask them to check.']) +
+      sec('accept', 'Acceptance', ['Your supervisor accepts in their own Wavelength app, logged in with the email address you invited. Wavelength checks they own that address, through the invitation link or a confirmation email.', 'Until they accept, they show as "Invitation sent". That is normal.']) +
+      sec('review', 'Professional credential review', ['To become a Wavelength Verified Supervisor, your supervisor applies in their app: their role, professional registration, ultrasound experience, evidence or an explanation, and the areas they want to supervise.', 'The Wavelength team checks the professional registration where one applies, and the ultrasound credentials or evidence. Holding a professional registration does not on its own make someone eligible to supervise or assess under a particular programme.']) +
+      sec('approval', 'Wavelength approval', ['A Wavelength administrator decides each application. Approval covers specific pathway modules only, lasts up to 12 months, and is reviewed at every renewal. An administrator who approves their own supervisor status must record the independent evidence for it, and another administrator is asked to review it.', 'Wavelength approval is Wavelength\'s own verification. It is not accreditation or endorsement by RCEM, FAMUS, FUSIC, the GMC or any other professional body or regulator.']) +
+      sec('pending', 'Pending status', ['While an invitation, an application or a check is under way, your supervisor\'s status shows what stage it has reached, such as "Awaiting professional verification" or "Awaiting Wavelength approval". Pending does not mean anything failed. Wavelength cannot promise how long a review takes.']) +
+      sec('signoff', 'Sign-off eligibility', [req ? 'Sign-off and assessment requests can go to a supervisor\'s dashboard only when they are approved by Wavelength, now, for the scans or module in the request. Otherwise the app explains why and offers another supervisor or a one-off link.' : 'At present a supervisor who has accepted can receive requests on their dashboard before Wavelength approves them. Their sign-offs are recorded as from "a Wavelength account, not approved as a supervisor at the time of signing", and you see them labelled "Not yet verified by Wavelength".', 'You can always send a one-off link to someone outside Wavelength. Those records are marked as self-declared, not verified by Wavelength.', 'Whether a sign-off counts towards your accreditation is decided by your programme and its rules.']) +
+      sec('scans', 'Scans you log while verification is pending', ['Keep logging. Your scans stay in your logbook, on your phone and synced, whatever happens to a supervisor\'s application.', 'You can ask for sign-off later from a supervisor who is then eligible. Wavelength does not promise that earlier scans will count retrospectively: that depends on your programme\'s rules and on your supervisor.']) +
+      sec('paused', 'Rejection, pause or suspension', ['An approval pauses if the supervisor\'s registration, a required credential or their email stops being current, and ends at its review date unless renewed. A supervisor can stop by choice, and Wavelength can end an approval.', 'You are not told the supervisor\'s private reasons: you see that they are not available for supervision through Wavelength at present, and any open requests to them come back to you to send on.']) +
+      sec('end', 'Ending supervision', ['Either of you can end the relationship: you from the supervisor\'s details under Your supervisors, your supervisor from your page on their dashboard. The change happens on Wavelength\'s server and the app says so only once the server confirms it. It cannot be done offline.', 'Ending supervision deletes no scans. Completed sign-offs and assessments stay recorded. Open requests come back to you.']) +
+      sec('reinvite', 'Reinviting a supervisor', ['To work together again, send a new invitation. Your supervisor accepts again, and any Wavelength approval the rules require applies again. An ended relationship is never restored without both of you.']) +
+      sec('history', 'Historical evidence', ['Each sign-off and assessment keeps the supervisor\'s Wavelength status as it was when they signed. Ending a relationship does not change that.', 'This is separate from a record found to be wrong: Wavelength can mark a sign-off or assessment as issued in error, and then it no longer counts as evidence. The verify page says so.']) +
+      '<p class="small muted">' + esc(T('Last updated for Wavelength 1.0.12.')) + '</p>';
+  }
+  function viewGuideSupervision() {
+    mount(shell({ title: T('Supervisor verification'), back: 'guides' }, supervisionGuideHtml()));
+  }
+  // ---------- Guides and accreditation (1.0.12) ----------
+  // The website's guides (content/guides), bundled by build.js into guides.js and loaded only when Guides opens; kept
+  // offline with the app. Each shows when it was last checked against its official sources and links to them, says
+  // that it is Wavelength's guide and not an official document, and flags itself for review a year after its check.
+  // The learner's own pathway comes first. Guides are in English, like the website's.
+  var GUIDE_FOR = { rcem: 'rcem-ultrasound-sign-off', famus: 'famus-accreditation', fusic: 'fusic-accreditation' };
+  var REVIEW_DAYS = 365;
+  function guidesReady() { return window.WL_GUIDES ? Promise.resolve(window.WL_GUIDES) : loadScript('/app/guides.js?v=' + (window.WL_BUILD || '')).then(function () { return window.WL_GUIDES; }); }
+  function guideOrder(list) {
+    var mine = myPaths(), first = mine.map(function (p) { return GUIDE_FOR[p]; }).filter(Boolean), intl = mine.some(function (p) { return !GUIDE_FOR[p] && p !== 'general'; });
+    var rank = function (g) { var i = first.indexOf(g.slug); if (i >= 0) return i; if (g.slug === 'pocus-accreditation') return intl || !first.length ? -1 : 10; if (g.slug === 'ultrasound-logbook') return 11; return 20 + (g.order || 0); };
+    return list.slice().sort(function (a, b) { return rank(a) - rank(b); });
+  }
+  function guideFor(pid) { return GUIDE_FOR[pid] || 'pocus-accreditation'; }
+  function guideCard(g, lead) {
+    return '<a class="card sv-link guide-card' + (lead ? ' lead' : '') + '" href="#/guides/' + esc(g.slug) + '">' + (g.eyebrow ? '<p class="eyebrow" lang="en" dir="ltr">' + esc(g.eyebrow) + '</p>' : '') + '<h3 lang="en" dir="ltr">' + esc(g.title) + '</h3><p class="small muted" lang="en" dir="ltr">' + esc(g.summary) + '</p><p class="small guide-date">' + esc(g.reviewed ? T('Checked against official sources {date}', { date: fmt(g.reviewed) }) : T('Not dated: check each organisation\'s own page')) + '</p></a>';
+  }
+  function viewGuides(r) {
+    if (r.arg === 'supervisor-verification') return viewGuideSupervision();
+    if (r.arg) return viewGuide(r.arg, r.arg2 === 'glance');
+    mount(shell({ title: T('Guides'), back: 'progress' }, '<p class="muted" role="status">' + esc(T('Loading…')) + '</p>'));
+    guidesReady().then(function (G) {
+      if (route().name !== 'guides' || route().arg) return;
+      var list = guideOrder(G.guides), lead = list[0];
+      mount(shell({ title: T('Guides and accreditation'), back: 'progress' },
+        '<p class="small muted">' + esc(T('Wavelength\'s guides to accreditation and evidence, with links to each body\'s own documents.')) + (LANG !== 'en' ? ' ' + esc(T('Guides are in English.')) : '') + '</p>' +
+        (lead ? '<h2 class="sec">' + esc(T('For your pathway')) + '</h2>' + guideCard(lead, true) : '') +
+        '<h2 class="sec">' + esc(T('All guides')) + '</h2>' + list.slice(1).map(function (g) { return guideCard(g); }).join('') +
+        '<a class="card sv-link guide-card" href="#/guides/supervisor-verification"><p class="eyebrow">' + esc(T('Wavelength app')) + '</p><h3>' + esc(T('How supervisor verification works')) + '</h3><p class="small muted">' + esc(T('Invitations, checks, approval, ending supervision and what happens to your records.')) + '</p></a>' +
+        '<p class="small muted">' + esc(T('This copy of the guides came with the app on {date}. Official requirements can change: each guide links to the current official documents.', { date: fmt(G.built) })) + '</p>'));
+    }).catch(function (ex) { mount(shell({ title: T('Guides'), back: 'progress' }, '<div class="card"><p class="small">' + esc(ex.message) + '</p></div>')); });
+  }
+  // A guide's own HTML (built from the repository's Markdown) with its links made safe for the app: other guides open
+  // in the app, the website opens outside the logbook, official sources open in a new window.
+  function guideLinks(root, G) {
+    $$('a[href]', root).forEach(function (a) {
+      var h = a.getAttribute('href'), m = h.match(/^\/guides\/([a-z0-9-]+)\/(at-a-glance\/)?(#[a-z0-9-]+)?$/);
+      if (m && G.guides.some(function (g) { return g.slug === m[1]; })) { a.setAttribute('href', '#/guides/' + m[1] + (m[2] ? '/glance' : '')); return; }
+      if (/^https?:/i.test(h) || h.charAt(0) === '/') { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener noreferrer'); if (h.charAt(0) === '/') a.setAttribute('href', NAT.on ? h : NAT.origin + h); }
+    });
+  }
+  function viewGuide(slug, glance) {
+    mount(shell({ title: T('Guide'), back: 'guides' }, '<p class="muted" role="status">' + esc(T('Loading…')) + '</p>'));
+    guidesReady().then(function (G) {
+      var here = route(); if (here.name !== 'guides' || here.arg !== slug) return;
+      var g = G.guides.find(function (x) { return x.slug === slug; });
+      if (!g) { mount(shell({ title: T('Guide'), back: 'guides' }, '<div class="card"><p class="small">' + esc(T('This guide is not in this version of the app.')) + '</p><div class="btns"><a class="btn" href="#/guides">' + esc(T('All guides')) + '</a></div></div>')); return; }
+      var age = g.reviewed ? daysBetween(g.reviewed, today()) : null;
+      var notice = '<aside class="guide-note" role="note"><p><b>' + esc(T('Wavelength\'s guide, not an official document.')) + '</b> ' + esc(T('Requirements are set by the bodies named, and can change after this copy was made. Check the current official guidance before you rely on it, and follow your supervisor and local rules.')) + '</p>' +
+        (g.reviewed ? '<p>' + esc(T('Checked against official sources {date}', { date: fmt(g.reviewed) })) + (g.updated && g.updated > g.reviewed ? ' · ' + esc(T('Updated {date}', { date: fmt(g.updated) })) : '') + '</p>' : '<p>' + esc(T('This guide is not dated against official sources. Check each organisation\'s own page.')) + '</p>') +
+        (age != null && age > REVIEW_DAYS ? '<p class="guide-due">' + esc(T('Due for review: last checked more than a year ago.')) + '</p>' : '') + (LANG !== 'en' ? '<p>' + esc(T('Guides are in English.')) + '</p>' : '') + '</aside>';
+      if (glance && g.glance) {
+        mount(shell({ title: g.short, back: 'guides/' + slug }, notice + '<article class="guide-body card glance" lang="en" dir="ltr">' + g.glance.html + '</article><div class="btns"><a class="btn" href="#/guides/' + esc(slug) + '">' + esc(T('Read the full guide')) + '</a></div>'));
+        guideLinks($('main', app), G); return;
+      }
+      var toc = (g.toc || []).length ? '<details class="card guide-toc"><summary>' + esc(T('Contents')) + '</summary><ol>' + g.toc.map(function (t) { return '<li><button type="button" class="link" data-goto="' + esc(t.id) + '">' + esc(t.label) + '</button></li>'; }).join('') + '</ol></details>' : '';
+      var src = (g.sources || []).length ? '<section class="card guide-src"><h3>' + esc(T('Official sources')) + '</h3><p class="small muted">' + esc(T('Open the current version from the organisation itself:')) + '</p><ul lang="en" dir="ltr">' + g.sources.map(function (x) { return '<li><a href="' + esc(x.url) + '">' + esc(x.label) + '</a></li>'; }).join('') + '</ul></section>' : '';
+      mount(shell({ title: g.short, back: 'guides' },
+        '<header class="guide-head" lang="en" dir="ltr">' + (g.eyebrow ? '<p class="eyebrow">' + esc(g.eyebrow) + '</p>' : '') + '<h2 class="guide-title">' + esc(g.title) + '</h2><p class="small muted">' + esc(g.summary) + '</p>' + (g.author ? '<p class="small muted">' + esc(g.author) + '</p>' : '') + '</header>' + notice +
+        (g.glance ? '<div class="btns"><a class="btn ghost sm" href="#/guides/' + esc(slug) + '/glance">' + esc(T('At a glance: one-page summary')) + '</a></div>' : '') + toc +
+        '<article class="guide-body" lang="en" dir="ltr">' + g.html + '</article>' + src +
+        '<div class="btns"><a class="btn ghost block" href="/guides/' + esc(slug) + '/">' + esc(T('Open on the Wavelength website')) + '</a></div>'));
+      var main = $('main', app);
+      guideLinks(main, G);
+      $$('[data-goto]', main).forEach(function (b) { b.onclick = function () { var t = document.getElementById(b.dataset.goto); if (t) { scrollToField(t, true); t.setAttribute('tabindex', '-1'); t.focus({ preventScroll: true }); } }; });
+    }).catch(function (ex) { mount(shell({ title: T('Guide'), back: 'guides' }, '<div class="card"><p class="small">' + esc(ex.message) + '</p></div>')); });
+  }
+
 
   // Supervisor search: results come only from current approvals whose holder opted in (worker/search.js). The ref is
   // opaque; a request creates an invitation the supervisor accepts on their dashboard.
@@ -1628,6 +2776,8 @@
         if (my !== seq) return;
         if (!res.ok) { out.innerHTML = '<p class="small muted">' + esc(res.needVerify ? T('Confirm your email address to search for supervisors.') : res.error || T('Search is not available right now.')) + '</p>'; return; }
         var rs = res.results || [];
+        // Search shows only supervisors approved now (worker/search.js): the compact status, with what they are
+        // approved for behind More info.
         out.innerHTML = rs.length ? rs.map(function (r, i) { return '<div class="sv-result" style="padding:10px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + esc(r.name) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([r.role, r.specialty, r.organisation].filter(Boolean).join(' · ')) + '</p>' + verifiedLine() + ' <button type="button" class="vs-more" data-vinfo="' + i + '" aria-haspopup="dialog">' + esc(T('More info')) + '</button></div><button class="btn teal sm" type="button" data-svreq="' + i + '">' + esc(T('Ask to link')) + '</button></div>'; }).join('') : '<p class="small muted">' + esc(T('No approved supervisor found. Check the spelling, or invite them by email.')) + '</p>';
         bindVerifiedInfo(out, function (i) { var r = rs[Number(i)]; return r ? { state: 'verified', verified: true, approved: r.verification && r.verification.approved ? r.verification.approved : WLV.groupsFromAreas(r.areas), reviewOn: null, pending: [], credentials: [] } : null; }, false);
         $$('[data-svreq]', out).forEach(function (b) { b.onclick = function () {
@@ -1642,13 +2792,6 @@
     };
     q.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(run, 300); });
     f.addEventListener('submit', function (e) { e.preventDefault(); clearTimeout(timer); run(); });
-  }
-  // The learner's view of a link: the server's state and label (worker/supervisor-lifecycle.js linkState).
-  function linkChip(s) {
-    var st = s.state || (s.status === 'active' ? 'not_verified' : 'invited');
-    var cls = st === 'active' ? 'green' : st === 'unavailable' ? 'red' : st === 'not_verified' ? '' : 'amber';
-    var label = s.stateLabel || (st === 'invited' ? 'Invitation sent' : 'Not yet verified by Wavelength');
-    return '<span class="chip ' + cls + '" style="white-space:normal;text-align:right;max-width:52%">' + esc(T(label)) + '</span>';
   }
   // Sign-off and assessment requests that came back because a supervisor became unavailable.
   function returnedRequests() {
@@ -1674,6 +2817,7 @@
     var msg = T('Hello, I use the free Wavelength ultrasound logbook and have added you as my supervisor. Open {link} and log in, or create a free account, with {email}. My invitation is waiting there. Thank you, {name}', { link: link, email: to, name: me.name || '' });
     var head = res.emailed ? T('Invitation sent to {email}.', { email: to }) : T('Invitation saved for {email}, but the email did not go out. Send the message below instead.', { email: to });
     sheet('<h2>' + esc(T('Invitation sent')) + '</h2><div class="' + (res.emailed ? 'ok' : 'warn') + '">' + esc(head) + '</div>' +
+      '<p class="small">' + esc(T('Their status shows as pending until they accept, and while any checks and Wavelength approval are under way. That is expected.')) + ' ' + guideLink() + '</p>' +
       '<p class="small">' + esc(T('Hospital and NHS email often puts a first message from a new sender in junk. Ask your supervisor to check their junk folder and mark the email as Not junk, so later sign-off requests reach their inbox.')) + '</p>' +
       '<p class="small muted">' + esc(T('Or send them this message yourself by WhatsApp, Teams or text:')) + '</p><div class="card small" style="white-space:pre-wrap">' + esc(msg) + '</div>' +
       '<div class="btns">' + (navigator.share ? '<button class="btn teal block" data-share>' + esc(T('Share message')) + '</button>' : '') + '<button class="btn block" data-copy>' + esc(T('Copy message')) + '</button><button class="btn ghost block" data-close>' + esc(T('Done')) + '</button></div>',
@@ -1685,7 +2829,7 @@
 
   // ---------- Supervisor dashboard ----------
   function viewSupervise(r) {
-    if (r.arg) return viewSupervisedLearner(r.arg);
+    if (r.arg) return viewSupervisedLearner(r.arg, r);
     var L2 = S.links;
     if (!L2) { mount(shell({ title: T('Supervising'), back: '' }, '<p class="muted">' + esc(T('Loading…')) + '</p>')); loadLinks(); return; }
     var me = L2.me || {}, cur = me.standing === 'active' || me.standing === 'renewal_review';
@@ -1696,46 +2840,140 @@
       ((L2.invites || []).length ? '<h2 class="sec">' + esc(T('Invitations')) + '</h2>' + L2.invites.map(function (v) { return '<div class="card"><b>' + esc(v.learner) + '</b><p class="small muted" style="margin:2px 0 8px">' + esc([v.role, v.organisation].filter(Boolean).join(' · ')) + '</p><p class="small">' + esc(v.claimed ? T('Waiting for your Wavelength supervisor approval. Their supervision starts when you are approved.') : T('Asks you to supervise their ultrasound logbook. You will see their progress and written scan records, never their images.')) + '</p><div class="btns">' + (v.claimed ? '<a class="btn teal sm" href="#/supervisor">' + esc(T('Continue to supervisor verification')) + '</a>' : '<button class="btn teal sm" data-acc="' + v.id + '">' + esc(T('Accept')) + '</button>') + '<button class="btn ghost sm" data-dec="' + v.id + '">' + esc(T('Decline')) + '</button></div></div>'; }).join('') : '') +
       '<h2 class="sec">' + esc(T('Your learners')) + '</h2>' +
       ((L2.learners || []).length ? L2.learners.map(function (x) { return '<a class="entry" href="#/supervise/' + x.id + '"><span class="thumb">' + esc((x.name.split(' ').slice(-2).map(function (w) { return w.charAt(0); }).join(''))) + '</span><div class="grow"><h3>' + esc(x.name) + '</h3><p>' + esc([x.role, x.organisation].filter(Boolean).join(' · ')) + '</p><div class="meta">' + x.pathways.map(function (p) { return '<span class="chip">' + esc((PATHS[p] || {}).label || p) + '</span>'; }).join('') + (x.pending ? '<span class="chip amber">' + esc(plural(x.pending, 'request waiting', 'requests waiting')) + '</span>' : '') + (x.available === false ? '<span class="chip red">' + esc(T('Paused')) + '</span>' : '') + '</div></div></a>'; }).join('')
-        : '<div class="card"><p class="muted small">' + esc(T('No learners yet. Ask your trainees to add your email under Me, Your supervisors.')) + '</p></div>')));
+        : '<div class="card"><p class="muted small">' + esc(T('No learners yet. Ask your trainees to add your email under Me, Your supervisors.')) + '</p></div>') +
+      (function () { var ended = ((L2.ended || []).filter(function (x) { return x.role === 'supervisor'; })); return ended.length ? '<h2 class="sec">' + esc(T('Ended recently')) + '</h2><div class="card">' + ended.map(function (x) { return '<p class="small" style="margin:0 0 6px">' + esc(T('{name}: supervision ended on {date} ({who}).', { name: x.name || T('Learner'), date: fmt(x.endedAt), who: x.endedBy === 'you' ? T('ended by you') : x.endedBy === 'them' ? T('ended by the learner') : T('ended by Wavelength') })) + '</p>'; }).join('') + '</div>' : ''; })() +
+      '<div class="btns">' + guideLink() + '</div>'));
     $$('[data-acc]').forEach(function (b) { b.onclick = function () { busy(b, true); api('/api/app/supervisors/accept', { id: Number(b.dataset.acc) }).then(function (res) { busy(b, false); if (!res.ok) { toast(res.error, 5000); return; } loadLinks(); if (res.next === 'apply') { toast(T('Next, apply to be a Wavelength supervisor. Their supervision starts when you are approved.'), 5000); go('supervisor/apply'); } }); }; });
-    $$('[data-dec]').forEach(function (b) { b.onclick = function () { api('/api/app/supervisors/remove', { id: Number(b.dataset.dec) }).then(loadLinks); }; });
+    $$('[data-dec]').forEach(function (b) { b.onclick = function () { var v = (L2.invites || []).find(function (x) { return String(x.id) === b.dataset.dec; }) || {}; endSupervision({ linkId: b.dataset.dec, side: 'supervisor', name: v.learner || T('this learner'), active: false }); }; });
   }
-  function viewSupervisedLearner(id) {
-    mount(shell({ title: T('Learner'), back: 'supervise' }, '<p class="muted">' + esc(T('Loading…')) + '</p>'));
-    api('/api/app/supervise/learner?id=' + encodeURIComponent(id)).then(function (res) {
+  // 1.0.12: one supervised learner. Every summary tile opens exactly the records it counts, for this learner only
+  // (#/supervise/<id>/scans?f=, /assessments, /requests), fetched from the server each time: other people's records
+  // are never kept on this device, so offline the dashboard says so rather than showing old copies.
+  var SVF = { all: 'All scans', supervised: 'Supervised scans', signed: 'Signed-off scans', unsigned: 'Not signed off' };
+  function svFetch(id) {
+    // A short cache for moving between a learner's tiles, tied to this login: never shown to another account.
+    var me = S.account && S.account.id;
+    if (S.sv && me && S.sv._acc === me && S.sv.learner && String(S.sv.learner.id) === String(id) && Date.now() - (S.sv._at || 0) < 15000) return Promise.resolve(S.sv);
+    return api('/api/app/supervise/learner?id=' + encodeURIComponent(id)).then(function (res) { if (res.ok) { res._at = Date.now(); res._acc = me; S.sv = res; } else if (S.sv && String((S.sv.learner || {}).id) === String(id)) S.sv = null; return res; });
+  }
+  function svFail(title, back, ex) {
+    mount(shell({ title: title, back: back }, '<div class="card"><p class="small" role="status">' + esc(netFail(ex) ? T('You are offline. Your learners\' records are only shown while you are connected, and are not kept on this phone.') : (ex && ex.message) || T('Could not load.')) + '</p><div class="btns"><a class="btn" href="#/supervise">' + esc(T('Your learners')) + '</a></div></div>'));
+  }
+  function viewSupervisedLearner(id, r) {
+    if (r && r.arg2 === 'scans') return viewSupervisedScans(id, r);
+    if (r && (r.arg2 === 'assessments' || r.arg2 === 'requests')) return viewSupervisedList(id, r.arg2);
+    mount(shell({ title: T('Learner'), back: 'supervise' }, '<p class="muted" role="status">' + esc(T('Loading…')) + '</p>'));
+    svFetch(id).then(function (res) {
+      if (route().name !== 'supervise' || route().arg !== String(id) || route().arg2) return;
       if (!res.ok) { mount(shell({ title: T('Learner'), back: 'supervise' }, '<div class="err">' + esc(res.error || T('Could not load.')) + '</div>')); return; }
-      S.sv = res;
       var sm = res.summary;
+      // An older Worker sends no counts and has no scans list: the scan tiles and module rows are then not links.
+      var drill = !!res.counts;
+      var cn = res.counts || { scans: sm.scans, supervised: sm.supervised, signed: sm.signed, assessments: (res.assessments || []).length, requests: (res.signoffRequests || []).length + (res.assessmentRequests || []).length };
       var paths = sm.pathways.map(function (p) {
-        return '<div class="card"><h3>' + esc(p.label) + '</h3>' + p.modules.map(function (m) { var tracked = m.total || m.supTarget || (m.assessments || []).length; return '<div class="evmod"><div class="row"><b class="grow">' + esc(T(m.label)) + '</b>' + (m.met ? '<span class="chip green">' + esc(T('Met')) + '</span>' : tracked ? '<span class="chip amber">' + m.percent + '%</span>' : '<span class="chip">' + m.logged + '</span>') + '</div><p class="small muted" style="margin:2px 0 0">' + esc(T('Scans {a} · Supervised {b} · Signed off {c}', { a: m.counted + (m.total ? ' / ' + m.total : ''), b: m.supervised + (m.supTarget ? ' / ' + m.supTarget : ''), c: m.signed })) + ((m.gaps || []).length ? '<br>' + esc(T('Still needed: {list}', { list: m.gaps.slice(0, 3).map(gapText).join(', ') })) : '') + '</p></div>'; }).join('') + '</div>';
+        return '<div class="card"><h3>' + esc(p.label) + '</h3>' + p.modules.map(function (m) { var tracked = m.total || m.supTarget || (m.assessments || []).length; return (drill ? '<a class="evmod" href="#/supervise/' + esc(id) + '/scans?module=' + encodeURIComponent(p.id + ':' + m.id) + '" aria-label="' + esc(T('{label}: show the scans that count', { label: T(m.label) })) + '">' : '<div class="evmod">') + '<div class="row"><b class="grow">' + esc(T(m.label)) + '</b>' + (m.met ? '<span class="chip green">' + esc(T('Met')) + '</span>' : tracked ? '<span class="chip amber">' + m.percent + '%</span>' : '<span class="chip">' + m.logged + '</span>') + '</div><p class="small muted" style="margin:2px 0 0">' + esc(T('Scans {a} · Supervised {b} · Signed off {c}', { a: m.counted + (m.total ? ' / ' + m.total : ''), b: m.supervised + (m.supTarget ? ' / ' + m.supTarget : ''), c: m.signed })) + ((m.gaps || []).length ? '<br>' + esc(T('Still needed: {list}', { list: m.gaps.slice(0, 3).map(gapText).join(', ') })) : '') + '</p>' + (drill ? '</a>' : '</div>'); }).join('') + '</div>';
       }).join('');
       var reqs = (res.signoffRequests || []).map(function (s) { return '<div class="card"><div class="row"><div class="grow"><b>' + esc(T('Sign-off request')) + '</b><p class="small muted" style="margin:0">' + esc(plural(s.count, 'scan') + ' · ' + fmt(s.at)) + '</p></div><button class="btn teal sm" data-sv-so="' + esc(s.code) + '">' + esc(T('Review and sign')) + '</button></div></div>'; }).join('') +
         (res.assessmentRequests || []).map(function (a, i) { return '<div class="card"><div class="row"><div class="grow"><b>' + esc(kindLabel(a.kind)) + '</b><p class="small muted" style="margin:0">' + esc(a.pathwayLabel + ' · ' + T(a.moduleLabel)) + '</p></div><button class="btn teal sm" data-sv-as="' + i + '">' + esc(T('Assess')) + '</button></div></div>'; }).join('');
-      var recent = res.recent.slice(0, 20).map(function (e) { return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T((TYPES[e.type] || {}).label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + (e.images ? ' · ' + esc(plural(e.images, 'image')) : '') + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (e.signoff && e.signoff.status === 'confirmed' ? '<span class="chip green">' + esc(T('Signed off')) + ratingDots(e.signoff.rating) + '</span>' : '<span class="chip">' + esc(T('Not signed')) + '</span>') + '</div></div>'; }).join('');
+      var recent = res.recent.slice(0, 20).map(svScanCard).join('');
+      var tile = function (n, label, href) { if (!drill && href.indexOf('scans') === 0) return '<div class="stat"><b>' + n + '</b><span>' + esc(label) + '</span></div>'; return '<a class="stat" href="#/supervise/' + esc(id) + '/' + href + '" aria-label="' + esc(T('{label}: {n}. Show these records.', { label: label, n: n })) + '"><b>' + n + '</b><span>' + esc(label) + '</span>' + SI.chev.replace('class="chev flip"', 'class="stat-go flip"') + '</a>'; };
+      var linkId = (res.link && res.link.id) || (((S.links || {}).learners || []).find(function (x) { return String(x.id) === String(id); }) || {}).linkId;
+      var since = (res.link && res.link.since) || (((S.links || {}).learners || []).find(function (x) { return String(x.id) === String(id); }) || {}).since;
       mount(shell({ title: res.learner.name, back: 'supervise' },
-        '<div class="card dark"><div class="row"><span style="color:var(--teal-l)">' + I.team + '</span><div class="grow"><h3>' + esc(res.learner.name) + '</h3><p class="muted small" style="margin:0">' + esc([res.learner.role, res.learner.organisation].filter(Boolean).join(' · ')) + '</p></div></div><div class="stats" style="margin-top:12px"><div class="stat"><b>' + sm.scans + '</b><span>' + esc(T('Scans')) + '</span></div><div class="stat"><b>' + sm.supervised + '</b><span>' + esc(T('Supervised')) + '</span></div><div class="stat"><b>' + sm.signed + '</b><span>' + esc(T('Signed off')) + '</span></div><div class="stat"><b>' + (res.assessments || []).length + '</b><span>' + esc(T('Assessments')) + '</span></div></div></div>' +
-        (reqs ? '<h2 class="sec">' + esc(T('Waiting for you')) + '</h2>' + reqs : '') +
+        '<div class="card dark"><div class="row"><span style="color:var(--teal-l)">' + I.team + '</span><div class="grow"><h3>' + esc(res.learner.name) + '</h3><p class="muted small" style="margin:0">' + esc([res.learner.role, res.learner.organisation].filter(Boolean).join(' · ')) + '</p></div></div><div class="stats" style="margin-top:12px">' +
+        tile(cn.scans, T('Scans'), 'scans?f=all') + tile(cn.supervised, T('Supervised'), 'scans?f=supervised') + tile(cn.signed, T('Signed off'), 'scans?f=signed') + tile(cn.assessments, T('Assessments'), 'assessments') + '</div>' +
+        (cn.requests ? '<a class="sv-waiting" href="#/supervise/' + esc(id) + '/requests">' + esc(plural(cn.requests, 'request waiting for you', 'requests waiting for you')) + ' ' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</a>' : '') + '</div>' +
+        (reqs ? '<h2 class="sec" id="waiting">' + esc(T('Waiting for you')) + '</h2>' + reqs : '') +
         '<div class="btns"><button class="btn teal block" id="newas">' + esc(T('Record an assessment')) + '</button></div>' +
         '<h2 class="sec">' + esc(T('Progress')) + '</h2>' + paths +
-        ((res.assessments || []).length ? '<h2 class="sec">' + esc(T('Assessments')) + '</h2>' + res.assessments.map(asmRow).join('') : '') +
-        '<h2 class="sec">' + esc(T('Recent scans')) + '</h2>' + (recent || '<p class="muted small">' + esc(T('No scans yet.')) + '</p>') +
-        '<p class="small muted" style="margin-top:14px">' + esc(T('You see written records only. Images stay on the learner\'s phone, or reach you encrypted through the links they send.')) + '</p>'));
+        ((res.assessments || []).length ? '<h2 class="sec">' + esc(T('Assessments')) + ' <a href="#/supervise/' + esc(id) + '/assessments">' + esc(T('All')) + '</a></h2>' + res.assessments.slice(0, 5).map(asmRow).join('') : '') +
+        '<h2 class="sec">' + esc(T('Recent scans')) + (drill ? ' <a href="#/supervise/' + esc(id) + '/scans?f=all">' + esc(T('All scans')) + '</a>' : '') + '</h2>' + (recent || '<p class="muted small">' + esc(T('No scans yet.')) + '</p>') +
+        '<p class="small muted" style="margin-top:14px">' + esc(T('You see written records only. Images stay on the learner\'s phone, or reach you encrypted through the links they send.')) + '</p>' +
+        (linkId ? '<h2 class="sec">' + esc(T('Supervision')) + '</h2><div class="card"><p class="small">' + esc(since ? T('You have supervised {name} through Wavelength since {date}.', { name: res.learner.name, date: fmt(since) }) : T('You supervise {name} through Wavelength.', { name: res.learner.name })) + '</p><p class="small muted">' + esc(T('Ending supervision stops your access to their records. Nothing you have signed is deleted.')) + '</p><div class="btns"><button class="btn ghost block" style="color:var(--red)" data-end>' + esc(T('End supervision')) + '</button>' + guideLink() + '</div></div>' : '')));
       $$('[data-asm]').forEach(function (el) { el.onclick = function () { var a = res.assessments.find(function (x) { return x.id === el.dataset.asm; }); if (a) asmDetail(Object.assign({}, a, { _learner: id })); }; });
       $$('[data-sv-so]').forEach(function (b) { b.onclick = function () { dashSignoff(b.dataset.svSo, id); }; });
       $$('[data-sv-as]').forEach(function (b) { b.onclick = function () { dashAssess(res.assessmentRequests[Number(b.dataset.svAs)], id); }; });
       $('#newas').onclick = function () { dashAssessNew(res, id); };
-    });
+      var en = $('[data-end]'); if (en) en.onclick = function () { endSupervision({ linkId: linkId, side: 'supervisor', name: res.learner.name, active: true }); };
+      revealIn(true);
+    }).catch(function (ex) { svFail(T('Learner'), 'supervise', ex); });
+  }
+  function svScanCard(e) { return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T((TYPES[e.type] || {}).label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + (e.images ? ' · ' + esc(plural(e.images, 'image')) : '') + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (e.signoff && e.signoff.status === 'confirmed' ? '<span class="chip green">' + esc(T('Signed off')) + ratingDots(e.signoff.rating) + '</span>' : '<span class="chip">' + esc(T('Not signed')) + '</span>') + '</div></div>'; }
+  // The records behind a tile: filter in words, a way to clear it, and back to this learner.
+  function viewSupervisedScans(id, r) {
+    var f = SVF[r.q.get('f')] ? r.q.get('f') : 'all', type = r.q.get('type') || '', mod = r.q.get('module') || '', back = 'supervise/' + id;
+    var name = S.sv && String((S.sv.learner || {}).id) === String(id) ? S.sv.learner.name : T('Learner');
+    mount(shell({ title: name, back: back }, '<p class="muted" role="status">' + esc(T('Loading…')) + '</p>'));
+    var q = '/api/app/supervise/learner/scans?id=' + encodeURIComponent(id) + '&filter=' + f + (type ? '&type=' + encodeURIComponent(type) : '') + (mod ? '&module=' + encodeURIComponent(mod) : '');
+    var shown = [], total = 0;
+    var draw = function (res) {
+      var here = route(); if (here.name !== 'supervise' || here.arg !== String(id) || here.arg2 !== 'scans') return;
+      name = res.learner.name; shown = shown.concat(res.entries); total = res.total;
+      var bits = [T(SVF[f])]; if (res.module) bits.push(T(res.module.label)); if (type) bits.push(T((TYPES[type] || {}).short || type));
+      var filtered = f !== 'all' || type || mod;
+      var seg = '<div class="seg" style="margin:0 0 10px" role="radiogroup" aria-label="' + esc(T('Show')) + '">' + ['all', 'supervised', 'signed', 'unsigned'].map(function (k) { return '<input type="radio" name="svf" id="svf' + k + '" value="' + k + '"' + (k === f ? ' checked' : '') + '><label for="svf' + k + '">' + esc(T(SVF[k])) + '</label>'; }).join('') + '</div>';
+      mount(shell({ title: name, back: back },
+        '<div class="active-f" role="status"><span class="muted small">' + esc(T('{name}: {n} shown', { name: name, n: plural(total, 'scan') })) + '</span>' + bits.map(function (b) { return '<span class="chip teal">' + esc(b) + '</span>'; }).join('') + (filtered ? '<a class="link small" href="#/supervise/' + esc(id) + '/scans?f=all">' + esc(T('Clear filters')) + '</a>' : '') + '</div>' + seg +
+        (shown.length ? shown.map(svScanCard).join('') + (res.more ? '<div class="btns"><button class="btn ghost block" data-more>' + esc(T('Show more')) + '</button></div>' : '') :
+          '<div class="empty">' + I.book.replace('width="24" height="24"', 'width="48" height="48"') + '<p>' + esc(f === 'signed' ? T('{name} has no signed-off scans yet.', { name: name }) : f === 'supervised' ? T('{name} has no supervised scans logged yet.', { name: name }) : filtered ? T('No scans match.') : T('{name} has not logged any scans yet, or they have not synced.', { name: name })) + '</p>' + (filtered ? '<a class="btn ghost" href="#/supervise/' + esc(id) + '/scans?f=all">' + esc(T('Clear filters')) + '</a> ' : '') + '</div>') +
+        '<div class="btns"><a class="btn ghost block" href="#/' + back + '">' + esc(T('Back to {name}', { name: name })) + '</a></div>'));
+      $$('input[name=svf]').forEach(function (i) { i.onchange = function () { location.hash = '#/supervise/' + id + '/scans?f=' + i.value + (mod ? '&module=' + encodeURIComponent(mod) : '') + (type ? '&type=' + encodeURIComponent(type) : ''); }; });
+      var mo = $('[data-more]'); if (mo) mo.onclick = function () { busy(mo, true); api(q + '&offset=' + shown.length).then(function (r2) { if (!r2.ok) throw new Error(r2.error); draw(r2); }).catch(function (ex) { busy(mo, false); toast(netFail(ex) ? T('Could not load. Check your connection.') : ex.message); }); };
+    };
+    api(q).then(function (res) {
+      if (res._status === 404 && !res.error) { svFail(name, back, new Error(T('Update needed on the server for this view.'))); return; }
+      if (!res.ok) { svFail(name, back, new Error(res.error || T('Could not load.'))); return; }
+      draw(res);
+    }).catch(function (ex) { svFail(name, back, ex); });
+  }
+  function viewSupervisedList(id, kind) {
+    var back = 'supervise/' + id;
+    mount(shell({ title: T('Learner'), back: back }, '<p class="muted" role="status">' + esc(T('Loading…')) + '</p>'));
+    svFetch(id).then(function (res) {
+      if (route().name !== 'supervise' || route().arg !== String(id) || route().arg2 !== kind) return;
+      if (!res.ok) { svFail(T('Learner'), back, new Error(res.error)); return; }
+      var name = res.learner.name, body;
+      if (kind === 'assessments') {
+        var as = res.assessments || [];
+        body = '<div class="active-f" role="status"><span class="muted small">' + esc(T('{name}: {n} shown', { name: name, n: plural(as.length, 'assessment') })) + '</span><span class="chip teal">' + esc(T('Signed assessments')) + '</span></div>' + (as.length ? as.map(asmRow).join('') : '<div class="empty"><p>' + esc(T('{name} has no signed assessments yet.', { name: name })) + '</p></div>');
+      } else {
+        var so = res.signoffRequests || [], ar = res.assessmentRequests || [];
+        body = '<div class="active-f" role="status"><span class="muted small">' + esc(T('{name}: {n} shown', { name: name, n: plural(so.length + ar.length, 'request') })) + '</span><span class="chip teal">' + esc(T('Waiting for you')) + '</span></div>' +
+          (so.length + ar.length ? so.map(function (s) { return '<div class="card"><div class="row"><div class="grow"><b>' + esc(T('Sign-off request')) + '</b><p class="small muted" style="margin:0">' + esc(plural(s.count, 'scan') + ' · ' + fmt(s.at)) + '</p></div><button class="btn teal sm" data-sv-so="' + esc(s.code) + '">' + esc(T('Review and sign')) + '</button></div></div>'; }).join('') + ar.map(function (a, i) { return '<div class="card"><div class="row"><div class="grow"><b>' + esc(kindLabel(a.kind)) + '</b><p class="small muted" style="margin:0">' + esc(a.pathwayLabel + ' · ' + T(a.moduleLabel)) + '</p></div><button class="btn teal sm" data-sv-as="' + i + '">' + esc(T('Assess')) + '</button></div></div>'; }).join('') : '<div class="empty"><p>' + esc(T('Nothing is waiting for you from {name}.', { name: name })) + '</p></div>');
+      }
+      mount(shell({ title: name, back: back }, body + '<div class="btns"><a class="btn ghost block" href="#/' + back + '">' + esc(T('Back to {name}', { name: name })) + '</a></div>'));
+      $$('[data-asm]').forEach(function (el) { el.onclick = function () { var a = (res.assessments || []).find(function (x) { return x.id === el.dataset.asm; }); if (a) asmDetail(Object.assign({}, a, { _learner: id })); }; });
+      $$('[data-sv-so]').forEach(function (b) { b.onclick = function () { dashSignoff(b.dataset.svSo, id); }; });
+      $$('[data-sv-as]').forEach(function (b) { b.onclick = function () { dashAssess(res.assessmentRequests[Number(b.dataset.svAs)], id); }; });
+    }).catch(function (ex) { svFail(T('Learner'), back, ex); });
   }
   function myPre() { var a = S.account || {}; return { name: a.name, role: profile().grade || a.role || '', registration: profile().registration || '', noEmail: true }; }
+  // Opening a request marks it "Under review" for the learner; Decline sends it back with a reason (worker/review.js).
+  function markOpened(kind, code) { api('/api/app/supervise/request/accept', { kind: kind, code: code }).catch(function () { /* older servers: nothing to mark */ }); }
+  function declineButton(kind, code) { return '<p style="margin:4px 0 14px"><button type="button" class="btn ghost sm" data-decline="' + kind + ':' + esc(code) + '">' + esc(T('Decline this request')) + '</button></p>'; }
+  function bindDecline(root) {
+    $$('[data-decline]', root).forEach(function (b) { b.onclick = function () {
+      var v = b.dataset.decline.split(':');
+      sheet('<h2>' + esc(T('Decline this request')) + '</h2><p class="muted small">' + esc(T('It goes back to the learner, who can send it to someone else. Nothing in their logbook changes.')) + '</p><form id="dcf"><div class="field"><label for="dcr">' + esc(T('Reason')) + '</label><textarea id="dcr" maxlength="500" rows="3" required></textarea></div><div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Decline')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (r2) {
+        $('#dcf', r2).addEventListener('submit', function (ev) {
+          ev.preventDefault(); var err = $('.err', r2); err.hidden = true;
+          api('/api/app/supervise/request/decline', { kind: v[0], code: v[1], reason: $('#dcr', r2).value }).then(function (r3) { if (!r3.ok) throw new Error(r3.error); closeSheet(); toast(T('Declined. The request has gone back to the learner.'), 3500); loadLinks(); S.sv = null; render(true); })
+            .catch(function (ex) { err.textContent = ex.message; err.hidden = false; });
+        });
+      });
+    }; });
+  }
   function dashSignoff(code, learnerId) {
     api('/api/app/supervise/signoff?code=' + encodeURIComponent(code)).then(function (res) {
       if (!res.ok) { toast(res.error); return; }
-      sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish. Images open only from the link the learner sent you.')) + '</p>' + res.entries.map(function (e) { return entryCard(e, true); }).join('') + signoffFormHtml(myPre()), function (root) {
+      markOpened('signoff', code);
+      sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish. Images open only from the link the learner sent you.')) + '</p>' + declineButton('signoff', code) + res.entries.map(function (e) { return entryCard(e, true); }).join('') + signoffFormHtml(myPre()), function (root) {
+        bindDecline(root);
         var f = $('#pf', root), pad = F.bindSig(root, T);
         f.addEventListener('submit', function (ev) {
           ev.preventDefault(); var d = collectSignoff(root, f, pad); if (!d) return; d.code = code;
           var b = $('button.teal', f); busy(b, true, T('Signing…'));
-          api('/api/app/supervise/signoff', d).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(T('Signed off. Code {code}.', { code: r2.code }), 4000); loadLinks(); viewSupervisedLearner(learnerId); })
+          api('/api/app/supervise/signoff', d).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(T('Signed off. Code {code}.', { code: r2.code }), 4000); loadLinks(); S.sv = null; render(true); })
             .catch(function (ex) { busy(b, false); var err = $('.err', f); err.textContent = ex.message; err.hidden = false; });
         });
       });
@@ -1752,13 +2990,14 @@
         if (pad.empty()) { err.textContent = pad.emptyError(); err.hidden = false; return; }
         d.signature = pad.data(); d.signatureKind = pad.kind();
         var b = $('button.teal', f); busy(b, true, T('Saving…'));
-        send(d, root).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(T('Assessment recorded. Code {code}.', { code: r2.code }), 4000); loadLinks(); viewSupervisedLearner(learnerId); })
+        send(d, root).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(T('Assessment recorded. Code {code}.', { code: r2.code }), 4000); loadLinks(); S.sv = null; render(true); })
           .catch(function (ex) { busy(b, false); err.textContent = ex.message; err.hidden = false; });
       });
     });
   }
   function dashAssess(a, learnerId) {
-    dashAssessSheet(kindLabel(a.kind), T('{name}: {module}.', { name: a.learner, module: a.pathwayLabel + ' ' + T(a.moduleLabel) }), { kind: a.kind, topics: a.topics, learnerReflection: (a.data || {}).learnerReflection },
+    markOpened('assessment', a.code);
+    dashAssessSheet(kindLabel(a.kind), T('{name}: {module}.', { name: a.learner, module: a.pathwayLabel + ' ' + T(a.moduleLabel) }), { kind: a.kind, topics: a.topics, learnerReflection: (a.data || {}).learnerReflection, pick: declineButton('assessment', a.code), bind: bindDecline },
       function (d) { d.code = a.code; return api('/api/app/supervise/assessment', d); }, learnerId);
   }
   function dashAssessNew(res, learnerId) {
@@ -1775,6 +3014,12 @@
   // The server owns every state: this screen shows what GET /api/app/supervisor returns and saves each step as a draft.
   var SV_STEPS = ['about', 'registration', 'experience', 'evidence', 'areas', 'changes', 'submit'];
   var SV_STEP_LABEL = { about: 'About you', registration: 'Professional registration', experience: 'Ultrasound experience', evidence: 'Evidence or explanation', areas: 'Areas you supervise', changes: 'What has changed', submit: 'Check and send' };
+  var SV_STANDING = { none: 'Not a Wavelength supervisor', applying: 'Application being reviewed', active: 'Wavelength Verified Supervisor', renewal_review: 'Renewal under review', paused: 'Paused', expired: 'Expired', withdrawn: 'Ended at your request', revoked: 'Ended by Wavelength' };
+  var SV_LAPSE = { email: 'Your email address is not confirmed.', registration: 'Your professional registration is no longer verified as current.', credential: 'A credential your approval relies on has expired or been withdrawn.', review: 'Your review date has passed.' };
+  var SV_REASONS = { no_longer_supervising: 'No longer supervising ultrasound', role_change: 'Change of clinical role', organisation_change: 'Changed organisation', no_longer_practising: 'No longer practising in the relevant ultrasound area', 'break': 'Taking a break from supervision', no_longer_wavelength: 'No longer wish to use Wavelength as a supervisor', other: 'Other', prefer_not_to_say: 'Prefer not to say' };
+  // "Approved to supervise:" with the supervisor's CURRENT Wavelength-approved scopes, as the server sends them (never
+  // requested areas or suggested scopes). dark: on the dark status card.
+  function approvedList(areas, style, dark) { return '<p class="small' + (dark ? ' muted' : '') + '" style="' + (style || '') + ';margin-bottom:0"><b>' + esc(T('Approved to supervise:')) + '</b></p><ul class="small sv-scopes' + (dark ? ' muted' : '') + '">' + areas.map(function (x) { return '<li>' + esc(T(x)) + '</li>'; }).join('') + '</ul>'; }
   // ---------- Verified Supervisor (October 2026 supervisor QA) ----------
   // One compact status wherever a verified supervisor is shown: a small green check, "Verified Supervisor", one line,
   // and More info. Pathways, modules, roles and dates live only in More info. The state comes from the server
@@ -1818,9 +3063,10 @@
   function bindVerifiedInfo(root, find, self) {
     $$('[data-vinfo]', root).forEach(function (b) { b.onclick = function () { var v = find(b.dataset.vinfo); if (v) openVerifiedInfo(b, v, self); }; });
   }
-  var SV_STANDING = { none: 'Not a Wavelength supervisor', applying: 'Application being reviewed', active: 'Wavelength-approved supervisor', renewal_review: 'Renewal under review', paused: 'Paused', expired: 'Expired', withdrawn: 'Ended at your request', revoked: 'Ended by Wavelength' };
-  var SV_LAPSE = { email: 'Your email address is not confirmed.', registration: 'Your professional registration is no longer verified as current.', credential: 'A credential your approval relies on has expired or been withdrawn.', review: 'Your review date has passed.' };
-  var SV_REASONS = { no_longer_supervising: 'No longer supervising ultrasound', role_change: 'Change of clinical role', organisation_change: 'Changed organisation', no_longer_practising: 'No longer practising in the relevant ultrasound area', 'break': 'Taking a break from supervision', no_longer_wavelength: 'No longer wish to use Wavelength as a supervisor', other: 'Other', prefer_not_to_say: 'Prefer not to say' };
+  // What the status means, one tap away wherever supervisor status is shown.
+  function wvExplain() { return '<details class="card wv-explain"><summary>' + esc(T('What does Wavelength Verified mean?')) + '</summary><p class="small">' + esc(T('A Wavelength Verified Supervisor has completed our verification process. We check professional registration where applicable, review relevant qualifications and ultrasound credentials, and approve the supervisor only for the areas of practice supported by that information.')) + '</p><p class="small">' + esc(T('Verification is performed by Wavelength and does not mean that the supervisor has been accredited or endorsed by GMC, RCEM, FAMUS, FUSIC or another professional body.')) + '</p></details>'; }
+  // Before someone applies: what Wavelength looks at, and what approval does and does not mean.
+  function svHow() { return '<div class="card sv-how"><h3>' + esc(T('How supervisor verification works')) + '</h3><p class="small">' + esc(T('We look at your professional registration where applicable, your relevant ultrasound qualifications, credentials or supporting evidence, and the specific areas you want to supervise.')) + '</p><ul class="small"><li>' + esc(T('Approval is scope-specific: holding one credential does not approve every ultrasound area.')) + '</li><li>' + esc(T('We may ask for further evidence.')) + '</li><li>' + esc(T('Supervisor status is reviewed periodically.')) + '</li><li>' + esc(T('Wavelength verification is not accreditation or endorsement by an external professional body.')) + '</li></ul>' + guideLink(T('Read the full guide')) + '</div>'; }
   function svLoad() { return api('/api/app/supervisor').then(function (res) { if (res.ok) S.sup = res; return res; }); }
   function svSteps(a) { return SV_STEPS.filter(function (s) { return s !== 'changes' || (a && a.kind === 'renewal'); }); }
   function svShell(title, back, body) { return shell({ title: title, back: back }, body); }
@@ -1860,16 +3106,17 @@
       if (!P.available) acts += '<div class="card"><p class="small muted">' + esc(T('Supervisor applications are not open yet.')) + '</p></div>';
       else if (!P.emailVerified) acts += emailCardFor();
       else {
-        if (!a && st === 'none' && P.canApplyAgain) acts += '<div class="card"><p class="small">' + esc(T('Wavelength-approved supervisors can sign off scans and record assessments from their own dashboard. The Wavelength team checks your registration and experience, and approves you for the areas the evidence supports.')) + '</p><div class="btns"><a class="btn teal block" href="#/supervisor/apply" data-svnew>' + esc(T('Become a Wavelength supervisor')) + '</a></div></div>';
+        if (!a && st === 'none' && P.canApplyAgain) acts += svHow() + '<div class="card"><p class="small">' + esc(T('Wavelength Verified Supervisors can sign off scans and record assessments from their own dashboard.')) + '</p><div class="btns"><a class="btn teal block" href="#/supervisor/apply" data-svnew>' + esc(T('Become a Wavelength supervisor')) + '</a></div></div>';
         else if (!a && P.canApplyAgain) acts += '<div class="btns"><button class="btn teal block" data-svstart="apply-again">' + esc(T('Apply again as a supervisor')) + '</button></div>';
         if (P.canRenew) acts += '<div class="btns"><button class="btn teal block" data-svstart="renew">' + esc(T('Renew')) + '</button></div><p class="small muted">' + esc(T('Renewing takes a few minutes: check your details, confirm what has not changed and make a fresh declaration.')) + '</p>';
       }
       var find = cur && P.searchAvailable ? '<h2 class="sec">' + esc(T('Being found')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="svfind"' + (P.searchableAt ? ' checked' : '') + '><span>' + esc(T('Let learners find me in Wavelength supervisor search')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Logged-in learners would see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Turn this off at any time.')) + '</p><div id="svprev"></div></div>' : '';
       var stop = cur || st === 'paused' || (a && a.status !== 'draft') ? '<h2 class="sec">' + esc(T('Stop supervising')) + '</h2><div class="card"><a href="#/supervisor/stop">' + esc(T('Stop being a Wavelength supervisor')) + '</a></div>' : '';
+      // Approved pathways and modules live in More info. Only a paused approval keeps its list here, so the person
+      // can see which scopes are waiting for the lapse to be put right.
       mount(svShell(T('Wavelength supervisor'), 'me', status + notes + app + acts +
-        // Approved pathways and modules live in More info; only a paused approval keeps its list here.
         (!cur && P.approvals.length ? '<h2 class="sec">' + esc(T('Approved scopes')) + '</h2><div class="card">' + P.approvals.map(function (x) { return '<span class="chip ' + (x.current ? 'teal' : 'amber') + '" style="margin:0 6px 6px 0">' + esc(x.label) + '</span>'; }).join('') + '<p class="small muted" style="margin:6px 0 0">' + esc(T('This approval is given by Wavelength. It is not an accreditation by RCEM, FAMUS, FUSIC or any other body.')) + '</p></div>' : '') +
-        find + stop + '<p class="small muted" style="margin-top:14px">' + esc(T('Questions: hello@thewavelength.co.uk.')) + '</p>'));
+        find + stop + wvExplain() + '<div class="btns">' + guideLink() + '</div><p class="small muted" style="margin-top:14px">' + esc(T('Questions: hello@thewavelength.co.uk.')) + '</p>'));
       bindEmailResend();
       bindVerifiedInfo(document, function () { return v; }, true);
       var fb = $('#svfind'); if (fb) fb.onchange = function () {
@@ -1905,7 +3152,7 @@
       var foot = '<div class="err" hidden role="alert"></div><div class="btns"><button class="btn teal" style="flex:1">' + esc(step === 'submit' ? T('Send application') : T('Save and continue')) + '</button><a class="btn ghost" href="#/' + prev + '">' + esc(T('Back')) + '</a></div>';
       var body = '';
       if (step === 'about') {
-        body = '<div class="field"><label for="sa0">' + esc(T('Title')) + '</label><select id="sa0" name="title"><option value="">' + esc(T('None')) + '</option>' + ['Dr', 'Prof', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx'].map(function (t) { return '<option' + (acc.title === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></div>' +
+        body = (a.kind === 'renewal' ? '' : svHow()) + '<div class="field"><label for="sa0">' + esc(T('Title')) + '</label><select id="sa0" name="title"><option value="">' + esc(T('None')) + '</option>' + ['Dr', 'Prof', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx'].map(function (t) { return '<option' + (acc.title === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></div>' +
           '<div class="two"><div class="field"><label for="sa1">' + esc(T('First name')) + '</label><input id="sa1" name="firstName" type="text" required value="' + esc(acc.firstName || '') + '" autocomplete="given-name"></div><div class="field"><label for="sa2">' + esc(T('Last name')) + '</label><input id="sa2" name="lastName" type="text" required value="' + esc(acc.lastName || '') + '" autocomplete="family-name"></div></div>' +
           '<p class="hint">' + esc(T('Changing your name here changes it on your account too.')) + '</p>' +
           '<div class="field"><label for="sa3">' + esc(T('Role or grade')) + '</label><input id="sa3" name="role" type="text" required value="' + esc(a.role || profile().grade || acc.role || '') + '" placeholder="' + esc(T('For example consultant in emergency medicine')) + '"></div>' +
@@ -2184,10 +3431,12 @@
 
   // ---------- Requests that came back (decision 3): reassign, send to a one-off assessor, or cancel ----------
   function approvedLinks() { return activeSupervisors().filter(function (s) { return s.state === 'active' || s.state === 'not_verified' || !s.state; }); }
+  // Why a request came back: declined by the supervisor (with their reason) or the supervisor is no longer available.
+  function returnedText(r) { return r && r.reason === 'declined' ? (r.note ? T('Declined by the supervisor: {note}', { note: r.note }) : T('Declined by the supervisor.')) : T('Came back to you: the supervisor is no longer available.'); }
   function returnedSheet(kind, code, label) {
     var sups = approvedLinks();
     var path = kind === 'assessment' ? '/api/app/assessment/' : '/api/app/signoff/';
-    sheet('<h2>' + esc(T('Send this request on')) + '</h2><p class="muted small">' + esc(T('{what} came back to you because the supervisor is no longer available. Nothing needs re-entering.', { what: label })) + '</p>' +
+    sheet('<h2>' + esc(T('Send this request on')) + '</h2><p class="muted small">' + esc(T('{what} came back to you because supervision with that supervisor ended or they are no longer available. Nothing needs re-entering.', { what: label })) + '</p>' +
       (sups.length ? '<div class="field"><label for="rs1">' + esc(T('Another supervisor')) + '</label><select id="rs1">' + sups.map(function (s) { return '<option value="' + s.id + '">' + esc(s.name || s.email || '') + '</option>'; }).join('') + '</select></div><div class="btns"><button class="btn teal block" data-rs="reassign">' + esc(T('Send to their dashboard')) + '</button></div>' : '<p class="small muted">' + esc(T('You have no other approved supervisor linked. Invite one under Me, Your supervisors, or send a one-off link.')) + '</p>') +
       '<div class="field" style="margin-top:12px"><label for="rs2">' + esc(T('One-off assessor name (optional)')) + '</label><input id="rs2" type="text"></div><div class="btns"><button class="btn block" data-rs="relink">' + esc(T('Create a one-off link')) + '</button><button class="btn ghost block" data-rs="cancel">' + esc(T('Cancel request')) + '</button></div><div class="err" hidden role="alert"></div>', function (root) {
       $$('[data-rs]', root).forEach(function (b) { b.onclick = function () {
@@ -2248,8 +3497,13 @@
     d.style.left = at.left + 'px'; d.style.top = at.top + 'px'; d.dataset.side = at.side;
   }
   window.addEventListener('resize', function () { if (document.querySelector('.sheet.pop')) placePop(); });
+  // Escape closes the open sheet even before focus has moved into it (the sheet takes focus just after it opens).
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !e.defaultPrevented && document.querySelector('.sheet-bg') && !document.querySelector('.editor')) { e.preventDefault(); closeSheet(); } });
   function closeSheet(keepOpener) {
-    var had = $$('.sheet-bg'); had.forEach(function (s) { s.remove(); });
+    // 1.0.11: a closing sheet fades and slides away (160 ms). It stops being a sheet at once (renamed, inert), so
+    // nothing that checks for an open sheet sees it, and a new sheet can open straight away.
+    var had = $$('.sheet-bg'), still = reducedMotion();
+    had.forEach(function (s) { if (still || keepOpener || s.classList.contains('pop')) { s.remove(); return; } s.className = 'sheet-gone'; s.setAttribute('aria-hidden', 'true'); s.inert = true; var d = s.firstChild; if (d) { d.className = 'sheet-was'; $$('[id]', s).forEach(function (x) { x.removeAttribute('id'); }); } setTimeout(function () { s.remove(); }, 170); });
     if (keepOpener || !had.length) return;
     var o = sheetOpener; sheetOpener = null;
     if (o && o.isConnected && o.focus) try { o.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }
@@ -2525,52 +3779,220 @@
   }
 
   // ---------- Backup to the learner's own cloud ----------
+  // ---------- Back up and restore (encrypted, src/app/backup.js) ----------
+  // A backup holds this device's logbook entries, photos and clips in one file encrypted with a passphrase the
+  // learner chooses. Wavelength never receives the file or the passphrase, and cannot recover a forgotten one.
+  var BK_MIN = 10;
   function viewBackup() {
     all('images').then(function (imgs) {
       var size = imgs.reduce(function (s, r) { return s + (r.blob ? r.blob.size : 0) + (r.thumb ? r.thumb.size : 0); }, 0);
-      var clips = imgs.filter(isClip).length;
+      var clips = imgs.filter(isClip).length, n = pendingList().length;
       var last = S.kv.lastBackup;
-      mount(shell({ title: T('Backup'), back: '' },
-        '<div class="card dark"><h3>' + esc(T('Your photos, your cloud')) + '</h3><p class="muted small">' + esc(T('Your logbook text is safe in your Wavelength account. Your scan photos and clips live only on this phone. A backup packs them into one file you save to iCloud Drive, Google Drive, OneDrive or your computer. Wavelength never receives it.')) + '</p></div>' +
-        '<div class="card"><div class="row"><div class="grow"><b>' + esc(plural(imgs.length - clips, 'image') + (clips ? ' · ' + plural(clips, 'clip') : '')) + '</b><p class="small muted" style="margin:2px 0 0">' + (size / 1048576).toFixed(1) + ' MB · ' + esc(last ? T('Last backup {date}', { date: fmt(last) }) : T('Never backed up')) + '</p></div></div><div class="btns"><button class="btn teal block" id="bk"' + (imgs.length || live().length ? '' : ' disabled') + '>' + I.cloud + ' ' + esc(T('Back up now')) + '</button></div><p class="small muted" style="margin-top:10px">' + esc(T('On iPhone, choose Save to Files, then iCloud Drive. On Android, choose Drive or OneDrive.')) + '</p></div>' +
-        '<div class="card"><h3>' + esc(T('Restore from a backup')) + '</h3><p class="small muted">' + esc(T('On a new phone, log in, then choose your backup file. Images and clips return to their scans.')) + '</p><input type="file" id="rf" accept=".zip,application/zip" hidden><button class="btn ghost" id="rb">' + esc(T('Choose backup file')) + '</button></div>' +
-        '<div class="card"><h3>' + esc(T('Keep photos safe on this phone')) + '</h3><p class="small muted">' + esc(standalone ? T('You opened Wavelength as an app, so your phone keeps its storage.') : T('Add Wavelength to your home screen. On iPhone, Safari clears storage for websites you have not opened for a while; home screen apps are exempt.')) + '</p>' + (standalone ? '' : installButton(T('Add to home screen'))) + '</div>'));
-      $('#bk').onclick = function () { var b = this; busy(b, true, T('Packing your backup…')); makeBackup().then(function (out) { busy(b, false); setKv('lastBackup', new Date().toISOString()); deliver(out.blob, out.name); }).catch(function (ex) { busy(b, false); toast(ex.message); }); };
+      mount(shell({ title: T('Back up and restore'), back: 'me', tab: 'me' },
+        '<div class="card"><h3>' + esc(T('What a backup holds')) + '</h3><p class="small muted">' + esc(T('Your logbook entries, photos and clips from this device, in one file encrypted with a passphrase you choose. Photos and clips are kept only on this device, so a backup is their only copy anywhere else.')) + '</p>' +
+        '<p class="small muted">' + esc(n ? N(n, '{n} entry has not synced to your Wavelength account yet. It is included in the backup.', '{n} entries have not synced to your Wavelength account yet. They are included in the backup.') : T('Logbook entries also sync to your Wavelength account. Photos and clips do not.')) + ' ' + esc(T('Wavelength never receives the backup file or your passphrase.')) + '</p>' +
+        '<p class="small" style="margin:0"><b>' + esc(plural(imgs.length - clips, 'image') + (clips ? ' · ' + plural(clips, 'clip') : '')) + '</b> · ' + (size / 1048576).toFixed(1) + ' MB · ' + esc(last ? T('Last backup file created {date}', { date: fmt(last) }) : T('No backup file created on this device yet')) + '</p></div>' +
+        '<h2 class="sec">' + esc(T('Create an encrypted backup')) + '</h2><form class="card" id="bkf" novalidate>' +
+        '<div class="field"><label for="bkp">' + esc(T('Backup passphrase')) + '</label><p class="hint">' + esc(T('At least {n} characters. A few unrelated words are easy to remember and hard to guess.', { n: BK_MIN })) + '</p><input id="bkp" type="password" autocomplete="new-password" minlength="' + BK_MIN + '" required></div>' +
+        '<div class="field"><label for="bkp2">' + esc(T('Type the passphrase again')) + '</label><input id="bkp2" type="password" autocomplete="new-password" required></div>' +
+        '<label class="check"><input type="checkbox" id="bkok"><span>' + esc(T('I understand that Wavelength cannot recover a forgotten passphrase, and without it the backup cannot be opened.')) + '</span></label>' +
+        '<div class="err" hidden style="margin-top:12px"></div><p class="small muted bk-progress" role="status" hidden></p>' +
+        '<div class="btns"><button class="btn teal block" id="bk"' + (imgs.length || live().length ? '' : ' disabled') + '>' + I.cloud + ' ' + esc(T('Create encrypted backup')) + '</button></div>' +
+        '<p class="small muted" style="margin-top:10px">' + esc(T('You choose where to save the file: Files or iCloud Drive on iPhone, Google Drive or OneDrive on Android, or your computer. The file stays encrypted wherever you keep it, and whoever can open that storage can copy the file but not read it without the passphrase.')) + '</p></form>' +
+        '<h2 class="sec">' + esc(T('Restore from a backup')) + '</h2><div class="card"><p class="small muted">' + esc(T('Choose a Wavelength backup file. Entries and media already on this device are kept as they are; only missing ones are added. Older unencrypted backups (.zip) can still be restored.')) + '</p><input type="file" id="rf" hidden><button class="btn ghost" id="rb" type="button">' + esc(T('Choose backup file')) + '</button><p class="small muted bk-rprogress" role="status" hidden></p></div>' +
+        (standalone ? '' : '<div class="card"><h3>' + esc(T('Keep photos safe on this phone')) + '</h3><p class="small muted">' + esc(T('Add Wavelength to your home screen. On iPhone, Safari clears storage for websites you have not opened for a while; home screen apps are exempt.')) + '</p>' + installButton(T('Add to home screen')) + '</div>')));
+      var f = $('#bkf'), err = $('.err', f), prog = $('.bk-progress', f);
+      f.addEventListener('submit', function (ev) {
+        ev.preventDefault(); err.hidden = true;
+        var p1 = $('#bkp').value, p2 = $('#bkp2').value;
+        var bad = p1.length < BK_MIN ? T('Use at least {n} characters.', { n: BK_MIN }) : p1 !== p2 ? T('The passphrases do not match.') : !$('#bkok').checked ? T('Tick the box to confirm you understand the passphrase cannot be recovered.') : '';
+        if (bad) { err.textContent = bad; err.hidden = false; return; }
+        var b = $('#bk'); busy(b, true, T('Creating backup…')); prog.hidden = false;
+        makeBackup(p1, function (msg) { prog.textContent = msg; }).then(function (out) {
+          $('#bkp').value = ''; $('#bkp2').value = ''; busy(b, false); prog.hidden = true;
+          return setKv('lastBackup', new Date().toISOString()).then(function () { backupReady(out); });
+        }).catch(function (ex) { busy(b, false); prog.hidden = true; err.textContent = T('The backup was not created: {why}', { why: (ex && ex.message) || ex }); err.hidden = false; });
+      });
       $('#rb').onclick = function () { $('#rf').click(); };
-      $('#rf').onchange = function () { var f = this.files[0]; this.value = ''; if (f) restore(f); };
+      $('#rf').onchange = function () { var file = this.files[0]; this.value = ''; if (file) restore(file); };
     });
   }
-  function extOf(r) { var t = (r.blob && r.blob.type) || ''; return /mp4/.test(t) ? 'mp4' : /webm/.test(t) ? 'webm' : 'jpg'; }
-  function makeBackup() {
-    return all('images').then(function (imgs) {
-      return Promise.all(imgs.map(function (r) { return Promise.all([r.blob.arrayBuffer(), isClip(r) && r.thumb ? r.thumb.arrayBuffer() : null]).then(function (b) { return { r: r, b: new Uint8Array(b[0]), t: b[1] ? new Uint8Array(b[1]) : null }; }); }));
-    }).then(function (imgs) {
-      var manifest = { app: 'wavelength-logbook', version: 2, created: new Date().toISOString(), account: S.account.email, entries: live().map(strip), images: imgs.map(function (x) { return { id: x.r.id, entryId: x.r.entryId, w: x.r.w, h: x.r.h, kind: isClip(x.r) ? 'clip' : 'image', type: x.r.blob.type || 'image/jpeg', dur: x.r.dur, file: 'images/' + x.r.id + '.' + extOf(x.r), thumb: x.t ? 'images/' + x.r.id + '-thumb.jpg' : null }; }) };
-      var files = [{ name: 'wavelength-backup.json', data: JSON.stringify(manifest) }];
-      imgs.forEach(function (x) { files.push({ name: 'images/' + x.r.id + '.' + extOf(x.r), data: x.b }); if (x.t) files.push({ name: 'images/' + x.r.id + '-thumb.jpg', data: x.t }); });
-      return { blob: WLZip.zip(files), name: 'Wavelength-logbook-backup-' + dateStamp() + '.zip' };
+  // The finished file: share or save it. Only creation is claimed, never that it was saved somewhere.
+  function backupReady(out) {
+    var body = '<h2>' + esc(T('Encrypted backup created')) + '</h2><p class="muted small">' + esc(out.name) + ' · ' + (out.size / 1048576).toFixed(1) + ' MB</p><p class="small">' + esc(T('Now save it somewhere safe. Wavelength does not keep a copy.')) + '</p>';
+    if (out.uri) return sheet(body + '<div class="btns"><button class="btn teal block" data-share>' + I.share + ' ' + esc(T('Share or save')) + '</button><button class="btn ghost block" data-close>' + esc(T('Done')) + '</button></div>', function (root) {
+      $('[data-share]', root).onclick = function () { NATIVE.Share.share({ title: out.name, files: [out.uri] }).catch(function (e) { if (!/cancel/i.test(String(e && e.message))) toast(T('Could not share the file.')); }); };
     });
+    deliver(out.blob, out.name);
+  }
+  function b64(u8) { var s = ''; for (var i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); }
+  // Where the encrypted bytes go as they are made. In the app: appended to a file in the app's cache, so a large
+  // backup never sits in memory whole (only encrypted bytes are ever written). On the website: a Blob.
+  function backupSink(name) {
+    if (NATIVE && NATIVE.Filesystem && NATIVE.Filesystem.appendFile) {
+      var FS = NATIVE.Filesystem, path = 'backup/' + name, first = true, size = 0;
+      var ready = FS.rmdir({ path: 'backup', directory: 'CACHE', recursive: true }).catch(function () {});
+      return {
+        write: function (u8) { size += u8.length; var data = b64(u8); ready = ready.then(function () { var o = { path: path, data: data, directory: 'CACHE', recursive: true }; var go = first ? FS.writeFile(o) : FS.appendFile(o); first = false; return go; }); return ready; },
+        done: function () { return ready.then(function () { return FS.getUri({ path: path, directory: 'CACHE' }); }).then(function (r) { return { name: name, size: size, uri: r.uri }; }); }
+      };
+    }
+    var parts = [], total = 0;
+    return { write: function (u8) { parts.push(u8); total += u8.length; }, done: function () { return { name: name, size: total, blob: new Blob(parts, { type: 'application/octet-stream' }) }; } };
+  }
+  function extOf(r) { var t = (r.blob && r.blob.type) || ''; return /mp4/.test(t) ? 'mp4' : /webm/.test(t) ? 'webm' : 'jpg'; }
+  function makeBackup(passphrase, progress) {
+    var name = 'Wavelength-backup-' + dateStamp() + '.wlbackup';
+    var out = backupSink(name);
+    progress(T('Preparing the encryption key. This takes a few seconds…'));
+    var enc = WLBackup.encryptor(passphrase, function (u8) { return out.write(u8); }, { onKdfProgress: function (f) { progress(T('Preparing the encryption key… {pct}%', { pct: Math.round(f * 100) })); } });
+    var zw = WLZip.zipWriter(function (u8) { return enc.write(u8); });
+    return Promise.all([all('images'), enc.ready]).then(function (r) {
+      var imgs = r[0], done = 0;
+      // Image records only (blobs are read one at a time below), so the manifest is small.
+      var manifest = { app: 'wavelength-logbook', version: 3, created: new Date().toISOString(), account: S.account.email, entries: live().map(strip), images: imgs.map(function (x) { return { id: x.id, entryId: x.entryId, w: x.w, h: x.h, kind: isClip(x) ? 'clip' : 'image', type: (x.blob && x.blob.type) || 'image/jpeg', dur: x.dur, sha256: x.sha256 || undefined, file: 'images/' + x.id + '.' + extOf(x), thumb: isClip(x) && x.thumb && x.thumb.size ? 'images/' + x.id + '-thumb.jpg' : null, base: !isClip(x) && x.base && x.base.size ? 'images/' + x.id + '-base.jpg' : undefined, annot: x.annot || undefined, prov: x.prov || undefined }; }) };
+      var chain = zw.add('wavelength-backup.json', JSON.stringify(manifest));
+      imgs.forEach(function (x, i) {
+        var m = manifest.images[i];
+        chain = chain.then(function () {
+          progress(T('Encrypting photos and clips: {done} of {total}', { done: ++done, total: imgs.length }));
+          // A clip's poster frame goes first, so a restore has it when the clip arrives.
+          var th = m.thumb ? x.thumb.arrayBuffer().then(function (b) { return zw.add(m.thumb, new Uint8Array(b)); }) : Promise.resolve();
+          // 1.0.12: a photo's redacted, unannotated copy (kept so its annotations can be changed) goes before it too.
+          if (m.base) th = th.then(function () { return x.base.arrayBuffer(); }).then(function (b) { return zw.add(m.base, new Uint8Array(b)); });
+          return th.then(function () { return x.blob.arrayBuffer(); }).then(function (b) { return zw.add(m.file, new Uint8Array(b)); });
+        });
+      });
+      return chain;
+    }).then(function () { return zw.finish(); }).then(function () { return enc.finish(); }).then(function () { return out.done(); });
   }
   function thumbOf(blob) {
     return new Promise(function (ok) { var u = URL.createObjectURL(blob), im = new Image(); im.onload = function () { var s = Math.min(1, 360 / Math.max(im.width, im.height)); var c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u); c.toBlob(ok, 'image/jpeg', 0.72); }; im.onerror = function () { ok(blob); }; im.src = u; });
   }
+  // Restore: an encrypted backup (WLBACKUP) streamed and checked chunk by chunk, or an older unencrypted ZIP.
+  // Entries and media already on this device are never overwritten; restored entries sync as restored copies, so a
+  // newer copy on the server wins.
   function restore(file) {
+    file.slice(0, 8).arrayBuffer().then(function (b) {
+      var head = new Uint8Array(b);
+      if (WLBackup.isBackup(head)) return askPassphrase(file);
+      if (head[0] === 0x50 && head[1] === 0x4b) {
+        return sheet('<h2>' + esc(T('This backup is not encrypted')) + '</h2><p class="small">' + esc(T('It was made by an earlier version of Wavelength. You can still restore it. Afterwards, create an encrypted backup and delete this old file from wherever you saved it, because anyone who can open that storage can read it.')) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Restore it')) + '</button><button class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); restoreLegacy(file); }; });
+      }
+      toast(T('This is not a Wavelength backup file.'), 4000);
+    }).catch(function () { toast(T('Could not read that file.'), 4000); });
+  }
+  function askPassphrase(file) {
+    sheet('<h2>' + esc(T('Enter the backup passphrase')) + '</h2><form id="rpf" novalidate><div class="field"><label for="rpp">' + esc(T('Backup passphrase')) + '</label><input id="rpp" type="password" autocomplete="current-password" required></div><div class="err" hidden></div><p class="small muted" role="status" data-rprog hidden></p><div class="btns"><button class="btn teal block">' + esc(T('Restore')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {
+      var f = $('#rpf', root), err = $('.err', f);
+      // Progress shows on whichever sheet is open (the account question can replace this one).
+      var progress = function (msg) { var el = document.querySelector('[data-rprog]'); if (el) { el.hidden = false; el.textContent = msg; } };
+      f.addEventListener('submit', function (ev) {
+        ev.preventDefault(); err.hidden = true;
+        var b = $('button', f); busy(b, true, T('Restoring…'));
+        restoreEncrypted(file, $('#rpp', f).value, progress).then(function (res) {
+          closeSheet(); restored(res);
+        }).catch(function (ex) {
+          if (ex && ex.code === 'cancel') { closeSheet(); return; }
+          var msg = ex && ex.code === 'auth' ? T('Wrong passphrase, or the file has been changed or damaged. Nothing was restored from the damaged part.') : ((ex && ex.message) ? T(ex.message) : T('Could not read that file.'));
+          if (!document.contains(err)) { closeSheet(); toast(msg, 6000); }
+          else { busy(b, false); var pg = $('[data-rprog]', f); if (pg) pg.hidden = true; err.textContent = msg; err.hidden = false; }
+          if (ex && ex.partial) render(true);
+        });
+      });
+    });
+  }
+  // Adds what the backup holds and this device lacks. Returns counts.
+  function restoreInto(man) {
+    var known = {}; S.entries.forEach(function (e) { known[e.id] = 1; });
+    var fresh = (man.entries || []).filter(function (e) { return e && e.id && !known[e.id] && !e.deleted; });
+    return Promise.all(fresh.map(function (e) { e._dirty = true; e._restored = true; e.updatedAt = 0; return saveLocal(e); })).then(function () { return { entries: fresh.length, media: 0, kept: (man.entries || []).length - fresh.length, damaged: 0 }; });
+  }
+  function sha256hex(u8) { return crypto.subtle.digest('SHA-256', u8).then(function (h) { return Array.prototype.map.call(new Uint8Array(h), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }); }
+  function putMedia(im, data, thumbs, res) {
+    return getOne('images', im.id).then(function (have) {
+      if (have) { res.kept++; return; }
+      var check = im.sha256 ? sha256hex(data).then(function (h) { return h === im.sha256; }) : Promise.resolve(true);
+      return check.then(function (ok) {
+        if (!ok) { res.damaged++; return; }
+        var clip = im.kind === 'clip', blob = new Blob([data], { type: im.type || 'image/jpeg' });
+        var th = clip ? Promise.resolve(thumbs[im.id] || new Blob([], { type: 'image/jpeg' })) : thumbOf(blob);
+        return th.then(function (t) {
+          delete thumbs[im.id]; res.media++;
+          var rec = { id: im.id, entryId: im.entryId, blob: blob, thumb: t, w: im.w, h: im.h, kind: clip ? 'clip' : 'image', dur: im.dur, sha256: im.sha256, created: Date.now() };
+          // 1.0.12 fields, when the backup has them: annotation data (cleaned again on the way in) and the redacted copy.
+          var base = thumbs['base:' + im.id]; delete thumbs['base:' + im.id];
+          if (im.annot && Array.isArray(im.annot.ann)) rec.annot = { v: 1, ann: EDT.cleanAnn(im.annot.ann), burnt: !!im.annot.burnt };
+          if (base && !clip && rec.annot) rec.base = base;
+          if (Array.isArray(im.prov)) rec.prov = im.prov.slice(-10).map(function (p) { return { on: String(p.on || '').slice(0, 10), crop: !!p.crop, r: Number(p.r) % 4 || 0, m: !!p.m, redact: Number(p.redact) || 0, ann: Number(p.ann) || 0 }; });
+          return put('images', rec);
+        });
+      });
+    });
+  }
+  function confirmAccount(man) {
+    if (!man.account || man.account === S.account.email) return Promise.resolve(true);
+    return new Promise(function (answer) {
+      var done = false, ok = function (v) { if (!done) { done = true; answer(v); } };
+      sheet('<h2>' + esc(T('Restore into this account?')) + '</h2><p class="small">' + esc(T('This backup belongs to {email}. Restore it into this account anyway?', { email: man.account })) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Restore')) + '</button><button class="btn ghost block" data-no>' + esc(T('Cancel')) + '</button></div>', function (root) {
+        $('[data-ok]', root).onclick = function () { sheet('<h2>' + esc(T('Restoring…')) + '</h2><p class="small muted" role="status" data-rprog></p>'); ok(true); };
+        $('[data-no]', root).onclick = function () { closeSheet(); ok(false); };
+        // Closed with Back, Escape or a tap outside: the same as Cancel.
+        var watch = new MutationObserver(function () { if (!root.isConnected) { watch.disconnect(); ok(false); } });
+        watch.observe(document.body, { childList: true });
+      });
+    });
+  }
+  function restoreEncrypted(file, passphrase, progress) {
+    var man = null, byFile = {}, thumbs = {}, res = null, stop = false;
+    progress(T('Checking the passphrase. This takes a few seconds…'));
+    var zr = WLZip.unzipReader(function (name, data) {
+      if (stop) return;
+      if (!man) {
+        if (name !== 'wavelength-backup.json') throw new Error('This is not a Wavelength backup file.');
+        man = JSON.parse(new TextDecoder().decode(data));
+        (man.images || []).forEach(function (im) { byFile[im.file] = im; if (im.thumb) byFile[im.thumb] = { thumbOf: im.id }; if (im.base) byFile[im.base] = { baseOf: im.id }; });
+        return confirmAccount(man).then(function (go) {
+          if (!go) { stop = true; var c = new Error('cancelled'); c.code = 'cancel'; throw c; }
+          return restoreInto(man).then(function (r) { res = r; });
+        });
+      }
+      var im = byFile[name]; if (!im) return;
+      if (im.thumbOf) { thumbs[im.thumbOf] = new Blob([data], { type: 'image/jpeg' }); return; }
+      if (im.baseOf) { thumbs['base:' + im.baseOf] = new Blob([data], { type: 'image/jpeg' }); return; }
+      return putMedia(im, data, thumbs, res);
+    });
+    return WLBackup.decrypt(passphrase, WLBackup.blobReader(file), file.size, function (plain, frac) {
+      progress(T('Restoring… {pct}%', { pct: Math.round(frac * 100) }));
+      return zr.push(plain);
+    }).then(function () { return zr.end(); }).then(function () {
+      if (stop) return { cancelled: true };
+      if (!res) throw new Error('The backup file is incomplete.');
+      return res;
+    }, function (ex) { if (res) ex.partial = true; throw ex; });
+  }
+  function restoreLegacy(file) {
     file.arrayBuffer().then(function (buf) {
-      var files = WLZip.unzip(buf), man = files['wavelength-backup.json'];
-      if (!man) throw new Error(T('This is not a Wavelength backup file.'));
-      man = JSON.parse(new TextDecoder().decode(man));
-      if (man.account && man.account !== S.account.email && !confirm(T('This backup belongs to {email}. Restore it into this account anyway?', { email: man.account }))) return;
-      var known = {}; S.entries.forEach(function (e) { known[e.id] = 1; });
-      var jobs = (man.entries || []).filter(function (e) { return !known[e.id]; }).map(function (e) { e._dirty = true; e._restored = true; e.updatedAt = 0; return saveLocal(e); });
-      var n = 0;
-      jobs = jobs.concat((man.images || []).map(function (im) {
-        var data = files[im.file]; if (!data) return null;
-        var clip = im.kind === 'clip', blob = new Blob([data], { type: im.type || 'image/jpeg' }); n++;
-        var th = clip && im.thumb && files[im.thumb] ? Promise.resolve(new Blob([files[im.thumb]], { type: 'image/jpeg' })) : clip ? Promise.resolve(new Blob([], { type: 'image/jpeg' })) : thumbOf(blob);
-        return th.then(function (t) { return put('images', { id: im.id, entryId: im.entryId, blob: blob, thumb: t, w: im.w, h: im.h, kind: clip ? 'clip' : 'image', dur: im.dur, created: Date.now() }); });
-      }));
-      return Promise.all(jobs).then(function () { toast(T('Restored {n}.', { n: plural(n, 'item') })); sync(); go(''); });
-    }).catch(function (ex) { toast(ex.message || T('Could not read that file.'), 4000); });
+      var files = WLZip.unzip(buf), m = files['wavelength-backup.json'];
+      if (!m) throw new Error(T('This is not a Wavelength backup file.'));
+      var man = JSON.parse(new TextDecoder().decode(m)), thumbs = {}, res;
+      return confirmAccount(man).then(function (go) {
+        if (!go) return null;
+        closeSheet();
+        return restoreInto(man).then(function (r) {
+          res = r;
+          (man.images || []).forEach(function (im) { if (im.thumb && files[im.thumb]) thumbs[im.id] = new Blob([files[im.thumb]], { type: 'image/jpeg' }); if (im.base && files[im.base]) thumbs['base:' + im.id] = new Blob([files[im.base]], { type: 'image/jpeg' }); });
+          return (man.images || []).reduce(function (p, im) { return p.then(function () { return files[im.file] ? putMedia(im, files[im.file], thumbs, res) : null; }); }, Promise.resolve());
+        }).then(function () { restored(res); });
+      });
+    }).catch(function (ex) { toast((ex && ex.message) || T('Could not read that file.'), 4000); });
+  }
+  function restored(res) {
+    if (!res || res.cancelled) return;
+    var bits = [T('Restored {entries} and {media}.', { entries: plural(res.entries, 'entry', 'entries'), media: plural(res.media, 'photo or clip', 'photos or clips') })];
+    if (res.kept) bits.push(T('{n} already on this device were kept as they are.', { n: res.kept }));
+    if (res.damaged) bits.push(T('{n} could not be restored because they failed the integrity check.', { n: res.damaged }));
+    toast(bits.join(' '), 6000); sync(); go('');
   }
 
   // ---------- Me ----------
@@ -2582,17 +4004,67 @@
     mount(shell({ title: T('Me'), action: '<a class="gear" href="#/settings" aria-label="' + esc(T('Settings')) + '">' + I.gear + '</a>' },
       '<div class="card dark"><div class="row"><span style="width:52px;height:52px;border-radius:50%;background:var(--teal);display:grid;place-items:center;font:600 20px var(--sans);color:#fff;flex:none">' + esc((acc.firstName || '?').charAt(0) + (acc.lastName || '').charAt(0)) + '</span><div class="grow"><h3>' + esc(acc.name) + '</h3><p class="muted small" style="margin:0">' + esc(acc.email) + (p.grade ? ' · ' + esc(p.grade) : '') + '</p></div></div></div>' +
       (canInstall() ? installButton() : '') +
-      emailCard() + '<h2 class="sec">' + esc(T('Supervision')) + '</h2><div class="card"><div style="display:grid;gap:12px">' + (S.me && S.me.verification && S.me.verification.professional ? '<a href="#/professional">' + esc(T('Professional verification')) + '</a>' : '') + (S.me && S.me.supervisor && S.me.supervisor.available && (S.me.supervisor.apply || S.me.supervisor.standing !== 'none') ? '<a href="#/supervisor">' + esc(S.me.supervisor.standing === 'none' ? T('Become a Wavelength supervisor') : T('Your Wavelength supervisor status')) + '</a>' : '') + '<a href="#/supervisors">' + esc(T('Your supervisors')) + (nSup ? ' (' + nSup + ')' : '') + '</a><a href="#/assess">' + esc(T('Your assessments')) + '</a>' + ((L2.learners || []).length || (L2.invites || []).length || p.supervisor ? '<a href="#/supervise">' + esc(T('Learners you supervise')) + ((L2.invites || []).length ? ' · ' + esc(plural(L2.invites.length, 'new invitation')) : '') + '</a>' : '') + '</div></div>' +
+      emailCard() + '<h2 class="sec">' + esc(T('Supervision')) + '</h2><div class="card"><div style="display:grid;gap:12px">' + (S.me && S.me.verification && S.me.verification.professional ? '<a href="#/professional">' + esc(T('Professional verification')) + '</a>' : '') + (S.me && S.me.supervisor && S.me.supervisor.available && (S.me.supervisor.apply || S.me.supervisor.standing !== 'none') ? '<a href="#/supervisor">' + esc(S.me.supervisor.standing === 'none' ? T('Become a Wavelength supervisor') : T('Your Wavelength supervisor status')) + '</a>' : '') + '<a href="#/supervisors">' + esc(T('Your supervisors')) + (nSup ? ' (' + nSup + ')' : '') + '</a><a href="#/guides/supervisor-verification">' + esc(T('How supervisor verification works')) + '</a><a href="#/assess">' + esc(T('Your assessments')) + '</a>' + ((L2.learners || []).length || (L2.invites || []).length || p.supervisor ? '<a href="#/supervise">' + esc(T('Learners you supervise')) + ((L2.invites || []).length ? ' · ' + esc(plural(L2.invites.length, 'new invitation')) : '') + '</a>' : '') + '</div></div>' +
       '<h2 class="sec">' + esc(T('Pathways')) + '</h2><form id="pf" class="card">' + pathwayPicker(p.pathways || []) + '<div class="btns"><button class="btn sm">' + esc(T('Save pathways')) + '</button></div></form>' +
       '<h2 class="sec">' + esc(T('Certificates')) + ' <a href="/elearning/account/">' + esc(T('All')) + '</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="' + esc(T('Share certificate')) + '">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">' + esc(T('Pass a free Academy module to earn a verifiable CPD certificate.')) + '</p><a class="btn sm" href="/elearning/">' + esc(T('Browse modules')) + '</a></div>') +
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div>' + orgField('m4', T('Organisation'), acc.organisation, acc.organisationId) + '<div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
-      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/backup">' + esc(T('Back up or restore photos and clips')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
-      '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
+      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up and restore')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>'));
+    // 1.0.11: About Wavelength lives in Settings only (the gear, top right), not twice.
     if (editPw) $('#pf').scrollIntoView();
     $$('[data-sharecert]').forEach(function (b) { b.onclick = function () { shareCertificate(b.dataset.sharecert, b.dataset.title); }; });
     $('#pf').addEventListener('submit', function (e) { e.preventDefault(); var ps = $$('input[name=p]:checked', this).map(function (i) { return i.value; }); if (!ps.length) { toast(T('Keep at least one pathway.')); return; } saveProfile({ pathways: ps }).then(function () { toast(T('Pathways saved.')); }).catch(function (ex) { toast(ex.message); }); });
     bindOrg($('#mf'), 'm4');
     $('#mf').addEventListener('submit', function (e) { e.preventDefault(); var d = formData(this); saveProfile({ grade: d.grade, registration: d.registration, supervisor: !!d.supervisor }, { firstName: d.firstName, lastName: d.lastName, organisation: d.organisation, organisationId: d.organisationId || null }).then(function () { toast(T('Profile saved.')); render(true); }).catch(function (ex) { toast(ex.message); }); });
+  }
+  // ---------- Sync panel (Settings and the status pill): this device's network, the server, waiting entries, ----------
+  // the last attempt and the last success, the last error, Retry sync and what to check. No entry content.
+  function when(t) { return t ? new Date(t).toLocaleString(LOCALES[LANG], { dateStyle: 'medium', timeStyle: 'short' }) : ''; }
+  function netWords() {
+    var d = deviceNet();
+    if (!d.known) return d.online ? T('Connected') : T('No network');
+    if (!d.connected) return T('No network');
+    if (NETR.vpnOnly(d)) return T('VPN on, with no Wi-Fi or mobile data under it');
+    var t = d.transports || [], via = t.indexOf('wifi') >= 0 ? T('Wi-Fi') : t.indexOf('cellular') >= 0 ? T('Mobile data') : t.indexOf('ethernet') >= 0 ? T('Ethernet') : T('Connected');
+    // iPhone (1.0.12): iOS does not tell apps whether a VPN is on, so say so rather than imply there is none.
+    return via + (d.vpn ? ' · ' + T('VPN on') : d.vpnKnown === false ? ' · ' + T('VPN status not available on this phone') : '') + (d.validated ? '' : ' · ' + T('internet access not confirmed by the phone'));
+  }
+  function serverWords(st) {
+    if (S.syncing) return T('Checking…');
+    if (st === 'offline') return T('Not checked: no network');
+    if (st === 'unreachable') return SY.fail === 'timeout' ? T('No answer in time') : T('Not reachable from this network');
+    if (st === 'failed') return T('Reachable, but some changes were not accepted');
+    if (st === 'update') return T('Reachable');
+    return SY.lastOk ? T('Reachable') : T('Not checked yet');
+  }
+  function fillSyncPanel(el) {
+    if (!el) return;
+    var st = syncState(), n = pendingList().length, bad = refused();
+    var why = function (r) { return r === 'not-accepted' ? T('The server did not accept this entry.') : T(r); };
+    var starts = []; try { starts = JSON.parse(localStorage.getItem('wl-diag') || '[]'); } catch (e) { starts = []; }
+    var p = NETR.pill(st), err = SY.err;
+    // Redrawn only when something shown changes, so an open "Start-up details" or a focused button is kept.
+    var key = [st, n, bad.length, SY.lastTry, SY.lastOk, userBusy(), err && err.at, netWords()].join('|');
+    if (el.dataset.k === key) return;
+    el.dataset.k = key;
+    var ex = NETR.explain(st, deviceNet());
+    var help = ex && !(st === 'failed' && bad.length) ? '<div class="sync-help"><p>' + esc(T(ex.lead)) + '</p>' + (ex.steps.length > 1 ? '<b>' + esc(T('What to check')) + '</b><ul>' + ex.steps.map(function (x) { return '<li>' + esc(T(x)) + '</li>'; }).join('') + '</ul>' : '<p>' + esc(T(ex.steps[0])) + '</p>') + '</div>' : '';
+    var log = attemptLog();
+    el.innerHTML = '<p class="sync-now"><span class="sync-pill static p-' + p.cls + '"><span class="sp-ic" aria-hidden="true">' + SI[p.icon] + '</span><span class="sp-tx">' + esc(T(p.label, { n: n })) + '</span></span><span role="status">' + esc(syncText(st) || T('Checking…')) + '</span></p>' +
+      '<dl class="sync-facts"><dt>' + esc(T('Network on this device')) + '</dt><dd>' + esc(netWords()) + '</dd>' +
+      '<dt>' + esc(T('Wavelength server')) + '</dt><dd>' + esc(serverWords(st)) + '</dd>' +
+      '<dt>' + esc(T('Entries awaiting sync')) + '</dt><dd>' + n + '</dd>' +
+      '<dt>' + esc(T('Last attempt')) + '</dt><dd>' + esc(SY.lastTry ? when(SY.lastTry) : T('Not yet on this device')) + '</dd>' +
+      '<dt>' + esc(T('Last synced')) + '</dt><dd>' + esc(SY.lastOk ? when(SY.lastOk) : T('Not yet on this device')) + '</dd>' +
+      (err && err.kind ? '<dt>' + esc(T('Last error')) + '</dt><dd>' + esc(when(err.at)) + '</dd><dd class="wide">' + esc(T(NETR.errorText(err.kind))) + '</dd>' : '') + '</dl>' +
+      (bad.length ? '<p class="small" style="margin:8px 0 4px"><b>' + esc(T('Not accepted by the server')) + '</b></p><ul class="small sync-bad">' + bad.map(function (e) { return '<li><a href="#/entry/' + esc(e.id) + '">' + esc(T((TYPES[e.type] || {}).label || e.type || '')) + (e.date ? ', ' + esc(fmt(e.date)) : '') + '</a>: ' + esc(why(e._syncError)) + '</li>'; }).join('') + '</ul>' : '') +
+      help +
+      '<div class="sync-retry">' + retryButton('btn sm', 'data-resync') + '</div>' +
+      '<p class="small muted" style="margin:12px 0 0">' + esc(T('This status is for this device only. Another phone or computer shows its own, and a scan saved here reaches your other devices only after this device has synced it.')) + '</p>' +
+      '<p class="small muted" style="margin:8px 0 0">' + esc(T('Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped. Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.')) + ' <a href="#/backup">' + esc(T('Back up and restore')) + '</a></p>' +
+      (log.length ? '<details class="small muted sync-log" style="margin-top:10px"><summary>' + esc(T('Recent sync attempts')) + '</summary><ul class="sync-diag">' + log.slice().reverse().map(function (a) { return '<li>' + esc(new Date(a.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'medium' })) + ': ' + esc(a.ok ? T('Synced') : T(NETR.pill(a.kind === 'timeout' ? 'unreachable' : a.kind).label, { n: '' })) + (a.ms ? ' (' + a.ms + ' ms)' : '') + (a.net ? ', ' + esc(a.net) : '') + '</li>'; }).join('') + '</ul></details>' : '') +
+      (starts.length ? '<details class="small muted" style="margin-top:10px"><summary>' + esc(T('Start-up details')) + '</summary><ul class="sync-diag">' + starts.slice().reverse().map(function (d) { return '<li>' + esc(new Date(d.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'short' })) + ': ' + esc(d.path || '?') + ', ' + esc(T('logbook in {ms} ms', { ms: d.ui || '?' })) + ', ' + esc(T('server {result}', { result: d.me || '?' })) + (d.meMs ? ' (' + d.meMs + ' ms)' : '') + '</li>'; }).join('') + '</ul></details>' : '');
+    var b = $('[data-resync]', el);
+    if (b) b.onclick = function () { if (!b.disabled) retryNow(); };
   }
   // ---------- Settings: appearance, language, notifications, app lock, account ----------
   function viewSettings() {
@@ -2601,19 +4073,29 @@
     var cur = window.WLTheme ? WLTheme.get() : 'light';
     var opt = function (v, cls, label) { return '<input type="radio" name="theme" id="th-' + v + '" value="' + v + '"' + (cur === v ? ' checked' : '') + '><label for="th-' + v + '"><span class="sw ' + cls + '" aria-hidden="true"><i></i><b></b></span>' + esc(label) + '</label>'; };
     mount(shell({ title: T('Settings'), back: 'me', tab: 'me' },
-      '<h2 class="sec" style="margin-top:6px">' + esc(T('Appearance')) + '</h2><div class="card"><div class="theme-pick" role="radiogroup" aria-label="' + esc(T('Appearance')) + '">' + opt('system', 's', T('Match my phone')) + opt('light', '', T('Light')) + opt('dark', 'd', T('Dark')) + '</div><p class="small muted" style="margin:12px 0 0">' + esc(T('Match my phone follows the light or dark setting on your phone.')) + '</p></div>' +
+      '<h2 class="sec" style="margin-top:6px" id="sync">' + esc(T('Sync')) + '</h2><div class="card" id="syncpanel" data-syncpanel></div>' +
+      '<h2 class="sec">' + esc(T('Backup')) + '</h2><div class="card"><p class="small muted" style="margin:0 0 10px">' + esc(S.kv.lastBackup ? T('Last backup file created {date}', { date: fmt(S.kv.lastBackup) }) : T('No backup file created on this device yet')) + '. ' + esc(T('Backups are encrypted with a passphrase you choose and saved where you decide.')) + '</p><a class="btn sm" href="#/backup">' + esc(T('Back up and restore')) + '</a></div>' +
+      '<h2 class="sec">' + esc(T('Appearance')) + '</h2><div class="card"><div class="theme-pick" role="radiogroup" aria-label="' + esc(T('Appearance')) + '">' + opt('system', 's', T('Match my phone')) + opt('light', '', T('Light')) + opt('dark', 'd', T('Dark')) + '</div><p class="small muted" style="margin:12px 0 0">' + esc(T('Match my phone follows the light or dark setting on your phone.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Language')) + '</h2><div class="card set-lang"><div class="row"><span>' + I.globe + '</span><b class="grow">' + esc(T('App language')) + '</b>' + langPicker('lang-m') + '</div><p class="small muted" style="margin:8px 0 0">' + esc(T('Exports and certificates stay in English so any assessor can read them.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Notifications')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="nte"' + (p.notifyEmail === false ? '' : ' checked') + '><span>' + esc(T('Email me when a supervisor signs off or queries my scans by link or from their dashboard')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('The app also shows new sign-offs on your home screen and logbook.')) + '</p></div>' +
       lockCard() +
       '<h2 class="sec">' + esc(T('Account')) + '</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">' + esc(T('Current password')) + '</label><input id="c1" name="current" type="password" autocomplete="current-password"></div>' + pwFields('c2', T('New password'), 'password') + '<button class="btn sm ghost">' + esc(T('Change password')) + '</button></form></div>' +
       '<div class="btns"><button class="btn ghost block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="loa">' + esc(T('Log out of all other devices')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
-      '<p class="small muted" style="text-align:center;margin-top:20px">' + esc(T('Wavelength app')) + ' · Auda Medical Ltd</p>'));
+      aboutFooter()));
+    fillSyncPanel($('#syncpanel'));
+    bindAbout();
+    if (route().q.get('sync')) $('#sync').scrollIntoView();
     $$('input[name=theme]').forEach(function (i) { i.onchange = function () { if (window.WLTheme) WLTheme.set(i.value); NAT.haptic(); }; });
     bindPw($('#cpw'), 'c2');
     $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; var bad = pwProblem(f, 'c2'); if (bad) { toast(bad, 5000); return; } api('/api/app/password', formData(f)).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
     $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? T('Sign-off emails on.') : T('Sign-off emails off.')); }).catch(function (ex) { toast(ex.message); }); };
     bindLockCard();
-    $('#lo').onclick = function () { api('/api/app/logout', {}).then(signedOut, signedOut); };
+    $('#lo').onclick = function () {
+      var out = function () { api('/api/app/logout', {}, { timeout: 8000 }).then(function () { signedOut(); }, function () { signedOut(); }); };
+      var n = pendingList().length;
+      if (!n) return out();
+      sheet('<h2>' + esc(T('Log out?')) + '</h2><p class="muted small">' + esc(N(n, '{n} entry on this device has not synced yet.', '{n} entries on this device have not synced yet.')) + ' ' + esc(T('It stays saved on this device and syncs when you log in here again.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Stay logged in')) + '</button><button class="btn ghost block" data-ok>' + esc(T('Log out')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); out(); }; });
+    };
     $('#loa').onclick = function () {
       sheet('<h2>' + esc(T('Log out of all other devices?')) + '</h2><p class="muted small">' + esc(T('Every other phone, tablet and browser signed in to your account is logged out. Logbook entries they have not synced stay on them until someone logs in there again. This device stays logged in.')) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Log out other devices')) + '</button><button class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div>', function (root) {
         $('[data-ok]', root).onclick = function () { var b = this; busy(b, true); api('/api/app/logout-all', { keepThisDevice: true }).then(function (res) { closeSheet(); toast(res.ok ? T('Other devices are logged out.') : res.error, 4000); }).catch(function () { busy(b, false); toast(T('Could not log out other devices. Check your connection.')); }); };
@@ -2630,6 +4112,50 @@
         });
       });
     };
+  }
+  // ---------- About Wavelength: footer at the end of Settings (its one entry), About sheet, open-source licences ----------
+  // Version and build come from the installed app's metadata (WLNative.appInfo), never from this file. Everything here
+  // is bundled and works offline; only the website, privacy and terms links need a connection.
+  var COPYRIGHT = '© 2026 Auda Medical Ltd';
+  var SUPPORT = 'hello@thewavelength.co.uk';
+  function appInfo() { return NAT.appInfo ? NAT.appInfo() : Promise.resolve({ version: '', build: '' }); }
+  function versionText(v) { return v.version ? (v.build ? T('Version {version} ({build})', { version: v.version, build: v.build }) : T('Version {version}', { version: v.version })) : T('Web app'); }
+  function aboutFooter() {
+    return '<footer class="about-foot"><p class="about-name">Wavelength</p><p data-appver>' + esc(NAT.version ? versionText({ version: NAT.version, build: '' }) : NAT.on ? '' : T('Web app')) + '</p><p><bdi dir="ltr">' + esc(COPYRIGHT) + '</bdi></p>' +
+      '<button type="button" class="about-link" data-about>' + esc(T('About Wavelength')) + '</button></footer>';
+  }
+  function bindAbout() {
+    var b = $('[data-about]'); if (b) b.onclick = aboutSheet;
+    appInfo().then(function (v) { $$('[data-appver]').forEach(function (el) { el.textContent = versionText(v); }); });
+  }
+  function aboutSheet() {
+    appInfo().then(function (v) {
+      var body = [T('App version: {v}', { v: v.version ? v.version + (v.build ? ' (' + v.build + ')' : '') : T('Web app') + ' ' + (window.WL_BUILD || '') }), T('Platform: {p}', { p: NAT.platform || 'web' }), T('App language: {l}', { l: LANG })].join('\n') + '\n\n';
+      var mail = 'mailto:' + SUPPORT + '?subject=' + encodeURIComponent(T('Wavelength app support')) + '&body=' + encodeURIComponent(body);
+      sheet('<div class="about-head">' + MARK(56) + '<h2>Wavelength <span>POCUS Logbook</span></h2></div>' +
+        '<dl class="about-facts"><dt>' + esc(T('Version')) + '</dt><dd>' + esc(v.version || T('Web app')) + '</dd><dt>' + esc(T('Build')) + '</dt><dd>' + esc(v.build || window.WL_BUILD || '–') + '</dd>' +
+        '<dt>' + esc(T('Developer')) + '</dt><dd>Auda Medical Ltd</dd><dt>' + esc(T('Website')) + '</dt><dd><a href="/">thewavelength.co.uk</a></dd></dl>' +
+        '<nav class="about-links" aria-label="' + esc(T('About Wavelength')) + '"><a href="' + esc(mail) + '">' + esc(T('Contact support')) + '</a><a href="/privacy/">' + esc(T('Privacy policy')) + '</a><a href="/app-terms/">' + esc(T('Terms of use')) + '</a><button type="button" data-lic>' + esc(T('Open-source licences')) + '</button></nav>' +
+        '<p class="small muted">' + esc(T('The support email includes only the app version, platform and language. The website, privacy policy and terms need an internet connection.')) + '</p>' +
+        '<p class="small muted"><bdi dir="ltr">' + esc(COPYRIGHT) + '</bdi></p><div class="btns"><button class="btn ghost block" data-close>' + esc(T('Close')) + '</button></div>', function (root) {
+        $('[data-lic]', root).onclick = licencesSheet;
+      });
+    });
+  }
+  function loadLicences() {
+    if (window.WL_LICENCES) return Promise.resolve(window.WL_LICENCES);
+    return new Promise(function (ok, no) { var sc = document.createElement('script'); sc.src = '/app/licences.js?v=' + (window.WL_BUILD || ''); sc.onload = function () { ok(window.WL_LICENCES); }; sc.onerror = no; document.head.appendChild(sc); });
+  }
+  function licencesSheet() {
+    loadLicences().then(function (L) {
+      var show = function (c) { return !c.platform || (c.platform === 'app' ? NAT.on : NAT.platform === c.platform); };
+      var groups = {}; L.components.filter(show).forEach(function (c) { (groups[c.licence] = groups[c.licence] || []).push(c); });
+      var html = Object.keys(groups).map(function (lic) {
+        return '<h3>' + esc(lic) + '</h3><ul class="lic-list">' + groups[lic].map(function (c) { return '<li><b>' + esc(c.name) + '</b>' + (c.version ? ' ' + esc(c.version) : '') + '<br><span class="muted">' + esc(c.copyright) + (c.note ? '. ' + esc(c.note) : '') + '</span></li>'; }).join('') + '</ul>' +
+          '<details class="lic-text"><summary>' + esc(T('Licence text: {name}', { name: lic })) + '</summary><pre lang="en" dir="ltr">' + esc(L.texts[lic] || '') + '</pre></details>';
+      }).join('');
+      sheet('<h2>' + esc(T('Open-source licences')) + '</h2><p class="small muted">' + esc(T('Wavelength is built with these open-source components. Thank you to their authors.')) + '</p>' + html + '<div class="btns"><button class="btn ghost block" data-back>' + esc(T('Back')) + '</button></div>', function (root) { $('[data-back]', root).onclick = aboutSheet; });
+    }).catch(function () { toast(T('Could not open the licences.')); });
   }
   function shareCertificate(code, title) {
     var link = NAT.origin + '/elearning/certificate/' + code + '/';
@@ -2767,6 +4293,9 @@
   // Android back: close an open sheet, then follow the header's back link, then return to Home, then leave the app.
   window.addEventListener('wl:back', function (e) {
     if (document.querySelector('.app-lock')) return;
+    // An open photo or clip editor: back cancels it (nothing is added), as its Cancel button does.
+    var ed = document.querySelector('.editor [data-a=cancel]');
+    if (ed) { e.preventDefault(); ed.click(); return; }
     if (document.querySelector('.sheet-bg')) { e.preventDefault(); closeSheet(); return; }
     var b = document.querySelector('header.top a.back');
     if (b) { e.preventDefault(); location.hash = b.getAttribute('href'); return; }
@@ -2777,31 +4306,44 @@
   var lockBusy = false;
   window.addEventListener('wl:resume', function (e) {
     if (S.account && !lockBusy && NAT.lockOn() && e.detail && e.detail.away > LOCK_AFTER) showLock();
-    sync();
+    // Back in the app: read the network afresh (it may have changed while away). A learner who has just fixed their
+    // connection is not left waiting, and a quick trip to the camera does not start a burst of requests.
+    resumeSync(e.detail && e.detail.away);
   });
-  function lockOnStart() { if (S.account && NAT.lockOn()) showLock(); }
+  window.addEventListener('wl:pause', pauseRetries);
+  // The lock setting was read late (slow secure storage at start): lock now.
+  window.addEventListener('wl:lock', function () { if (S.account && NAT.lockOn()) showLock(); });
+  // On start the lock covers the screen before the logbook is drawn behind it.
+  function lockFirst() { if (NAT.lockOn()) showLock(); }
   function hideLock(all) { $$('.app-lock').forEach(function (x) { x.remove(); }); if (all) lockBusy = false; }
   function showLock() {
     if (document.querySelector('.app-lock')) return unlock();
     var el = document.createElement('div');
     el.className = 'app-lock'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', T('Logbook locked'));
-    el.innerHTML = '<div class="app-lock-in">' + MARK(64, 'rgba(247,245,240,.7)') + '<div class="wm">WAVELENGTH</div><p>' + esc(T('Your logbook is locked.')) + '</p><button class="btn teal block" type="button" data-unlock>' + esc(T('Unlock')) + '</button><button class="btn ghost block" type="button" data-lockout>' + esc(T('Log out')) + '</button></div>';
+    el.innerHTML = '<div class="app-lock-in">' + MARK(64, 'rgba(247,245,240,.7)') + '<div class="wm">WAVELENGTH</div><p>' + esc(T('Your logbook is locked.')) + '</p><p class="small" role="status" data-lockmsg></p><button class="btn teal block" type="button" data-unlock>' + esc(T('Unlock')) + '</button><button class="btn ghost block" type="button" data-lockout>' + esc(T('Log out')) + '</button></div>';
     document.body.appendChild(el);
     $('[data-unlock]', el).onclick = unlock;
-    $('[data-lockout]', el).onclick = function () { api('/api/app/logout', {}).then(signedOut, signedOut); };
+    // Logging in again needs the account password, so the lock starts off after that (it can be turned on again).
+    $('[data-lockout]', el).onclick = function () { NAT.setLock(false); api('/api/app/logout', {}, { timeout: 8000 }).then(function () { signedOut(); }, function () { signedOut(); }); };
     unlock();
   }
   function unlock() {
     if (lockBusy) return;
     lockBusy = true;
     NAT.lockAvailable().then(function (ok) {
-      if (!ok) { NAT.setLock(false); hideLock(); toast(T('App lock is off: this phone has no fingerprint or face unlock set up.'), 5000); return; }
+      // The lock never switches itself off. If the phone's lock was removed (or, on Android 7 to 10, only a weak
+      // face unlock is left), the logbook stays locked: set the phone's lock up again, or log out and log in with
+      // the account password. Logging out keeps the logbook saved on this phone.
+      var msg = $('[data-lockmsg]');
+      if (ok === null) { if (msg) msg.textContent = T('Could not check your phone\'s lock. Tap Unlock to try again.'); return; }
+      if (!ok) { if (msg) msg.textContent = NAT.pinFallback ? T('This phone no longer has a screen lock. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.') : T('This phone needs a fingerprint (or a secure face unlock) to unlock Wavelength. Set one up in your phone settings, then tap Unlock, or log out and log in with your password.'); return; }
+      if (msg) msg.textContent = '';
       return NAT.verify({ reason: T('Unlock your Wavelength logbook'), title: T('Unlock Wavelength'), subtitle: T('Your ultrasound logbook'), cancel: T('Cancel') }).then(function (yes) { if (yes) { hideLock(); NAT.haptic('success'); } });
     }).then(function () { lockBusy = false; }, function () { lockBusy = false; });
   }
   function lockCard() {
     if (!NAT.on) return '';
-    return '<h2 class="sec">' + esc(T('Security')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="lck"' + (NAT.lockOn() ? ' checked' : '') + '><span>' + esc(T('Lock the app with fingerprint or face')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.')) + '</p></div>';
+    return '<h2 class="sec">' + esc(T('Security')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="lck"' + (NAT.lockOn() ? ' checked' : '') + '><span>' + esc(T('Lock the app with fingerprint or face')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Asks for your fingerprint or face when you open Wavelength, and after it has been in the background for a while.')) + ' ' + esc(NAT.pinFallback ? T('Your phone\'s PIN, pattern or password also works. Wavelength uses your phone\'s own prompt and never sees your fingerprint or face.') : T('Wavelength uses your phone\'s own prompt and never sees your fingerprint or face.')) + '</p></div>';
   }
   function bindLockCard() {
     var c = $('#lck'); if (!c) return;
@@ -2810,7 +4352,7 @@
       if (!want) { NAT.setLock(false); toast(T('App lock off.')); return; }
       c.disabled = true; lockBusy = true;
       NAT.lockAvailable().then(function (ok) {
-        if (!ok) { c.checked = false; toast(T('Set up fingerprint or face unlock in your phone settings first.'), 5000); return; }
+        if (!ok) { c.checked = false; toast(NAT.pinFallback ? T('Set up a screen lock (PIN, pattern, password, fingerprint or face) in your phone settings first.') : T('Set up fingerprint or face unlock in your phone settings first.'), 5000); return; }
         return NAT.verify({ reason: T('Turn on app lock'), title: T('Turn on app lock'), subtitle: T('Your ultrasound logbook'), cancel: T('Cancel') }).then(function (yes) {
           if (!yes) { c.checked = false; return; }
           return NAT.setLock(true).then(function () { NAT.haptic('success'); toast(T('App lock on.')); });
@@ -2831,16 +4373,55 @@
     if (hr.name === 'verify-email') { render(); return; }
     if (qs.get('reset')) location.hash = '#/reset';
     else if (qs.get('login') && !/supervise/.test(location.hash)) location.hash = '#/login';
-    app.innerHTML = '<div class="auth"><div class="auth-head" style="padding-top:30vh">' + MARK(64, 'rgba(247,245,240,.6)') + '<div class="wm">WAVELENGTH</div></div></div>';
-    var offline = function () { var c = cachedAccount(); if (c && c.id && (!NAT.on || NAT.signedIn())) return signedIn(c).then(lockOnStart); render(); };
-    api('/api/app/me').then(function (res) {
-      if (res.ok) { S.me = res; return signedIn(res.account).then(lockOnStart); }
-      if (res._status >= 500) return offline();
-      cacheAccount(null);
-      if (qs.get('login')) location.hash = '#/login';
-      else if (res.academy && !location.hash.match(/login|signup|reset/)) location.hash = '#/signup';
-      render();
-    }).catch(offline);
+    app.innerHTML = '<div class="auth" data-boot><div class="auth-head" style="padding-top:30vh">' + MARK(64, 'rgba(247,245,240,.6)') + '<div class="wm">WAVELENGTH</div></div></div>';
+    var t0 = Date.now(), c = cachedAccount();
+    diag('path', 'start');
+    // Nothing may keep the start screen up: after BOOT_WAIT it gives way to a screen with a way on.
+    setTimeout(function () { if (app.querySelector('[data-boot]')) { diag('path', 'recovery'); viewRecovery(); } }, BOOT_WAIT);
+    var opened = function () { diag('ui', Date.now() - t0); };
+    var open = function (acc) { lockFirst(); return signedIn(acc).then(opened); };
+    var offline = function () { if (c && c.id && (!NAT.on || NAT.signedIn())) return open(c); render(); opened(); };
+    NAT.ready.then(function () {
+      // The app on a phone that is signed in opens its logbook from the phone at once, behind the app lock when it
+      // is on. The server check (loadMe) runs behind it: a login the server no longer accepts still signs out.
+      if (NAT.on && c && c.id && NAT.signedIn()) { diag('path', 'local'); return open(c); }
+      if (NAT.on && c && c.id && NAT.readFailed()) { diag('path', 'recovery'); return viewRecovery(); }
+      diag('path', 'server');
+      // Leave time to open the logbook offline before BOOT_WAIT shows the recovery screen.
+      return api('/api/app/me', undefined, { timeout: Math.max(2000, BOOT_WAIT - 2000 - (Date.now() - t0)) }).then(function (res) {
+        diag('me', String(res._status)); diag('meMs', Date.now() - t0);
+        if (res.ok) { S.me = res; return open(res.account); }
+        // A server error, or an answer that is not the API's (a captive portal page): open from the phone.
+        if (res._status >= 500 || res._nojson) return offline();
+        cacheAccount(null);
+        if (qs.get('login')) location.hash = '#/login';
+        else if (res.academy && !location.hash.match(/login|signup|reset/)) location.hash = '#/signup';
+        render(); opened();
+      }, function (ex) { diag('me', ex && ex.timeout ? 'timeout' : 'offline'); return offline(); });
+    }).catch(function () {
+      // The logbook on the phone could not be opened (storage error). Say so at once, rather than wait for BOOT_WAIT.
+      if (S.db) return;
+      diag('path', 'storage-error'); viewRecovery(true);
+    });
+  }
+  var BOOT_WAIT = 10000;
+  // Shown instead of an endless start screen. Nothing on the phone is changed or deleted.
+  function viewRecovery(storage) {
+    if (storage) authFrame(T('Wavelength could not open the logbook saved on this phone.'), T('Nothing has been deleted. Close Wavelength completely, then open it again. If this keeps happening, restart your phone.'), '<div class="btns"><button class="btn teal block" type="button" data-retry>' + esc(T('Try again')) + '</button></div>');
+    else authFrame(T('Wavelength is taking longer than usual to start.'), T('Your entries stay saved on this device. Check your connection, then try again.'),
+      '<div class="btns"><button class="btn teal block" type="button" data-retry>' + esc(T('Try again')) + '</button>' + (cachedAccount() ? '' : '<a class="btn ghost block" href="#/login">' + esc(T('Log in')) + '</a>') + '</div>');
+    $('[data-retry]').onclick = function () { location.reload(); };
+  }
+  // A short record of the last 10 starts on this device (timings and outcomes only, no personal data), shown in
+  // Settings under Sync, so a slow or stuck start on a phone can be explained without debugging tools.
+  var DIAG = { at: Date.now(), path: '', ui: 0, me: '', meMs: 0 };
+  function diag(k, v) {
+    DIAG[k] = v;
+    try {
+      var a = JSON.parse(localStorage.getItem('wl-diag') || '[]');
+      if (a.length && a[a.length - 1].at === DIAG.at) a[a.length - 1] = DIAG; else a.push(DIAG);
+      localStorage.setItem('wl-diag', JSON.stringify(a.slice(-10)));
+    } catch (e) { /* storage blocked */ }
   }
   var want = pickLang();
   if (want === 'en') { setLangVars('en'); boot(); }

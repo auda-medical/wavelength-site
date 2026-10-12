@@ -25,9 +25,7 @@
 import LOGBOOK from '../../data/logbook.json';
 import CFG from '../../data/credentials.json';
 import { ukDate } from '../time.js';
-// Approval roles: production approves supervisors only; the other labels are ready for migration 0015's roles.
-const ROLE = { supervisor: 'Supervisor', trainer: 'Trainer', mentor: 'Mentor', local_supervisor: 'Locally approved supervisor' };
-const capacityLabel = (c) => ROLE[c] || ROLE.supervisor;
+import { capacityLabel } from './pathways.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
 const TYPES = Object.fromEntries(CFG.credentialTypes.map((t) => [t.id, t]));

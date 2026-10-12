@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { client } from './env.mjs';
 import { handleApp } from '../../worker/app.js';
+import { ukDate } from '../../worker/time.js';
 
 export const PASSWORD = 'Correct horse battery 1!';
 export const SIG = 'data:image/png;base64,iVBORw0KGgo=';
@@ -42,3 +43,6 @@ export function adminForm(o) {
   for (const [k, v] of Object.entries(o)) (Array.isArray(v) ? v : [v]).forEach((x) => f.append(k, String(x)));
   return f;
 }
+// The admin's GMC register check form (worker/verification/register-review.js), every required box confirmed and
+// nothing shown that needs consideration. Pass overrides to change one answer.
+export const gmcCheck = (o = {}) => ({ register_name: 'John Smith', number_matched: '1', registration_current: '1', licence_current: '1', restriction: 'none', checked_on: ukDate(), notes: 'GMC register', ...o });

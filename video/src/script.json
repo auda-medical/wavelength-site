@@ -1,0 +1,144 @@
+{
+ "_help": "Narration for the three films and the sample, one line per scene. scripts/narrate.mjs speaks each line with Kokoro (British English voice) to public/audio/<film>/<id>.wav and records its length in public/audio/timings.json; the Remotion compositions size each scene from those lengths. 'say' is what the voice reads (spelling out the web address); 'text' is the caption. Every claim was checked against the working app and website on 10 October 2026: see docs/commercial-2026/07-video-scripts-storyboards.md.",
+ "voice": "bf_emma",
+ "speed": 0.87,
+ "links": {
+  "flagship": "https://thewavelength.co.uk/?utm_source=video&utm_medium=video&utm_campaign=2026-11-flagship-film",
+  "short": "https://thewavelength.co.uk/app/get/?utm_source=video&utm_medium=video&utm_campaign=2026-11-free-logbook",
+  "ad": "https://thewavelength.co.uk/training/?utm_source=video&utm_medium=video&utm_campaign=2026-11-tailored-training"
+ },
+ "films": {
+  "flagship": [
+   {
+    "id": "f01",
+    "scene": "open",
+    "text": "",
+    "say": ""
+   },
+   {
+    "id": "f02",
+    "scene": "problem",
+    "text": "On a busy shift, you scan when the patient needs it. But your supervisor is in the resuscitation room, on nights, or at another site. The review never quite happens, and the logbook falls behind.",
+    "say": "On a busy shift, you scan when the patient needs it. But your supervisor is in the resuscitation room, on nights, or at another site. The review never quite happens, and the logbook falls behind."
+   },
+   {
+    "id": "f03",
+    "scene": "intro",
+    "text": "Wavelength is an ultrasound logbook designed for real clinical practice.",
+    "say": "Wavelength is an ultrasound logbook, designed for real clinical practice."
+   },
+   {
+    "id": "f04",
+    "scene": "pathways",
+    "text": "Choose the pathways you're working towards, from RCEM and FAMUS to FUSIC and international frameworks.",
+    "say": "Choose the pathways you're working towards, from R C E M and FAY-mus, to FEW-sick and international frameworks."
+   },
+   {
+    "id": "f05",
+    "scene": "log",
+    "text": "Log a scan in moments: the application, your findings, how you were supervised, and an image if you have one. It works offline, and you remove identifiers before anything is saved.",
+    "say": "Log a scan in moments. The application, your findings, how you were supervised, and an image if you have one. It works offline, and you remove identifiers before anything is saved."
+   },
+   {
+    "id": "f06",
+    "scene": "supervisors",
+    "text": "Link the supervisors you work with, and see who is verified by Wavelength, and for which modules.",
+    "say": "Link the supervisors you work with, and see who is verified by Wavelength, and for which modules."
+   },
+   {
+    "id": "f07",
+    "scene": "review",
+    "text": "Send scans for review. Your supervisor opens them on their own phone when they're free, confirms or queries each one, and signs. Required bedside supervision and assessments still happen in person.",
+    "say": "Send your scans for review. Your supervisor opens them on their own phone when they're free, confirms or queries each one, and signs. Where your pathway needs bedside supervision, or an observed assessment, that still happens in person."
+   },
+   {
+    "id": "f08",
+    "scene": "progress",
+    "text": "Every sign-off and assessment updates your progress. When you're ready, export a portfolio with a QR code that reviewers can check online.",
+    "say": "Every sign-off and assessment updates your progress. When you're ready, export a portfolio, with a QR code that reviewers can check online."
+   },
+   {
+    "id": "f09",
+    "scene": "free",
+    "text": "And the best part? Your Wavelength ultrasound logbook is free to use.",
+    "say": "And the best part? Your Wavelength ultrasound logbook is free to use."
+   },
+   {
+    "id": "f10",
+    "scene": "education",
+    "text": "Your ultrasound journey doesn't end with your logbook. Explore our hands-on courses and expert-led training, tailored to your needs, with flexible locations by arrangement.",
+    "say": "Your ultrasound journey doesn't end with your logbook. Explore our hands-on courses, and expert-led training, tailored to your needs, with flexible locations by arrangement."
+   },
+   {
+    "id": "f11",
+    "scene": "end",
+    "text": "Wavelength. Tune in. Gain clarity.",
+    "say": "Wavelength. Tune in. Gain clarity."
+   }
+  ],
+  "short": [
+   {
+    "id": "s01",
+    "scene": "hook",
+    "text": "Scanned on a busy shift, but your supervisor is nowhere to be seen?",
+    "say": "Scanned on a busy shift, but your supervisor is nowhere to be seen?"
+   },
+   {
+    "id": "s02",
+    "scene": "free",
+    "text": "Meet Wavelength: your ultrasound logbook, free to use.",
+    "say": "Meet Wavelength, your ultrasound logbook, free to use."
+   },
+   {
+    "id": "s03",
+    "scene": "log",
+    "text": "Log a scan in moments.",
+    "say": "Log a scan in moments."
+   },
+   {
+    "id": "s04",
+    "scene": "review",
+    "text": "Send it to a verified supervisor to review when they're free.",
+    "say": "Send it to a verified supervisor, to review when they're free."
+   },
+   {
+    "id": "s05",
+    "scene": "progress",
+    "text": "Watch your progress build towards your targets.",
+    "say": "And watch your progress build towards your targets."
+   },
+   {
+    "id": "s06",
+    "scene": "education",
+    "text": "Hands-on courses and tailored training, too.",
+    "say": "Hands-on courses and tailored training, too."
+   },
+   {
+    "id": "s07",
+    "scene": "end",
+    "text": "Start your free logbook at thewavelength.co.uk",
+    "say": "Start your free logbook, at the wavelength dot co dot U K."
+   }
+  ],
+  "ad": [
+   {
+    "id": "a01",
+    "scene": "headline",
+    "text": "Ultrasound training tailored to your needs, with flexible locations by arrangement.",
+    "say": "Ultrasound training, tailored to your needs, with flexible locations by arrangement."
+   },
+   {
+    "id": "a02",
+    "scene": "offer",
+    "text": "Hands-on courses and expert-led teaching, for individuals, groups and organisations.",
+    "say": "Hands-on courses, and expert-led teaching, for individuals, groups and organisations."
+   },
+   {
+    "id": "a03",
+    "scene": "end",
+    "text": "Wavelength. Tune in. Gain clarity.",
+    "say": "Wavelength. Tune in. Gain clarity."
+   }
+  ]
+ }
+}

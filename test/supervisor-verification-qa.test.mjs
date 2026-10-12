@@ -2,12 +2,10 @@
 // approval email on every route, the person-page route that used to leave an application "under review", email
 // failures and retries, duplicate prevention, the audit record, self-approval safeguards and what a learner sees.
 // Every person, number and address here is fictional; email goes to a captured stub, never to a provider.
-// Production port (branch wavelength-supervisor-prod-20261010): registrations are checked with the generic
-// "Verify registration" (the GMC review is not in production) and approvals are in the supervisor role only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeEnv, ctx } from './helpers/env.mjs';
-import { verifiedAccount, idOf, adminForm } from './helpers/verify.mjs';
+import { verifiedAccount, idOf, adminForm, gmcCheck } from './helpers/verify.mjs';
 import { supervisorsAdminPost, supervisorsAdminHtml, looksLikeSelf } from '../worker/supervisors-admin.js';
 import { dailyLifecycle, supervisorEligibility, verificationOf } from '../worker/supervisor-lifecycle.js';
 import { verificationView, approvedGroups, groupLine } from '../worker/verification/status.js';
@@ -55,7 +53,7 @@ async function applicant(env, email, { invitedBy = null, pathways = ['famus'], a
   assert.equal((await sup.call('/api/app/supervisor/submit', { declaration: true })).status, 200);
   const sid = await idOf(env, email);
   const reg = await env.DB.prepare('SELECT id FROM professional_registrations WHERE learner_id = ?').bind(sid).first();
-  assert.equal((await admin(env, { action: 'reg_verify', learner: sid, sid: reg.id, register_name: 'Jordan Example', checked: '1' })).m, 'Registration verified.');
+  assert.equal((await admin(env, { action: 'reg_gmc_check', learner: sid, sid: reg.id, ...gmcCheck({ register_name: 'Jordan Example' }) })).m, 'GMC registration verified.');
   const app = await env.DB.prepare('SELECT * FROM supervisor_applications WHERE learner_id = ? ORDER BY id DESC').bind(sid).first();
   return { sup, learner, sid, app };
 }
@@ -145,7 +143,7 @@ test('the reported defect: approving from the person page decides the open appli
   assert.match(await page(env, '?tab=new'), /Nothing waiting/);
   // The learner who invited them sees a verified supervisor, and the "now active" email went to them.
   const L = (await p.learner.call('/api/app/supervisors')).body.supervisors[0];
-  assert.equal(L.state, 'active');
+  assert.equal(L.stage, 'approved');
   assert.equal(L.verification.state, 'verified');
   assert.equal(to('trainee.direct@example.test').filter((m) => /now active/.test(m.subject)).length, 1);
 });
@@ -192,10 +190,10 @@ test('partial approval, several pathways and roles, and a genuine further applic
   await admin(env, { action: 'app_approve', app: p.app.id, scope: ['famus:famus-thoracic'] });
   let v = (await p.sup.call('/api/app/supervisor')).body.verification;
   assert.deepEqual(v.approved.map((g) => g.modules.map((m) => m.label)), [['Thoracic']]);
-  // Later a FUSIC Heart approval from the person page: a second pathway.
-  await admin(env, { action: 'appr_add', learner: p.sid, scope: ['fusic:fusic-heart'] });
+  // Later a FUSIC Heart mentor approval from the person page: a second pathway, a different role.
+  await admin(env, { action: 'appr_add', learner: p.sid, scope: ['fusic:fusic-heart'], capacity: 'mentor' });
   v = (await p.sup.call('/api/app/supervisor')).body.verification;
-  assert.deepEqual(v.approved.map((g) => [g.pathwayLabel, g.roleLabel, g.modules.map((m) => m.label)]), [['FAMUS', 'Supervisor', ['Thoracic']], ['FUSIC', 'Supervisor', ['Heart']]]);
+  assert.deepEqual(v.approved.map((g) => [g.pathwayLabel, g.roleLabel, g.modules.map((m) => m.label)]), [['FAMUS', 'Supervisor', ['Thoracic']], ['FUSIC', 'Mentor', ['Heart']]]);
   // A credential still being checked is pending, kept apart from what is approved.
   await env.DB.prepare("INSERT INTO credentials (learner_id, credential_type, issuer, programme, role, modules, status) VALUES (?, 'fusic-trainer', 'ics', 'fusic', 'trainer', '[\"lung\"]', 'manual_review')").bind(p.sid).run();
   v = (await p.sup.call('/api/app/supervisor')).body.verification;
@@ -207,7 +205,7 @@ test('partial approval, several pathways and roles, and a genuine further applic
   const m = approvalMails('multi@example.test');
   assert.equal(m.length, 2);
   assert.match(m[0].textbody, /FAMUS pathway, supervisor: Thoracic\./);
-  assert.match(m[1].textbody, /FUSIC pathway, supervisor: Heart\./);
+  assert.match(m[1].textbody, /FUSIC pathway, mentor: Heart\./);
   assert.ok(!/Heart/.test(m[0].textbody));
 });
 
@@ -243,7 +241,7 @@ test('expired credential, rejection and revocation each read correctly, and a le
   assert.equal(v.lapse, 'credential');
   assert.deepEqual(v.approved, []);
   const L = (await p.learner.call('/api/app/supervisors')).body.supervisors[0];
-  assert.notEqual(L.state, 'active');
+  assert.notEqual(L.stage, 'approved');
   assert.equal(L.verification, null, 'no approval detail for a supervisor who is not verified now');
   // Rejected.
   const q = await applicant(env, 'rejected@example.test');
@@ -289,12 +287,13 @@ test('a GMC registration alone, or an unrelated credential, never makes anyone v
   const el = await supervisorEligibility(env, p.sid, { scopes: ['fusic:fusic-heart'] });
   assert.equal(el.ok, false);
   assert.deepEqual(el.reasons, ['not_approved']);
-  // Approved for FAMUS Thoracic only: still not eligible for FUSIC Heart, or for scans outside the module.
+  // Approved for FAMUS Thoracic only: still not eligible for FUSIC Heart, and a mentor is not eligible for a final.
   await admin(env, { action: 'app_approve', app: p.app.id, scope: ['famus:famus-thoracic'] });
   assert.equal((await supervisorEligibility(env, p.sid, { scopes: ['famus:famus-thoracic'] })).ok, true);
   assert.deepEqual((await supervisorEligibility(env, p.sid, { scopes: ['fusic:fusic-heart'] })).reasons, ['out_of_scope']);
-  await admin(env, { action: 'appr_add', learner: p.sid, scope: ['fusic:fusic-heart'] });
-  assert.equal((await supervisorEligibility(env, p.sid, { scopes: ['fusic:fusic-heart'] })).ok, true);
+  await admin(env, { action: 'appr_add', learner: p.sid, scope: ['fusic:fusic-heart'], capacity: 'mentor' });
+  assert.deepEqual((await supervisorEligibility(env, p.sid, { scopes: ['fusic:fusic-heart'], actions: ['final'] })).reasons, ['capacity']);
+  assert.equal((await supervisorEligibility(env, p.sid, { scopes: ['fusic:fusic-heart'], actions: ['review'] })).ok, true);
 });
 
 test('email delivery failure: the approval stands, the failure is shown, retried by the daily job, and resent once', async () => {

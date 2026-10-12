@@ -1,0 +1,65 @@
+{
+  "_help": "Which supervision actions each capacity may perform, per accreditation pathway and module. Read by worker/verification/pathways.js. A capacity is recorded on each Wavelength approval (supervisor_approvals.capacity); a credential issued by an outside body is evidence for an approval, never a permission on its own. Each rule field summarises the source it names (close to its wording, not a verbatim quote). Change a rule only after reading the body's current published guidance, and update source, rule and checked. Actions: witness (directly supervise a scan in person), review (review a scan record and its images later, asynchronously), formative, summative, dops, final (final or triggered assessment, or the end-of-training sign-off). A review or sign-off in Wavelength never confers accreditation: the body decides.",
+  "checked": "2026-10-10",
+  "actions": {
+    "witness": "Directly supervise a scan (in person)",
+    "review": "Review a scan record and its images later",
+    "formative": "Formative assessment",
+    "summative": "Summative assessment",
+    "dops": "DOPS",
+    "final": "Final or triggered assessment, or end-of-training sign-off"
+  },
+  "capacities": {
+    "supervisor": { "label": "Supervisor", "about": "Oversees training for the module and may sign every step the pathway allows a supervisor to sign." },
+    "trainer": { "label": "Trainer", "about": "FUSIC modules other than Heart: reviews logbook scans, signs competencies and conducts the triggered assessment for the module named." },
+    "mentor": { "label": "Mentor", "about": "Oversees and reviews scans and gives feedback. Cannot sign the final or triggered assessment." },
+    "local_supervisor": { "label": "Locally approved supervisor", "about": "Approved by the trainee's own organisation where the pathway leaves supervision to local arrangements." }
+  },
+  "all": ["witness", "review", "formative", "summative", "dops", "final"],
+  "default": { "supervisor": "all", "local_supervisor": "all" },
+  "pathways": {
+    "famus": {
+      "label": "FAMUS (Society for Acute Medicine)",
+      "capacities": { "supervisor": "all", "mentor": ["witness", "review", "formative"] },
+      "credentialFor": { "supervisor": ["famus-supervisor"], "mentor": ["famus-mentor", "famus-supervisor", "famus-accredited"] },
+      "source": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-DVT-v1.1.pdf",
+      "rule": "Supervisors: may undertake supervised scans, review unsupervised scans and must perform ACTs. Mentors: will review images from unsupervised scans (mentored practice); cannot sign off ACTs (these must be done by a Supervisor). Supervisors must apply to the FAMUS administrator and be registered on the database. A mentor must be competent in performing the scan they intend to oversee and can be any grade clinician.",
+      "asyncReview": "Permitted for mentored practice: mentors and supervisors review images from unsupervised scans. Directly supervised scans are overseen in person.",
+      "modules": {
+        "famus-pva": {
+          "capacities": { "local_supervisor": "all", "supervisor": "all", "mentor": ["witness", "review", "formative"] },
+          "credentialFor": { "local_supervisor": ["local-credentialing", "famus-supervisor"], "mentor": ["famus-mentor", "famus-accredited", "famus-supervisor"] },
+          "source": "https://www.acutemedicine.org.uk/famus/peripheral-access-module/",
+          "rule": "In contrast with other FAMUS modules, registration with the Society is not required and supervision is to be determined at a local level.",
+          "note": "Peripheral vascular access: sign-off is local, not through SAM-registered supervisors. A FAMUS supervisor listing does not cover it."
+        }
+      }
+    },
+    "fusic": {
+      "label": "FUSIC (Intensive Care Society)",
+      "capacities": { "trainer": "all", "supervisor": "all" },
+      "_capacities": "supervisor: approvals granted before capacities existed (October 2026) keep their meaning; record new FUSIC approvals outside Heart as trainer.",
+      "credentialFor": { "trainer": ["fusic-trainer"] },
+      "source": "https://ics.ac.uk/learning/fusic/fusic-trainer.html",
+      "rule": "Trainers review logbook scans, sign off competencies and conduct a mentee's triggered assessment, and sign off the summary training record to confirm that a mentee has satisfactorily completed all the training components. Trainers apply for a named module (Lung, Abdomen, Vascular, DVT or Haemodynamics) after at least 12 months' accreditation in it.",
+      "asyncReview": "Logbook scan review by the module's trainer.",
+      "modules": {
+        "fusic-heart": {
+          "capacities": { "supervisor": "all", "mentor": ["witness", "review", "formative"] },
+          "credentialFor": { "supervisor": ["fusic-supervisor"], "mentor": ["fusic-mentor"] },
+          "source": "https://ics.ac.uk/learning/fusic/heart-supervisors.html",
+          "rule": "Supervisors must conduct the triggered assessment and countersign the summary training record to confirm that a mentee has satisfactorily completed all the training components. Mentors assess logbooks and are involved in triggered assessments with supervisors; mentors need an identified supervisor.",
+          "note": "FUSIC Heart has two roles. A mentor never signs the triggered assessment or the summary record as the final signatory."
+        }
+      }
+    },
+    "rcem": {
+      "label": "RCEM",
+      "capacities": { "supervisor": "all", "local_supervisor": "all" },
+      "credentialFor": { "supervisor": ["rcem-ultrasound-supervisor"], "local_supervisor": ["rcem-ultrasound-supervisor", "local-credentialing"] },
+      "source": "https://rcem.ac.uk/ultrasound-education-training-2021-curriculum/",
+      "rule": "RCEM publishes no register of ultrasound supervisors: supervision and the entrustment decision are local.",
+      "asyncReview": "Logbook review is local practice; DOPS are directly observed."
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "at": "2026-10-08T14:03:09.983Z",
+  "api": "http://localhost:8787",
+  "site": "https://thewavelength.co.uk",
+  "results": [
+    {
+      "id": "S1",
+      "name": "Cold start, server never answers: logbook opens within 3 s",
+      "pass": false,
+      "detail": "still on the start screen after 15 s (start screen showing: true)"
+    },
+    {
+      "id": "S2",
+      "name": "Cold start, slow network, app lock on: fingerprint prompt within 2 s",
+      "pass": false,
+      "detail": "prompt after 6153 ms"
+    },
+    {
+      "id": "S3",
+      "name": "Cold start, calls fail at once, app lock on: prompt and logbook within 2 s",
+      "pass": true,
+      "detail": "prompt 182 ms, logbook 186 ms"
+    },
+    {
+      "id": "S4",
+      "name": "Cold start, server never answers, app lock on: fingerprint prompt within 2 s",
+      "pass": false,
+      "detail": "no prompt within 15 s"
+    },
+    {
+      "id": "Y1",
+      "name": "Saved offline, reconnected with no connectivity event: scan reaches the server within 25 s",
+      "pass": false,
+      "detail": "not on the server after 25 s"
+    },
+    {
+      "id": "Y2",
+      "name": "While a sync is failing, the status does not say \"Synced\"",
+      "pass": false,
+      "detail": "indicator said: \"Synced\""
+    },
+    {
+      "id": "Y3",
+      "name": "Resumed while still offline, network back a second later: scan reaches the server within 25 s",
+      "pass": false,
+      "detail": "not on the server after 25 s"
+    },
+    {
+      "id": "Y4",
+      "name": "Control: saved offline, reconnect event fires: scan reaches the server",
+      "pass": true,
+      "detail": "synced"
+    },
+    {
+      "id": "Y5",
+      "name": "Server refuses an entry: the answer names it with a reason (not a silent ok)",
+      "pass": false,
+      "detail": "ok=true, saved=false, rejected=null"
+    }
+  ],
+  "errors": []
+}

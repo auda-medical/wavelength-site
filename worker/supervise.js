@@ -9,8 +9,10 @@ import { buildSummary, signedAssessments } from './evidence.js';
 import { sendMail, learner as learnerOf } from './academy.js';
 import { mustVerify, sendVerification } from './email-verify.js';
 import { snapshotFor, publicSnapshot, logEvent, SIGNER_LABELS } from './professional.js';
-import { supervisorEligibility, eligibilityError, approvalRequired, applyOn, standingOf, linkState, signerBlocked, returnRequestsStmts, supervisorUnavailable, NEUTRAL_REFUSAL, areaLabels, verificationOf } from './supervisor-lifecycle.js';
+import { supervisorEligibility, eligibilityError, approvalRequired, applyOn, standingOf, linkState, relationshipStage, signerBlocked, returnRequestsStmts, supervisorUnavailable, NEUTRAL_REFUSAL, areaLabels, verificationOf } from './supervisor-lifecycle.js';
 import { audit, auditStmt } from './audit.js';
+import { actionsForSignoff, actionsForAssessment } from './verification/pathways.js';
+import { reviewState, REVIEW_STATES } from './review.js';
 import { nowIso, parseTs } from './time.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
@@ -58,8 +60,8 @@ function formError(f, kind) {
 // The assessor's verified status is captured with the signature and never changed afterwards. Only the dashboard
 // route identifies the assessor by their Wavelength account; in person and by link, the details are as declared.
 async function finishAssessment(env, row, f, sup, sig, supervisorId, method) {
-  const who = await env.DB.prepare('SELECT a.learner_id, l.title, l.first_name, l.last_name FROM assessments a JOIN learners l ON l.id = a.learner_id WHERE a.id = ?').bind(row.id).first();
-  const snap = await snapshotFor(env, { pathway: row.pathway, module: row.module, declared: sup, method, accountId: supervisorId || null, learnerName: who ? fullName(who) : null });
+  const who = await env.DB.prepare('SELECT a.learner_id, a.kind, l.title, l.first_name, l.last_name FROM assessments a JOIN learners l ON l.id = a.learner_id WHERE a.id = ?').bind(row.id).first();
+  const snap = await snapshotFor(env, { pathway: row.pathway, module: row.module, declared: sup, method, accountId: supervisorId || null, learnerName: who ? fullName(who) : null, actions: actionsForAssessment(row.kind || who && who.kind) });
   const r = await env.DB.prepare(`UPDATE assessments SET status = 'signed', outcome = ?, assessed_on = ?, data = ?, supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL, supervisor_id = COALESCE(?, supervisor_id)${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
     .bind(f.outcome, f.date, JSON.stringify({ ...JSON.parse(row.data || '{}'), ...f }), sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sig, supervisorId || null, ...(snap ? [JSON.stringify(snap)] : []), row.id).run();
   return !!(r.meta && r.meta.changes); // false when another submission signed it first
@@ -68,7 +70,7 @@ const publicRow = (r) => ({
   id: r.id, pathway: r.pathway, module: r.module, kind: r.kind, method: r.method, status: r.status, outcome: r.outcome, assessed_on: r.assessed_on,
   entry_ids: JSON.parse(r.entry_ids || '[]'), data: JSON.parse(r.data || '{}'), expires_at: r.expires_at, supervisor_name: r.supervisor_name,
   supervisor_role: r.supervisor_role, supervisor_reg: r.supervisor_reg, accreditation: r.accreditation, signature: r.signature, signatureKind: r.signature ? sigKind(JSON.parse(r.data || '{}')) : null, signed_at: r.signed_at, created_at: r.created_at,
-  supervisor_id: r.supervisor_id || null, returned: r.returned_at ? { at: r.returned_at, reason: r.returned_reason } : null,
+  supervisor_id: r.supervisor_id || null, returned: r.returned_at ? { at: r.returned_at, reason: r.returned_reason, ...(r.returned_reason === 'declined' && r.decline_reason ? { note: r.decline_reason } : {}) } : null, reviewState: reviewState(r), reviewLabel: REVIEW_STATES[reviewState(r)],
   amends: r.amends || null, superseded_by: r.superseded_by || null, amend_reason: r.amend_reason || null, error_note: r.error_note || null,
   signer: signerLabel(r.supervisor_snapshot),
 });
@@ -181,7 +183,7 @@ export function invitationWording({ journey, required, hasAccount, approved, lea
   const first = hasAccount ? 'Log in to Wavelength with this email address to accept.' : 'Create a free Wavelength account with this email address to accept.';
   const label = hasAccount ? 'Log in and accept' : 'Create your account';
   if (!journey) return { label, next: first };
-  return { label, next: `${first} You can also apply in the app to become a Wavelength-approved supervisor. ${learner} sees whether you are Wavelength-approved or not yet verified.` };
+  return { label, next: `${first} You can also apply in the app to become a Wavelength Verified Supervisor. ${learner} sees whether you are a Wavelength Verified Supervisor or not yet verified.` };
 }
 export async function supervisorAdd(env, l, req, ctx) {
   const d = await body(req);
@@ -195,7 +197,11 @@ export async function supervisorAdd(env, l, req, ctx) {
   if (prev && prev.status === 'pending' && Date.now() - Date.parse(String(prev.created_at).replace(' ', 'T') + 'Z') < 120000) return json({ ok: true, emailed: true, recent: true, hasAccount: false });
   if (prev && prev.status === 'active') return json({ ok: false, error: 'This supervisor is already linked.' }, 400);
   const sup = await env.DB.prepare('SELECT id FROM learners WHERE email = ? AND password_hash IS NOT NULL').bind(email).first();
-  await env.DB.prepare("INSERT INTO supervisor_links (learner_id, supervisor_email, supervisor_id, status) VALUES (?,?,?,'pending') ON CONFLICT (learner_id, supervisor_email) DO UPDATE SET status = 'pending', supervisor_id = excluded.supervisor_id, ended_at = NULL, created_at = datetime('now')")
+  // 1.0.12: inviting again after supervision ended starts a new relationship. The old acceptance and claim are
+  // cleared, so the supervisor must accept again (and, where required, be approved): an ended relationship is never
+  // restored by the learner alone. A resend of an open invitation keeps its claim.
+  const fresh = (await lifecycleReady(env)) ? ", claimed_at = CASE WHEN supervisor_links.status = 'ended' THEN NULL ELSE supervisor_links.claimed_at END, accepted_at = CASE WHEN supervisor_links.status = 'ended' THEN NULL ELSE supervisor_links.accepted_at END, ended_reason = NULL, ended_by = NULL, via = CASE WHEN supervisor_links.status = 'ended' THEN 'email' ELSE supervisor_links.via END" : ", accepted_at = CASE WHEN supervisor_links.status = 'ended' THEN NULL ELSE supervisor_links.accepted_at END";
+  await env.DB.prepare(`INSERT INTO supervisor_links (learner_id, supervisor_email, supervisor_id, status) VALUES (?,?,?,'pending') ON CONFLICT (learner_id, supervisor_email) DO UPDATE SET status = 'pending', supervisor_id = excluded.supervisor_id, ended_at = NULL${fresh}, created_at = datetime('now')`)
     .bind(l.id, email, sup ? sup.id : null).run();
   // The invitation carries a single-use token (hashed in D1, 30 days). Accepting with it proves the supervisor
   // received this email, so it also verifies their address.
@@ -229,24 +235,54 @@ export async function supervisorAdd(env, l, req, ctx) {
   }).catch(() => false);
   return json({ ok: true, emailed: !!emailed, hasAccount: !!sup });
 }
+// Ending a supervision relationship (the learner's "Remove supervisor", the supervisor's "End supervision" and
+// "Decline" on an invitation). 1.0.12:
+// - Only the two parties may end it: the learner, the linked supervisor, or (for an open invitation not yet linked to
+//   an account) the holder of the invited email once that email is confirmed. Anyone else gets the same 404 as a link
+//   that does not exist, so ids cannot be probed.
+// - The change is a guarded update (status != 'ended'): of two simultaneous requests exactly one ends the link and
+//   writes the audit row; the other answers already: true. Repeating the request is safe.
+// - Open sign-off and assessment requests addressed to this supervisor for this learner come back to the learner (their
+//   links stop working). They are returned again on a repeat, so a failure between the two steps is repaired by
+//   retrying. One-off links sent to someone outside a relationship are not affected.
+// - Nothing signed is changed: completed sign-offs and assessments keep their supervisor snapshot. Ending a
+//   relationship is not a finding about the supervisor and does not invalidate evidence; that is a separate,
+//   administrator-only action ("issued in error", revocation), recorded separately.
+// - The answer says what the server did, so the app only reports "ended" after this acknowledgement.
 export async function supervisorRemove(env, l, req) {
   const d = await body(req);
   const id = Number(d && d.id);
-  if (!(await lifecycleReady(env))) {
-    await env.DB.prepare("UPDATE supervisor_links SET status = 'ended', ended_at = datetime('now') WHERE id = ? AND (learner_id = ? OR supervisor_id = ?)").bind(id, l.id, l.id).run();
-    return json({ ok: true });
-  }
-  const link = await env.DB.prepare("SELECT * FROM supervisor_links WHERE id = ? AND (learner_id = ? OR supervisor_id = ?) AND status != 'ended'").bind(id, l.id, l.id).first();
-  if (!link) return json({ ok: true });
+  if (!Number.isInteger(id) || id <= 0) return json({ ok: false, error: 'Choose a supervision link.' }, 400);
+  const email = String(l.email).toLowerCase();
+  const link = await env.DB.prepare('SELECT * FROM supervisor_links WHERE id = ? AND (learner_id = ? OR supervisor_id = ? OR supervisor_email = ?)').bind(id, l.id, l.id, email).first();
+  const NOT_FOUND = json({ ok: false, notFound: true, error: 'This supervision link was not found.' }, 404);
+  if (!link) return NOT_FOUND;
   const byLearner = link.learner_id === l.id;
-  // Open requests between the two come back to the learner, keeping their details.
-  const ret = link.supervisor_id ? await returnRequestsStmts(env, link.supervisor_id, byLearner ? 'learner_removed' : 'supervisor_removed', link.learner_id) : { stmts: [] };
-  await env.DB.batch([
-    env.DB.prepare("UPDATE supervisor_links SET status = 'ended', ended_at = datetime('now'), ended_reason = ?, ended_by = ? WHERE id = ?").bind(byLearner ? 'learner_removed' : 'supervisor_removed', byLearner ? 'learner' : 'supervisor', link.id),
-    ...ret.stmts,
-    auditStmt(env, { actorType: byLearner ? 'learner' : 'supervisor', actorId: l.id, action: 'link.end', subjectType: 'link', subjectId: link.id, meta: { reason: byLearner ? 'learner_removed' : 'supervisor_removed' } }),
-  ]);
-  return json({ ok: true });
+  const bySupervisor = !byLearner && (link.supervisor_id === l.id || (!link.supervisor_id && link.supervisor_email === email));
+  if (!byLearner && !bySupervisor) return NOT_FOUND; // the email matches, but another account holds this link
+  // An invitation found only by its email address is declined only by someone who has shown they own that address.
+  if (!byLearner && !link.supervisor_id && await mustVerify(env, l)) return json({ ok: false, needVerify: true, error: 'Confirm your email address to decline this invitation.' }, 403);
+  const reason = byLearner ? 'learner_removed' : link.status === 'pending' ? 'supervisor_declined' : 'supervisor_removed';
+  const life = await lifecycleReady(env);
+  const clearInvite = (await verificationReady(env)) ? ', invite_hash = NULL, invite_expires = NULL' : '';
+  let ended, returned = 0;
+  if (life) {
+    // One batch: the guarded update, its audit row (only if this request ended the link) and the returned requests.
+    // A repeat after a failure re-runs the whole batch; the audit row is never left behind on its own.
+    const ret = link.supervisor_id ? await returnRequestsStmts(env, link.supervisor_id, link.status === 'ended' ? (link.ended_reason || reason) : reason, link.learner_id) : { stmts: [], counts: {} };
+    returned = Object.values(ret.counts).reduce((a, b) => a + b, 0);
+    const out = await env.DB.batch([
+      env.DB.prepare(`UPDATE supervisor_links SET status = 'ended', ended_at = datetime('now'), ended_reason = ?, ended_by = ?${clearInvite} WHERE id = ? AND status != 'ended'`).bind(reason, byLearner ? 'learner' : 'supervisor', link.id),
+      auditStmt(env, { actorType: byLearner ? 'learner' : 'supervisor', actorId: l.id, action: 'link.end', subjectType: 'link', subjectId: link.id, meta: { reason, status: link.status, returned } }, { ifChanged: true }),
+      ...ret.stmts,
+    ]);
+    ended = !!(out[0] && out[0].meta && out[0].meta.changes);
+  } else {
+    const r = await env.DB.prepare(`UPDATE supervisor_links SET status = 'ended', ended_at = datetime('now')${clearInvite} WHERE id = ? AND status != 'ended'`).bind(link.id).run();
+    ended = !!(r.meta && r.meta.changes);
+  }
+  const row = await env.DB.prepare('SELECT status, ended_at FROM supervisor_links WHERE id = ?').bind(link.id).first();
+  return json({ ok: true, ended: !!row && row.status === 'ended', already: !ended, link: { id: link.id, status: row ? row.status : 'ended', endedAt: row ? row.ended_at : null, endedBy: byLearner ? 'learner' : 'supervisor', reason }, returned });
 }
 // Accepting an invitation. Before migration 0012, or with SUPERVISOR_APPROVAL_REQUIRED off, it activates the link as it
 // always has. With approval required, it claims the link: the invitation stays pending (the learner sees "Supervisor
@@ -294,6 +330,13 @@ export async function supervisorAcceptInvite(env, l, req) {
   }
   return json({ ok: true, verified: true, ...out });
 }
+// Who ended a relationship, from the reader's side. 'self' is a supervisor withdrawing from Wavelength supervision
+// (supervisor-lifecycle.js), so it is the supervisor's own act, not Wavelength's.
+function endedByWord(by, asLearner) {
+  const who = by === 'self' ? 'supervisor' : by;
+  if (who !== 'learner' && who !== 'supervisor') return 'system';
+  return who === (asLearner ? 'learner' : 'supervisor') ? 'you' : 'them';
+}
 export async function supervisorLinks(env, l) {
   const life = await lifecycleReady(env);
   const mine = await env.DB.prepare(`SELECT s.id, s.supervisor_email, s.supervisor_id, s.status, s.created_at, s.accepted_at${life ? ', s.claimed_at, s.via' : ''}, t.title, t.first_name, t.last_name, t.role FROM supervisor_links s LEFT JOIN learners t ON t.id = s.supervisor_id WHERE s.learner_id = ? AND s.status != 'ended' ORDER BY s.created_at DESC`).bind(l.id).all();
@@ -306,23 +349,39 @@ export async function supervisorLinks(env, l) {
   const enforced = approvalRequired(env);
   const standings = {};
   const standing = async (id) => (id && life ? (standings[id] ||= await standingOf(env, id)) : null);
+  // The learner's own open requests addressed to each supervisor's dashboard (they come back if supervision ends).
+  const pendingFor = {};
+  for (const t of ['signoffs', 'assessments']) {
+    const { results = [] } = await env.DB.prepare(`SELECT supervisor_id, COUNT(*) AS n FROM ${t} WHERE learner_id = ? AND supervisor_id IS NOT NULL AND status = 'pending' AND expires_at > ? GROUP BY supervisor_id`).bind(l.id, Date.now()).all();
+    for (const x of results) pendingFor[x.supervisor_id] = (pendingFor[x.supervisor_id] || 0) + x.n;
+  }
   const supervisors = [];
   for (const r of mine.results || []) {
     const st = life ? linkState(r, await standing(r.supervisor_id), enforced) : { state: r.status === 'active' ? 'not_verified' : 'invited', label: r.status === 'active' ? 'Not yet verified by Wavelength' : 'Invitation sent' };
     // A supervisor found through search never had their address typed by the learner: it is not shown.
+    const stage = relationshipStage(r, life ? await standing(r.supervisor_id) : null, enforced);
     // What the learner may see of the supervisor's verification, from the one authoritative reading: verified now or
-    // not, and for which pathways, modules and roles. Only while the link is active with a current approval
-    // (linkState 'active'), so a pending or ended link never shows approval detail.
-    const verification = life && r.supervisor_id && st.state === 'active' ? await verificationOf(env, r.supervisor_id, 'learner', await standing(r.supervisor_id)) : null;
-    supervisors.push({ id: r.id, email: r.via === 'search' ? null : r.supervisor_email, status: r.status, state: st.state, stateLabel: st.label, areas: st.areas || [], renewal: !!st.renewal, name: r.first_name ? fullName(r) : '', role: r.role || '', since: r.accepted_at || r.created_at, via: r.via || 'email', verification });
+    // not, and for which pathways, modules and roles. Only for a relationship the supervisor has accepted or claimed,
+    // and only while it is the 'approved' stage, so a pending or ended link never shows approval detail.
+    const verification = life && r.supervisor_id && stage === 'approved' ? await verificationOf(env, r.supervisor_id, 'learner', await standing(r.supervisor_id)) : null;
+    supervisors.push({ id: r.id, email: r.via === 'search' ? null : r.supervisor_email, status: r.status, state: st.state, stateLabel: st.label, stage, areas: st.areas || [], renewal: !!st.renewal, name: r.first_name ? fullName(r) : '', role: r.role || '', since: r.accepted_at || r.created_at, invitedAt: r.created_at, acceptedAt: r.accepted_at || null, via: r.via || 'email', pending: pendingFor[r.supervisor_id] || 0, verification });
   }
   const me = life ? await standing(l.id) : null;
+  // 1.0.12: relationships that ended in the last 90 days, on both sides, so each person can see that (and when) a
+  // relationship ended. Names only: no email for links made through search, and never a reason beyond who ended it.
+  const endedRows = await env.DB.prepare(`SELECT s.id, s.learner_id, s.supervisor_id, s.supervisor_email, s.ended_at${life ? ', s.ended_by, s.via' : ''}, a.title AS a_title, a.first_name AS a_first, a.last_name AS a_last, b.title AS b_title, b.first_name AS b_first, b.last_name AS b_last FROM supervisor_links s LEFT JOIN learners a ON a.id = s.learner_id LEFT JOIN learners b ON b.id = s.supervisor_id WHERE (s.learner_id = ? OR s.supervisor_id = ?) AND s.status = 'ended' AND s.accepted_at IS NOT NULL AND s.ended_at > datetime('now', '-90 days') ORDER BY s.ended_at DESC LIMIT 20`).bind(l.id, l.id).all();
+  const ended = (endedRows.results || []).map((r) => {
+    const asLearner = r.learner_id === l.id;
+    const other = asLearner ? (r.b_first ? fullName({ title: r.b_title, first_name: r.b_first, last_name: r.b_last }) : (r.via === 'search' ? '' : r.supervisor_email)) : fullName({ title: r.a_title, first_name: r.a_first, last_name: r.a_last });
+    return { id: r.id, role: asLearner ? 'learner' : 'supervisor', name: other || '', endedAt: r.ended_at, endedBy: r.ended_by ? endedByWord(r.ended_by, asLearner) : null };
+  });
   return json({
     ok: true,
     supervisors,
     invites: (invites.results || []).map((r) => ({ id: r.id, learner: fullName(r), role: r.role || '', organisation: r.organisation || '', at: r.created_at, claimed: !!r.claimed_at, via: r.via || 'email' })),
     learners: (learners.results || []).map((r) => ({ id: r.id, linkId: r.link_id, name: fullName(r), role: profileOf(r).grade || r.role || '', organisation: r.organisation || '', pathways: profileOf(r).pathways || [], pending: pc[r.id] || 0, since: r.accepted_at, available: !enforced || !!(me && me.current.length) })),
     me: me ? { standing: me.standing, areas: areaLabels(me.current), enforced, apply: applyOn(env), verification: await verificationOf(env, l.id, 'self', me) } : { standing: 'none', areas: [], enforced: false, apply: false },
+    ended,
   });
 }
 async function supervisedLearner(env, l, learnerId) {
@@ -351,13 +410,53 @@ export async function superviseLearner(env, l, url) {
   const so = await env.DB.prepare("SELECT id, created_at, expires_at, entry_ids FROM signoffs WHERE learner_id = ? AND supervisor_id = ? AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC").bind(t.id, l.id, Date.now()).all();
   const as = await env.DB.prepare("SELECT * FROM assessments WHERE learner_id = ? AND supervisor_id = ? AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC").bind(t.id, l.id, Date.now()).all();
   const done = await env.DB.prepare("SELECT * FROM assessments WHERE learner_id = ? AND status = 'signed' ORDER BY assessed_on DESC LIMIT 50").bind(t.id).all();
+  const link = await env.DB.prepare("SELECT id, accepted_at FROM supervisor_links WHERE supervisor_id = ? AND learner_id = ? AND status = 'active'").bind(l.id, t.id).first();
+  // 1.0.12: the dashboard tiles. Each count uses the same rule as the list it opens (scanFilter), so the numbers match.
+  const counts = { scans: entries.length, supervised: entries.filter(scanFilter('supervised')).length, signed: entries.filter(scanFilter('signed')).length, assessments: asm.length, requests: (so.results || []).length + (as.results || []).length };
   return json({
     ok: true, learner: { id: t.id, name: fullName(t), role: prof.grade || t.role || '', organisation: t.organisation || '', pathways },
+    link: link ? { id: link.id, since: link.accepted_at } : null, counts,
     summary, recent,
     signoffRequests: (so.results || []).map((r) => ({ code: r.id, at: r.created_at, expires: r.expires_at, count: JSON.parse(r.entry_ids || '[]').length })),
     assessmentRequests: (as.results || []).map((r) => viewOf({ ...r, title: t.title, first_name: t.first_name, last_name: t.last_name })),
     assessments: (done.results || []).map(publicRow),
   });
+}
+// 1.0.12: the records behind a dashboard tile, for one supervised learner only. Same guard as the dashboard (an
+// active link and, when enforced, a current approval). Filters: all, supervised (direct supervision), signed
+// (sign-off confirmed), plus optional type, month (YYYY-MM) and module ('pathway:module', the module's own rules).
+// Written records only (never images), newest first, 50 a page.
+export function scanFilter(f) {
+  if (f === 'supervised') return (e) => e.supervision === 'direct';
+  if (f === 'signed') return (e) => !!(e.signoff && e.signoff.status === 'confirmed');
+  if (f === 'unsigned') return (e) => !(e.signoff && e.signoff.status === 'confirmed');
+  return () => true;
+}
+const FILTERS = ['all', 'supervised', 'signed', 'unsigned'];
+const P = globalThis.WLProgress.create(LOGBOOK);
+const scanRow = (e) => ({ id: e.id, type: e.type, date: e.date, setting: e.setting, indication: e.indication, findings: e.findings, overall: e.overall, quality: e.quality, interpretation: e.interpretation, supervision: e.supervision, supervisor: e.supervisor, signoff: e.signoff ? { status: e.signoff.status, name: e.signoff.name, at: e.signoff.at, code: e.signoff.code, rating: e.signoff.rating } : null, images: (e.images || []).length });
+export async function superviseLearnerScans(env, l, url) {
+  const g = await guard(env, l, url.searchParams.get('id'));
+  if (g.res) return g.res;
+  const t = g.t;
+  const q = url.searchParams;
+  const filter = FILTERS.includes(q.get('filter')) ? q.get('filter') : 'all';
+  const type = clip(q.get('type'), 40), month = /^\d{4}-\d{2}$/.test(q.get('month') || '') ? q.get('month') : '';
+  const offset = Math.max(0, Math.min(100000, Number(q.get('offset')) || 0));
+  const { results = [] } = await env.DB.prepare('SELECT data FROM logbook_entries WHERE learner_id = ? AND deleted = 0 ORDER BY scan_date DESC').bind(t.id).all();
+  let entries = results.map((r) => JSON.parse(r.data));
+  let module = null;
+  const ms = clip(q.get('module'), 80);
+  if (ms && ms.includes(':')) {
+    const [pid, mid] = ms.split(':');
+    const prof = profileOf(t);
+    // Only a real pathway id: '__proto__' or 'constructor' must not reach the progress engine.
+    const mod = Object.hasOwn(PATHS, pid) ? (P.modulesFor(pid, entries, prof.targets) || []).find((m) => m.id === mid) : null;
+    if (mod) { const st = P.moduleStats(mod, entries, prof.targets, []); const ids = new Set(st.list.map((e) => e.id)); entries = entries.filter((e) => ids.has(e.id)); module = { pathway: pid, id: mid, label: mod.label }; }
+    else entries = [];
+  }
+  entries = entries.filter(scanFilter(filter)).filter((e) => (!type || e.type === type) && (!month || String(e.date || '').slice(0, 7) === month));
+  return json({ ok: true, learner: { id: t.id, name: fullName(t) }, filter, type: type || null, month: month || null, module, total: entries.length, offset, entries: entries.slice(offset, offset + 50).map(scanRow), more: offset + 50 < entries.length });
 }
 // Sign-off from the dashboard, for requests the learner addressed to this supervisor.
 export async function superviseSignoffView(env, l, url) {
@@ -371,8 +470,9 @@ export async function superviseSignoffComplete(env, l, req, applySignoff, cleanS
   const d = await body(req);
   const so = d && await env.DB.prepare("SELECT * FROM signoffs WHERE id = ? AND supervisor_id = ? AND status = 'pending'").bind(clip(d.code, 20), l.id).first();
   if (!so || so.expires_at < Date.now()) return json({ ok: false, error: 'This request is no longer open.' }, 404);
-  // Checked again at submit: an approval that ended, or a scope that does not cover every scan, refuses here.
-  const g = await guard(env, l, so.learner_id, { types: typesIn(so.snapshot) });
+  // Checked again at submit: an approval that ended, a scope that does not cover every scan, or a capacity that does
+  // not allow this kind of sign-off (data/supervision-policy.json), refuses here.
+  const g = await guard(env, l, so.learner_id, { types: typesIn(so.snapshot), actions: actionsForSignoff(d.basis) });
   if (g.res) return g.res;
   const sup = cleanSupervisor({ ...d, email: l.email });
   const sig = String(d.signature || '');
@@ -381,7 +481,7 @@ export async function superviseSignoffComplete(env, l, req, applySignoff, cleanS
   const decisions = d.decisions && typeof d.decisions === 'object' ? d.decisions : {};
   const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
   // Signed from the supervisor's own logged-in account: capture their verified status as it is now.
-  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'dashboard', accountId: l.id, learnerName: fullName(g.t) });
+  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'dashboard', accountId: l.id, learnerName: fullName(g.t), actions: actionsForSignoff(sup.basis) });
   const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', method = 'dashboard', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = ?, accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
     .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
   if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This request is no longer open.' }, 404);
@@ -394,7 +494,7 @@ export async function superviseAssessmentComplete(env, l, req) {
   const d = await body(req);
   const a = d && await env.DB.prepare("SELECT * FROM assessments WHERE id = ? AND supervisor_id = ? AND status = 'pending'").bind(clip(d.code, 20), l.id).first();
   if (!a || a.expires_at < Date.now()) return json({ ok: false, error: 'This request is no longer open.' }, 404);
-  const g = await guard(env, l, a.learner_id, { scopes: [`${a.pathway}:${a.module}`] });
+  const g = await guard(env, l, a.learner_id, { scopes: [`${a.pathway}:${a.module}`], actions: actionsForAssessment(a.kind) });
   if (g.res) return g.res;
   const f = cleanForm(d), sup = cleanAssessor({ ...d, email: l.email }), sig = String(d.signature || '');
   const err = formError(f, a.kind);
@@ -410,7 +510,7 @@ export async function superviseAssessmentNew(env, l, req) {
   const d = await body(req);
   if (!d) return json({ ok: false, error: 'You no longer supervise this learner.' }, 404);
   if (!moduleOf(d.pathway, d.module) || !KINDS.includes(d.kind)) return json({ ok: false, error: 'Choose the pathway module and type of assessment.' }, 400);
-  const g = await guard(env, l, d.learnerId, { scopes: [`${d.pathway}:${d.module}`] });
+  const g = await guard(env, l, d.learnerId, { scopes: [`${d.pathway}:${d.module}`], actions: actionsForAssessment(d.kind) });
   if (g.res) return g.res;
   const t = g.t;
   const f = cleanForm(d), sup = cleanAssessor({ ...d, email: l.email }), sig = String(d.signature || '');
@@ -422,7 +522,7 @@ export async function superviseAssessmentNew(env, l, req) {
   const id = code('AS');
   await env.DB.prepare("INSERT INTO assessments (id, learner_id, pathway, module, kind, method, entry_ids, snapshot, data, supervisor_id) VALUES (?,?,?,?,?,'dashboard',?,?,'{}',?)")
     .bind(id, t.id, d.pathway, d.module, d.kind, JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snap(entries)), l.id).run();
-  await finishAssessment(env, { id, data: '{}', pathway: d.pathway, module: d.module }, f, sup, sig, l.id, 'dashboard');
+  await finishAssessment(env, { id, data: '{}', pathway: d.pathway, module: d.module, kind: d.kind }, f, sup, sig, l.id, 'dashboard');
   return json({ ok: true, code: id });
 }
 
@@ -466,7 +566,7 @@ export async function superviseAssessmentAmend(env, l, req) {
   if (Date.now() - parseTs(old.signed_at) > AMEND_DAYS * 864e5) return json({ ok: false, error: `Assessments can be amended for ${AMEND_DAYS} days. Record a new assessment instead.` }, 400);
   const reason = clip(d.reason, 1000);
   if (reason.length < 5) return json({ ok: false, error: 'Say why you are amending this assessment.' }, 400);
-  const g = await guard(env, l, old.learner_id, { scopes: [`${old.pathway}:${old.module}`] });
+  const g = await guard(env, l, old.learner_id, { scopes: [`${old.pathway}:${old.module}`], actions: actionsForAssessment(old.kind) });
   if (g.res) return g.res;
   const f = cleanForm(d), sup = cleanAssessor({ ...d, email: l.email }), sig = String(d.signature || '');
   const err = formError(f, old.kind);
@@ -479,7 +579,7 @@ export async function superviseAssessmentAmend(env, l, req) {
   if (!(claim.meta && claim.meta.changes)) return json({ ok: false, error: 'This assessment has already been amended.' }, 409);
   await env.DB.prepare("INSERT INTO assessments (id, learner_id, pathway, module, kind, method, entry_ids, snapshot, data, supervisor_id, amends, amend_reason) VALUES (?,?,?,?,?,'dashboard',?,?,'{}',?,?,?)")
     .bind(id, old.learner_id, old.pathway, old.module, old.kind, old.entry_ids, old.snapshot, l.id, old.id, reason).run();
-  await finishAssessment(env, { id, data: '{}', pathway: old.pathway, module: old.module }, f, sup, sig, l.id, 'dashboard');
+  await finishAssessment(env, { id, data: '{}', pathway: old.pathway, module: old.module, kind: old.kind }, f, sup, sig, l.id, 'dashboard');
   await env.DB.batch([
     env.DB.prepare("UPDATE assessments SET status = 'superseded' WHERE id = ? AND superseded_by = ?").bind(old.id, id),
     auditStmt(env, { actorType: 'supervisor', actorId: l.id, action: 'assessment.amend', subjectType: 'assessment', subjectId: id, meta: { amends: old.id } }),

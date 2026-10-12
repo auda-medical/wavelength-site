@@ -22,6 +22,10 @@ import { accountsLive, accountsConfigured, readSession, clearSessionCookie, acco
 import { preAuthRoute, accountsLogin, gate, accountRoutes, bootstrapRoute, withCsrf } from './admin/routes.js';
 import { deniedPage } from './admin/pages.js';
 import { permissionFor } from './admin/permissions.js';
+import { beacon } from './metrics.js';
+import { handleStripe } from './bookings.js';
+import { businessRoute } from './business.js';
+import { confirmListingPage, confirmListingPost } from './verification/directory-review.js';
 //
 // Logins live in the D1 table `settings` (volunteer_username, volunteer_hash, admin_username,
 // admin_hash, session_secret, admin_session_secret). Passwords are stored as PBKDF2 hashes, never in plain text.
@@ -243,7 +247,7 @@ const CSV_EXPORTS = {
   '/admin/academy/certificates.csv': { audit: 'export.academy_certificates', sql: 'SELECT * FROM certificates ORDER BY created_at DESC', cols: ['issued_on', 'code', 'name', 'module', 'module_title', 'score', 'cpd_hours', 'emailed_at', 'email_error'], name: 'wavelength-academy-certificates' },
   '/admin/academy/feedback.csv': { audit: 'export.academy_feedback', sql: 'SELECT created_at, module, useful, practice, comment FROM feedback ORDER BY created_at DESC', cols: ['created_at', 'module', 'useful', 'practice', 'comment'], name: 'wavelength-academy-feedback' },
   '/admin/faculty/applications.csv': { audit: 'export.faculty_applications', sql: 'SELECT * FROM faculty_applications ORDER BY created_at DESC', cols: ['created_at', 'first_name', 'last_name', 'email', 'phone', 'profession', 'specialty', 'organisation', 'registration', 'experience', 'credentials', 'applications', 'interests', 'details', 'contacted'], name: 'wavelength-faculty-applications' },
-  '/admin/departments/enquiries.csv': { audit: 'export.department_enquiries', sql: 'SELECT * FROM department_enquiries ORDER BY created_at DESC', cols: ['created_at', 'first_name', 'last_name', 'email', 'phone', 'role', 'organisation', 'setting', 'training', 'topics', 'group_size', 'timing', 'details', 'contacted'], name: 'wavelength-department-enquiries' },
+  '/admin/departments/enquiries.csv': { audit: 'export.department_enquiries', sql: 'SELECT * FROM department_enquiries ORDER BY created_at DESC', cols: ['created_at', 'first_name', 'last_name', 'email', 'phone', 'enquiry_type', 'enquiry_class', 'role', 'organisation', 'setting', 'country', 'region', 'location', 'training', 'topics', 'group_size', 'timing', 'budget', 'heard', 'campaign', 'stage', 'quote_pence', 'details', 'contacted'], name: 'wavelength-training-enquiries' },
 };
 
 // The console behind the admin login. Cloudflare Access (worker/access.js) applies only when ACCESS_TEAM_DOMAIN and
@@ -275,6 +279,14 @@ async function adminRoute(req, env, ctx, url, p, s, who = null) {
   if (!who && (p === '/admin/account/' || p === '/admin/reauth/')) return redirect('/admin/');
 
   if (p === '/admin/') return page(consoleHome(acc), '');
+
+  // Business dashboard (worker/business.js): owner role. CSV exports keep the .csv path.
+  if (p === '/admin/business/' || p.startsWith('/admin/business/')) {
+    const out = await businessRoute(env, req, url, p);
+    if (out.redirect) return redirect(out.redirect);
+    if (out.csv) return csvResponse(out.csv.rows || [], out.csv.cols, out.csv.name);
+    return page(out.html, 'business');
+  }
 
   if (p === '/admin/volunteers/export.csv') { await record('export.volunteers'); return exportCsv(env); }
   if (p === '/admin/volunteers/') {
@@ -438,6 +450,13 @@ export default {
       if (!env.DB) return redirect('/training/?error=1#enquire');
       return redirect(await enquireTraining(env, req, ctx));
     }
+    // Cookieless website measurement (worker/metrics.js): always 204, never fails visibly.
+    if (p === '/api/m') return beacon(req, env, ctx);
+    // Stripe webhook (worker/bookings.js): 404 until STRIPE_WEBHOOK_SECRET is set.
+    if (p === '/api/stripe/webhook') return handleStripe(req, env);
+    // A supervisor confirms (or disputes) that they are the person listed in an official directory, from a link sent to
+    // the address the directory lists (worker/verification/directory-review.js). GET shows buttons; only POST acts.
+    if (p === '/api/confirm-listing') return req.method === 'POST' ? confirmListingPost(req, env) : confirmListingPage(req, env);
     // /api/app/* also serves the store apps from their own origins (worker/native.js).
     if (p.startsWith('/api/app/')) return req.method === 'OPTIONS' ? preflight(req) : withNative(req, await handleApp(req, env, ctx));
     // Certificate PDFs are public by code; the store apps fetch them to save or share.

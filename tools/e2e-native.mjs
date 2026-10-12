@@ -77,16 +77,18 @@ await page.evaluate(() => { location.hash = '#/new'; });
 await page.waitForSelector('label[for=t0]');
 await page.click('label[for=t0]');
 await page.waitForSelector('#rest:not([hidden])');
-await page.waitForTimeout(1000);
+await page.waitForTimeout(1200);
 // Choosing the application scrolls to the Date and Setting row, with its labels just below the sticky header.
 const land = await page.evaluate(() => ({ head: document.querySelector('.top').getBoundingClientRect().bottom, date: document.querySelector('label[for=date]').getBoundingClientRect().top, setting: document.querySelector('label[for=setting]').getBoundingClientRect().top, y: scrollY, max: document.documentElement.scrollHeight - innerHeight }));
 if (land.date < land.head || land.setting < land.head) fail('Date or Setting hidden under the header after choosing the application: ' + JSON.stringify(land));
-else if (land.date - land.head > 40 && land.y < land.max - 2) fail('form did not scroll to the Date row: ' + JSON.stringify(land));
+// 1.0.10: the "<application> selected" line sits just above the row, so the row lands a line lower.
+// 1.0.11: the "Scan details" section header sits between them too, and the form glides there after a short pause.
+else if (land.date - land.head > 160 && land.y < land.max - 2) fail('form did not scroll to the Date row: ' + JSON.stringify(land));
 else ok('choosing the application scrolls to the Date and Setting row, clear of the header');
 await page.screenshot({ path: `${out}/03-new-scan.png`, fullPage: false });
 await page.locator('input[name=supervision]').first().check({ force: true });
 await page.click('form button[type=submit]');
-await page.waitForFunction(() => /#\/entry\//.test(location.hash) || document.querySelector('.err:not([hidden])'), null, { timeout: 15000 });
+await page.waitForFunction(() => location.hash === '#/' || document.querySelector('.err:not([hidden]), .field.invalid'), null, { timeout: 15000 });
 const saveErr = await page.evaluate(() => (document.querySelector('.err:not([hidden])') || {}).textContent || '');
 if (saveErr) fail('scan save error: ' + saveErr); else ok('scan saved');
 if (!(await calls(page, 'Haptics', 'notification')).length) fail('no haptic feedback on save'); else ok('haptic feedback on save');
@@ -156,8 +158,15 @@ if (await page.$('.app-lock')) fail('a short trip away (camera, share sheet) loc
 await page.evaluate(() => { window.__bio.available = false; });
 await page.evaluate(() => window.dispatchEvent(new CustomEvent('wl:resume', { detail: { away: 120000 } })));
 await page.waitForTimeout(500);
-if (await page.$('.app-lock')) fail('lock screen stuck when the phone has no biometrics'); else ok('no biometrics on the phone: lock turns itself off, nobody is locked out');
+// The phone's own lock removed: the logbook stays locked and says why (the lock never switches itself off).
+if (!(await page.$('.app-lock'))) fail('the lock switched itself off when the phone lock was removed');
+else if (!/screen lock|fingerprint/.test(await page.$eval('[data-lockmsg]', (x) => x.textContent))) fail('the lock screen does not say why it cannot unlock');
+else ok('phone lock removed: the logbook stays locked and says what to set up');
 await page.evaluate(() => { window.__bio.available = true; });
+await page.click('[data-unlock]');
+await page.waitForSelector('.app-lock', { state: 'detached', timeout: 5000 }).then(() => ok('phone lock set up again: Unlock opens the logbook'), () => fail('Unlock did not open the logbook after the phone lock came back'));
+// Lock off again for the checks below, as before.
+await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('__prefs') || '{}'); delete p['wl-lock']; localStorage.setItem('__prefs', JSON.stringify(p)); });
 
 // Offline start: the logbook opens from the device with the scan in it.
 net.offline = true;

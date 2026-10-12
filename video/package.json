@@ -1,0 +1,23 @@
+{
+  "name": "wavelength-video",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Wavelength promotional films: Remotion compositions, Playwright captures of the real app, local narration and original music. Rendered files go outside the repository.",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.jsx",
+    "capture": "node scripts/capture.mjs",
+    "narrate": "node scripts/narrate.mjs",
+    "music": "node scripts/music.mjs",
+    "render": "node scripts/render.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.534",
+    "@remotion/install-whisper-cpp": "^4.0.534",
+    "kokoro-js": "1.2.1",
+    "playwright": "1.56.1",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "remotion": "4.0.534"
+  }
+}

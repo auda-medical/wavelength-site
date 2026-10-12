@@ -1,0 +1,104 @@
+{
+  "at": "2026-10-08T15:59:22.504Z",
+  "api": "http://localhost:8789",
+  "site": "https://thewavelength.co.uk",
+  "results": [
+    {
+      "id": "S1",
+      "name": "Cold start, server never answers: logbook opens within 3 s",
+      "pass": true,
+      "detail": "logbook after 182 ms"
+    },
+    {
+      "id": "S2",
+      "name": "Cold start, slow network, app lock on: fingerprint prompt within 2 s",
+      "pass": true,
+      "detail": "prompt after 211 ms"
+    },
+    {
+      "id": "S3",
+      "name": "Cold start, calls fail at once, app lock on: prompt and logbook within 2 s",
+      "pass": true,
+      "detail": "prompt 200 ms, logbook 204 ms"
+    },
+    {
+      "id": "S4",
+      "name": "Cold start, server never answers, app lock on: fingerprint prompt within 2 s",
+      "pass": true,
+      "detail": "prompt after 192 ms"
+    },
+    {
+      "id": "Y1",
+      "name": "Saved offline, reconnected with no connectivity event: scan reaches the server within 25 s",
+      "pass": true,
+      "detail": "synced"
+    },
+    {
+      "id": "Y2",
+      "name": "While a sync is failing, the indicator says the entries are saved here, not \"Synced\"",
+      "pass": true,
+      "detail": "indicator said: \"Sync status: You're offline. Your entries are saved on this device and will sync when you're back online.\"; logbook line: \"\""
+    },
+    {
+      "id": "Y3",
+      "name": "Resumed while still offline, network back a second later: scan reaches the server within 25 s",
+      "pass": true,
+      "detail": "synced"
+    },
+    {
+      "id": "Y4",
+      "name": "Control: saved offline, reconnect event fires: scan reaches the server",
+      "pass": true,
+      "detail": "synced"
+    },
+    {
+      "id": "Y5",
+      "name": "Server refuses an entry: the answer names it with a reason (not a silent ok)",
+      "pass": false,
+      "detail": "ok=true, saved=false, rejected=null"
+    },
+    {
+      "id": "Y6a",
+      "name": "Login ended on the server: app asks to sign in again and says local entries are safe",
+      "pass": true,
+      "detail": "logout-all ok=true; note: \"Sign in again to continue synchronising. Your local entries are safe.1 entry is waiting on this device.\""
+    },
+    {
+      "id": "Y6b",
+      "name": "Login ended on the server: the unsynced scan is still on the device",
+      "pass": true,
+      "detail": "unsynced entries in the local database: 1"
+    },
+    {
+      "id": "Y6c",
+      "name": "After signing in again with the same account, the waiting scan reaches the server",
+      "pass": true,
+      "detail": "synced"
+    },
+    {
+      "id": "Y7",
+      "name": "Answer lost after the server saved: retry leaves exactly one copy and the scan marked synced",
+      "pass": true,
+      "detail": "answers dropped 1, copies on server 1, unsynced on device 0"
+    },
+    {
+      "id": "Y8a",
+      "name": "Scan left out of the server answer: status says unable to sync, Settings lists it",
+      "pass": true,
+      "detail": "status \"Sync status: Unable to sync. Your entries remain saved on this device.\"; panel: \"Unable to sync. Your entries remain saved on this device.Entries awaiting sync1Last synced8 Oct 2026, 15:59Not accepted by the serverAbdominal aorta (AAA), 8 Oct 2026: The server did not accept this entry.Retry syncSync \""
+    },
+    {
+      "id": "Y8b",
+      "name": "Retry sync sends it; the panel then says all changes synced",
+      "pass": true,
+      "detail": "server has it; panel: \"All changes synced.Entries awaiting sync0Last synced8 Oct 2026, 15:59Retry syncSync covers your logbook entries. Photos and clips stay on this device and are no\""
+    },
+    {
+      "id": "Y9",
+      "name": "130 waiting entries sync in batches of at most 50, all on the server",
+      "pass": true,
+      "detail": "server has 130; batch sizes [50,50,50,30]"
+    }
+  ],
+  "errors": []
+}

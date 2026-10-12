@@ -5,7 +5,7 @@
 //        evidence, evidence/withdraw
 //        assessment/request, assessment/inperson, assessment/cancel, assessment/complete (link), supervisors/add|remove|accept,
 //        supervise/signoff, supervise/assessment, supervise/assessment/new (see supervise.js)
-//   GET  assessments, supervisors, supervise/learner?id=, supervise/signoff?code=, assessment/view?t=
+//   GET  assessments, supervisors, supervise/learner?id=, supervise/learner/scans?id=&filter= (1.0.12), supervise/signoff?code=, assessment/view?t=
 //   GET  me, sync?since=, signoffs, evidence, signoff/view?t=, verify?code= (SO- sign-offs and EV- evidence summaries)
 //   POST signoff/image?code=&entry=&n= (encrypted bytes), signoff/images (manifest)   GET signoff/image?t=&entry=&n=
 //   POST email/verify (public, token), email/resend, supervisors/accept-invite   (worker/email-verify.js)
@@ -43,6 +43,9 @@ import { versionInfo, mustUpgrade, UPGRADE } from './version.js';
 import { handleOrganisations, checkOrgId, orgsReady } from './organisations.js';
 import { normOrg } from './org-norm.js';
 import { handleSearch, searchOn } from './search.js';
+import { appEvent, activity, count, forgetLearner } from './metrics.js';
+import { actionsForSignoff } from './verification/pathways.js';
+import { acceptRequest, declineRequest, reviewState, REVIEW_STATES } from './review.js';
 
 import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady, sigKind, withSigKind, splitSigKind } from './app-util.js';
 
@@ -271,6 +274,7 @@ async function deleteAccount(env, l, req, ctx) {
   if (d.keepCertificates && hasCerts.n) stmts.push(env.DB.prepare('UPDATE learners SET password_hash = NULL, profile = NULL, declaration_at = NULL, organisation = NULL, role = NULL WHERE id = ?').bind(l.id));
   else stmts.push(env.DB.prepare('DELETE FROM attempts WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM certificates WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM learners WHERE id = ?').bind(l.id));
   await env.DB.batch(stmts);
+  await forgetLearner(env, l.id);
   if (supervision.notify && supervision.notify.length) deliverLater(env, ctx, supervision.notify);
   return json({ ok: true }, 200, { 'Set-Cookie': clearCookie });
 }
@@ -326,17 +330,23 @@ async function syncGet(env, l, url) {
   return json({ ok: true, now, after: more ? last.id : '', more, entries: results.map(entryOut) });
 }
 
-async function syncPost(env, l, req) {
+async function syncPost(env, l, req, ctx) {
   const d = await body(req);
   if (!d || !Array.isArray(d.entries)) return json({ ok: false, error: 'Nothing to save.' }, 400);
   const incoming = d.entries.slice(0, 200);
   const now = Date.now();
   const saved = [];
+  // Every entry sent gets an answer: saved (or conflict) in `saved`, otherwise a reason in `rejected`, so the app
+  // never takes silence for success. Reasons are English keys the app translates. Older apps ignore `rejected`.
+  const rejected = [];
+  const refuse = (id, reason) => { if (id) rejected.push({ id: clip(id, 40), reason }); };
+  let created = 0;
+  for (const raw of d.entries.slice(200)) refuse(String(raw && raw.id || ''), 'Too many entries in one sync. It will be sent next time.');
   for (const raw of incoming) {
     const id = String(raw && raw.id || '');
-    if (!ID.test(id)) continue;
+    if (!ID.test(id)) { refuse(id, 'This entry has an invalid identifier.'); continue; }
     const ex = await env.DB.prepare('SELECT * FROM logbook_entries WHERE id = ?').bind(id).first();
-    if (ex && ex.learner_id !== l.id) continue;
+    if (ex && ex.learner_id !== l.id) { refuse(id, 'This entry belongs to another account.'); continue; }
     // updatedAt is the server time of the copy the client edited. Missing means a new entry; 0 means a restored backup.
     const clientTime = raw.updatedAt == null ? now : Number(raw.updatedAt) || 0;
     if (ex && ex.updated_at > clientTime && !raw.force) { saved.push({ id, conflict: true, server: entryOut(ex) }); continue; }
@@ -347,7 +357,7 @@ async function syncPost(env, l, req) {
       continue;
     }
     const e = cleanEntry(raw);
-    if (!e) continue;
+    if (!e) { refuse(id, !raw.type || !/^\d{4}-\d{2}-\d{2}$/.test(raw.date || '') ? 'This entry is missing its application or date.' : 'This entry is too long to sync. Shorten its text.'); continue; }
     delete e.updatedAt; delete e.force;
     // Keep a supervisor's sign-off only while the signed content is unchanged (hash version 2 also covers the media
     // fingerprints). A void records which fields changed, never their values, and the learner's optional reason.
@@ -365,10 +375,12 @@ async function syncPost(env, l, req) {
     }
     const text = JSON.stringify(e);
     if (ex) await env.DB.prepare('UPDATE logbook_entries SET scan_type = ?, scan_date = ?, data = ?, updated_at = ?, deleted = 0 WHERE id = ?').bind(e.type, e.date, text, now, id).run();
-    else await env.DB.prepare('INSERT INTO logbook_entries (id, learner_id, scan_type, scan_date, data, updated_at) VALUES (?,?,?,?,?,?)').bind(id, l.id, e.type, e.date, text, now).run();
+    else { await env.DB.prepare('INSERT INTO logbook_entries (id, learner_id, scan_type, scan_date, data, updated_at) VALUES (?,?,?,?,?,?)').bind(id, l.id, e.type, e.date, text, now).run(); created++; }
     saved.push({ ...e, updatedAt: now });
   }
-  return json({ ok: true, now, saved });
+  // Business measurement: how many new entries reached the server (a count, never their content).
+  if (created && ctx && ctx.waitUntil) ctx.waitUntil(count(env, [['app.entries_created', '', created]]));
+  return json({ ok: true, now, saved, rejected });
 }
 
 // ---------- Supervisor sign-off ----------
@@ -456,7 +468,7 @@ async function signoffComplete(env, req, ctx) {
   }
   const owner = await env.DB.prepare('SELECT title, first_name, last_name FROM learners WHERE id = ?').bind(so.learner_id).first();
   // Whoever holds a link signs as themselves: the snapshot records the details as declared, not verified.
-  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote', learnerName: owner ? fullName(owner) : null });
+  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote', learnerName: owner ? fullName(owner) : null, actions: actionsForSignoff(sup.basis) });
   const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
     .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
   // A double tap or a second tab: only the first submission signs.
@@ -507,7 +519,7 @@ async function signoffInPerson(env, l, req) {
   const so = { id, learner_id: l.id, snapshot: JSON.stringify(snapshotOf(entries)) };
   const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
   // Signed on the learner's own phone: the signer's details are declared, not verified.
-  const snap = await snapshotFor(env, { entries, declared: sup, method: 'in-person', learnerName: fullName(l) });
+  const snap = await snapshotFor(env, { entries, declared: sup, method: 'in-person', learnerName: fullName(l), actions: actionsForSignoff(sup.basis) });
   await env.DB.prepare(`INSERT INTO signoffs (id, learner_id, method, entry_ids, snapshot, status, supervisor_name, supervisor_role, supervisor_reg, supervisor_email, accreditation, basis, comment, decisions, ratings, signature, signed_at${snap ? ', supervisor_snapshot' : ''}) VALUES (?,?,?,?,?,'signed',?,?,?,?,?,?,?,?,?,?,datetime('now')${snap ? ',?' : ''})`)
     .bind(id, l.id, 'in-person', JSON.stringify(entries.map((e) => e.id)), so.snapshot, sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : [])).run();
   await applySignoff(env, so, decisions, sup, 'in-person', ratings, snap);
@@ -516,11 +528,12 @@ async function signoffInPerson(env, l, req) {
 
 async function signoffList(env, l) {
   const life = await lifecycleReady(env);
-  const { results = [] } = await env.DB.prepare(`SELECT id, method, status, created_at, expires_at, supervisor_name, supervisor_role, supervisor_reg, accreditation, basis, comment, decisions, ratings, signature, signed_at, entry_ids, supervisor_id${life ? ', returned_at, returned_reason, error_at, supervisor_snapshot' : ''} FROM signoffs WHERE learner_id = ? ORDER BY created_at DESC LIMIT 300`).bind(l.id).all();
+  const { results = [] } = await env.DB.prepare(`SELECT id, method, status, created_at, expires_at, supervisor_name, supervisor_role, supervisor_reg, accreditation, basis, comment, decisions, ratings, signature, signed_at, entry_ids, supervisor_id${life ? ', returned_at, returned_reason, error_at, supervisor_snapshot' : ''}${(await reviewCols(env)) ? ', accepted_at, declined_at, decline_reason' : ''} FROM signoffs WHERE learner_id = ? ORDER BY created_at DESC LIMIT 300`).bind(l.id).all();
   return json({ ok: true, signoffs: results.map((r) => {
-    const { supervisor_snapshot: snap, returned_at: ra, returned_reason: rr, error_at: ea, ...rest } = r;
+    const { supervisor_snapshot: snap, returned_at: ra, returned_reason: rr, error_at: ea, accepted_at: acc, declined_at: dec, decline_reason: why, ...rest } = r;
+    const state = reviewState(r);
     const p = life ? publicSnapshot(snap) : null;
-    return { ...rest, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ...splitSigKind(r.ratings), returned: ra ? { at: ra, reason: rr } : null, issuedInError: !!ea, signer: p ? { kind: p.signer, label: p.label } : null };
+    return { ...rest, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ...splitSigKind(r.ratings), returned: ra ? { at: ra, reason: rr, ...(rr === 'declined' && why ? { note: why } : {}) } : null, reviewState: state, reviewLabel: REVIEW_STATES[state], acceptedAt: acc || null, issuedInError: !!ea, signer: p ? { kind: p.signer, label: p.label } : null };
   }) });
 }
 // Returned requests (decision 3): send to another approved supervisor, or to a one-off assessor with a fresh link.
@@ -627,6 +640,10 @@ async function verify(env, url) {
   return json({ ok: true, code: so.id, learner: (check && check.learnerName) || fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand && sk !== 'typed', signatureKind: sk, method: so.method, signedAt: so.signed_at, confirmed: Object.values(dec).filter((x) => x === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })), supervisorCheck: check, ...(so.error_at ? { issuedInError: { on: String(so.error_at).slice(0, 10), notice: 'Wavelength has marked this record as issued in error. It does not count as evidence.' } } : {}) });
 }
 
+// Migration 0015 adds the review columns (worker/review.js).
+const REVIEW_COLS = new WeakMap();
+async function reviewCols(env) { const c = REVIEW_COLS.get(env.DB); if (c !== undefined) return c; let ok = true; try { await env.DB.prepare('SELECT accepted_at FROM signoffs LIMIT 0').all(); } catch { ok = false; } REVIEW_COLS.set(env.DB, ok); return ok; }
+
 // ---------- Router ----------
 // Every /api/app/* request: a request id (X-Request-Id, and in 500 messages), the app version gate, one log line.
 export async function handleApp(req, env, ctx) {
@@ -644,6 +661,9 @@ export async function handleApp(req, env, ctx) {
   const out = new Response(res.body, res);
   out.headers.set('X-Request-Id', rid);
   log(env, { rid, route: routeName(url.pathname), method: req.method, status: out.status, ms: Date.now() - t0, app: appVersion(req.headers.get('X-Wavelength-App')), err });
+  // Business measurement (worker/metrics.js): route pattern and status only, after the response, never failing it.
+  // The body is read only for a failed sign-up, to classify the reason.
+  appEvent(env, ctx, { method: req.method, route: routeName(url.pathname), status: out.status, res: p === 'signup' && out.status === 400 ? out.clone() : null });
   return out;
 }
 
@@ -669,6 +689,7 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'assessment/complete') return SV.assessmentComplete(env, req);
     const l = await learner(env, req);
     if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
+    if (p !== 'account/delete') activity(env, ctx, l.id);
     if (p === 'profile') return saveProfile(env, l, req);
     if (p === 'password') return changePassword(env, l, req);
     if (p === 'logout-all') return logoutAll(env, l, req);
@@ -676,7 +697,7 @@ async function routeApp(req, env, ctx, url, p) {
     if (org) return org;
     const found = await handleSearch(env, l, req, url, p, ctx, body);
     if (found) return found;
-    if (p === 'sync') return syncPost(env, l, req);
+    if (p === 'sync') return syncPost(env, l, req, ctx);
     if (p === 'signoff/request') return signoffRequest(env, l, req);
     if (p === 'signoff/inperson') return signoffInPerson(env, l, req);
     if (p === 'signoff/cancel') return signoffCancel(env, l, req);
@@ -703,6 +724,8 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'supervise/signoff') return SV.superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, (so, dec, sup) => { const m = notifyLearner(env, so, dec, sup); if (ctx && ctx.waitUntil) ctx.waitUntil(m); });
     if (p === 'supervise/assessment') return SV.superviseAssessmentComplete(env, l, req);
     if (p === 'supervise/assessment/new') return SV.superviseAssessmentNew(env, l, req);
+    if (p === 'supervise/request/accept') return acceptRequest(env, l, req);
+    if (p === 'supervise/request/decline') return declineRequest(env, l, req);
     const sv = await handleSupervisorApply(env, l, req, url, p, ctx);
     if (sv) return sv;
     const pro = await handleProfessional(env, l, req, url, p);
@@ -721,6 +744,7 @@ async function routeApp(req, env, ctx, url, p) {
   const l = await learner(env, req);
   if (p === 'me') return l && l.password_hash ? me(env, l, req) : json({ ok: false, auth: false, academy: !!l, ...versionInfo(env, req) });
   if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
+  activity(env, ctx, l.id);
   if (p === 'sync') return syncGet(env, l, url);
   if (p === 'signoffs') return signoffList(env, l);
   if (p === 'evidence') return listEvidence(env, l, json);
@@ -729,6 +753,7 @@ async function routeApp(req, env, ctx, url, p) {
   const lst = await handleMonitorApp(env, l, req, url, p, body);
   if (lst) return lst;
   if (p === 'supervise/learner') return SV.superviseLearner(env, l, url);
+  if (p === 'supervise/learner/scans') return SV.superviseLearnerScans(env, l, url);
   if (p === 'supervise/signoff') return SV.superviseSignoffView(env, l, url);
   const found = await handleSearch(env, l, req, url, p, ctx, body);
   if (found) return found;

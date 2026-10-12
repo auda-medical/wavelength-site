@@ -813,3 +813,13 @@ html:lang(zh-Hans) .split-words,html:lang(zh-Hans) h1{word-break:normal;line-bre
 .source-notice{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(229,176,84,.16);border:1px solid rgba(229,176,84,.45);color:var(--cream);font-size:15px;max-width:720px}
 .source-unavailable{margin:8px 0 0;color:var(--mist);font-size:14px;max-width:720px}.source-unavailable a{color:inherit;text-decoration:underline;text-underline-offset:3px}
 .source-notice p{margin:0}.source-notice a{color:var(--cream);text-decoration:underline;text-underline-offset:3px}
+
+/* Commercial calls to action (October 2026): shown in capitals, read normally by screen readers. */
+.btn.cta-caps{text-transform:uppercase;letter-spacing:.06em;font-size:.86em}
+/* Tailored training: UK and international section and the wider enquiry form. */
+.tt-audience{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0;padding:0;list-style:none}
+.tt-audience li{padding:7px 13px;border:1px solid var(--line, #D9D4C8);border-radius:999px;font-size:15px;background:#fff}
+.tt-intl{border-left:3px solid var(--teal);padding:4px 0 4px 22px}
+.tt-intl p+p{margin-top:14px}
+.form .hint{display:block;font-size:13px;color:var(--slate);font-weight:400;margin-top:2px}
+.form select[multiple]{min-height:9em}

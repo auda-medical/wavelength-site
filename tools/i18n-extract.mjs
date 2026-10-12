@@ -24,10 +24,45 @@ lb.pathways.forEach((p) => { add(p.desc); add(p.region); p.modules.forEach((m) =
 ['assessmentKinds', 'assessmentDomains', 'assessmentOutcomes', 'qualityScale'].forEach((k) => (lb[k] || []).forEach((x) => { add(x.label); add(x.help); }));
 lb.destinations.forEach((d) => { add(d.label); d.steps.forEach(add); });
 ['Overall', 'Normal', 'Abnormal', 'Indeterminate', 'Good', 'Adequate', 'Limited', 'Inadequate', 'Female', 'Male', 'Agreed', 'Partly agreed', 'Disagreed', 'UK', 'Europe', 'Australia and New Zealand', 'Canada', 'United States', 'Portfolio', 'Image quality', 'Diagnostic accuracy'].forEach(add);
+// Connection and sync status words (src/app/netstate.js): pill labels, banner titles and text, error lines.
+{
+  const s = fs.readFileSync('src/app/netstate.js', 'utf8');
+  for (const m of s.matchAll(/(?:label|title|body|hint): '((?:[^'\\]|\\.)*)'/g)) if (!/\{n\} scans? (is|are) saved/.test(m[1])) add(m[1].replace(/\\'/g, "'"));
+  // 1.0.11: one-line notes, the details panel's lead and steps, and the waiting lines as [one, other] plural pairs.
+  for (const m of s.matchAll(/(?:note|lead): '((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/steps: \[([^\]]*)\]/g)) for (const v of m[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/\['(\{n\} [^']*)', '(\{n\} [^']*)'\]/g)) plurals.set(m[2], m[1]);
+  for (const m of s.matchAll(/^\s+(?:offline|unreachable|timeout|failed|auth|update): '((?:[^'\\]|\\.)*)',?$/gm)) add(m[1].replace(/\\'/g, "'"));
+}
+// Orientation phrases in the photo and clip editors (orientWords in app.js, picked from a list).
+['Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise', 'Flipped horizontally', 'Flipped horizontally, then rotated 90° clockwise', 'Flipped vertically', 'Flipped horizontally, then rotated 90° anticlockwise'].forEach(add);
 // Label maps in app.js passed to T() through a variable (supervisor standing, lapse reasons, wizard steps, signers).
 {
   const s = fs.readFileSync('src/app/app.js', 'utf8');
-  for (const m of s.matchAll(/var (?:SV_STANDING|SV_LAPSE|SV_REASONS|SV_STEP_LABEL|SIGNER_TEXT|VS_STATE) = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/var (?:SV_STANDING|SV_LAPSE|SV_REASONS|SV_STEP_LABEL|SIGNER_TEXT|SVF|VS_STATE) = \{([^\n]*)\};/g)) for (const v of m[1].matchAll(/:\s*'((?:[^'\\]|\\.)*)'/g)) add(v[1].replace(/\\'/g, "'"));
+}
+// Verified roles (data/supervision-policy.json capacities), shown in a verified supervisor's More info.
+for (const c of Object.values(JSON.parse(fs.readFileSync('data/supervision-policy.json', 'utf8')).capacities)) add(c.label);
+// 1.0.12: relationship stages (var STAGE, one [colour, label, meaning, next] list per stage, over several lines) and
+// the sections of the in-app guides (sec('id', 'Heading', ['paragraph', ...]) and guide data in app.js).
+{
+  const s = fs.readFileSync('src/app/app.js', 'utf8');
+  const q = /'((?:[^'\\]|\\.)*)'/g;
+  const block = (s.match(/var STAGE = \{([\s\S]*?)\n  \};/) || [])[1] || '';
+  for (const v of block.matchAll(q)) if (/\s/.test(v[1])) add(v[1].replace(/\\'/g, "'"));
+  for (const m of s.matchAll(/sec\('[^']*', '((?:[^'\\]|\\.)*)', \[(.*)\]\)/g)) { add(m[1].replace(/\\'/g, "'")); for (const v of m[2].matchAll(q)) add(v[1].replace(/\\'/g, "'")); }
+}
+// 1.0.12 media editor: pictogram names and label-set names (src/app/editor.js), colour and size names. The clinical
+// labels themselves (LV, IVC, Pleura...) stay as written: they are drawn into the picture, which is kept in English.
+{
+  const ed = fs.readFileSync('src/app/editor.js', 'utf8');
+  for (const m of ed.matchAll(/label: '((?:[^'\\]|\\.)*)'/g)) add(m[1].replace(/\\'/g, "'"));
+  const gl = (ed.match(/var GROUP_LABEL = \{([^\n]*)\};/) || [])[1] || '';
+  for (const v of gl.matchAll(/:\s*'([^']*)'/g)) add(v[1]);
+  const app = fs.readFileSync('src/app/app.js', 'utf8');
+  const cn = (app.match(/var COLOUR_NAMES = \{([^\n]*)\};/) || [])[1] || '';
+  for (const v of cn.matchAll(/:\s*'([^']*)'/g)) add(v[1]);
+  ['Small', 'Medium', 'Large', 'Arrow', 'Dot', 'Circle', 'Box', 'Pictogram'].forEach(add);
 }
 // Labels the Worker sends for display: link states, organisation kinds, the search badge, the review time.
 for (const f of ['worker/supervisor-lifecycle.js', 'worker/organisations.js', 'worker/search.js', 'worker/supervisor-apply.js']) {

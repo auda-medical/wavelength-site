@@ -46,6 +46,7 @@ export const PERMISSIONS = {
   'records.delete': { kind: 'switchable', label: 'Delete a single volunteer, faculty application or enquiry permanently' },
   'records.export_personal': { kind: 'switchable', label: 'Download spreadsheets with names or contact details' },
   'business.view': { kind: 'switchable', label: 'Business and finance dashboard' },
+  'business.edit': { kind: 'switchable', label: 'Business records: enquiry stages, ledger, bookings, owner time, opportunities, settings' },
   // Owner only
   'admins.manage': { kind: 'owner', label: 'Administrator accounts, roles, permissions, resets, sessions, audit log' },
   'logins.manage': { kind: 'owner', label: 'Volunteer-area password and the shared login' },
@@ -103,8 +104,8 @@ const SUPERVISOR_ACTIONS = {
   app_approve: 'supervisors.decide', app_confirm_renewal: 'supervisors.decide', app_reject: 'supervisors.decide',
   app_more: 'supervisors.decide', app_close_approved: 'supervisors.decide', grace_block: 'supervisors.decide',
   app_receipt: 'supervisors.email',
-  reg_verify: 'supervisors.decide', reg_reject: 'supervisors.decide', reg_not_current: 'supervisors.decide', reg_recheck: 'supervisors.decide',
-  cred_approve: 'supervisors.decide', cred_more: 'supervisors.decide', cred_reject: 'supervisors.decide', cred_revoke: 'supervisors.decide', cred_reinstate: 'supervisors.decide',
+  reg_verify: 'supervisors.decide', reg_gmc_check: 'supervisors.decide', reg_gmc_decide: 'supervisors.decide', reg_reject: 'supervisors.decide', reg_not_current: 'supervisors.decide', reg_recheck: 'supervisors.decide',
+  cred_approve: 'supervisors.decide', cred_directory_check: 'supervisors.decide', cred_listing_send: 'supervisors.email', cred_more: 'supervisors.decide', cred_reject: 'supervisors.decide', cred_revoke: 'supervisors.decide', cred_reinstate: 'supervisors.decide',
   appr_add: 'supervisors.decide', appr_revoke: 'supervisors.decide', appr_reinstate: 'supervisors.decide', appr_independent_review: 'supervisors.decide',
   appr_revoke_all: 'supervisors.revoke_all',
   block_lift: 'supervisors.decide', test_account: 'supervisors.decide',
@@ -132,6 +133,17 @@ export const POST_ROUTES = {
     merge: 'organisations.merge',
   },
 };
+// Business dashboard (worker/business.js): TABS and the CSV exports, read with business.view; every form action
+// (worker/business.js post, worker/bookings.js bookingAdminPost) needs business.edit, on whichever tab it is posted.
+export const BUSINESS_TABS = ['', 'website', 'logbook', 'supervision', 'courses', 'training', 'finance', 'time', 'marketing', 'opportunities', 'monthly', 'settings'];
+export const BUSINESS_EXPORTS = ['metrics', 'bookings', 'ledger', 'time', 'opportunities', 'training', 'pnl', 'monthly'];
+const BUSINESS_ACTIONS = Object.fromEntries(['stage', 'ledger_add', 'ledger_void', 'time_add', 'time_void', 'settings', 'opp_add', 'opp_update', 'opp_seed', 'booking_add', 'booking_update'].map((a) => [a, 'business.edit']));
+for (const tab of BUSINESS_TABS) {
+  const p = `/admin/business/${tab ? tab + '/' : ''}`;
+  GET_ROUTES[p] = 'business.view';
+  POST_ROUTES[p] = BUSINESS_ACTIONS;
+}
+for (const n of BUSINESS_EXPORTS) GET_ROUTES[`/admin/business/export/${n}.csv`] = 'business.view';
 // Owner security pages need a recent password and authenticator check (10 minutes).
 export const REAUTH_PERMISSIONS = new Set(['admins.manage', 'logins.manage', 'newsletter.integration']);
 export const REAUTH_MINUTES = 10;
@@ -149,6 +161,7 @@ export function permissionFor(method, path, action = '') {
 
 // Console sections in navigation order, and the permission that shows each.
 export const NAV = [
+  { id: 'business', perm: 'business.view' },
   { id: 'volunteers', perm: 'volunteers.view' },
   { id: 'academy', perm: 'academy.view' },
   { id: 'supervisors', perm: 'supervisors.view' },

@@ -1,3 +1,5 @@
 jsPDF 2.5.2 (MIT, James Hall and yWorks) and jspdf-autotable 3.8.4 (MIT, Simon Bengtsson).
 Loaded only when a learner exports a PDF.
 qrcode-generator 1.4.4 (MIT, Kazuhiko Arase). Draws the verification QR codes on PDF exports.
+@noble/hashes 2.4.0 (MIT, Paul Miller). Its 2022 Cure53 audit did not cover argon2. noble-hashes/ holds only the Argon2id files (argon2, blake2 and
+their helpers), unchanged from the npm package. Loaded only when a learner makes or restores an encrypted backup.

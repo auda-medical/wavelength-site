@@ -11,11 +11,14 @@ import LOGBOOK from '../data/logbook.json' with { type: 'json' };
 const pathway = (id) => LOGBOOK.pathways.find((p) => p.id === id);
 const type = (id) => CREDS.credentialTypes.find((t) => t.id === id);
 
-test('both FAMUS credential types list every FAMUS pathway module, and nothing else', () => {
+test('every FAMUS credential type (accredited, supervisor, mentor) lists every FAMUS pathway module, and nothing else', () => {
   const famus = pathway('famus').modules.map((m) => `famus:${m.id}`).sort();
   assert.ok(famus.includes('famus:famus-lp'));
   const famusTypes = CREDS.credentialTypes.filter((t) => t.programme === 'FAMUS');
-  assert.deepEqual(famusTypes.map((t) => t.id).sort(), ['famus-accredited', 'famus-supervisor']);
+  assert.deepEqual(famusTypes.map((t) => t.id).sort(), ['famus-accredited', 'famus-mentor', 'famus-supervisor']);
+  // SAM registers supervisors for every module except peripheral vascular access, which is approved locally.
+  assert.deepEqual(type('famus-supervisor').modules.filter((m) => m.directory === false).map((m) => m.id), ['pva']);
+  assert.equal(type('famus-mentor').body, 'local', 'SAM does not register mentors');
   for (const t of famusTypes) {
     assert.deepEqual(t.modules.map((m) => m.scope).sort(), famus, `${t.id} modules match the FAMUS pathway`);
     assert.equal(new Set(t.modules.map((m) => m.id)).size, t.modules.length, `${t.id} module ids are unique`);

@@ -134,7 +134,7 @@ export function render(kind, d) {
     link_active: () => ({
       subject: 'Your supervisor is now active',
       heading: 'Supervisor active',
-      paragraphs: [hi, `${d.supervisor} is now a Wavelength-approved supervisor and your supervision link is active.`, 'You can send sign-off and assessment requests to their dashboard.'],
+      paragraphs: [hi, `${d.supervisor} is now a Wavelength Verified Supervisor and your supervision link is active.`, 'You can send sign-off and assessment requests to their dashboard.'],
       button: { href: `${APP}/supervisors`, label: 'Open your supervisors' },
     }),
     link_ended: () => ({

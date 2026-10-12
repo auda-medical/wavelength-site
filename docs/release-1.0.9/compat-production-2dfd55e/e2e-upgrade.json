@@ -1,0 +1,78 @@
+{
+  "run": "2026-10-08T16:00:13.005Z",
+  "from": "1.0.8",
+  "results": [
+    {
+      "id": "U0",
+      "name": "Set-up: the phone account has two supervisors and supervises two trainees",
+      "pass": true,
+      "detail": "supervisors 2, trainees 2"
+    },
+    {
+      "id": "U1",
+      "name": "In 1.0.8: signed in, a signed-off scan, an assessment, a scan saved offline and waiting, two photos",
+      "pass": true,
+      "detail": "version 1.0.8, entries 2 (waiting 1), photos 2, sign-off SO-TF64-J296, assessment AS-MPAK-V2CV, database v2"
+    },
+    {
+      "id": "U2",
+      "name": "First start of 1.0.9 offline: app lock still on, asks with the phone prompt, then opens the logbook",
+      "pass": true,
+      "detail": "version 1.0.9, prompt after 166 ms, allowed [3,7]"
+    },
+    {
+      "id": "U3",
+      "name": "Still signed in with the same login: no sign-in screen, token unchanged in secure storage",
+      "pass": true,
+      "detail": "sign-in screen false, same token true"
+    },
+    {
+      "id": "U4",
+      "name": "Every entry, photo, sign-off and assessment is still on the device, and the offline scan is still waiting",
+      "pass": true,
+      "detail": "entries 2/2, photos 2/2, sign-off kept true, assessments 1, database v2"
+    },
+    {
+      "id": "U5",
+      "name": "Preferences kept: dark theme, app lock setting, cached account",
+      "pass": true,
+      "detail": "{\"prefs\":\"{\\\"wl-lock\\\":\\\"1\\\"}\",\"theme\":\"dark\",\"acc\":true,\"lang\":null,\"dark\":\"dark\"}"
+    },
+    {
+      "id": "U6",
+      "name": "Offline status says the scan is saved on this device",
+      "pass": true,
+      "detail": "Sync status: You're offline. Your entries are saved on this device and will sync when you're back online."
+    },
+    {
+      "id": "U7",
+      "name": "Back online: the scan saved in 1.0.8 reaches the server once, and nothing is left waiting",
+      "pass": true,
+      "detail": "server copies 2, waiting on device 0"
+    },
+    {
+      "id": "U8",
+      "name": "Both supervisors and both trainees are still linked and shown",
+      "pass": true,
+      "detail": "supervisors page mentions 2 emails; trainees page mentions 2"
+    },
+    {
+      "id": "U9",
+      "name": "Me shows Version 1.0.9 (15)",
+      "pass": true,
+      "detail": "Version 1.0.9 (15)"
+    },
+    {
+      "id": "U11",
+      "name": "A second signed-in session on another device shows the scan saved offline in 1.0.8",
+      "pass": true,
+      "detail": "found true, separate login true"
+    },
+    {
+      "id": "U10",
+      "name": "No page errors in either version",
+      "pass": true,
+      "detail": "none"
+    }
+  ]
+}

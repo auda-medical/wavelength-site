@@ -1,0 +1,166 @@
+{
+ "flagship/f01": {
+  "seconds": 0,
+  "file": null
+ },
+ "flagship/f02": {
+  "seconds": 11.872,
+  "file": "audio/flagship/f02.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 35
+ },
+ "flagship/f03": {
+  "seconds": 4.637,
+  "file": "audio/flagship/f03.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 10
+ },
+ "flagship/f04": {
+  "seconds": 7.991,
+  "file": "audio/flagship/f04.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 18
+ },
+ "flagship/f05": {
+  "seconds": 11.132,
+  "file": "audio/flagship/f05.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 31
+ },
+ "flagship/f06": {
+  "seconds": 5.532,
+  "file": "audio/flagship/f06.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 17
+ },
+ "flagship/f07": {
+  "seconds": 14.158,
+  "file": "audio/flagship/f07.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 38
+ },
+ "flagship/f08": {
+  "seconds": 8.369,
+  "file": "audio/flagship/f08.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 22
+ },
+ "flagship/f09": {
+  "seconds": 3.909,
+  "file": "audio/flagship/f09.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 12
+ },
+ "flagship/f10": {
+  "seconds": 10.474,
+  "file": "audio/flagship/f10.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 24
+ },
+ "flagship/f11": {
+  "seconds": 2.396,
+  "file": "audio/flagship/f11.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 5
+ },
+ "short/s01": {
+  "seconds": 3.888,
+  "file": "audio/short/s01.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 13
+ },
+ "short/s02": {
+  "seconds": 3.155,
+  "file": "audio/short/s02.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 8
+ },
+ "short/s03": {
+  "seconds": 1.725,
+  "file": "audio/short/s03.wav",
+  "rate": 24000,
+  "rmsDb": -17.3,
+  "clipped": 0,
+  "words": 5
+ },
+ "short/s04": {
+  "seconds": 3.651,
+  "file": "audio/short/s04.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 11
+ },
+ "short/s05": {
+  "seconds": 2.824,
+  "file": "audio/short/s05.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 8
+ },
+ "short/s06": {
+  "seconds": 2.567,
+  "file": "audio/short/s06.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 6
+ },
+ "short/s07": {
+  "seconds": 3.633,
+  "file": "audio/short/s07.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 12
+ },
+ "ad/a01": {
+  "seconds": 4.946,
+  "file": "audio/ad/a01.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 11
+ },
+ "ad/a02": {
+  "seconds": 5.535,
+  "file": "audio/ad/a02.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 10
+ },
+ "ad/a03": {
+  "seconds": 2.396,
+  "file": "audio/ad/a03.wav",
+  "rate": 24000,
+  "rmsDb": -17.4,
+  "clipped": 0,
+  "words": 5
+ }
+}

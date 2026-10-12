@@ -1,0 +1,90 @@
+{
+ "flagship/f01": {
+  "seconds": 3.44,
+  "file": "audio-v4/flagship/f01.wav"
+ },
+ "flagship/f02": {
+  "seconds": 7.2,
+  "file": "audio-v4/flagship/f02.wav"
+ },
+ "flagship/f03": {
+  "seconds": 7.08,
+  "file": "audio-v4/flagship/f03.wav"
+ },
+ "flagship/f04": {
+  "seconds": 7.64,
+  "file": "audio-v4/flagship/f04.wav"
+ },
+ "flagship/f05": {
+  "seconds": 10.56,
+  "file": "audio-v4/flagship/f05.wav"
+ },
+ "flagship/f06": {
+  "seconds": 9.04,
+  "file": "audio-v4/flagship/f06.wav"
+ },
+ "flagship/f07": {
+  "seconds": 5,
+  "file": "audio-v4/flagship/f07.wav"
+ },
+ "flagship/f08": {
+  "seconds": 7.9,
+  "file": "audio-v4/flagship/f08.wav"
+ },
+ "flagship/f09": {
+  "seconds": 8.92,
+  "file": "audio-v4/flagship/f09.wav"
+ },
+ "flagship/f10": {
+  "seconds": 6.54,
+  "file": "audio-v4/flagship/f10.wav"
+ },
+ "flagship/f11": {
+  "seconds": 5.22,
+  "file": "audio-v4/flagship/f11.wav"
+ },
+ "flagship/f12": {
+  "seconds": 5.76,
+  "file": "audio-v4/flagship/f12.wav"
+ },
+ "flagship/f13": {
+  "seconds": 3.06,
+  "file": "audio-v4/flagship/f13.wav"
+ },
+ "short/s01": {
+  "seconds": 3.78,
+  "file": "audio-v4/short/s01.wav"
+ },
+ "short/s02": {
+  "seconds": 2.54,
+  "file": "audio-v4/short/s02.wav"
+ },
+ "short/s03": {
+  "seconds": 2.72,
+  "file": "audio-v4/short/s03.wav"
+ },
+ "short/s04": {
+  "seconds": 1.98,
+  "file": "audio-v4/short/s04.wav"
+ },
+ "short/s05": {
+  "seconds": 6.14,
+  "file": "audio-v4/short/s05.wav"
+ },
+ "short/s06": {
+  "seconds": 1.8,
+  "file": "audio-v4/short/s06.wav"
+ },
+ "ad/a01": {
+  "seconds": 4.54,
+  "file": "audio-v4/ad/a01.wav"
+ },
+ "ad/a02": {
+  "seconds": 7.56,
+  "file": "audio-v4/ad/a02.wav"
+ },
+ "ad/a03": {
+  "seconds": 3.06,
+  "file": "audio-v4/ad/a03.wav"
+ }
+}

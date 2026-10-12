@@ -49,7 +49,8 @@ if (outAt >= 0) {
   console.log(`Wrote ${file}`);
 } else {
   const mig = new URL('migrations/0013_organisations.sql', ROOT);
-  const text = fs.readFileSync(mig, 'utf8');
+  // A Windows checkout (core.autocrlf) has CRLF line endings: compare content, not line endings.
+  const text = fs.readFileSync(mig, 'utf8').replace(/\r\n/g, '\n');
   const re = /-- BEGIN SEED[\s\S]*?-- END SEED\n?/;
   if (!re.test(text)) { console.error('No seed block in 0013_organisations.sql'); process.exit(1); }
   const next = text.replace(re, seed);
