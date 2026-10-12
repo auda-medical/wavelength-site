@@ -32,6 +32,8 @@ annotations (with their turn).
 
 ## 3. Tests (12 October 2026, Windows, LF worktree)
 
+The whole browser regression was run twice: on `bf59f60`, and again on the final code `02629b7` (the figures below).
+
 | Check | Result |
 |---|---|
 | Unit and Worker (`node --import ./test/helpers/register.mjs --test --test-concurrency=1 test/*.test.mjs`) | **425 pass, 0 fail** (adds `test/editor-rotation.test.mjs`: normalising, snapping, legacy 0 to 360 values, cleaning, hit testing on the turned shape, Adjust mapping, layout rule; `test/editor.test.mjs` label keys updated) |
@@ -41,13 +43,14 @@ annotations (with their turn).
 | `e2e-1014` on the 1.0.16 APK assets | 69/69 |
 | `e2e-1013` (Z, N) / `e2e-1012` / `e2e-1010` | 28/28 / 74/74 / 44/44 |
 | `e2e-1013` A | stops at A1, as for every release since 1.0.14: it tests the 1.0.13 slider that 1.0.14 replaced |
-| `e2e-1011` (reference: the 1.0.16 APK assets) | 41 pass, stops at E6 by design; **F0: 21 applications, 745 controls, no differences**; N11 (a timing check) failed under CPU load with the emulator running and passed on rerun (known since 1.0.15) |
-| `e2e-native` / `e2e-offline` / `e2e-about` / `e2e-upgrade` (1.0.16 assets → 1.0.17) / `e2e-backup` | pass / 16/16 / 15/15 / 12/12 / 11/11 |
+| `e2e-1011` (reference: the 1.0.16 APK assets) | 42 pass, stops at E6 by design; **F0: 21 applications, 745 controls, no differences**. In the first run N11 (a timing check) failed under CPU load with the emulator running and passed on rerun (known since 1.0.15); it passed in the final run |
+| `e2e-native` / `e2e-offline` / `e2e-about` / `e2e-upgrade` (1.0.16 assets → 1.0.17) / `e2e-backup` | 30/30 / 16/16 / 15/15 / 12/12 / 11/11 |
 | `theme-shots` (site server) | both themes pass |
-| Release C suites on this `dist/`: `e2e-app-guides`, `e2e-verified` `UI=android` | pass, pass |
+| Release C suites on this `dist/`: `e2e-app-guides`, `e2e-verified` `UI=android` | 22/22, 276/276 |
 | Emulator `tools/e2e-1017-emulator.mjs` (new; foldable `wlfold`, Android 16, airplane mode, adb root; debug builds, WebView debugging in scratch copies only) | **10/10**: 1.0.16 with labels turned by Turn (15°, 345°) and 2 leftover photos in the recovery tray; updated in place to 1.0.17 (same first-install time), tray intact; re-edit shows 15° right and 15° left; a **real finger drag** turns a label unfolded (controls side by side under the picture) and folded (stacked in the panel), one drag one Undo; unfolding again keeps the turn; Android ending the app restores the turned label; **Android font size 1.3 stacks the controls** (the fix above); the clip editor turns a label with a finger and the saved clip keeps it |
-| Emulator `e2e-1014-emulator.mjs` on 1.0.17 | RESULT-1014-EMU |
-| Emulator `e2e-1016-emulator.mjs` (1.0.15 → 1.0.17, the owner's 17-photo sequence) | RESULT-1016-EMU |
+| Emulator `e2e-1014-emulator.mjs` on 1.0.17 | **22/22 in 3 of 3 consecutive runs** |
+| Emulator `e2e-1016-emulator.mjs` (1.0.15 → 1.0.17, the owner's 17-photo sequence) | **7/7** (`WL_EXPECT=1.0.17`): all 17 kept through the update (same first-install time, same ones, none attached), separate scans each saved once, ended by Android and reopened, 4 new leftovers found, nothing in the gallery or shared storage. A first run failed only O2, whose check named the version "1.0.16"; the version is now a parameter |
+| Throwaway-key update (release builds of 1.0.16 then 1.0.17, both signed with the emulator test key) | installed as an update, first-install time unchanged (12 Oct 14:53:54), version 23 / 1.0.17, opens; rehearsal outputs deleted afterwards |
 | Package | `aapt2 dump badging`: `uk.co.thewavelength.app`, versionCode 23, versionName 1.0.17, compile and target SDK 36; `webContentsDebuggingEnabled` false. Against the 1.0.16 APK web assets: only the app's code, styles, editor, 8 translations and build stamps differ |
 
 **Emulator limitation found (not a 1.0.17 change):** on this emulator, MP4/H.264 clip recording is reported as
