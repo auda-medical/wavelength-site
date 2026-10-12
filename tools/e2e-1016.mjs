@@ -306,7 +306,7 @@ if (want('U') && fs.existsSync(path.join(OLD_WWW, 'app', 'app.js'))) {
   await go(page, '#/'); await sleep(400); if (await page.$('.sheet [data-discard]')) { await page.click('.sheet [data-discard]'); await sleep(600); }
   await go(page, '#/kept'); await page.waitForSelector('.tray-it'); await sleep(1500);
   const rows = await trayRows(page);
-  record('U5', 'The recovery tray lists all 17 separately, none selected, each with a preview', rows.length === 17 && rows.every((r) => !r.checked) && (await page.$$eval('.tray-it img', (l) => l.filter((i) => i.complete && i.naturalWidth > 0).length)) === 17, { rows: rows.length });
+  record('U5', 'The recovery tray lists all 17 separately, none selected, each with a preview, each said to be left by an earlier version', rows.length === 17 && rows.every((r) => !r.checked && /Left by an earlier version/.test(r.text)) && (await page.$$eval('.tray-it img', (l) => l.filter((i) => i.complete && i.naturalWidth > 0).length)) === 17, { rows: rows.length });
   await shot(page, 'U5-tray-after-update');
   await page.evaluate(() => { history.replaceState(null, '', '#/'); }); await page.reload(); await page.waitForSelector('nav.tabs'); await sleep(1500);
   const d2 = await drafts(page, acc.id);

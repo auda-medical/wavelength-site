@@ -1288,7 +1288,9 @@
   }
   function trayOrigin(x) {
     var m = x.media;
-    if (m.legacy) return T('Left by an earlier version');
+    // Earlier versions named their photos JPEG_...; 1.0.14 onwards names the camera's files WL_. Photos 1.0.15 imported
+    // carry no legacy mark (records are never migrated), so the name says where they came from.
+    if (m.legacy || (m.captured && /^JPEG_.*\.jpe?g$/i.test(m.name || ''))) return T('Left by an earlier version');
     if (x.state.stage === 'ready' && m.result) return T('Prepared, not saved in a scan');
     if (x.state.session === 'recovered') return T('Kept when Wavelength closed');
     return T('Kept for later');

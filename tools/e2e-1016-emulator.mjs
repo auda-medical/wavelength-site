@@ -64,7 +64,11 @@ const gallery0 = galleryRows().length;
 // ---------- 1.0.15, as on the owner's Fold7 ----------
 K.adb('uninstall', PKG); K.adb('install', OLD); K.start(); await sleep(8000);
 page = await K.connect();
+await page.waitForFunction(() => !!(window.WLNative && window.WLNative.plugin), undefined, { timeout: 60000 });
 await page.evaluate(async (acc) => { localStorage.setItem('wl-acc', JSON.stringify(acc)); await window.WLNative.plugin('NativeBiometric').setData({ key: 'wavelength.session', value: 'emulator-test-token-not-valid-anywhere' }); }, ACC);
+// The account is in place once Home has drawn with it (and the WebView has written its storage).
+await page.reload(); page = await K.connect(); await page.waitForSelector('nav.tabs', { timeout: 60000 }); await sleep(3000);
+K.adb('shell', 'input', 'keyevent', 'KEYCODE_HOME'); await sleep(3000);
 K.adb('shell', 'am', 'force-stop', PKG);
 placeLegacy(src, names);
 const placed = sharedFiles().filter((f) => /JPEG_/.test(f)).length;
@@ -95,8 +99,8 @@ const d1 = await drafts(page), lb1 = await logbook(page);
 record('O2', 'Updated in place to 1.0.16 (same first-install time): all 17 kept, the same ones, none attached; the empty scan unchanged', v1 === '1.0.16' && first && first === first2 && d1.length === 17 && d1.map((x) => x.id).sort().join() === ids0.join() && d1.every((x) => x.file > 0) && lb1.entries.length === 1 && lb1.entries[0].images.length === 0 && lb1.images.length === 0 && /17 photos/.test(card1) && /Review photos and clips/.test(card1), { v1, first, first2, drafts: d1.length, card1 });
 K.shot('O2-home-after-update');
 await click('[data-kepthome] [data-kftray]'); await page.waitForSelector('.tray-it', { timeout: 20000 }); await sleep(4000);
-const rows = await page.evaluate(() => [...document.querySelectorAll('.tray-it')].map((li) => ({ id: li.dataset.trit, checked: li.querySelector('input').checked, img: (li.querySelector('img') || {}).naturalWidth || 0 })));
-record('O3', 'The recovery tray on the phone: 17 rows, each with its preview, none selected', rows.length === 17 && rows.every((r) => !r.checked && r.img > 0), { rows: rows.length, previews: rows.filter((r) => r.img > 0).length });
+const rows = await page.evaluate(() => [...document.querySelectorAll('.tray-it')].map((li) => ({ id: li.dataset.trit, checked: li.querySelector('input').checked, img: (li.querySelector('img') || {}).naturalWidth || 0, origin: /Left by an earlier version/.test(li.textContent) })));
+record('O3', 'The recovery tray on the phone: 17 rows, each with its preview, none selected, each said to be left by an earlier version', rows.length === 17 && rows.every((r) => !r.checked && r.img > 0 && r.origin), { rows: rows.length, previews: rows.filter((r) => r.img > 0).length, saysEarlierVersion: rows.filter((r) => r.origin).length });
 K.shot('O3-tray');
 // Photos 1 to 3 for scan A (by file name), finish two, keep the third for later.
 const byNum = (n) => d1.find((x) => numOf(x.name) === n).id;
@@ -115,7 +119,7 @@ await supervision(); await click('form button[type=submit]'); await sleep(5000);
 const lb2 = await logbook(page), d2 = await drafts(page);
 const scans = {}; lb2.images.forEach((i) => { (scans[i.entryId] = scans[i.entryId] || []).push(whichPhoto(i.rgb)); });
 const sets = Object.values(scans).map((l) => l.sort((a, b) => a - b).join(',')).sort();
-record('O4', 'On the phone: scan A gets two of photos 1 to 3, scan B photos 4 and 5, each saved once; the unfinished third and the other 12 stay kept', tA.kept === 3 && /Not finished yet: 3 photos/.test(tA.note) && lb2.images.length === 4 && sets.length === 2 && sets.some((s) => s === '4,5') && sets.some((s) => /^[123],[123]$/.test(s)) && d2.length === 13 && d2.every((x) => !x.inst && x.formKey === 'tray'), { sets, drafts: d2.length });
+record('O4', 'On the phone: scan A gets two of photos 1 to 3, scan B photos 4 and 5, each saved once; the unfinished third and the other 12 stay kept', tA.kept === 3 && /Not finished yet: 3 photos/.test(tA.note) && lb2.images.length === 4 && sets.length === 2 && sets.some((s) => s === '4,5') && sets.some((s) => /^[123],[123]$/.test(s)) && d2.length === 13 && d2.every((x) => !x.inst), { sets, drafts: d2.length });
 // Android ends Wavelength (as when short of memory) and it is opened again.
 K.adb('shell', 'input', 'keyevent', 'KEYCODE_HOME'); await sleep(2000);
 for (let i = 0; i < 4 && K.pid(); i++) { K.adb('shell', 'am', 'kill', PKG); await sleep(2000); }
@@ -130,7 +134,7 @@ await relaunch();
 await page.waitForSelector('.sheet [data-lgrev]', { timeout: 20000 }); await click('.sheet [data-lgrev]');
 await page.waitForFunction(() => location.hash === '#/kept' && document.querySelectorAll('.tray-it').length === 17, null, { timeout: 60000 }); await sleep(2000);
 const d4 = await drafts(page);
-record('O6', '1.0.16 finding 4 more leftovers: Review them first opens the tray with all 17 (13 + 4), none selected; the 4 files are removed only after the copies', d4.length === 17 && d4.filter((x) => x.legacy).length === 17 && sharedFiles().filter((f) => /JPEG_/.test(f)).length === 0 && (await page.evaluate(() => [...document.querySelectorAll('.tray-it input')].every((i) => !i.checked))), { drafts: d4.length });
+record('O6', '1.0.16 finding 4 more leftovers: Review them first opens the tray with all 17 (13 + 4), none selected; the 4 files are removed only after the copies', d4.length === 17 && d4.filter((x) => x.legacy).length === 4 && d4.filter((x) => /^JPEG_/.test(x.name)).length === 17 && sharedFiles().filter((f) => /JPEG_/.test(f)).length === 0 && (await page.evaluate(() => [...document.querySelectorAll('.tray-it input')].every((i) => !i.checked))), { drafts: d4.length });
 K.shot('O6-tray-with-new-leftovers');
 record('O7', 'Nothing reached the phone\'s gallery or shared storage at any point', galleryRows().length === gallery0 && sharedFiles().length === 0, { gallery: galleryRows().length - gallery0, shared: sharedFiles() });
 const fails = results.filter((r) => !r.pass);
