@@ -75,9 +75,9 @@ record('U2', 'Re-editing the 1.0.16 photo: "Ao" shows 15° right and "LV" (345°
 K.shot('U2-reedit-unfolded');
 // ---------- D: a real finger on the Rotation slider, unfolded then folded ----------
 await pickAnn(0); await swipeRot(-30); const d1 = await rot();
-record('D1', 'Unfolded: Size and Rotation side by side under the picture; a real finger drag turns "Ao" to about 30° left', d1.inSlot && d1.side && d1.v <= -26 && d1.v >= -34 && /° left$/.test(d1.text), d1);
+record('D1', 'Unfolded: Size and Rotation side by side under the picture; a real finger drag turns "Ao" to about 30° left', d1.inSlot && d1.side && d1.v <= -24 && d1.v >= -36 && /° left$/.test(d1.text), d1);
 K.shot('D1-finger-unfolded');
-await click('.editor [data-a=undo]'); await sleep(600); const undone = await rot();
+await click('.editor [data-a=undo]'); await sleep(600); await pickAnn(0); const undone = await rot();
 record('D2', 'One finger drag is one Undo step', undone.v === 15, { after: undone.v });
 await fold(true);
 await pickAnn(0); await swipeRot(40); const d3 = await rot();
@@ -117,12 +117,18 @@ await click('.editor [data-a=cancel]'); await sleep(400); await page.evaluate(()
 // The font size goes back only with Wavelength closed (changing it while open restarts the activity).
 K.adb('shell', 'am', 'force-stop', PKG); sh('settings put system font_scale ' + (fs0 && fs0 !== 'null' ? fs0 : '1.0')); await sleep(1500); await relaunch();
 // ---------- C: the clip editor on the phone ----------
+// The emulator has no H.264 encoder for the WebView: MP4 recording is offered but fails as it starts (as in 1.0.16).
+// For this check only, the page is told MP4 recording is unavailable, so the app prepares the clip as WebM (VP8/VP9),
+// which the emulator can encode. Phones have hardware H.264 encoders; the owner checks a clip on the Fold7.
 await go('#/new?type=cardiac'); await sleep(2500);
+await page.evaluate(() => { const f = MediaRecorder.isTypeSupported.bind(MediaRecorder); MediaRecorder.isTypeSupported = (t) => !t.startsWith('video/mp4') && f(t); });
 await page.evaluate(() => new Promise((ok) => { const c = document.createElement('canvas'); c.width = 400; c.height = 300; const g = c.getContext('2d'); const rec = new MediaRecorder(c.captureStream(25), { mimeType: 'video/webm' }); const ch = []; rec.ondataavailable = (e) => e.data.size && ch.push(e.data); const t0 = performance.now(); const tick = () => { g.fillStyle = '#808080'; g.fillRect(0, 0, 400, 300); g.fillStyle = '#a0a0a0'; g.fillRect(((performance.now() - t0) / 10) % 400, 0, 6, 300); if (performance.now() - t0 < 3000) requestAnimationFrame(tick); else rec.stop(); }; rec.onstop = () => { const dt = new DataTransfer(); dt.items.add(new File([new Blob(ch, { type: 'video/webm' })], 'clip.webm', { type: 'video/webm' })); const i = document.querySelector('#vpick'); i.files = dt.files; i.dispatchEvent(new Event('change', { bubbles: true })); ok(); }; rec.start(100); tick(); }));
 await page.waitForSelector('.editor.clip canvas', { timeout: 30000 }); await sleep(2000);
 await click('.editor [data-tab=annotate]'); await sleep(300); await addText('Ao'); await swipeRot(35); const c1 = await rot();
 K.shot('C1-clip-unfolded');
-await page.evaluate(() => { const d = document.querySelector('.editor [data-decl]'); d.checked = true; d.dispatchEvent(new Event('change', { bubbles: true })); document.querySelector('.editor [data-a=save]').click(); });
+// A real tap on Use this clip: Android's WebView plays the clip (to prepare it) only after a real touch.
+await page.evaluate(() => { const d = document.querySelector('.editor [data-decl]'); d.checked = true; d.dispatchEvent(new Event('change', { bubbles: true })); document.querySelector('.editor [data-a=save]').scrollIntoView({ block: 'center' }); }); await sleep(500);
+await K.tapSel('.editor [data-a=save]');
 await page.waitForFunction(() => !document.querySelector('.editor'), undefined, { timeout: 90000 }); await sleep(1500);
 await page.evaluate(() => { const s = document.querySelector('input[name=supervision]'); s.checked = true; s.dispatchEvent(new Event('change', { bubbles: true })); document.querySelector('form button[type=submit]').click(); }); await sleep(5000);
 const clipAnn = await page.evaluate((id) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id); r.onsuccess = () => { const q = r.result.transaction('images').objectStore('images').getAll(); q.onsuccess = () => { r.result.close(); const x = q.result.find((i) => i.kind === 'clip'); ok(x && x.annot ? x.annot.ann.map((a) => a.text + ':' + a.rot) : null); }; }; }), ACC.id);

@@ -7,6 +7,7 @@
 // Emulator only: debug builds of both (same debug key, WebView debugging on in scratch copies), airplane mode,
 // adb root (to place the leftover files). Run:
 //   node tools/e2e-1016-emulator.mjs <outdir> <1.0.15 debug apk> <1.0.16 debug apk>
+//   (a later version as the second APK: WL_EXPECT=<its version name>)
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -96,7 +97,7 @@ await relaunch();
 const v1 = await page.evaluate(() => (window.WL_NATIVE || {}).version);
 const card1 = await page.evaluate(() => (document.querySelector('[data-kepthome]') || {}).textContent || '');
 const d1 = await drafts(page), lb1 = await logbook(page);
-record('O2', 'Updated in place to 1.0.16 (same first-install time): all 17 kept, the same ones, none attached; the empty scan unchanged', v1 === '1.0.16' && first && first === first2 && d1.length === 17 && d1.map((x) => x.id).sort().join() === ids0.join() && d1.every((x) => x.file > 0) && lb1.entries.length === 1 && lb1.entries[0].images.length === 0 && lb1.images.length === 0 && /17 photos/.test(card1) && /Review photos and clips/.test(card1), { v1, first, first2, drafts: d1.length, card1 });
+record('O2', `Updated in place to ${process.env.WL_EXPECT || '1.0.16'} (same first-install time): all 17 kept, the same ones, none attached; the empty scan unchanged`, v1 === (process.env.WL_EXPECT || '1.0.16') && first && first === first2 && d1.length === 17 && d1.map((x) => x.id).sort().join() === ids0.join() && d1.every((x) => x.file > 0) && lb1.entries.length === 1 && lb1.entries[0].images.length === 0 && lb1.images.length === 0 && /17 photos/.test(card1) && /Review photos and clips/.test(card1), { v1, first, first2, drafts: d1.length, card1 });
 K.shot('O2-home-after-update');
 await click('[data-kepthome] [data-kftray]'); await page.waitForSelector('.tray-it', { timeout: 20000 }); await sleep(4000);
 const rows = await page.evaluate(() => [...document.querySelectorAll('.tray-it')].map((li) => ({ id: li.dataset.trit, checked: li.querySelector('input').checked, img: (li.querySelector('img') || {}).naturalWidth || 0, origin: /Left by an earlier version/.test(li.textContent) })));
