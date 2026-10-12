@@ -49,7 +49,7 @@ Keywords (Apple, 100 characters): pocus,ultrasound,logbook,emergency,rcem,famus,
 Description:
 Wavelength is a free point-of-care ultrasound logbook for doctors, advanced practitioners and other clinicians who scan.
 
-Log a scan in seconds. Pick the scan type, tick the findings and add images or short clips from your camera or photos. The built-in editor crops, rotates and blacks out identifiers before anything is saved, and saving strips hidden photo data.
+Log a scan in seconds. Pick the scan type, tick the findings and add images or short clips from your camera or photos. The built-in editor crops, rotates and blacks out identifiers before anything is saved, and adds text, clinical labels, arrows and pictograms that you can size and turn to follow the anatomy. Saving strips hidden photo data.
 
 Track your pathway. Follow the verified UK pathways, RCEM, FAMUS and FUSIC, or build your own targets. Editable trackers for international pathways and frameworks (EUSEM, ACEM, CPoCUS and ACEP) let you organise your evidence; each organisation and your supervisor decide what counts. One scan can count towards several trackers when it meets their criteria.
 
@@ -99,15 +99,15 @@ Device backups: images and clips are excluded from iCloud and iTunes backups (th
 
 ## Review accounts
 
-Two review accounts, both in the live database, both flagged as test accounts (once the `test_account` flag exists: left out of search, the supervisor directory, statistics, newsletter lists and any email to real users). Passwords are kept outside the repository, given to Firas, and entered only in App Store Connect and Play Console.
-- Review learner: appreview@thewavelength.co.uk, onboarded, with a few sample scans using synthetic images only.
-- Review supervisor: a second account, to be created before submission, approved for one limited scope (for example Lung) by a normal, recorded admin decision labelled as a review account, and linked only to the review learner. It shows the supervisor dashboard, sign-off requests and assessments.
+One review account for the first store release (decision 12 October 2026, HQ store publication pack): the learner account `appreview@thewavelength.co.uk` (live since 4 October, password set, no scans yet). Its password is kept outside the repository, in the owner's password manager, and entered only in App Store Connect and Play Console. Before submission the owner sets its `test_account` flag (left out of search, the supervisor directory, statistics, newsletter lists and any email to real users) and logs three sample scans in it with synthetic images only.
+
+A second, supervisor review account is not needed for review: in-person sign-off and assessments are shown from the learner account on one phone. A supervisor account would need a recorded admin approval decision; create one only if a store reviewer asks for the supervisor dashboard.
 
 Never give reviewers production admin credentials. The admin console is not reachable from the app.
 
 ## App Review notes (Apple) and access instructions (Google)
 
-Wavelength is a training logbook for clinicians who use point-of-care ultrasound. We provide two test accounts: a learner, and a supervisor approved for one limited area (Lung) and linked to that learner. Log in as the learner to see the main features: tap + to log a scan (any image works), open Progress to see pathway targets, tap a scan and choose Sign off to see in-person sign-off, and open Me > Settings (gear, top right) to change appearance or language, or delete the account. Then log out and log in as the supervisor: the Supervising card on Home (also Me > Learners you supervise) shows the learner's progress and written entries, and any sign-off or assessment requests. The logbook is built into the app and works offline; it connects to our server only to sync the written record, sign-offs and assessments, so clinicians on the web and in the app share one logbook. Website pages such as the privacy notice open in the in-app browser. Try Me > Settings (gear, top right) > Security to lock the app with fingerprint or face, and Me > Export your logbook to save or share a PDF through the share sheet. The app uses the camera and photo library only when the user adds an image. Images stay on the phone unless the learner chooses to share them with a supervisor in a sign-off link: they are then encrypted on the phone before upload and deleted after sign-off. There are no purchases.
+Wavelength is a training logbook for clinicians who use point-of-care ultrasound. It is an education and record-keeping tool: it does not diagnose and is not a medical device. Please log in with the test account provided. It contains a few sample scans with illustration images (no patient data). Tap + to log a scan (any photo works; the editor lets you crop, cover areas and add labels you can size and turn), open Progress to see pathway targets, open a scan and choose Sign off to see an in-person sign-off (the reviewer can sign with a finger as the supervisor), and open Me > Settings (gear, top right) to change appearance or language, or to delete the account. The logbook is built into the app and works offline; it connects to our server only to sync the written record, sign-offs and assessments, so clinicians on the web and in the app share one logbook. Website pages such as the privacy notice open in the in-app browser. Try Me > Settings (gear, top right) > Security to lock the app with fingerprint or face, and Me > Export your logbook to save or share a PDF through the share sheet. The app uses the camera and photo library only when the user adds an image. Images stay on the phone unless the learner chooses to share them with a supervisor in a sign-off link: they are then encrypted on the phone before upload and deleted after sign-off. There are no purchases.
 
 ## Pending: professional verification (not live yet)
 
@@ -117,3 +117,22 @@ Email verification (built October 2026) needs no change to these answers. Profes
 - Store builds send `X-Wavelength-App` (set from the workflow's version input); `APP_MIN_VERSION` and `APP_RECOMMENDED_VERSION` drive the in-app update banner.
 - Review notes: mark the review learner's email as verified, and say that Professional verification is optional and reviewed by the Wavelength team.
 - Scan findings stay declared as user content (they describe anonymous patients, not the user's own health).
+
+## Release 1.0.17 (23): what's new (both stores, under 500 characters)
+
+Turn text, labels, pictograms and boxes with the new Rotation control beside Size, and watch them turn on the image or clip. Photos left by earlier versions are reviewed one by one: nothing is selected until you choose it, and only the photos you finish are saved in a scan. The scan form now starts with "Which scan did you do?". Annotation sizes have a wider range. Supervisors see clearer verification details.
+
+## Export compliance (Apple) and encryption
+
+`ITSAppUsesNonExemptEncryption` is false. The app's encryption (AES-256-GCM for encrypted backups and for images shared in sign-off links, HKDF and PBKDF2) runs through Web Crypto, which is provided by the operating system's own WebKit; HTTPS is the system's too. Argon2id (`vendor/noble-hashes`) derives a key from the backup passphrase: it is a key-derivation (hashing) function, not encryption. Apple treats encryption used only within its operating system as exempt, so App Store Connect should not ask; if it does, answer that the app uses only encryption provided by the operating system. Reviewed 12 October 2026; recheck if a native crypto library is ever added.
+
+## Google Play App Signing (decide at the first upload)
+
+Play needs Play App Signing for new apps. The choice is permanent for the app:
+- **Recommended: use the existing key** ("Export and upload a key from Java keystore", with Google's PEPK tool). Play then signs with the same certificate as every side-loaded build (`ee30bfd2…a1e0`), so phones that installed Wavelength from an APK, including the owner's Fold7 with photos that exist only in the app, update from Play in place.
+- Google-generated key: simpler, but Play builds would carry a different certificate. Side-loaded phones could not update from Play without uninstalling, which deletes on-device photos and clips.
+Either way, the existing upload key stays the upload key.
+
+## Reconciled for 1.0.17 (12 October 2026)
+
+Data safety and App Privacy answers checked against the 1.0.17 code: the app talks only to `/api/app/*` on thewavelength.co.uk (account, logbook sync, sign-off, assessments, supervisors, verification, guide source dates) and sends its version number; no analytics, advertising, crash-reporting or tracking SDK; the start-up diagnostics stay on the phone; images and clips leave the phone only in the optional encrypted sign-off sharing. The iOS privacy manifest declares the same six data types, no tracking. No change to the answers above.
