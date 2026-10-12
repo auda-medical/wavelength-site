@@ -311,6 +311,15 @@ if (want('U') && fs.existsSync(path.join(OLD_WWW, 'app', 'app.js'))) {
   await page.evaluate(() => { history.replaceState(null, '', '#/'); }); await page.reload(); await page.waitForSelector('nav.tabs'); await sleep(1500);
   const d2 = await drafts(page, acc.id);
   record('U6', 'Closed and opened again: still the same 17, unattached', d2.length === 17 && d2.map((x) => x.id).sort().join() === ids0.join() && d2.every((x) => !x.inst), { drafts: d2.length });
+  // U7 the scan 1.0.15 saved without images can be repaired: Edit, Choose from them, the photo that belongs to it.
+  await go(page, '#/edit/' + e0[0].id); await page.waitForSelector('#ef'); await sleep(1500);
+  await page.click('[data-opentray]'); await page.waitForSelector('.sheet .tray-it'); await sleep(1200);
+  await selectPhotos(page, [9], acc.id); await page.click('.sheet [data-tradd]'); await sleep(1200);
+  await finishTile(page);
+  await page.click('form button[type=submit]');
+  await page.waitForFunction(() => /^#\/entry\//.test(location.hash), null, { timeout: 15000 }).catch(() => {}); await sleep(1500);
+  const e7 = await entries(page, acc.id), st7 = await stored(page, acc.id), d7 = await drafts(page, acc.id);
+  record('U7', 'The scan 1.0.15 saved without images can be repaired: Edit, Choose from them, finish the right photo, Save changes', e7.length === 1 && e7[0].id === e0[0].id && e7[0].images.length === 1 && st7.length === 1 && whichPhoto(st7[0].rgb) === 9 && d7.length === 16, { images: e7[0] && e7[0].images.length, photo: st7[0] && whichPhoto(st7[0].rgb), kept: d7.length });
   await P.ctx.close();
 } else if (want('U')) record('U0', 'The 1.0.15 bundle is needed for the upgrade check', false, OLD_WWW);
 

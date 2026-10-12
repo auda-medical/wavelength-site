@@ -104,11 +104,20 @@ K.start(); await sleep(8000); page = await K.connect(); await page.waitForSelect
 const card = await page.evaluate(() => (document.querySelector('[data-kepthome]') || {}).textContent || '');
 record('X1', 'Wavelength ended by Android with the editor open: on reopening, Home says a photo is kept on this phone', gone && /Kept on this phone/.test(card), JSON.stringify({ killed: gone, how, card }));
 K.shot('X1-home-kept');
-await page.click('[data-kepthome] a'); await page.waitForSelector('[data-addearlier]'); await page.click('[data-addearlier]'); await sleep(600);
-await page.click('label[for=t0]'); await page.waitForSelector('#gal .kept'); await page.click('#gal .kept');
+// 1.0.16: the photo comes back with its scan (when the scan form was kept) or waits in the recovery tray, where it is
+// chosen for a scan on its own; either way it is never added by itself.
+const viaTray = await page.evaluate(() => !!document.querySelector('[data-kepthome] [data-kftray]'));
+if (viaTray) {
+  await page.click('[data-kepthome] [data-kftray]'); await page.waitForSelector('.tray-it'); await sleep(800);
+  await page.evaluate(() => { const i = document.querySelector('.tray-it input'); i.checked = true; i.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.click('[data-tradd]');
+} else await page.click('[data-kepthome] [data-kfform]');
+await page.waitForSelector('#ef'); await sleep(1500);
+if (await page.evaluate(() => document.querySelector('#rest').hidden)) await page.click('label[for=t0]');
+await page.waitForSelector('#gal .kept'); await page.click('#gal .kept');
 await page.waitForSelector('.editor canvas'); await sleep(1200); await page.click('.editor [data-tab=annotate]');
 const x2 = await state();
-record('X2', 'Add to this scan, then the Unfinished tile: the photo comes back with its label and dot', x2.editor && x2.chips.length === 2, JSON.stringify(x2.chips));
+record('X2', 'Chosen again (recovery tray or its own scan), then the Unfinished tile: the photo comes back with its label and dot', x2.editor && x2.chips.length === 2, JSON.stringify({ viaTray, chips: x2.chips }));
 await page.click('.editor [data-a=cancel]'); await sleep(300); await page.click('.editor [data-cf=discard]').catch(() => {}); await sleep(400);
 await go('#/'); await sleep(600); await page.evaluate(() => { const d = document.querySelector('.sheet [data-discard]'); if (d) d.click(); }); await sleep(600);
 

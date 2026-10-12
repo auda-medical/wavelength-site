@@ -240,7 +240,8 @@ if (want('F')) {
   record('F3', 'The scroll to the date moves through intermediate positions (eased, not a snap)', steps >= 4, `${steps} distinct positions: ${ys.join(',')}`);
   // F4: sections and labels.
   const sec = await page.evaluate(() => [...document.querySelectorAll('#ef section.fs')].filter((s) => s.offsetParent).map((s) => ({ h: s.querySelector('h2').textContent, labelled: s.getAttribute('aria-labelledby') === s.querySelector('h2').id })));
-  const wantSec = ['Application', 'Scan details', 'Examination findings', 'Interpretation and quality', 'Confirmation and clinical impact', 'Supervision', 'Images and clips', 'Reflection', 'Accreditation pathways'];
+  // 1.0.16: the first section is Scan (ChatGPT 12 Oct 10:51); the eight others and every field are unchanged.
+  const wantSec = ['Scan', 'Scan details', 'Examination findings', 'Interpretation and quality', 'Confirmation and clinical impact', 'Supervision', 'Images and clips', 'Reflection', 'Accreditation pathways'];
   record('F4', 'Form shows the nine labelled sections in order', JSON.stringify(sec.map((s) => s.h)) === JSON.stringify(wantSec) && sec.every((s) => s.labelled), sec.map((s) => s.h).join(' > '));
   const groups = await page.evaluate(() => [...document.querySelectorAll('#ef .seg')].filter((g) => g.offsetParent).map((g) => ({ role: g.getAttribute('role'), label: (document.getElementById(g.getAttribute('aria-labelledby') || '') || {}).textContent || '' })));
   record('F5', 'Every answer group is a labelled radiogroup or group for screen readers', groups.length > 5 && groups.every((g) => /radiogroup|group/.test(g.role) && g.label), `${groups.length} groups; ${groups.filter((g) => !g.label).length} unlabelled`);

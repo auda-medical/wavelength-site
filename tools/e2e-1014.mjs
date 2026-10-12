@@ -177,17 +177,17 @@ if (want('P')) {
   const homeCard = await text(page, '[data-kepthome]');
   record('P10', 'After Wavelength closes with a prepared photo unsaved, Home says it is kept on this phone', /Kept on this phone/.test(homeCard || '') && /1 photo/.test(homeCard || ''), homeCard);
   await shot(page, 'P10-home-kept');
-  await page.click('[data-kepthome] a'); await page.waitForSelector('[data-earlier] .kept-note'); await sleep(300);
+  // 1.0.16: the photo was used in this scan form, which was kept with it: Review continues that scan with its own
+  // photo, and nothing else comes in (no recovery tray offered, since nothing is waiting there).
+  await page.click('[data-kepthome] [data-kfform]'); await page.waitForSelector('#ef'); await sleep(900);
   const note = await text(page, '[data-earlier]');
-  const before = await page.$$eval('#gal img', (i) => i.length);
-  record('P11', 'The scan form offers it back with Add to this scan or Discard, and adds nothing by itself', /Kept from before Wavelength closed/.test(note) && /Add to this scan/.test(note) && before === 0, `${note} | images in the scan before choosing: ${before}`);
-  await shot(page, 'P11-earlier-notice');
-  await page.click('[data-addearlier]'); await sleep(500);
-  const after = await page.$$eval('#gal img', (i) => i.length);
+  const after = await page.$$eval('#gal button:not(.kept):not(.add)', (i) => i.length);
+  record('P11', 'Review continues the unfinished scan with its own prepared photo, and nothing else comes in by itself', after === 1 && !/Kept on this phone, not part of any scan/.test(note || '') && (await page.$$eval('#gal .kept', (l) => l.length)) === 0, `images: ${after} | note: ${note}`);
+  await shot(page, 'P11-continued-scan');
   await page.click('label[for=t0]').catch(() => {}); await sleep(300);
   await saveScan(page);
   const st = await stored(page, acc.id), d3 = await drafts(page, acc.id);
-  record('P12', 'Add to this scan, then Save: the photo is saved with the scan (annotation kept) and the safety copy is gone', after === 1 && st.length === 1 && st[0].ann === 1 && d3.length === 0, JSON.stringify({ after, st, d3 }));
+  record('P12', 'Save: the photo is saved with the scan once (annotation kept) and the safety copy is gone', after === 1 && st.length === 1 && st[0].ann === 1 && d3.length === 0, JSON.stringify({ after, st, d3 }));
   // P13 an unedited photo chosen from the gallery: leaving is immediate (the original is still in the gallery), nothing kept.
   await openPhoto(page, img);
   await back(page); await sleep(400);
@@ -205,16 +205,22 @@ if (want('P')) {
   await page.evaluate(() => window.__fire('App', 'appStateChange', { isActive: false })); await sleep(300); // leaving the app keeps at once
   const dk = await drafts(page, acc.id);
   await page.evaluate(() => { history.replaceState(null, '', '#/'); }); await page.reload(); await page.waitForSelector('nav.tabs'); await sleep(1500);
-  await page.click('[data-kepthome] a'); await page.waitForSelector('[data-addearlier]'); await page.click('[data-addearlier]'); await sleep(500);
-  const addedNote = await text(page, '[data-earlier]');
-  // The note appears only while the application is still to be chosen. Since the review, an earlier step's typed form is
-  // itself kept, and Review continues it with its application chosen, so Images are already showing.
+  // 1.0.16: nothing had been typed in that scan, so the photo belongs to no kept scan form: it waits in the recovery tray,
+  // is chosen there for a scan, and opens again where it was left.
+  const card16 = await text(page, '[data-kepthome]');
+  // If the scan form itself was kept (something was typed or chosen in it), Review continues it with the photo as an
+  // Unfinished tile; otherwise the photo is in the tray and is chosen there. Either way it is never added by itself.
+  let row16 = '';
+  if (await page.$('[data-kepthome] [data-kftray]')) { await page.click('[data-kepthome] [data-kftray]'); await page.waitForSelector('.tray-it'); await sleep(600); row16 = await text(page, '.tray-it'); await page.check('.tray-it input'); await page.click('[data-tradd]'); }
+  else { row16 = 'with its scan'; await page.click('[data-kepthome] [data-kfform]'); }
+  await page.waitForSelector('#ef'); await sleep(1200);
   const restShown = await page.evaluate(() => !document.querySelector('#rest').hidden);
   if (!restShown) await page.click('label[for=t0]');
   await page.waitForSelector('#gal .kept');
+  const addedNote = `${card16} | ${row16}`;
   await page.click('#gal .kept'); await page.waitForSelector('.editor canvas'); await sleep(600); await page.click('.editor [data-tab=annotate]');
   const back16 = await chips(page);
-  record('P16', 'Wavelength closed with the editor open (after the app was paused): the photo and its dot come back', dk.length === 1 && dk[0].ann === 1 && back16.join() === 'Dot' && (restShown || /under Images once you choose/.test(addedNote || '')), JSON.stringify({ restShown, kept: dk, back: back16, addedNote }));
+  record('P16', 'Wavelength closed with the editor open (after the app was paused): the photo and its dot come back', dk.length === 1 && dk[0].ann === 1 && back16.join() === 'Dot' && /1 photo/.test(addedNote) && /Kept for later|with its scan/.test(addedNote), JSON.stringify({ restShown, kept: dk, back: back16, addedNote }));
   await page.click('.editor [data-a=cancel]'); await page.click('.editor [data-cf=discard]'); await sleep(300);
   // P17 re-editing a saved photo: Back with changes asks Discard changes (no Keep for later); the saved photo stays.
   await go(page, '#/log'); await sleep(500);
@@ -248,10 +254,12 @@ if (want('P')) {
   await page.click('label[for=t0]').catch(() => {}); await page.evaluate(() => { const i = document.querySelector('input[name=supervision]'); i.checked = true; i.dispatchEvent(new Event('change', { bubbles: true })); });
   await page.click('form button[type=submit]'); await sleep(400);
   const q19 = await text(page, '.sheet h2');
-  record('P19', 'Saving a scan with an unfinished clip asks first (Finish them first or Save without them)', /Save without the unfinished 1 clip/.test(q19 || ''), q19);
+  // 1.0.16 wording: it says the clip will not be saved in this scan, and offers to finish it, keep it for later or go back.
+  const b19 = await page.$$eval('.sheet .btns button', (b) => b.map((x) => x.textContent));
+  record('P19', 'Saving a scan with an unfinished clip asks first: not saved in this scan; Finish them now, Save and keep them for later, Go back', q19 === 'Not finished: 1 clip' && /will not be saved in this scan/.test((await text(page, '.sheet p')) || '') && b19.join('|') === 'Finish them now|Save, and keep them for later|Go back', JSON.stringify({ q19, b19 }));
   await page.click('.sheet [data-anyway]'); await sleep(1500);
   const d19 = await drafts(page, acc.id);
-  record('P20', 'Saved without it: the clip stays kept on this phone, ready to finish later', d19.length === 1 && d19[0].stage === 'later', JSON.stringify(d19));
+  record('P20', 'Saved without it: the clip stays kept on this phone (back in the recovery tray), ready to finish later', d19.length === 1 && d19[0].stage === 'later' && d19[0].formKey === 'tray', JSON.stringify(d19));
   await ctx.close();
 }
 

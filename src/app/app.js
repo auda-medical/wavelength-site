@@ -1830,7 +1830,9 @@
         later: function () { DRAFT.list().then(function (l) { var x = l.find(function (y) { return y.media.id === m.id; }); DRAFT.state(m.id, Object.assign({}, x && x.state, { stage: 'later' })).then(loadKept); }); toast(clip ? T('Clip kept on this phone. Finish it from this scan.') : T('Photo kept on this phone. Finish it from this scan.'), 3500); },
         discard: function () { DRAFT.drop(m.id).then(loadKept); } };
       return (clip ? editClip(file, opts) : editImage(file, opts)).then(function (res) {
-        if (res) { res.id = uid(); res.fromTray = !!m.fromTray; draftImages.push(res); form.dataset.dirty = '1'; DRAFT.drop(m.id); DRAFT.ready(formKey, res, inst); }
+        // 1.0.16: the scan form is kept at once with its new photo, so if Wavelength closes now the photo comes back
+        // with its scan (Review), not on its own.
+        if (res) { res.id = uid(); res.fromTray = !!m.fromTray; draftImages.push(res); form.dataset.dirty = '1'; DRAFT.drop(m.id); DRAFT.ready(formKey, res, inst); keepForm(true); }
         loadKept();
         return res;
       });
