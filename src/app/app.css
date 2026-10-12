@@ -1028,3 +1028,47 @@ html[data-theme="dark"] .sheet.pop { box-shadow: 0 12px 32px rgba(0,0,0,.45); }
 .tray-view-m { min-height: 0; display: grid; place-items: center; }
 .tray-view-m img, .tray-view-m video { max-width: 100%; max-height: 100%; object-fit: contain; }
 .tray-view-tx { margin: 0; font-size: 14px; text-align: center; }
+
+/* 1.0.17: Annotation controls. Size and Rotation in one group. Side by side when the group is at least 30em wide
+   (its own width and text size decide, not the device: enlarged text needs more room, so they stack sooner);
+   stacked otherwise. Rotation is left out for what cannot turn, and Size then has the whole width. */
+.editor .ed-row.ed-opts { display: flex; align-items: center; gap: 14px; }
+.editor .ed-ctls { container-type: inline-size; margin-top: 4px; }
+.editor .ed-ctlgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px 22px; }
+@container (min-width: 30em) { .editor .ed-ctlgrid:not(.one) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.editor .ed-ctl { display: grid; gap: 2px; min-width: 0; }
+.editor .ed-ctl .ed-szhead { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.editor .ed-ctl .ed-szrow { display: flex; }
+.editor .ed-rot input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 44px; margin: 0; background: transparent; cursor: pointer; --fill: 50%; }
+.editor .ed-size input[type=range] { height: 44px; }
+.editor .ed-rot input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: rgba(255,255,255,.22); }
+.editor .ed-rot input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px; margin-top: -11px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.editor .ed-rot input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: rgba(255,255,255,.22); }
+.editor .ed-rot input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.editor .ed-rot input[type=range]:focus-visible { outline: 2px solid var(--teal-l); outline-offset: 2px; border-radius: 6px; }
+.editor .ed-rot input[type=range]:disabled { cursor: default; }
+.editor .ed-rot.off .ed-sztrack, .editor .ed-rot.off .sz-end { opacity: .45; }
+.editor .ed-rotval { color: #DCE4EC; font-variant-numeric: tabular-nums; }
+.editor .ed-rot.off .ed-rotval { color: #9DABBA; }
+.editor.working .ed-rot { opacity: .45; pointer-events: none; }
+/* The selection outline turns about the annotation's centre. */
+.editor .ann-sel { transform-origin: 50% 50%; }
+/* Under the picture when the picture and the tools are side by side; kept in place (not shown) outside Annotate, so the
+   picture does not change size between modes. */
+.editor > .ed-ctlslot { display: none; }
+@media (min-width: 700px) and (min-aspect-ratio: 4/5) {
+  .editor { grid-template-rows: auto minmax(0, 1fr) auto auto; }
+  .editor > .bar-bot { grid-row: 2 / span 3; }
+  .editor > .ed-ctlslot { display: block; grid-column: 1; grid-row: 4; padding: 4px 18px calc(var(--safe-b) + 8px); border-top: 1px solid rgba(255,255,255,.08); }
+  .editor:not([data-mode="annotate"]) > .ed-ctlslot { visibility: hidden; }
+  .editor.clip > .clipbar { padding-bottom: 8px; }
+}
+/* The 1.0.14 placement of the Size heading and slider in the colour grid no longer applies inside the group. */
+.editor .ed-ctl .ed-szhead, .editor .ed-ctl .ed-szrow { grid-column: auto; grid-row: auto; }
+/* Side by side, each slider has the whole width of its half: the end words go under the track. */
+@container (min-width: 30em) {
+  .editor .ed-ctlgrid:not(.one) .ed-szrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "track track track" "lo . hi"; row-gap: 0; }
+  .editor .ed-ctlgrid:not(.one) .ed-szrow > .sz-end:first-child { grid-area: lo; font-size: 11px; }
+  .editor .ed-ctlgrid:not(.one) .ed-szrow > .ed-sztrack { grid-area: track; }
+  .editor .ed-ctlgrid:not(.one) .ed-szrow > .sz-end:last-child { grid-area: hi; font-size: 11px; }
+}

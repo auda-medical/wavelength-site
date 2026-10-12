@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* El residente fijó su propio objetivo para este módulo, distinto de la cifra del programa.",
 "12": "12",
@@ -2556,5 +2556,13 @@
 "one": "{n} seleccionado",
 "other": "{n} seleccionados"
 },
-"Photo": "Foto"
+"Photo": "Foto",
+"Annotation controls": "Ajustes de la anotación",
+"Rotation": "Rotación",
+"Straight": "Recto",
+"{n}° left": "{n}° a la izquierda",
+"{n}° right": "{n}° a la derecha",
+"Select text, a label, a pictogram or a box": "Seleccione un texto, una etiqueta, un pictograma o un recuadro",
+"Drag the label where you want it. Size makes it smaller or larger; Rotation turns it.": "Arrastre la etiqueta adonde quiera. El tamaño la hace más pequeña o más grande; la rotación la gira.",
+"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Arrastre el pictograma adonde quiera. El tamaño lo hace más pequeño o más grande; la rotación lo gira."
 }

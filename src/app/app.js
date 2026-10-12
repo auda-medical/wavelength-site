@@ -2164,11 +2164,20 @@
     var st = JSON.parse(JSON.stringify(cfg.start || cfg.state)), st0 = JSON.stringify(cfg.state), undo = [], redo = [], sel = -1, tool = '', pending = null;
     var clip = cfg.kind === 'clip';
     var tb = function (k, label, full, attrs) { return '<button type="button" class="tool et" ' + attrs + ' aria-label="' + esc(full || label) + '">' + ET[k] + '<span>' + esc(label) + '</span></button>'; };
+    // 1.0.17: Size and Rotation together, one compact group. Side by side when the group is wide enough for both
+    // (CSS, by its own width and text size), stacked otherwise; Rotation only for what can turn.
+    var ctlsHtml = '<div class="ed-ctls" data-ctls role="group" aria-label="' + esc(T('Annotation controls')) + '"><div class="ed-ctlgrid">' +
+      '<div class="ed-size ed-ctl"><div class="ed-szhead"><label for="edsz">' + esc(T('Size')) + '</label><span class="ed-szfor" id="edszfor" data-szfor></span></div>' +
+      '<div class="ed-szrow"><span class="sz-end" aria-hidden="true">' + esc(T('Smaller')) + '</span><span class="ed-sztrack"><input type="range" id="edsz" data-szr min="' + EDT.POS.min + '" max="' + EDT.POS.max + '" step="1" value="0" aria-describedby="edszfor"></span><span class="sz-end" aria-hidden="true">' + esc(T('Larger')) + '</span></div></div>' +
+      '<div class="ed-rot ed-ctl" data-rotctl><div class="ed-szhead"><label for="edrot">' + esc(T('Rotation')) + '</label><span class="ed-szfor ed-rotval" id="edrotval" data-rotval aria-hidden="true"></span></div>' +
+      '<div class="ed-szrow"><span class="sz-end" aria-hidden="true">' + esc(T('Left')) + '</span><span class="ed-sztrack"><input type="range" id="edrot" data-rotr min="' + EDT.ROT.min + '" max="' + EDT.ROT.max + '" step="1" value="0"></span><span class="sz-end" aria-hidden="true">' + esc(T('Right')) + '</span></div></div>' +
+      '</div></div>';
     var el = document.createElement('div'); el.className = 'editor' + (clip ? ' clip' : ''); el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', cfg.title);
     el.innerHTML = '<div class="bar-top"><button type="button" class="tool" data-a="cancel">' + esc(T('Cancel')) + '</button><b class="ed-title">' + esc(cfg.title) + '</b><button type="button" class="tool" data-a="undo" disabled>' + esc(T('Undo')) + '</button><button type="button" class="tool" data-a="redo" disabled>' + esc(T('Redo')) + '</button></div>' +
       '<div class="stage"><canvas tabindex="0" aria-label="' + esc(T('Picture being edited')) + '"></canvas><div class="sel" hidden></div><div class="ann-sel" hidden><span class="h" data-h="a"></span><span class="h" data-h="b"></span></div>' +
         '<div class="ed-zoom" role="group" aria-label="' + esc(T('Zoom')) + '"><button type="button" data-z="out" aria-label="' + esc(T('Zoom out')) + '">' + ET.zout + '</button><button type="button" class="ed-zval" data-z="fit"></button><button type="button" data-z="in" aria-label="' + esc(T('Zoom in')) + '">' + ET.zin + '</button></div></div>' +
       (cfg.media || '') +
+      '<div class="ed-ctlslot" data-ctlslot></div>' +
       '<div class="bar-bot">' +
       '<div class="ed-modes" role="tablist" aria-label="' + esc(T('Editing mode')) + '">' +
         '<button type="button" role="tab" class="ed-mode" data-tab="annotate" aria-selected="false">' + ET.annotate + '<span>' + esc(T('Annotate')) + '</span></button>' +
@@ -2181,9 +2190,8 @@
         '<p class="ed-note2">' + esc(T('Redaction is solid and is saved in the picture itself. Blurring is not offered, because it can leave identifiers readable.')) + '</p></div>' +
       '<div class="ed-panel" data-panel="annotate" hidden><div class="ed-tools ann-tools" role="toolbar" aria-label="' + esc(T('Annotation tools')) + '">' + tb('text', T('Text'), T('Add your own text'), 'data-at="text"') + tb('label', T('Label'), T('Add a clinical label'), 'data-at="label"') + tb('arrow', T('Arrow'), T('Draw an arrow'), 'data-at="arrow"') + tb('dot', T('Dot'), T('Place a pointer dot'), 'data-at="dot"') + tb('circle', T('Circle'), T('Draw a circle'), 'data-at="circle"') + tb('box', T('Box'), T('Draw a box'), 'data-at="rect"') + tb('picto', T('Pictogram'), T('Add a pictogram'), 'data-at="picto"') + '</div>' +
         '<div class="ed-row ed-opts"><div class="ed-colour"><button type="button" class="ed-colpick" data-colpick aria-haspopup="dialog" aria-label="' + esc(T('Choose a colour')) + '"></button><span class="ed-colnow" data-colnow role="img"></span></div>' +
-          '<div class="ed-size"><div class="ed-szhead"><label for="edsz">' + esc(T('Annotation size')) + '</label><span class="ed-szfor" id="edszfor" data-szfor></span></div>' +
-          '<div class="ed-szrow"><span class="sz-end" aria-hidden="true">' + esc(T('Smaller')) + '</span><span class="ed-sztrack"><input type="range" id="edsz" data-szr min="' + EDT.POS.min + '" max="' + EDT.POS.max + '" step="1" value="0" aria-describedby="edszfor"></span><span class="sz-end" aria-hidden="true">' + esc(T('Larger')) + '</span></div></div></div>' +
-        '<div class="ed-selbar" hidden><p class="ed-applied" data-selname aria-live="polite"></p><div class="ed-selacts"><button type="button" class="tool" data-sa="edit">' + esc(T('Edit text')) + '</button><button type="button" class="tool" data-sa="bg">' + esc(T('Background')) + '</button><button type="button" class="tool" data-sa="turn">' + esc(T('Turn')) + '</button><button type="button" class="tool" data-sa="flip">' + esc(T('Mirror')) + '</button><button type="button" class="tool" data-sa="del">' + esc(T('Delete')) + '</button><button type="button" class="tool apply" data-sa="done">' + esc(T('Done')) + '</button></div>' +
+          '</div><div class="ed-ctlhome" data-ctlhome>' + ctlsHtml + '</div>' +
+        '<div class="ed-selbar" hidden><p class="ed-applied" data-selname aria-live="polite"></p><div class="ed-selacts"><button type="button" class="tool" data-sa="edit">' + esc(T('Edit text')) + '</button><button type="button" class="tool" data-sa="bg">' + esc(T('Background')) + '</button><button type="button" class="tool" data-sa="flip">' + esc(T('Mirror')) + '</button><button type="button" class="tool" data-sa="del">' + esc(T('Delete')) + '</button><button type="button" class="tool apply" data-sa="done">' + esc(T('Done')) + '</button></div>' +
         (clip ? '<div class="ed-seg ed-when" role="radiogroup" aria-label="' + esc(T('When it shows')) + '"><button type="button" role="radio" data-when="all">' + esc(T('Whole clip')) + '</button><button type="button" role="radio" data-when="from">' + esc(T('From here')) + '</button><button type="button" role="radio" data-when="until">' + esc(T('Until here')) + '</button></div><p class="ed-note2" data-whentext></p>' : '') + '</div>' +
         '<div class="ann-list" data-annlist></div></div>' +
       '<p class="ed-err" data-err role="alert" hidden></p>' +
@@ -2219,14 +2227,14 @@
       $$('[data-rc]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.rc === EDP.redact)); });
       var cnow = (st.ann[sel] && EDT.hexOf(st.ann[sel].color)) || EDP.color, cn = $('[data-colnow]', el);
       cn.style.setProperty('--c', cnow); cn.setAttribute('aria-label', T('Colour in use: {c}', { c: cnow }));
-      showSize();
+      showSize(); showRot();
       $$('[data-at]', el).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.at === tool)); });
       var a = st.ann[sel], sb = $('.ed-selbar', el);
       sb.hidden = !a;
       if (a) {
         $('[data-selname]', el).textContent = T('Selected: {what}', { what: EDT.describe(a, T) });
         $('[data-sa=edit]', el).hidden = a.type !== 'text'; $('[data-sa=bg]', el).hidden = a.type !== 'text';
-        $('[data-sa=turn]', el).hidden = ['text', 'picto', 'rect'].indexOf(a.type) < 0; $('[data-sa=flip]', el).hidden = a.type !== 'picto';
+        $('[data-sa=flip]', el).hidden = a.type !== 'picto';
         if (clip) {
           var w = a.t0 == null && a.t1 == null ? 'all' : a.t0 != null && a.t1 == null ? 'from' : a.t1 != null && a.t0 == null ? 'until' : 'range';
           $$('[data-when]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.when === w)); });
@@ -2316,6 +2324,7 @@
       var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / cv.width, b = EDT.annBounds(mctx, a, cv.width, cv.height);
       asel.hidden = false;
       asel.style.left = (r.left - sr.left + b.x * k) + 'px'; asel.style.top = (r.top - sr.top + b.y * k) + 'px'; asel.style.width = b.w * k + 'px'; asel.style.height = b.h * k + 'px';
+      var rr = EDT.rotOf(a); asel.style.transform = rr ? 'rotate(' + rr + 'deg)' : ''; // 1.0.17: turned with it, about its centre
       var ha = $('[data-h=a]', asel), hb = $('[data-h=b]', asel);
       if (a.type === 'arrow') {
         ha.hidden = false; hb.hidden = false;
@@ -2334,6 +2343,13 @@
         var move = function (e2) {
           var p = at(e2), W = cv.width, H = cv.height;
           if (a.type === 'arrow') { if (which === 'a') { a.x = p.x / W; a.y = p.y / H; } else { a.x2 = p.x / W; a.y2 = p.y / H; } }
+          else if (a.type === 'rect' && EDT.rotOf(a)) {
+            // 1.0.17: a turned box grows and shrinks about its centre, in its own frame, so it stays where it was and keeps its angle.
+            var ox = (orig.x + orig.w / 2) * W, oy = (orig.y + orig.h / 2) * H, th = -EDT.rotOf(a) * Math.PI / 180, ddx = p.x - ox, ddy = p.y - oy;
+            var lx = ddx * Math.cos(th) - ddy * Math.sin(th), ly = ddx * Math.sin(th) + ddy * Math.cos(th);
+            var nw = Math.max(0.02, Math.min(1, 2 * Math.abs(lx) / W)), nh = Math.max(0.02, Math.min(1, 2 * Math.abs(ly) / H));
+            a.w = nw; a.h = nh; a.x = orig.x + orig.w / 2 - nw / 2; a.y = orig.y + orig.h / 2 - nh / 2;
+          }
           else if (a.type === 'circle' || a.type === 'rect') { a.w = Math.max(0.02, Math.min(1 - a.x, p.x / W - a.x)); a.h = Math.max(0.02, Math.min(1 - a.y, p.y / H - a.y)); }
           paintSoon();
         };
@@ -2365,7 +2381,7 @@
       if (pending === 'edit' && a && a.type === 'text') a.text = text;
       else { st.ann.push(newAnn({ type: 'text', text: text, x: 0.5, y: 0.5 })); sel = st.ann.length - 1; }
       closePop(); redraw();
-      tip(T('Drag the label where you want it. Annotation size makes it smaller or larger.'));
+      tip(T('Drag the label where you want it. Size makes it smaller or larger; Rotation turns it.'));
     };
     var textPop = function (initial) {
       openPop('<form data-tf><label class="ed-lab" for="edtx">' + esc(T('Your text')) + '</label><input id="edtx" type="text" maxlength="80" autocomplete="off" value="' + esc(initial || '') + '"><p class="ed-note2">' + esc(T('Never type a patient name, number or date of birth.')) + '</p><div class="ed-popbtns"><button type="button" class="tool" data-x>' + esc(T('Cancel')) + '</button><button class="tool apply">' + esc(initial ? T('Change') : T('Add')) + '</button></div></form>', function (p) {
@@ -2395,7 +2411,7 @@
         $('[data-x]', p).onclick = closePop;
         $$('[data-pic]', p).forEach(function (b) {
           var c = $('canvas', b), g = c.getContext('2d'); EDT.drawAnn(g, { type: 'picto', picto: b.dataset.pic, x: 0.5, y: 0.5, size: 1, color: 'white' }, 96, 96);
-          b.onclick = function () { change(); st.ann.push(newAnn({ type: 'picto', picto: b.dataset.pic, x: 0.8, y: 0.2 })); sel = st.ann.length - 1; closePop(); redraw(); tip(T('Drag the pictogram where you want it. Annotation size makes it smaller or larger.')); };
+          b.onclick = function () { change(); st.ann.push(newAnn({ type: 'picto', picto: b.dataset.pic, x: 0.8, y: 0.2 })); sel = st.ann.length - 1; closePop(); redraw(); tip(T('Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.')); };
         });
       });
     };
@@ -2435,7 +2451,6 @@
         if (d.sa === 'del') { change(); st.ann.splice(sel, 1); sel = -1; return redraw(); }
         if (d.sa === 'edit') { pending = 'edit'; return textPop(a.text); }
         if (d.sa === 'bg') { change(); a.bg = a.bg === 'box' ? 'outline' : 'box'; if (a.bg === 'box' && EDP.bgc) a.bgc = EDP.bgc; else delete a.bgc; EDP.bg = a.bg; return redraw(); }
-        if (d.sa === 'turn') { change(); a.rot = ((a.rot || 0) + 15) % 360; return redraw(); }
         if (d.sa === 'flip') { change(); a.flip = !a.flip; return redraw(); }
       }
       if (d.when && a) {
@@ -2464,7 +2479,9 @@
     }
     function setSize(v) {
       var a = st.ann[sel]; if (!a) return;
-      var p = EDT.snapPos(v);
+      // 1.0.17: the snap to the middle helps a finger or the mouse; arrow keys move one step at a time (before, a key
+      // press next to the middle was pulled straight back to it, so the slider could not be moved by keys at all).
+      var p = szDrag ? EDT.snapPos(v) : Math.round(Number(v) || 0);
       if (szBefore === null) szBefore = snap();
       a.size = EDT.sizeAt(a.type, p); paintSoon();
       showSize();
@@ -2473,8 +2490,53 @@
       if (szBefore !== null && szBefore !== snap()) { undo.push(szBefore); if (undo.length > 60) undo.shift(); redo = []; }
       szBefore = null; redraw();
     }
+    var szDrag = false;
+    szIn.addEventListener('pointerdown', function () { szDrag = true; });
+    szIn.addEventListener('keydown', function () { szDrag = false; });
     szIn.addEventListener('input', function () { if (!cfg.locked()) setSize(szIn.value); });
     szIn.addEventListener('change', function () { if (!cfg.locked()) { setSize(szIn.value); commitSize(); } });
+    // ---- Rotation (1.0.17): text and labels, pictograms and boxes, from 180° left to 180° right, Straight in the
+    // middle. The selected annotation turns as the slider moves, on a photo or a clip; one drag is one step of Undo.
+    // Arrows (their ends set the angle), dots and circles have no Rotation. Nothing selected: shown, not usable. ----
+    var rotIn = $('[data-rotr]', el), rotBefore = null, rotWasStraight = true;
+    var rotWords = function (n) { return n === 0 ? T('Straight') : n < 0 ? T('{n}° left', { n: -n }) : T('{n}° right', { n: n }); };
+    function showRot() {
+      var a = st.ann[sel], can = !a || EDT.canRotate(a);
+      $('[data-rotctl]', el).hidden = !can;
+      $('.ed-ctlgrid', el).classList.toggle('one', !can);
+      if (!can) return;
+      if (rotBefore === null) rotIn.value = a ? EDT.rotOf(a) : 0;
+      var n = rotDrag ? EDT.snapRot(rotIn.value) : EDT.normRot(rotIn.value);
+      rotIn.disabled = !a || cfg.locked();
+      rotIn.setAttribute('aria-valuetext', rotWords(n));
+      rotIn.style.setProperty('--fill', (Number(rotIn.value) - EDT.ROT.min) / (EDT.ROT.max - EDT.ROT.min) * 100 + '%');
+      $('[data-rotval]', el).textContent = a ? rotWords(n) : T('Select text, a label, a pictogram or a box');
+      $('.ed-rot', el).classList.toggle('off', !a);
+    }
+    function setRot(v) {
+      var a = st.ann[sel]; if (!a || !EDT.canRotate(a)) return;
+      if (rotBefore === null) rotBefore = snap();
+      var n = rotDrag ? EDT.snapRot(v) : EDT.normRot(v); // keys: exact degrees; a finger or the mouse: Straight snaps
+      if (n) a.rot = n; else delete a.rot; // straight is no turn at all, as for annotations made before 1.0.17
+      if (!n && !rotWasStraight) NAT.haptic(); // a light tick on reaching Straight
+      rotWasStraight = !n;
+      paintSoon(); showRot();
+    }
+    function commitRot() {
+      if (rotBefore !== null && rotBefore !== snap()) { undo.push(rotBefore); if (undo.length > 60) undo.shift(); redo = []; }
+      rotBefore = null; redraw();
+    }
+    rotIn.addEventListener('input', function () { if (!cfg.locked()) setRot(rotIn.value); });
+    rotIn.addEventListener('change', function () { if (!cfg.locked()) { setRot(rotIn.value); commitRot(); } });
+    var rotDrag = false;
+    rotIn.addEventListener('pointerdown', function () { var a = st.ann[sel]; rotWasStraight = !EDT.rotOf(a); rotDrag = true; });
+    rotIn.addEventListener('keydown', function () { rotDrag = false; });
+    // Where the controls sit: under the picture when the editor shows the picture beside the tools (unfolded,
+    // landscape, a tablet), so the annotation can be watched as it turns; in the Annotate panel otherwise.
+    var ctls = $('[data-ctls]', el), ctlHome = $('[data-ctlhome]', el), ctlSlot = $('[data-ctlslot]', el);
+    var SIDE = window.matchMedia ? window.matchMedia('(min-width: 700px) and (min-aspect-ratio: 4/5)') : null;
+    function placeCtls() { var want = SIDE && SIDE.matches ? ctlSlot : ctlHome; if (ctls.parentNode !== want) want.appendChild(ctls); }
+    placeCtls();
 
     // ---- Colour (1.0.14): one control. The square opens a continuous spectrum, with greys, the three colours used
     // last and Set as default colour; the circle beside it shows the colour in use. A selected annotation changes at
@@ -2649,7 +2711,7 @@
       ev.preventDefault();
       zoomBy(Math.exp(-ev.deltaY * (ev.deltaMode ? 0.05 : ev.ctrlKey ? 0.01 : 0.0018)), spt(ev));
     }, { passive: false });
-    var onResize = function () { setView(view); };
+    var onResize = function () { placeCtls(); setView(view); };
     // The zoom buttons step aside while a finger or the mouse is on the picture, so they never hide what is being
     // drawn or covered near the corner.
     var held = {};

@@ -288,14 +288,14 @@ test('the app shows the Annotation size slider (Smaller to Larger, no percentage
   const app = readFileSync(new URL('../src/app/app.js', import.meta.url), 'utf8');
   assert.ok(!/data-sz="/.test(app) && !/\['s', 'S', 'Small'\]/.test(app), 'the S, M and L buttons are gone');
   assert.match(app, /<input type="range" id="edsz" data-szr min="' \+ EDT\.POS\.min/);
-  assert.match(app, /T\('Annotation size'\)/);
+  assert.match(app, /T\('Size'\)/, '1.0.17: Size, beside Rotation in the Annotation controls');
   assert.match(app, /T\('Smaller'\)[\s\S]*T\('Larger'\)/);
   assert.ok(!/data-szreset|Annotation size \{n\}%/.test(app), 'no percentage on the slider');
   assert.ok(!/data-col="/.test(app) && /data-colpick/.test(app) && /data-colnow/.test(app), 'one colour control instead of four swatches');
   assert.match(app, /data-z="out"[\s\S]*data-z="fit"[\s\S]*data-z="in"/);
   for (const lang of ['fr', 'es', 'de', 'it', 'pl', 'ar', 'ru', 'zh']) {
     const t = JSON.parse(readFileSync(new URL(`../src/app/i18n/${lang}.json`, import.meta.url), 'utf8'));
-    for (const k of ['Annotation size', 'Smaller', 'Larger', 'Keep editing', 'Keep for later', 'Leave this photo?', 'Choose a colour', 'Zoom in', 'Zoom out', 'Zoom {n} times. Tap to show the whole picture.']) assert.ok(t[k], `${lang}: ${k}`);
+    for (const k of ['Size', 'Rotation', 'Straight', '{n}° left', '{n}° right', 'Smaller', 'Larger', 'Keep editing', 'Keep for later', 'Leave this photo?', 'Choose a colour', 'Zoom in', 'Zoom out', 'Zoom {n} times. Tap to show the whole picture.']) assert.ok(t[k], `${lang}: ${k}`);
   }
 });
 
