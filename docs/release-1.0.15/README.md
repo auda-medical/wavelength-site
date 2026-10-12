@@ -24,6 +24,7 @@ No new permission, plugin or native code. No change to what is stored on the pho
 
 ### For the reviewer and the owner
 
+- **Release E first for the review screens.** Beyond 1.0.14, the Android line adds the commercial "review" screens: opening a sign-off or assessment request marks it "Under review", and a supervisor can **Decline** it with a reason (`/api/app/supervise/request/accept` and `/decline`, migration 0015). On today's server the marking is skipped silently but Decline shows an error. Install on phones and start internal testing after Release E (commercial integration) is live.
 - **Server first.** The guide source-check line, the pending-review notice and the directory search come from the
   server (Release B: `5de454a` with migration 0016). Against today's live Worker (Release A) the app shows only the
   two bundled dates and no directory box: it never breaks and never claims a check (proved: section 2). So private
@@ -46,9 +47,10 @@ No new permission, plugin or native code. No change to what is stored on the pho
 | Regression plan steps 3 and 4 (`docs/release-1.0.14/regression-plan.md`) | Steps 3 and 4, rerun on a quiet machine where noted:
   - `e2e-1014` 69/69; `e2e-1013` (Z, N) 28/28; `e2e-1012` 74/74; `e2e-1010` 44/44; `e2e-native` 30/30; `e2e-offline` 16/16; `e2e-about` 15/15; `e2e-upgrade` (1.0.14 APK assets → 1.0.15) 12/12; `theme-shots` both themes pass.
   - **Changed on purpose:** `e2e-1012` G2 now expects "Last clinically reviewed: 4 Oct 2026" instead of "Checked against official sources 4 Oct 2026": the source-status patch never claims a source check that the server has not made.
-  - `e2e-1011`: 40 pass, stops at E6 by design (as for 1.0.14). N11 (reconnect storm) and N12 (sync over mobile data with the VPN on) **depend on machine load**: under heavy load they failed; on a quieter machine 1.0.15 passed both (run 1); run 2 failed N12 only because the pill was read 551 ms after the server already held the entry. The 1.0.14 release bundle, in the same conditions, also failed N11 once. Not a 1.0.15 regression; worth an emulator run (step 5) before release. |
+  - `e2e-1011`: 40 pass, stops at E6 by design (as for 1.0.14). **N11 and N12, investigated 12 Oct on a quiet machine:** N12 (sync over mobile data with the VPN on) always syncs; its rare failures were the check reading the pill in the instant before the app processed the server's answer (a diagnostic that waits up to 3 s found "Synced" at the first read in 4/4 runs). N11 (30 network callbacks in 3 s) sometimes counts 3 sync attempts instead of at most 2, for **both** 1.0.14 and 1.0.15 (1.0.14: 2 of 6 runs; 1.0.15: 4 of 9): the sync code is identical in both; still rate-limited (3 attempts, not 30). Not a 1.0.15 regression; the check's threshold is tight.
 | Package | `aapt2 dump badging`: `uk.co.thewavelength.app`, versionCode 21, versionName 1.0.15, compile and target SDK 36, min SDK 24; unsigned (apksigner: no signature) |
-| Emulator (step 5) and Fold7 (step 6) | **Not run yet.** Emulator run needs the `wlfold` AVD; the phone rows are the owner's (`docs/release-1.0.14/checklist-fold7.md` plus section 5 below) |
+| Emulator (step 5), 12 Oct, foldable `wlfold` (Android 16, rootable), airplane mode, emulator-only debug build with WebView debugging (scratch copy) | `e2e-1014-emulator.mjs` **22/22 in 5 of 6 runs, including three consecutive (runs 4 to 6); run 3 stopped at its first step because the emulator's soft keyboard did not open (screen height unchanged), the same check passing in every other run**; `e2e-1015-upgrade-emulator.mjs` (new: 1.0.13 directly to 1.0.15, the owner's real route) **5/5**: same install, still signed in, a 1.0.13 scan with its photo (same bytes) and unsynced state unchanged, a 1.0.13 setting kept, the unfinished-scan protection working on top |
+| Fold7 (step 6) | The owner's rows: `HQ 03-WEBSITE-AND-APPandroid-1.0.15-owner-packOWNER-SESSION-1.0.15.md` (one direct 1.0.13 to 1.0.15 session; 1.0.14 is not signed) |
 
 ## 3. Unsigned files
 
