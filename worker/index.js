@@ -23,6 +23,7 @@ import { preAuthRoute, accountsLogin, gate, accountRoutes, bootstrapRoute, withC
 import { deniedPage } from './admin/pages.js';
 import { permissionFor } from './admin/permissions.js';
 import { beacon } from './metrics.js';
+import { serveMedia } from './media.js';
 import { handleStripe } from './bookings.js';
 import { businessRoute } from './business.js';
 import { confirmListingPage, confirmListingPost } from './verification/directory-review.js';
@@ -462,6 +463,8 @@ export default {
     // Certificate PDFs are public by code; the store apps fetch them to save or share.
     if (/^\/elearning\/certificate\/[A-Z0-9-]+\.pdf$/.test(p) && req.method === 'GET') return withNative(req, await handleAcademy(req, env, ctx));
     if (p.startsWith('/elearning/') || p.startsWith('/api/')) return handleAcademy(req, env, ctx);
+    // Website films and their stills: through the Worker so that byte-range requests work (worker/media.js).
+    if (p.startsWith('/media/')) return serveMedia(req, env);
     const area = p === '/admin' || p.startsWith('/admin/') ? 'admin' : p === '/volunteer' || p.startsWith('/volunteer/') ? 'volunteer' : null;
     if (!area) return env.ASSETS.fetch(req);
     if (p === '/volunteer' || p === '/admin') return redirect(p + '/');

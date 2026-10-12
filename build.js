@@ -284,6 +284,33 @@ ${body}
 </html>`;
 }
 
+// The approved app films (October 2026), self-hosted under /media/ (worker/media.js serves byte ranges): a native player
+// with controls, playsinline, preload="metadata", a poster from the film itself, and English captions on by default
+// (selectable, from the film's own WebVTT file). Never autoplays. If the film cannot load, a download link shows.
+// Under each player, the film as text (from the same captions), folded away until asked for.
+const FILMS = {
+  app: { base: 'wavelength-app-film-v4', label: 'Wavelength logbook film: how the app works (1 minute 50 seconds)', size: '15 MB' },
+  teaser: { base: 'wavelength-free-logbook-film-v4', label: 'Wavelength free logbook film (30 seconds)', size: '4 MB' },
+};
+// One paragraph per pause of more than a second and a half in the captions.
+function filmTranscript(base) {
+  const vtt = fs.readFileSync(path.join(ROOT, 'src/media', base + '.en.vtt'), 'utf8').replace(/\r/g, '');
+  const secs = (s) => s.split(':').reduce((a, n) => a * 60 + Number(n), 0);
+  const paras = []; let last = -1;
+  for (const block of vtt.split(/\n\n+/)) {
+    const lines = block.trim().split('\n'); const i = lines.findIndex((l) => l.includes('-->'));
+    if (i < 0) continue;
+    const [a, b] = lines[i].split('-->').map((s) => secs(s.trim().split(' ')[0]));
+    const text = lines.slice(i + 1).join(' ').trim(); if (!text) continue;
+    if (last < 0 || a - last > 1.5) paras.push([]);
+    paras[paras.length - 1].push(text); last = b;
+  }
+  return paras.map((p) => `<p>${esc(p.join(' '))}</p>`).join('');
+}
+function film(kind, id, caption) {
+  const f = FILMS[kind];
+  return `<figure class="film reveal"><video id="${id}" controls playsinline preload="metadata" width="1920" height="1080" poster="/media/${f.base}-poster.jpg" aria-label="${esc(f.label)}"><source src="/media/${f.base}.mp4" type="video/mp4"><track kind="captions" srclang="en" label="English" src="/media/${f.base}.en.vtt" default><a href="/media/${f.base}.mp4">Download the film (MP4, ${f.size})</a></video><figcaption>${esc(caption)} <span class="film-fallback" role="status">The film could not load here. <a href="/media/${f.base}.mp4" download>Download it (MP4, ${f.size})</a>.</span></figcaption><details class="film-transcript"><summary>Read the film as text</summary>${filmTranscript(f.base)}</details></figure>`;
+}
 function pageHero({ eyebrow, title, lede, crumbs = [], extra = '' }) {
   const crumbHtml = crumbs.length
     ? `<nav class="crumbs rise" aria-label="Breadcrumb">${crumbs.map((c, i) => (c.href ? `<a href="${c.href}">${esc(c.label)}</a>` : `<span aria-current="page">${esc(c.label)}</span>`) + (i < crumbs.length - 1 ? '<span aria-hidden="true">/</span>' : '')).join('')}</nav>`
@@ -632,11 +659,12 @@ pages['/'] = layout({
 
 <section class="section on-dark" style="background:var(--navy)" id="free-logbook">
   <div class="wrap split">
-    <div><p class="eyebrow reveal" style="color:var(--teal-l)">The Wavelength logbook</p><h2 class="statement reveal" data-d="1" style="margin-top:22px;color:var(--cream)">Your ultrasound logbook. <span style="color:var(--teal-l)">Free to use. Designed for real clinical practice.</span></h2></div>
+    <div><p class="eyebrow reveal" style="color:var(--teal-l)">The Wavelength logbook</p><h2 class="statement reveal" data-d="1" style="margin-top:22px;color:var(--cream)">Your ultrasound logbook. <span style="color:var(--teal-l)">Free to use. Designed for real clinical practice.</span></h2>
+      ${film('teaser', 'home-film', 'The free logbook in 30 seconds. Captions on; sound when you press play.')}</div>
     <div class="reveal" data-d="2">
       <p class="lede" style="color:#D5DDE6">Scan when you work. Log when it suits you. Connect with your supervisors and see who is verified. Track your progress.</p>
       <ul class="checklist" style="margin-top:20px;color:#D5DDE6">${['Log scans from a photo or an upload, online or offline', 'Send scans to your supervisor to review when they are free, or sign off in person', 'Track RCEM, FAMUS and FUSIC targets, or editable international frameworks', 'Export a QR-verified portfolio for your e-portfolio or appraisal'].map((x) => `<li>${tick}<span>${esc(x)}</span></li>`).join('')}</ul>
-      <div class="hero-ctas" style="margin-top:26px"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="home-logbook-start">Start your free logbook ${arrow}</a><a class="btn btn-ghost light" href="/pocus-logbook/#supervision" data-m="home-logbook-how">How supervision works</a></div>
+      <div class="hero-ctas" style="margin-top:26px"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="home-logbook-start">Start your free logbook ${arrow}</a><a class="btn btn-ghost light" href="/pocus-logbook/#watch" data-m="home-logbook-how">See how the app works</a></div>
     </div>
   </div>
 </section>
@@ -1868,9 +1896,13 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
       title: 'Your portfolio, tailored to <em>your accrediting body.</em>',
       lede: 'For supported UK pathways, Wavelength arranges your scans, assessments and sign-offs around published portfolio requirements. International trackers provide editable starting frameworks that you can adapt to your local requirements. Export as PDF, Excel or CSV with a QR-verified summary.',
       crumbs: [{ label: 'Home', href: '/' }, { label: 'POCUS logbook' }],
-      extra: `<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="logbook-hero-start">Start your free logbook ${arrow}</a><a class="btn btn-ghost light" href="/app/" data-m="logbook-hero-browser">Open in your browser</a></div>
+      extra: `<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="logbook-hero-start">Start your free logbook ${arrow}</a><a class="btn btn-ghost light" href="#watch" data-film-play="app-film" data-m="logbook-hero-watch">Watch how it works</a><a class="btn btn-ghost light" href="/app/" data-m="logbook-hero-browser">Open in your browser</a></div>
       <div class="hero-meta rise"><div><b>Free</b>Logbook, sign-off and exports</div><div><b>${PATHWAYS.filter((p) => p.region === 'UK').length} UK pathways</b>Plus editable international frameworks</div><div><b>Nine languages</b>Exports in English</div><div><b>Photos stay on your phone</b>Only the written record syncs</div></div>`,
     })}
+<section class="section film-section" id="watch"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">See how it works</p><h2 class="reveal" data-d="1">Your scans should move your training forward.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:680px">Record each scan while it is fresh, request review when your supervisor is available, and keep your evidence ready for your portfolio. See how the free Wavelength ultrasound logbook fits around real clinical rotas, in under two minutes.</p></div>
+  ${film('app', 'app-film', 'A scan logged on a night shift, reviewed by a supervisor on theirs, and signed off. The people, hospital and scans in the film are fictional.')}
+</div></section>
 <section class="section"><div class="wrap split">
   <div><p class="eyebrow reveal">What it is</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">A free POCUS logbook that builds <span>your portfolio as you scan.</span></h2></div>
   <div class="reveal" data-d="2">
@@ -1892,6 +1924,11 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
     <p class="source" style="margin-top:18px">Remote review of a written record and images does not replace directly supervised scanning, observed procedures or the assessments your pathway requires, and a supervisor decides what they review and when. Sign-off in Wavelength records your supervisor’s decision; accreditation stays with your accrediting body.</p>
     <p style="margin-top:22px"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="logbook-story-start">Start your free logbook ${arrow}</a></p>
   </div>
+</div></section>
+<section class="section" id="app-screens"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">The app, screen by screen</p><h2 class="reveal" data-d="1">From the scan to the signature.</h2></div>
+  <ol class="app-steps">${[["wavelength-app-step-1-log.jpg","Log a scan","Choose the scan, tick the findings and add an image with patient details removed.","The app’s image screen: crop, annotate or redact an ultrasound image before it is saved."],["wavelength-app-step-2-request.jpg","Request review","Send it to a linked supervisor’s dashboard, or share a secure link, from your shift.","The app’s sign-off request, ready to share with a supervisor by link."],["wavelength-app-step-3-signed-off.jpg","Receive sign-off","Your supervisor reviews on their shift; the sign-off, its code and their ratings appear on the scan.","A scan in the app marked signed off by a Wavelength Verified Supervisor, with image quality and diagnostic accuracy rated good."],["wavelength-app-step-4-progress.jpg","Track and export","See what is left for your pathway, then export a portfolio with a QR-verified summary.","The app’s export screen and a verified summary showing scans, supervision and sign-offs."]].map(([img, h, p, alt], i) => `<li class="reveal" data-d="${i % 4}"><figure><img src="/media/${img}" alt="${esc(alt)}" width="960" height="540" loading="lazy" decoding="async"><figcaption><span class="ac-step-n">${i + 1}</span><b>${esc(h)}.</b> ${esc(p)}</figcaption></figure></li>`).join('')}</ol>
+  <p class="source" style="margin-top:14px">Screens from the Wavelength app with fictional people and illustrative images, never a patient.</p>
 </div></section>
 <section class="section sand"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal">From first scan to finished portfolio</p><h2 class="reveal" data-d="1">Six steps, one app.</h2></div>

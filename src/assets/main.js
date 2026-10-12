@@ -516,3 +516,24 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') docu
     f.addEventListener('focusin', function () { if (started) return; started = true; send({ t: 'ev', n: 'enquiry_start', l: f.getAttribute('data-m-form'), p: location.pathname }); });
   });
 })();
+
+// App films (October 2026): "Watch how it works" brings the film into view and starts it (the person's own click, so
+// sound is allowed; nothing autoplays). With reduced motion it jumps instead of scrolling smoothly. If a film cannot
+// load, its caption shows a download link.
+document.querySelectorAll('[data-film-play]').forEach(function (b) {
+  b.addEventListener('click', function (e) {
+    var v = document.getElementById(b.getAttribute('data-film-play'));
+    if (!v || typeof v.play !== 'function') return;
+    e.preventDefault();
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    v.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+    try { v.focus({ preventScroll: true }); } catch (x) { /* older browsers */ }
+    var p = v.play(); if (p && p.catch) p.catch(function () { /* the person can press play */ });
+  });
+});
+document.querySelectorAll('figure.film video').forEach(function (v) {
+  var fig = v.closest('figure');
+  var fail = function () { if (fig) fig.classList.add('film-failed'); };
+  v.addEventListener('error', fail);
+  var s = v.querySelector('source'); if (s) s.addEventListener('error', fail);
+});

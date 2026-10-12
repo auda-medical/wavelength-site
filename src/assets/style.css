@@ -12,6 +12,7 @@
   --teal:#2A7F8A;
   --teal-ink:#1F6670;
   --teal-light:#7FC4CC;
+  --teal-l:var(--teal-light); /* the short name the pages use inline */
   --cream:#F7F5F0;
   --sand:#EDEAE3;
   --line:#DCD7CC;
@@ -823,3 +824,21 @@ html:lang(zh-Hans) .split-words,html:lang(zh-Hans) h1{word-break:normal;line-bre
 .tt-intl p+p{margin-top:14px}
 .form .hint{display:block;font-size:13px;color:var(--slate);font-weight:400;margin-top:2px}
 .form select[multiple]{min-height:9em}
+
+/* App films and screens (October 2026): native player, poster from the film, captions on by default */
+.film{margin:26px 0 0;border-radius:var(--radius);overflow:hidden;background:var(--navy-deep);box-shadow:0 18px 40px rgba(10,21,38,.18)}
+.film video{display:block;width:100%;height:auto;aspect-ratio:16/9;background:var(--navy-deep)}
+.film figcaption{padding:12px 16px;font-size:14px;line-height:1.5;color:var(--mist)}
+.film figcaption a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.film-fallback{display:none}
+.film-failed .film-fallback{display:inline}
+.film-section .film{max-width:1040px;margin-left:auto;margin-right:auto}
+.app-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:28px 32px}
+.app-steps figure{margin:0}
+.app-steps img{display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--line);background:var(--cream)}
+.app-steps figcaption{margin-top:12px;font-size:15px;line-height:1.5;color:var(--slate);display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start}
+.app-steps figcaption .ac-step-n{grid-row:span 2}
+.film-transcript{padding:0 16px 14px;font-size:14px;line-height:1.6;color:var(--mist)}
+.film-transcript summary{cursor:pointer;text-decoration:underline;text-underline-offset:3px;width:max-content;max-width:100%}
+.film-transcript summary:focus-visible{outline:2px solid var(--teal-light);outline-offset:3px}
+.film-transcript p{margin:10px 0 0;max-width:72ch}
