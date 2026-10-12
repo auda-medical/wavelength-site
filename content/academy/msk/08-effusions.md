@@ -1,6 +1,6 @@
 ---
-title: "Joint effusions: the knee and the shoulder"
-minutes: 12
+title: "Joint effusions: knee, shoulder, elbow and ankle"
+minutes: 18
 ---
 
 A hot, swollen joint raises one urgent question: could this be septic arthritis? Ultrasound answers two narrower questions well. Is there fluid in the joint, and where is the safest place to aspirate it? It does not tell you whether the fluid is infected.
@@ -43,13 +43,29 @@ Glenohumeral fluid shows most reliably in the posterior recess, especially with 
 - **Effusion:** a dark space lifts the capsule off the humeral head and bulges outwards.
 - **Asymmetry:** a recess clearly wider than the other side supports a true effusion.
 
+## The elbow: the posterior recess
+
+With the elbow bent to about 90°, put the linear probe in long axis over the back of the elbow, above the olecranon. Find the triceps tendon, the posterior fat pad and the dip of the olecranon fossa.
+
+- **Normal:** the fat pad sits down in the fossa, with no visible fluid.
+- **Effusion:** dark fluid in the posterior recess lifts the fat pad out of the fossa, the same sign as the raised posterior fat pad on a lateral X-ray.
+- **After trauma:** an effusion suggests an injury inside the joint, but ultrasound may not show the fracture line. Treat it as a possible occult fracture and follow your fracture pathway.
+
+### Joint or bursa?
+
+The olecranon bursa sits on top of the olecranon and the triceps insertion, just under the skin. Fluid there is a bursitis, not an effusion. Scan it with almost no pressure, or the bursa empties. A complex bursa with debris and hyperaemia makes infection more likely, but only aspiration tells you. The Wavelength Pearls [Elbow effusion: lift the fat pad](/learn/elbow-effusion-ultrasound/) and [Olecranon bursa: keep the fluid in the right layer](/learn/olecranon-bursitis-ultrasound/) show each view.
+
+## The ankle: the anterior recess
+
+Put the linear probe in long axis over the front of the ankle, in the midline. Find the tibia and the dome of the talus. Joint fluid sits in the anterior recess between them, deep to the extensor tendons. Gentle plantarflexion pushes fluid forward and makes a small effusion easier to see. Fluid around a tendon is tenosynovitis, not a joint effusion. When you aspirate from the front, find the dorsalis pedis artery with colour Doppler first. The Wavelength Pearl [Ankle effusion: open the anterior recess](/learn/ankle-effusion-ultrasound/) shows each step.
+
 > **The aha** Find the pocket. If the recess opens, believe the fluid.
 
 > **Pitfall** Ultrasound finds fluid. It does not separate septic from inflammatory or crystal arthritis, and a small or absent effusion does not exclude infection. A joint that looks infected needs aspiration and specialist review.
 
 ## Guided aspiration
 
-1. Choose the largest, most superficial pocket away from vessels: superolateral for the knee, posterior for the shoulder.
+1. Choose the largest, most superficial pocket away from vessels: superolateral for the knee, posterior for the shoulder and the elbow, anterior for the ankle.
 2. Mark or scan in real time. Use full aseptic technique and a sterile probe cover.
 3. Insert the needle in plane, so you see its whole length, and watch the tip enter the fluid. For the shoulder, go from lateral to medial towards the space between the humeral head and the glenoid.
 4. Send fluid for microscopy, Gram stain, culture and crystals before antibiotics when the patient is stable.

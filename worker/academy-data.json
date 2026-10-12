@@ -383,6 +383,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q13",
+     "correct": "d",
+     "why": "Ultrasound finds the membrane more reliably than palpation when the landmarks are hard to feel, but its place is in preparation. In a can't intubate, can't oxygenate emergency, front-of-neck access must not wait for a scan.",
+     "review": "07-front-of-neck",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -393,6 +405,10 @@
     "02-gastric": {
      "title": "The stomach: empty, fluid or solid",
      "path": "/elearning/airway/learn/gastric/"
+    },
+    "07-front-of-neck": {
+     "title": "Front of neck: find the cricothyroid membrane",
+     "path": "/elearning/airway/learn/front-of-neck/"
     },
     "03-tube": {
      "title": "The tube: one tract or two",
@@ -2387,6 +2403,30 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q20",
+     "correct": "a",
+     "why": "The cortex is the bright line on top. A break seen in long and short axis is convincing. Haematoma and tenderness support it, and growth plates must not be mistaken for a fracture.",
+     "review": "09-fractures",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q21",
+     "correct": "d",
+     "why": "An effusion after trauma suggests an injury inside the joint. Ultrasound may show the fluid without showing the fracture.",
+     "review": "08-effusions",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -2411,12 +2451,16 @@
      "path": "/elearning/msk/learn/shoulder/"
     },
     "08-effusions": {
-     "title": "Joint effusions: the knee and the shoulder",
+     "title": "Joint effusions: knee, shoulder, elbow and ankle",
      "path": "/elearning/msk/learn/effusions/"
     },
     "05-hip": {
      "title": "The hip: compare the capsule",
      "path": "/elearning/msk/learn/hip/"
+    },
+    "09-fractures": {
+     "title": "Fractures: follow the cortex",
+     "path": "/elearning/msk/learn/fractures/"
     },
     "06-cases": {
      "title": "Cases",

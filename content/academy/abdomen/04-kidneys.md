@@ -38,6 +38,12 @@ A jet on one side and none on the painful side, with hydronephrosis on that side
 
 > **Pitfall** No hydronephrosis does not exclude a stone. Early obstruction and dehydration limit dilatation, and jets are intermittent.
 
+## Twinkle: a clue to a stone
+
+With colour Doppler on, a stone can show a rapidly flickering red and blue tail behind it, even though nothing is moving: twinkle artefact. It can make a small stone easier to find. On its own it is not enough. Calcified vessels, other calcification and strong interfaces twinkle too, and in CT comparison studies many twinkling spots were not stones.
+
+The convincing combination is a bright focus, a clean shadow and a twinkle anchored to it, in a place a stone can sit. No twinkle does not exclude a stone. The Wavelength Pearl [Renal stone twinkle: a clue, not a diagnosis](/learn/renal-stone-twinkle-artefact/) shows each step.
+
 ## Pyonephrosis: the infected, obstructed kidney
 
 Hydronephrosis in a patient with fever, rigors or low blood pressure is an obstructed, infected kidney until proven otherwise. Pus behind a stone behaves like an abscess. Antibiotics alone cannot clear it, and the kidney needs decompression by nephrostomy or ureteric stent.

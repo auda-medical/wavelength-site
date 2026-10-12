@@ -32,6 +32,24 @@ Together these raise concern for strangulation or ischaemia, and need urgent sur
 
 > **Pitfall** Late obstruction loses peristalsis, so the bowel looks still, as in ileus. Absent movement does not exclude obstruction. Ultrasound supports the diagnosis. CT defines the cause and complications.
 
+## Free air: look at the peritoneal stripe
+
+A perforated viscus lets air into the peritoneal cavity. With the patient flat, it rises under the anterior abdominal wall. Ultrasound can show it, although CT is the definitive test.
+
+1. Place a high-frequency linear probe on the right upper abdomen, over the liver.
+2. Find the thin bright peritoneal stripe between the abdominal wall and the liver.
+3. Free air makes that stripe brighter and thicker, with reverberation or a dirty shadow beneath it: the enhanced peritoneal stripe sign. Bowel gas sits deeper, under a normal thin stripe, inside a loop.
+4. Change the angle and, if safe, the position. Free air can move.
+
+A normal scan does not exclude a perforation, and free air is expected after recent laparoscopy or surgery. The Wavelength Pearl [Pneumoperitoneum: inspect the stripe](/learn/pneumoperitoneum-ultrasound/) shows each step.
+
+?? A 70-year-old on steroids has sudden epigastric pain and a rigid abdomen. Over the liver, the peritoneal stripe is unusually bright, with reverberation lines beneath it which move as you tilt the probe. What do you do?
++ Treat it as a likely perforation: urgent surgical review and CT
+- Diagnose bowel gas and discharge
+- Repeat the scan tomorrow
+- Start oral antacids and reassess in a week
+: An enhanced peritoneal stripe with reverberation suggests free air. With this history and examination, perforation is likely. Ultrasound speeds up the escalation; CT and the surgeons decide the rest.
+
 ## Ileus or obstruction
 
 In ileus, the bowel dilates without a blockage. Peristalsis is reduced all along the bowel, with no transition point, and both small and large bowel often dilate.

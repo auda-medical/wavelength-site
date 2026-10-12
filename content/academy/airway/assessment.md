@@ -97,3 +97,11 @@ title: Final assessment
 - M-mode does not work in ventilated patients
 - The liver blocks the view in ventilated patients
 : Positive pressure displaces the diaphragm whether or not it contracts. Assess movement during spontaneous breaths to judge muscle function.
+
+?? When should ultrasound be used to find the cricothyroid membrane?
+@ 07-front-of-neck
++ During preparation for an anticipated difficult airway, while the patient is oxygenating
+- After oxygenation has failed, before starting front-of-neck access
+- Only after the skin incision has been made
+- Never, as palpation is always more accurate
+: Ultrasound finds the membrane more reliably than palpation when the landmarks are hard to feel, but its place is in preparation. In a can't intubate, can't oxygenate emergency, front-of-neck access must not wait for a scan.

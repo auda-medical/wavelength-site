@@ -3,6 +3,17 @@
   "cadence": "weekly",
   "sendDay": "Tuesday morning",
   "issues": [
-    { "slug": "dvt-ultrasound", "status": "drafted", "drafted": "2026-10-05" }
-  ]
+    {
+      "slug": "dvt-ultrasound",
+      "status": "drafted",
+      "drafted": "2026-10-05"
+    },
+    {
+      "slug": "cardiac-tamponade-ultrasound",
+      "status": "drafted",
+      "drafted": "2026-10-13",
+      "note": "First of the 15-issue weekly queue in data/pearl-issues.json (HQ D-90). dvt-ultrasound (drafted 2026-10-05) was never sent: newsletter_sends was empty on 12 Oct."
+    }
+  ],
+  "queue": "data/pearl-issues.json"
 }

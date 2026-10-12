@@ -35,6 +35,23 @@ Tamponade is a clinical diagnosis: hypotension, tachycardia, raised jugular veno
 
 > **Pitfall** A plethoric IVC is common in ventilated patients and in heart failure. On its own it does not mean tamponade. Chamber collapse with a full IVC in a shocked patient does.
 
+## Time the collapse
+
+A wall moving inward is not the sign. The phase is. A brief right atrial flicker is common and unhelpful; collapse which lasts through much of systole is not. Right ventricular collapse matters when it happens in early diastole, as the ventricle should be filling.
+
+- Record a cine loop with the ECG on the screen if you can, and step through it frame by frame.
+- M-mode through the right ventricular free wall, from the parasternal or subcostal view, shows the timing against the mitral valve opening. Use it to confirm, not to replace, the loop.
+- The patient changes the signs. A dry patient collapses at lower pericardial pressure, so the signs appear early. Pulmonary hypertension or a stiff right ventricle can hide them, even in true tamponade.
+
+> **The aha** Name the phase, not just the movement: right atrium in systole, right ventricle in early diastole.
+
+?? A hypotensive patient has a moderate effusion. The right ventricular free wall moves inward just after the mitral valve opens. What does this timing mean?
++ Early diastolic right ventricular collapse, which supports tamponade physiology
+- Systolic collapse, which is normal
+- Nothing, as timing does not matter
+- Left ventricular failure
+: The mitral valve opens at the start of diastole. Collapse of the right ventricle at that moment means pericardial pressure exceeds right ventricular filling pressure. With hypotension, escalate for drainage now.
+
 ## Confirm in a second view
 
 Check the subcostal view. Fluid shows as a black band between the liver and the RV. Use the apical view if the others are poor.

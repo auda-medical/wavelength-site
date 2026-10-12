@@ -13,6 +13,10 @@ A fluid-filled cyst on the medial side of the popliteal fossa, between the media
 
 When a cyst ruptures, its lower end turns pointed or irregular and a thin layer of fluid tracks down the medial calf, between gastrocnemius and soleus. Follow it down. Bruising around the ankle can follow. A round structure behind the knee with flow inside on colour Doppler is a popliteal artery aneurysm, not a cyst. The Wavelength Pearl [Calf swelling: look behind the knee](/learn/bakers-cyst-ultrasound/) shows each step.
 
+## Tennis leg
+
+A sudden pain in the medial calf during sport, often described as a kick or a pop, is usually a tear at the junction of the medial head of gastrocnemius and soleus. With the linear probe in long axis over the medial calf, you see torn fibres at the tapering end of gastrocnemius and dark fluid tracking in the plane between the two muscles. It mimics a DVT, and the two can occur together, so compress the veins when the story fits. The Wavelength Pearl [Tennis leg: look between gastrocnemius and soleus](/learn/tennis-leg-ultrasound/) shows each step.
+
 ## Duplicated veins
 
 Two femoral or popliteal veins beside one artery. If you compress one and miss the other, you miss the clot. Compress both.

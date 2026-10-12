@@ -14,7 +14,7 @@ A supine chest X-ray misses a moderate effusion, and it does not separate fluid 
 
 ## Reading the view
 
-- **Normal.** Above the diaphragm, aerated lung moves with breathing, the curtain sign. The spine stops at the diaphragm, because air blocks the beam.
+- **Normal.** Above the diaphragm, aerated lung moves with breathing, the curtain sign. The spine stops at the diaphragm, because air blocks the beam. You often see a mirror image of the liver or spleen above the diaphragm: the diaphragm, with air behind it, reflects the beam. The mirror is normal, and it disappears when fluid replaces the air.
 - **Effusion.** A black space above the diaphragm, with the spine seen continuing upwards under the fluid. This is the spine sign.
 - **Collapsed lung.** A wedge of tissue-like lung floats or flaps in the fluid.
 - **Consolidation.** The spine sign appears here too, because airless lung carries the beam. Look for the black fluid.

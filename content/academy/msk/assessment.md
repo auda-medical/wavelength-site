@@ -153,3 +153,19 @@ title: Final assessment
 - Start colchicine for presumed gout
 - Repeat the scan next week
 : Ultrasound cannot tell infected from sterile fluid, and a small effusion does not exclude infection. Fluid analysis decides.
+
+?? How do you confirm a possible fracture on ultrasound?
+@ 09-fractures
++ Find a break or step in the bright cortex and see it again in a second plane
+- Look for colour flow inside the bone
+- Measure the depth of the shadow behind the bone
+- One long-axis image is enough
+: The cortex is the bright line on top. A break seen in long and short axis is convincing. Haematoma and tenderness support it, and growth plates must not be mistaken for a fracture.
+
+?? After a fall, the posterior fat pad of the elbow is lifted by fluid, but no fracture line is seen. What do you do?
+@ 08-effusions
++ Treat it as a possible occult fracture and follow the fracture pathway
+- Reassure, as no fracture line was seen
+- Diagnose olecranon bursitis
+- Aspirate the bursa
+: An effusion after trauma suggests an injury inside the joint. Ultrasound may show the fluid without showing the fracture.

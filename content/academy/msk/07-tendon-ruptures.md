@@ -70,11 +70,21 @@ Patients are usually over 40 and describe a stumble or a fall onto a bent knee. 
 
 > **The aha** Trust the gap more than the blur. Gentle flexion opens a true full-thickness tear.
 
+## The patellar tendon
+
+The same extensor mechanism continues below the patella. Patellar tendon ruptures are less common, and tend to affect younger patients after a forceful contraction, or people with tendinopathy, steroid use or systemic disease. The patient cannot straight-leg raise, and the patella may sit higher than on the other side.
+
+1. Knee slightly bent over a pillow, linear probe in long axis below the patella.
+2. Follow the tendon from the lower pole of the patella all the way to the tibial tubercle. Tears happen at either end and in the middle.
+3. Turn to short axis at any abnormal spot, and compare with the other knee.
+
+A complete rupture shows a dark gap of fluid or haematoma with wavy retracted ends. Heel-toe the probe before you call a dark patch a tear. The Wavelength Pearl [Patellar tendon rupture: follow it to the tibial tubercle](/learn/patellar-tendon-rupture-ultrasound/) shows each step.
+
 ## What to do with the finding
 
 - **Complete Achilles rupture:** immobilise in plantarflexion and refer through your trust's Achilles pathway the same day.
 - **Distal biceps rupture:** refer to the upper limb or orthopaedic team urgently for an early repair decision.
-- **Complete quadriceps rupture:** splint the knee straight and refer urgently to orthopaedics, as early repair gives the best results.
+- **Complete quadriceps or patellar tendon rupture:** splint the knee straight and refer urgently to orthopaedics, as early repair gives the best results.
 - **Unclear scan with a convincing story:** refer for specialist review and imaging. Do not reassure on a scan you could not complete.
 
 ## Case
