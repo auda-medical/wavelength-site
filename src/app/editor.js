@@ -98,12 +98,16 @@
   // 1.0.14: the Annotation size slider runs from -100 (Smaller) through 0 (the usual size, the exact middle) to 100
   // (Larger), on a curve: fine steps near the middle, strong ones towards the ends. Each kind has its own range, so a
   // line can be a hairline or bold and a label can be a footnote or a heading, without either running off the picture.
+  // 1.0.16 (owner's Fold7 check, 12 Oct): the ends are about twice as far apart, the middle unchanged: the usual size
+  // is still the exact middle and the curve keeps fine steps around it. Stored sizes never change; only where an
+  // older size sits on the slider does. Every end stays usable: text at least 1.2% of the picture's shorter side, a
+  // line at least a pixel, a pictogram no larger than the picture (drawPicto caps it at 0.96).
   var POS = { min: -100, max: 100, snap: 3, curve: 1.7 };
   var RANGE = {
-    text: { base: 0.058, lo: 0.016, hi: 0.3 },   // font height
-    dot: { base: 0.058, lo: 0.014, hi: 0.26 },   // dot radius is 0.32 of this
-    line: { base: 0.058, lo: 0.016, hi: 0.32 },  // arrows, circles, boxes: line thickness 0.28x to 5.5x the usual
-    picto: { base: 0.24, lo: 0.07, hi: 0.92 }    // the plate's side
+    text: { base: 0.058, lo: 0.012, hi: 0.42 },  // font height (1.0.14: 0.016 to 0.3)
+    dot: { base: 0.058, lo: 0.01, hi: 0.4 },     // dot radius is 0.32 of this (1.0.14: 0.014 to 0.26)
+    line: { base: 0.058, lo: 0.01, hi: 0.46 },   // arrows, circles, boxes: line thickness 0.17x to 7.9x the usual (1.0.14: 0.016 to 0.32)
+    picto: { base: 0.24, lo: 0.045, hi: 0.96 }   // the plate's side (1.0.14: 0.07 to 0.92)
   };
   function rangeOf(type) { return RANGE[type === 'arrow' || type === 'circle' || type === 'rect' ? 'line' : type] || RANGE.text; }
   function sizeBase(type) { return rangeOf(type).base; }

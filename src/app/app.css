@@ -1003,3 +1003,28 @@ html[data-theme="dark"] .sheet.pop { box-shadow: 0 12px 32px rgba(0,0,0,.45); }
 .listing-list li { display: grid; gap: 2px; padding: 10px 12px; min-height: 44px; border-radius: 9px; cursor: pointer; }
 .listing-list li[aria-selected="true"], .listing-list li:hover { background: var(--sand); }
 .listing-list li .chip { justify-self: start; }
+
+/* 1.0.16: the recovery tray. Each kept photo or clip on its own row: a checkbox (never ticked to start with), a preview
+   that opens it full screen, and when it was taken or kept, its size and where it came from. */
+.tray-warn { border: 1px solid var(--amber-line, #E0A33A); background: var(--amber-bg, rgba(224,163,58,.12)); border-radius: 14px; padding: 12px; margin: 0 0 10px; font-size: 14px; line-height: 1.45; }
+.tray-list { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 8px; }
+.tray-it { display: grid; grid-template-columns: auto 72px 1fr; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; }
+.tray-it.on { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+.tray-it input { width: 24px; height: 24px; margin: 0; accent-color: var(--teal); }
+.tray-th { width: 72px; height: 72px; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--deep); cursor: pointer; display: grid; place-items: center; }
+.tray-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tray-th .tray-clip { color: var(--teal-l); display: grid; place-items: center; }
+.tray-th .tray-clip svg { width: 28px; height: 28px; }
+.tray-tx { display: grid; gap: 2px; min-width: 0; cursor: pointer; }
+.tray-tx b { font-size: 15px; }
+.tray-tx span { font-size: 13px; color: var(--muted); line-height: 1.35; }
+.tray-count { font-size: 14px; font-weight: 600; margin: 6px 0; }
+/* Above the tab bar on the Kept photos screen; at the bottom of the sheet in a scan form. */
+.tray-bar { position: sticky; bottom: calc(var(--tab) + var(--safe-b, 0px)); background: var(--bg, var(--cream)); padding: 8px 0; z-index: 2; }
+.sheet .tray-bar { bottom: 0; padding-bottom: calc(8px + var(--safe-b, 0px)); }
+.tray-all { text-align: center; margin: 14px 0 4px; }
+.tray-all .link { color: var(--red); }
+.tray-view { position: fixed; inset: 0; z-index: 90; background: #050B14; color: #F7F5F0; display: grid; grid-template-rows: 1fr auto auto; gap: 8px; padding: calc(12px + var(--safe-t, 0px)) 14px calc(14px + var(--safe-b, 0px)); }
+.tray-view-m { min-height: 0; display: grid; place-items: center; }
+.tray-view-m img, .tray-view-m video { max-width: 100%; max-height: 100%; object-fit: contain; }
+.tray-view-tx { margin: 0; font-size: 14px; text-align: center; }

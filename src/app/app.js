@@ -744,7 +744,7 @@
       var target = location.hash;
       history.replaceState(null, '', lastHash || '#/');
       sheet('<h2>' + esc(T('Discard changes?')) + '</h2><p class="muted">' + esc(T('This scan has changes you have not saved.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Keep editing')) + '</button><button class="btn ghost block danger-text" style="color:var(--red)" data-discard>' + esc(T('Discard changes')) + '</button></div>', function (root) {
-        $('[data-discard]', root).onclick = function () { closeSheet(); draftImages = []; if (dirty.dataset.formkey) DRAFT.dropForm(dirty.dataset.formkey, ['ready']); if (dirty.dataset.draft) DRAFT.dropFormDraft(dirty.dataset.draft); delete dirty.dataset.dirty; leaving = true; location.hash = target; };
+        $('[data-discard]', root).onclick = function () { closeSheet(); draftImages = []; if (dirty.dataset.draft) { DRAFT.leaveForm(dirty.dataset.draft); DRAFT.dropFormDraft(dirty.dataset.draft); } delete dirty.dataset.dirty; leaving = true; location.hash = target; };
       });
       return;
     }
@@ -856,7 +856,7 @@
       return (authViews[r.name] || viewWelcome)(r);
     }
     if (!S.account.declarationAt || !(profile().onboarded)) return viewOnboard(r);
-    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute, guides: viewGuides, outstanding: viewOutstanding };
+    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute, guides: viewGuides, outstanding: viewOutstanding, kept: viewKept };
     (views[r.name] || viewHome)(r);
     setSyncDot();
     // A new screen fades in once (CSS, 180 ms, none with reduced motion). A redraw of the same screen does not.
@@ -1208,7 +1208,10 @@
   function importCaptures(list, legacy) {
     return list.reduce(function (p, f) {
       return p.then(function (n) {
-        return NAT.captureFile(f).then(function (file) { return DRAFT.recovered({ id: uid(), formKey: 'new', kind: f.kind, file: file, name: f.name, captured: true, created: f.modified || Date.now() }); })
+        // 1.0.16: into the recovery tray (no scan form), each on its own; legacy marks a photo an earlier version left.
+        // 1.0.16: the copy must be the whole file (the size the phone reports) before the original may go; otherwise
+        // neither is touched and the file is offered again next time.
+        return NAT.captureFile(f).then(function (file) { if (f.size && file.size !== f.size) throw new Error('incomplete copy'); return DRAFT.recovered({ id: uid(), formKey: 'tray', inst: null, legacy: !!legacy, kind: f.kind, file: file, name: f.name, captured: true, created: f.modified || Date.now() }); })
           .then(function () { return NAT.captureRemove([f.name], legacy).then(function () { return n + 1; }); }, function () { return n; });
       });
     }, Promise.resolve(0));
@@ -1219,7 +1222,8 @@
     sheet('<h2>' + esc(T('Photos left by earlier versions')) + '</h2><p class="muted">' + esc(N(list.length, 'Wavelength found {n} photo taken with Take photo in an earlier version. It is stored as taken, before any crop or redaction, in the Wavelength folder on this phone.', 'Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.')) + ' (' + esc(size) + ')</p><p class="muted small">' + esc(T('Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.')) + '</p>' +
       '<div class="btns"><button class="btn teal block" data-lgdel>' + esc(T('Delete the leftover copies')) + '</button><button class="btn ghost block" data-lgrev>' + esc(T('Review them first')) + '</button><button class="btn ghost block" data-close>' + esc(T('Not now')) + '</button></div>', function (root) {
       $('[data-lgdel]', root).onclick = function () { closeSheet(); NAT.captureRemove(list.map(function (f) { return f.name; }), true).then(function (n) { toast(N(n, '{n} leftover photo deleted.', '{n} leftover photos deleted.')); }); };
-      $('[data-lgrev]', root).onclick = function () { closeSheet(); importCaptures(list, true).then(function (n) { refreshKeptCard(); if (n) toast(T('Kept on this phone: review them from Home, then add them to a scan or discard them.'), 5000); }); };
+      // 1.0.16: straight to the recovery tray, where each photo is shown on its own.
+      $('[data-lgrev]', root).onclick = function () { closeSheet(); importCaptures(list, true).then(function (n) { refreshKeptCard(); if (n && route().name === 'home') go('kept'); }); };
     });
   }
   // The camera app ignored Wavelength's private file and kept its own copy, usually in the phone's gallery.
@@ -1235,12 +1239,15 @@
   function keptHomeCard() {
     var home = $('main', app);
     Promise.all([DRAFT.list(), DRAFT.forms()]).then(function (r) {
-      var list = r[0].filter(function (x) { return x.media.file || x.media.result ? x.earlier || x.state.stage === 'later' : false; });
+      // 1.0.16: every kept photo and clip counts (none is hidden); those belonging to an unfinished scan form come back
+      // with it (Review), the rest are reviewed one by one in the recovery tray (Review photos and clips).
+      var list = r[0].filter(function (x) { return x.media.file || x.media.result; });
       var forms = r[1].filter(function (d) { if (d.formKey === 'new' && S.entries.some(function (x) { return x.id === d.entryId; })) { DRAFT.dropFormDraft(d.id); return false; } return true; });
+      var liveForm = {}; forms.forEach(function (d) { liveForm[d.id] = 1; });
+      var tray = list.filter(function (x) { return !(x.media.inst && liveForm[x.media.inst]); });
       var main = $('main', app); if ((!list.length && !forms.length) || !main || main !== home || $('[data-kepthome]', main)) return;
       var fd = forms[0], fdEnt = fd && fd.formKey !== 'new' && S.entries.find(function (x) { return x.id === fd.entryId && !x.deleted; });
-      var first = list.length ? list[0].media : null, fk = first ? first.formKey || 'new' : 'new', ent = /^edit:/.test(fk) && S.entries.find(function (x) { return 'edit:' + x.id === fk && !x.deleted; });
-      var href = fd ? (fd.formKey === 'new' ? 'new' : fdEnt ? 'edit/' + fdEnt.id : '') : ent ? 'edit/' + ent.id : 'new';
+      var href = fd ? (fd.formKey === 'new' ? 'new' : fdEnt ? 'edit/' + fdEnt.id : '') : '';
       var bytes = 0, oldest = Date.now();
       list.forEach(function (x) { var m = x.media, res = m.result || {}; bytes += (m.file ? m.file.size : 0) + (res.blob ? res.blob.size : 0) + (res.thumb ? res.thumb.size : 0) + (res.base ? res.base.size : 0); oldest = Math.min(oldest, m.created || Date.now()); });
       forms.forEach(function (d) { oldest = Math.min(oldest, d.created || d.updated || Date.now()); });
@@ -1249,16 +1256,125 @@
       var card = document.createElement('div'); card.className = 'card kept-home'; card.setAttribute('data-kepthome', '');
       card.innerHTML = '<div class="row"><span class="kept-ic" aria-hidden="true">' + (forms.length ? I.pen : I.camera) + '</span><div class="grow"><h3>' + esc(T('Kept on this phone')) + '</h3><p class="small muted" style="margin:0">' + esc(T('{what}, not saved in your logbook yet.', { what: what })) + '</p>' +
         '<p class="small muted kept-meta">' + esc(T('Kept since {date}', { date: fmt(new Date(oldest).toISOString()) })) + (bytes ? ' · ' + esc(bytes < 104858 ? T('under 0.1 MB') : (bytes / 1048576).toFixed(1) + ' MB') : '') + (old ? '. ' + esc(T('Finish or discard them when you can: nothing is deleted by itself.')) : '') + '</p></div></div>' +
-        '<div class="btns"><a class="btn teal sm" href="#/' + esc(href) + '">' + esc(T('Review')) + '</a></div>';
-      $('a', card).onclick = function (ev) {
-        if (!fd) return;
+        '<div class="btns">' + (fd ? '<a class="btn teal sm" data-kfform href="#/' + esc(href) + '">' + esc(T('Review')) + '</a>' : '') +
+        (tray.length ? '<a class="btn ' + (fd ? 'ghost' : 'teal') + ' sm" data-kftray href="#/kept">' + esc(T('Review photos and clips')) + '</a>' : '') + '</div>';
+      var fl = $('[data-kfform]', card);
+      if (fl) fl.onclick = function (ev) {
         if (!href) { ev.preventDefault(); draftTextSheet(fd, T('The scan these changes were for has been deleted, so they cannot be applied.'), function () { card.remove(); keptHomeCard(); }); return; }
         S.resumeForm = fd.id;
       };
-      // A photo kept from a scan that has since been deleted is offered in a new scan instead.
-      if (/^edit:/.test(fk) && !ent) list.forEach(function (x) { if (x.media.formKey === fk) DRAFT.rekey(x.media, 'new'); });
       var anchor = $('.quick', main); anchor = anchor && anchor.closest('.card');
       if (anchor && anchor.nextSibling) main.insertBefore(card, anchor.nextSibling); else main.insertBefore(card, main.firstChild);
+    });
+  }
+  // ---------- 1.0.16: the recovery tray ----------
+  // Kept photos and clips that belong to no scan, each on its own: a preview, when it was taken or kept, its size and
+  // where it came from. Nothing is selected to start with. The learner opens each one to check it, selects only the
+  // ones that belong to one scan and adds those to the scan form (or starts a scan with them from Home); the rest stay
+  // here. Discarding selected ones asks first, and deleting all of them is a separate choice with its own confirmation.
+  var trayThumbs = {}, trayViewClose = null;
+  // A small preview, made one at a time: photos from a phone camera are large, and 17 decoded at full size at once
+  // could exhaust the WebView's memory.
+  function trayThumb(m) {
+    if (trayThumbs[m.id]) return Promise.resolve(trayThumbs[m.id]);
+    var src = m.result && m.result.thumb ? m.result.thumb : m.kind !== 'clip' ? m.file : null;
+    if (!src) return Promise.resolve('');
+    var keep = function (u) { trayThumbs[m.id] = u; return u; };
+    if (src !== m.file || !window.createImageBitmap) return Promise.resolve(keep(URL.createObjectURL(src)));
+    return createImageBitmap(src, { resizeWidth: 240, resizeQuality: 'medium' }).then(function (b) {
+      var c = document.createElement('canvas'); c.width = b.width; c.height = b.height; c.getContext('2d').drawImage(b, 0, 0); if (b.close) b.close();
+      return new Promise(function (ok) { c.toBlob(function (bl) { ok(keep(URL.createObjectURL(bl || src))); }, 'image/jpeg', 0.8); });
+    }, function () { return keep(URL.createObjectURL(src)); });
+  }
+  function trayOrigin(x) {
+    var m = x.media;
+    if (m.legacy) return T('Left by an earlier version');
+    if (x.state.stage === 'ready' && m.result) return T('Prepared, not saved in a scan');
+    if (x.state.session === 'recovered') return T('Kept when Wavelength closed');
+    return T('Kept for later');
+  }
+  function traySize(x) { var m = x.media, r = m.result || {}, b = (m.file ? m.file.size : 0) || (r.blob ? r.blob.size : 0); return b < 104858 ? T('under 0.1 MB') : (b / 1048576).toFixed(1) + ' MB'; }
+  // Named by what it is and when it was taken or kept (never by its place in the list, which changes as items leave).
+  function trayName(x) { return (x.media.kind === 'clip' ? T('Clip') : T('Photo')) + ', ' + when(x.media.created); }
+  function trayHtml(items, mode) {
+    return '<div class="tray" data-tray>' +
+      '<p class="tray-warn" role="note"><b>' + esc(T('Check each one.')) + '</b> ' + esc(T('They were found together, but they may come from different patients and scans. Wavelength never adds them to a scan by itself, and none is selected until you select it.')) + '</p>' +
+      '<p class="small muted">' + esc(mode === 'form' ? T('Open each one to check it, then select only the ones that belong to this scan.') : T('Open each one to check it, then select only the ones that belong to the same scan.')) + '</p>' +
+      '<ul class="tray-list">' + items.map(function (x, i) {
+        var m = x.media, clip = m.kind === 'clip', name = trayName(x);
+        return '<li class="tray-it" data-trit="' + esc(m.id) + '"><input type="checkbox" id="trs' + i + '" data-trsel="' + esc(m.id) + '" aria-describedby="trd' + i + '">' +
+          '<button type="button" class="tray-th" data-trview="' + esc(m.id) + '" aria-label="' + esc(T('Open {name}', { name: name })) + '">' + (clip ? '<span class="tray-clip" aria-hidden="true">' + I.video + '</span>' : '<img alt="" data-trimg="' + esc(m.id) + '">') + '</button>' +
+          '<label class="tray-tx" for="trs' + i + '"><b>' + esc(name) + '</b><span id="trd' + i + '">' + esc([traySize(x), trayOrigin(x)].join(' · ')) + '</span></label></li>';
+      }).join('') + '</ul>' +
+      '<p class="tray-count" data-trcount aria-live="polite"></p>' +
+      '<div class="btns tray-bar"><button type="button" class="btn teal block" data-tradd disabled></button><button type="button" class="btn ghost block" data-trdrop disabled></button></div>' +
+      '<p class="tray-all"><button type="button" class="link small" data-trall>' + esc(N(items.length, 'Delete the kept photo or clip', 'Delete all {n} kept photos and clips')) + '</button></p></div>';
+  }
+  // opts: { mode: 'form' or 'home', add(selected), changed() after a discard, kept() when a discard is cancelled }.
+  function bindTray(root, items, opts) {
+    var sel = {};
+    var chosen = function () { return items.filter(function (x) { return sel[x.media.id]; }); };
+    var update = function () {
+      var n = chosen().length, add = $('[data-tradd]', root), drop = $('[data-trdrop]', root);
+      $('[data-trcount]', root).textContent = n ? N(n, '{n} selected', '{n} selected') : T('None selected');
+      add.textContent = opts.mode === 'form' ? T('Add selected to this scan ({n})', { n: n }) : T('Start a scan with the selected ({n})', { n: n });
+      drop.textContent = T('Discard selected ({n})', { n: n });
+      add.disabled = drop.disabled = !n;
+    };
+    $$('[data-trsel]', root).forEach(function (c) { c.checked = false; c.onchange = function () { sel[c.dataset.trsel] = c.checked; c.closest('.tray-it').classList.toggle('on', c.checked); update(); }; });
+    $$('[data-trview]', root).forEach(function (b) { b.onclick = function () { var i = items.findIndex(function (x) { return x.media.id === b.dataset.trview; }); if (i >= 0) trayViewer(items[i], trayName(items[i])); }; });
+    $('[data-tradd]', root).onclick = function () { var c = chosen(); if (c.length) opts.add(c); };
+    $('[data-trdrop]', root).onclick = function () { var c = chosen(); if (c.length) discardKept(c, opts.changed, opts.kept); };
+    $('[data-trall]', root).onclick = function () { deleteAllKept(items, opts.changed, opts.kept); };
+    items.reduce(function (p, x) {
+      return p.then(function () { var im = root.querySelector('[data-trimg="' + x.media.id + '"]'); if (!im || !im.isConnected) return; return trayThumb(x.media).then(function (u) { if (u && im.isConnected) im.src = u; }); });
+    }, Promise.resolve());
+    update();
+  }
+  // One kept photo or clip, full screen, to check it before choosing. Back or Close returns to the list.
+  function trayViewer(x, name) {
+    var m = x.media, clip = m.kind === 'clip', src = clip ? m.file || (m.result && m.result.blob) : (m.result && m.result.blob) || m.file;
+    if (!src) return;
+    var url = URL.createObjectURL(src), prev = document.activeElement;
+    var v = document.createElement('div'); v.className = 'tray-view'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', name);
+    v.innerHTML = '<div class="tray-view-m">' + (clip ? '<video src="' + url + '" controls muted playsinline></video>' : '<img alt="' + esc(name) + '" src="' + url + '">') + '</div>' +
+      '<p class="tray-view-tx"><b>' + esc(name) + '</b> · ' + esc(trayOrigin(x)) + '</p><div class="btns"><button type="button" class="btn light block" data-trclose>' + esc(T('Close')) + '</button></div>';
+    var key = function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
+    var close = function () { trayViewClose = null; v.remove(); URL.revokeObjectURL(url); document.removeEventListener('keydown', key, true); if (prev && prev.isConnected && prev.focus) try { prev.focus({ preventScroll: true }); } catch (e) { /* not focusable */ } };
+    trayViewClose = close;
+    document.addEventListener('keydown', key, true);
+    document.body.appendChild(v);
+    $('[data-trclose]', v).onclick = close;
+    $('[data-trclose]', v).focus();
+  }
+  // Discarding kept photos or clips always asks: one taken in Wavelength exists nowhere else.
+  function discardKept(list, after, cancelled) {
+    var only = list.some(function (x) { return x.media.captured; });
+    sheet('<h2>' + esc(T('Discard {what}?', { what: draftWords(list) })) + '</h2><p class="muted">' + esc(only ? T('At least one was taken in Wavelength and is not saved anywhere else on your phone.') : T('The originals stay in your phone\'s gallery.')) + ' ' + esc(T('This cannot be undone.')) + '</p><div class="btns"><button class="btn block" data-close data-keepk>' + esc(T('Keep them')) + '</button><button class="btn ghost block" style="color:var(--red)" data-gone>' + esc(T('Discard')) + '</button></div>', function (root) {
+      if (cancelled) $('[data-keepk]', root).addEventListener('click', function () { setTimeout(cancelled, 0); });
+      $('[data-gone]', root).onclick = function () { closeSheet(); list.forEach(function (x) { if (trayThumbs[x.media.id]) { URL.revokeObjectURL(trayThumbs[x.media.id]); delete trayThumbs[x.media.id]; } }); Promise.all(list.map(function (x) { return DRAFT.drop(x.media.id); })).then(function () { toast(T('{what} discarded.', { what: draftWords(list) })); if (after) after(); }); };
+    });
+  }
+  // Deleting every kept photo and clip: a separate choice, confirmed on its own (a tick, then Delete all).
+  function deleteAllKept(list, after, cancelled) {
+    sheet('<h2>' + esc(T('Delete all kept photos and clips?')) + '</h2><p class="muted">' + esc(T('This deletes all {n} from this phone, including any that may belong to a scan you have not logged yet. It cannot be undone.', { n: list.length })) + '</p>' +
+      '<label class="check"><input type="checkbox" data-allok><span>' + esc(T('I have checked them: none is needed for a scan')) + '</span></label>' +
+      '<div class="btns"><button class="btn block" data-close data-keepk>' + esc(T('Keep them')) + '</button><button class="btn ghost block" style="color:var(--red)" data-allgo disabled>' + esc(T('Delete all')) + '</button></div>', function (root) {
+      if (cancelled) $('[data-keepk]', root).addEventListener('click', function () { setTimeout(cancelled, 0); });
+      $('[data-allok]', root).onchange = function () { $('[data-allgo]', root).disabled = !this.checked; };
+      $('[data-allgo]', root).onclick = function () { if (!$('[data-allok]', root).checked) return; closeSheet(); Promise.all(list.map(function (x) { return DRAFT.drop(x.media.id); })).then(function () { toast(T('{what} deleted.', { what: draftWords(list) })); if (after) after(); }); };
+    });
+  }
+  // #/kept: the recovery tray from Home. Selected items start a new scan, assigned to it (still to be finished there).
+  function viewKept() {
+    mount(shell({ title: T('Kept photos and clips'), back: '' }, '<div data-traybox><p class="muted">' + esc(T('Loading…')) + '</p></div>'));
+    var box = $('[data-traybox]', app);
+    DRAFT.tray(null).then(function (items) {
+      if (!box.isConnected) return;
+      if (!items.length) { box.innerHTML = '<div class="card"><p class="muted">' + esc(T('Nothing is kept on this phone.')) + '</p><a class="btn teal" href="#/">' + esc(T('Home')) + '</a></div>'; return; }
+      box.innerHTML = trayHtml(items, 'home');
+      bindTray(box, items, { mode: 'home', changed: function () { if (route().name === 'kept') viewKept(); },
+        add: function (c) { S.trayAssign = c.map(function (x) { return x.media.id; }); go('new'); } });
     });
   }
   // The four Home counts and where each opens. Own logbook only (supervised learners' scans are never in S.entries).
@@ -1448,6 +1564,10 @@
   //   ready    a prepared photo or clip added to the scan but not yet saved with it
   // Records from an earlier run of the app (another RUN) are never added to a scan by themselves: the scan form
   // and Home offer them back, to add to this scan or discard, so nothing lands on the wrong patient's scan unnoticed.
+  // 1.0.16 (owner's Fold7 finding, ChatGPT 12 Oct 10:48): offered one by one, never as a group. Each record belongs
+  // to the scan form it was taken or chosen in (inst) or to none; those belonging to none wait in the recovery tray
+  // (Home, and Choose from them in a scan form), where each can be opened, and only the ones the learner selects are
+  // assigned to a scan. An assigned photo is part of the scan only once it is finished in the editor.
   // A third store, forms, keeps what has been typed into a scan form that is not yet saved (one record per open form).
   // Nothing here is deleted by itself: a record goes when its scan is saved, when the learner discards it, or with the
   // account. (RUN, not SESSION: SESSION is the sign-out counter that sync checks.)
@@ -1473,7 +1593,7 @@
       // An editing record: the original file is written once; the edits go in the small state record as they change.
       start: function (rec) { return tx('media', 'readwrite', function (s) { return s.put(rec); }).then(function () { return api.state(rec.id, { stage: 'editing' }); }).catch(fail); },
       state: function (id, o) { o = Object.assign({}, o, { id: id, session: RUN, updated: Date.now() }); return tx('state', 'readwrite', function (s) { return s.put(o); }).catch(fail); },
-      ready: function (formKey, res) { var rec = { id: res.id, formKey: formKey, kind: res.kind || 'image', created: Date.now(), result: res }; return tx('media', 'readwrite', function (s) { return s.put(rec); }).then(function () { return api.state(res.id, { stage: 'ready' }); }).catch(fail); },
+      ready: function (formKey, res, inst) { var rec = { id: res.id, formKey: formKey, inst: inst || null, fromTray: !!res.fromTray, kind: res.kind || 'image', created: Date.now(), result: res }; return tx('media', 'readwrite', function (s) { return s.put(rec); }).then(function () { return api.state(res.id, { stage: 'ready' }); }).catch(fail); },
       drop: function (id) { return tx('media', 'readwrite', function (s) { return s.delete(id); }).then(function () { return tx('state', 'readwrite', function (s) { return s.delete(id); }); }).catch(function () { /* nothing to remove */ }); },
       // Every record with its state: { media, state, earlier (from another run of the app) }.
       list: function (formKey) {
@@ -1484,6 +1604,8 @@
         }).catch(function () { return []; });
       },
       // This run's records for a scan form (after the scan is saved or its changes discarded).
+      // 1.0.16: dropForm is no longer called: a saved scan drops exactly the prepared copies it saved (by id), and a form
+      // left with Discard changes uses leaveForm.
       dropForm: function (formKey, stages) { return api.list(formKey).then(function (l) { return Promise.all(l.filter(function (x) { return !x.earlier && (!stages || stages.indexOf(x.state.stage) >= 0); }).map(function (x) { return api.drop(x.media.id); })); }); },
       // A camera capture found after Wavelength closed: kept, from an earlier run, so it is offered and never added.
       recovered: function (rec) { return tx('media', 'readwrite', function (s) { return s.put(rec); }).then(function () { return tx('state', 'readwrite', function (s) { return s.put({ id: rec.id, stage: 'later', session: 'recovered', updated: Date.now() }); }); }).catch(fail); },
@@ -1491,8 +1613,25 @@
       // when an edit began), type, data { pairs, names }, removed, patient, created, updated, session }.
       saveForm: function (rec) { rec = Object.assign({}, rec, { session: RUN, updated: Date.now() }); return tx('forms', 'readwrite', function (s) { return s.put(rec); }).catch(fail); },
       forms: function () { if (!S.account) return Promise.resolve([]); return tx('forms', 'readonly', function (s) { return s.getAll(); }).then(function (l) { return (l || []).sort(function (a, b) { return b.updated - a.updated; }); }).catch(function () { return []; }); },
+      // A scan form left with Discard changes: photos and clips chosen for it from the recovery tray go back there as
+      // they were; its own prepared new photos go with the changes (as before); unfinished ones stay kept (tray).
+      leaveForm: function (inst) { if (!inst) return Promise.resolve(); return api.list().then(function (l) { return Promise.all(l.filter(function (x) { return x.media.inst === inst; }).map(function (x) { return x.media.fromTray ? api.release(x) : x.state.stage === 'ready' ? api.drop(x.media.id) : null; })); }); },
       dropFormDraft: function (id) { return tx('forms', 'readwrite', function (s) { return s.delete(id); }).catch(function () { /* nothing to remove */ }); },
       rekey: function (m, formKey) { var c = Object.assign({}, m, { formKey: formKey }); return tx('media', 'readwrite', function (s) { return s.put(c); }).catch(function () { /* left where it was */ }); },
+      // 1.0.16: a kept photo or clip belongs to one open scan form (inst, that form's id), or to none: then it waits in
+      // the recovery tray. assign() gives it to a form the learner chose it for; release() returns it to the tray as
+      // it is (its edits kept), from no run of the app, so no form ever takes it by itself.
+      assign: function (x, formKey, inst, stage, fromTray) { var c = Object.assign({}, x.media, { formKey: formKey, inst: inst, fromTray: !!fromTray }); return tx('media', 'readwrite', function (s) { return s.put(c); }).then(function () { return api.state(c.id, Object.assign({}, x.state, { stage: stage })); }).catch(fail); },
+      release: function (x) { var c = Object.assign({}, x.media, { formKey: 'tray', inst: null, fromTray: false }); return tx('media', 'readwrite', function (s) { return s.put(c); }).then(function () { return tx('state', 'readwrite', function (s) { return s.put(Object.assign({}, x.state, { id: c.id, stage: x.state.stage === 'ready' && c.result ? 'ready' : 'later', session: 'tray', updated: Date.now() })); }); }).catch(fail); },
+      // The recovery tray: every kept photo or clip that belongs to no form open now (exceptInst) and to no unfinished
+      // scan form kept on this phone. Left by earlier versions, kept when Wavelength closed, or kept for later from a
+      // scan that has since been saved: all wait here, each on its own, until the learner chooses.
+      tray: function (exceptInst) {
+        return Promise.all([api.list(), api.forms()]).then(function (r) {
+          var live = {}; r[1].forEach(function (d) { live[d.id] = 1; });
+          return r[0].filter(function (x) { var m = x.media; return (m.file || m.result) && !(m.inst && (m.inst === exceptInst || live[m.inst])); });
+        });
+      },
       destroy: function (id) { if (db) { db.close(); db = null; } try { indexedDB.deleteDatabase('wavelength-' + id + '-drafts'); } catch (e) { /* nothing to delete */ } }
     };
     return api;
@@ -1509,7 +1648,7 @@
   function stable(v) { if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']'; if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}'; return JSON.stringify(v === undefined ? null : v); }
   function entryStamp(e) { var o = {}; STAMP_KEYS.forEach(function (k) { if (e[k] != null && e[k] !== '') o[k] = e[k]; }); var s = stable(o), h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36) + '.' + s.length; }
   // An unfinished scan form in words: "Cardiac, 10 Oct 2026, 14:02".
-  function formDraftWords(d) { return [d.type && TYPES[d.type] ? T(TYPES[d.type].label) : T('Application not chosen'), when(d.updated)].join(', '); }
+  function formDraftWords(d) { return [d.type && TYPES[d.type] ? T(TYPES[d.type].label) : T('Scan not chosen'), when(d.updated)].join(', '); }
   // What was typed into an unfinished form that cannot be applied (its scan changed or was deleted): shown to read and
   // copy, kept until the learner discards it.
   function draftTextSheet(d, why, after) {
@@ -1543,8 +1682,8 @@
     var req = '<span class="req">' + esc(T('Required')) + '</span>';
     var supOpts = '<div class="seg col sup" role="radiogroup" aria-labelledby="lab-supervision">' + C.supervision.map(function (o, i) { return '<input type="radio" name="supervision" id="supervision' + i + '" value="' + esc(o.id) + '"' + (e.supervision === o.id ? ' checked' : '') + ' aria-describedby="suph' + i + '"><label for="supervision' + i + '"><b>' + esc(T(o.label)) + '</b>' + (o.help ? '<span id="suph' + i + '">' + esc(T(o.help)) + '</span>' : '') + '</label>'; }).join('') + '</div>';
     var body = '<form id="ef" class="scanform" novalidate><div data-formdraft></div><div data-earlier></div>' +
-      (copyFrom ? '<div class="ok">' + esc(T('Same patient as your {type} scan. Choose the next application.', { type: T((TYPES[copyFrom.type] || {}).label || '') })) + '</div>' : '') +
-      section('type', T('Application'), '<div class="field" data-req="type"><span class="lab" id="lab-type">' + esc(T('Which scan did you do?')) + req + '</span><div class="seg types" role="radiogroup" aria-labelledby="lab-type">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>') +
+      (copyFrom ? '<div class="ok">' + esc(T('Same patient as your {type} scan. Choose the next scan.', { type: T((TYPES[copyFrom.type] || {}).label || '') })) + '</div>' : '') +
+      section('type', T('Scan'), '<div class="field" data-req="type"><span class="lab" id="lab-type">' + esc(T('Which scan did you do?')) + req + '</span><div class="seg types" role="radiogroup" aria-labelledby="lab-type">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>') +
       '<div id="rest"' + (e.type ? '' : ' hidden') + '>' +
       '<p class="type-ok" id="typeok" aria-live="polite"></p>' +
       section('details', T('Scan details'),
@@ -1612,7 +1751,7 @@
         });
       }, reducedMotion() ? 0 : hold);
     };
-    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; toDate(260); }); });
+    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; toDate(260); if (kept.length) drawTray(); }); });
     form.addEventListener('input', function () { form.dataset.dirty = '1'; });
     // Kept on this phone 0.6 s after the last change, and at once when the app is left (curForm).
     form.addEventListener('input', function () { keepForm(); });
@@ -1649,12 +1788,12 @@
         sheet('<h2>' + esc(T('Add a clip')) + '</h2><p class="muted small">' + esc(T('Record the ultrasound screen for up to 10 seconds, or choose a clip from your phone. You then crop it, redact any identifiers and annotate it if you wish. Sound is removed.')) + '</p><div class="btns"><button class="btn teal block" data-v="vcam">' + esc(T('Record a clip')) + '</button><button class="btn ghost block" data-v="vpick">' + esc(T('Choose a clip')) + '</button></div>', function (root) { $$('[data-v]', root).forEach(function (b) { b.onclick = function () { closeSheet(); $('#' + b.dataset.v).click(); }; }); });
       };
       $$('[data-rm]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); removed.push(x.dataset.rm); form.dataset.dirty = '1'; drawGallery(); keepForm(); }; });
-      $$('[data-rmd]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); DRAFT.drop(x.dataset.rmd); draftImages = draftImages.filter(function (d) { return d.id !== x.dataset.rmd; }); drawGallery(); }; });
+      $$('[data-rmd]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); var id = x.dataset.rmd, di = draftImages.find(function (d) { return d.id === id; }); draftImages = draftImages.filter(function (d) { return d.id !== id; }); if (di && di.fromTray) DRAFT.list().then(function (l) { var y = l.find(function (z) { return z.media.id === id; }); if (y) return DRAFT.release(y); }).then(loadKept); else { DRAFT.drop(id); drawGallery(); } }; });
       $$('[data-kept]', g).forEach(function (x) { x.onclick = function () { var k = kept.find(function (y) { return y.media.id === x.dataset.kept; }); if (k) openNew(k.media.file, k.media.kind === 'clip', k.media.captured, k); }; });
-      $$('[data-rmk]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); var k = kept.find(function (y) { return y.media.id === x.dataset.rmk; }); if (k) discardKept([k]); }; });
+      $$('[data-rmk]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); var k = kept.find(function (y) { return y.media.id === x.dataset.rmk; }); if (k) removeKept(k); }; });
       var bindEd = function (x, go2) { x.onclick = function (ev) { ev.stopPropagation(); go2(); }; x.onkeydown = function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); go2(); } }; };
-      $$('[data-edold]', g).forEach(function (x) { bindEd(x, function () { var id = x.dataset.edold; getOne('images', id).then(function (rec) { if (!rec) return; reEdit(rec, function (res) { res.id = uid(); draftImages.push(res); DRAFT.ready(formKey, res); removed.push(id); form.dataset.dirty = '1'; drawGallery(); }); }); }); });
-      $$('[data-eddr]', g).forEach(function (x) { bindEd(x, function () { var i = draftImages.findIndex(function (d) { return d.id === x.dataset.eddr; }); if (i < 0) return; reEdit(draftImages[i], function (res) { res.id = uid(); DRAFT.drop(draftImages[i].id); draftImages[i] = res; DRAFT.ready(formKey, res); form.dataset.dirty = '1'; drawGallery(); }); }); });
+      $$('[data-edold]', g).forEach(function (x) { bindEd(x, function () { var id = x.dataset.edold; getOne('images', id).then(function (rec) { if (!rec) return; reEdit(rec, function (res) { res.id = uid(); draftImages.push(res); DRAFT.ready(formKey, res, inst); removed.push(id); form.dataset.dirty = '1'; drawGallery(); }); }); }); });
+      $$('[data-eddr]', g).forEach(function (x) { bindEd(x, function () { var i = draftImages.findIndex(function (d) { return d.id === x.dataset.eddr; }); if (i < 0) return; reEdit(draftImages[i], function (res) { res.id = uid(); res.fromTray = !!draftImages[i].fromTray; DRAFT.drop(draftImages[i].id); draftImages[i] = res; DRAFT.ready(formKey, res, inst); form.dataset.dirty = '1'; drawGallery(); }); }); });
     };
     var scanType = function () { var c = form.querySelector('input[name=type]:checked'); return c ? c.value : ''; };
     // Re-editing starts from the unannotated base when there is one. Without it (no annotations, or a backup that lost the
@@ -1682,56 +1821,86 @@
         return file.arrayBuffer().then(function (buf) { var c = new File([buf], cname || (clip ? 'clip.mp4' : 'photo.jpg'), { type: file.type || (clip ? 'video/mp4' : 'image/jpeg'), lastModified: Date.now() }); c._wlCopy = cname; return openNew(c, clip, captured, k); },
           function () { file._wlCopy = ''; return openNew(file, clip, captured, k); });
       }
-      var m = k ? k.media : { id: uid(), formKey: formKey, kind: clip ? 'clip' : 'image', file: file, name: file.name || '', captured: !!captured, created: Date.now() };
+      var m = k ? k.media : { id: uid(), formKey: formKey, inst: inst, kind: clip ? 'clip' : 'image', file: file, name: file.name || '', captured: !!captured, created: Date.now() };
       if (!k) { var started = DRAFT.start(m); if (file._wlCopy) started.then(function () { NAT.captureRemove([file._wlCopy]); }, function () { /* kept in the camera folder */ }); }
       else DRAFT.state(m.id, Object.assign({}, k.state, { stage: 'editing' }));
       var s0 = k && k.state || {};
       var opts = { type: scanType(), isNew: true, captured: m.captured, start: s0.st, sel: s0.clip,
         keep: function (st, sel) { DRAFT.state(m.id, { stage: 'editing', st: st, clip: sel }); },
-        later: function () { DRAFT.list(formKey).then(function (l) { var x = l.find(function (y) { return y.media.id === m.id; }); DRAFT.state(m.id, Object.assign({}, x && x.state, { stage: 'later' })).then(loadKept); }); toast(clip ? T('Clip kept on this phone. Finish it from this scan.') : T('Photo kept on this phone. Finish it from this scan.'), 3500); },
+        later: function () { DRAFT.list().then(function (l) { var x = l.find(function (y) { return y.media.id === m.id; }); DRAFT.state(m.id, Object.assign({}, x && x.state, { stage: 'later' })).then(loadKept); }); toast(clip ? T('Clip kept on this phone. Finish it from this scan.') : T('Photo kept on this phone. Finish it from this scan.'), 3500); },
         discard: function () { DRAFT.drop(m.id).then(loadKept); } };
       return (clip ? editClip(file, opts) : editImage(file, opts)).then(function (res) {
-        if (res) { res.id = uid(); draftImages.push(res); form.dataset.dirty = '1'; DRAFT.drop(m.id); DRAFT.ready(formKey, res); }
+        if (res) { res.id = uid(); res.fromTray = !!m.fromTray; draftImages.push(res); form.dataset.dirty = '1'; DRAFT.drop(m.id); DRAFT.ready(formKey, res, inst); }
         loadKept();
         return res;
       });
     }
-    // Kept for later in this run (tiles), and anything from an earlier run of the app (a notice, never added by itself).
+    // 1.0.16: this form's own photos and clips are the ones that belong to it (inst): taken or kept for later here, or
+    // chosen for it one by one from the recovery tray. They are its Unfinished tiles until finished; prepared ones of a
+    // form continued after Wavelength closed go back into it. Everything else waits in the recovery tray, offered
+    // here with Choose from them, never added by itself.
     function keptUrl(m) { return keptUrls[m.id] || (keptUrls[m.id] = URL.createObjectURL(m.file)); }
     function loadKept() {
-      return DRAFT.list(formKey).then(function (l) {
+      return DRAFT.list().then(function (l) {
         if (!form.isConnected) return;
-        kept = l.filter(function (x) { return !x.earlier && x.state.stage === 'later' && x.media.file; });
-        drawGallery(); drawEarlier(l.filter(function (x) { return x.earlier; }));
+        var mine = l.filter(function (x) { return x.media.inst && x.media.inst === inst; });
+        mine.forEach(function (x) { if (x.state.stage === 'ready' && x.media.result && !draftImages.some(function (d) { return d.id === x.media.id; })) draftImages.push(Object.assign({}, x.media.result, { id: x.media.id, fromTray: !!x.media.fromTray })); });
+        kept = mine.filter(function (x) { return x.state.stage !== 'ready' && x.media.file; });
+        drawGallery(); return drawTray();
       });
     }
-    function drawEarlier(list) {
-      var box = $('[data-earlier]', form); if (!box) return;
-      if (!list.length) { box.innerHTML = ''; return; }
-      box.innerHTML = '<div class="kept-note" role="status"><p><b>' + esc(T('Kept from before Wavelength closed:')) + '</b> ' + esc(draftWords(list)) + '. ' + esc(T('They are not part of any scan yet. Add them only if they belong to this patient\'s scan.')) + '</p><div class="btns"><button type="button" class="btn teal sm" data-addearlier>' + esc(T('Add to this scan')) + '</button><button type="button" class="btn ghost sm" data-dropearlier>' + esc(T('Discard')) + '</button></div></div>';
-      $('[data-addearlier]', box).onclick = function () {
-        Promise.all(list.map(function (x) {
-          if (x.state.stage === 'ready' && x.media.result) { draftImages.push(Object.assign({}, x.media.result, { id: x.media.id })); return DRAFT.state(x.media.id, { stage: 'ready' }); }
-          return DRAFT.state(x.media.id, Object.assign({}, x.state, { stage: 'later' }));
-        })).then(function () {
-          form.dataset.dirty = '1';
-          return loadKept().then(function () {
-            // A new scan shows Images once the application is chosen: say where they went.
-            var rest = $('#rest', form); if (rest && rest.hidden) box.innerHTML = '<div class="kept-note" role="status"><p>' + esc(T('Added to this scan. You will find them under Images once you choose the application.')) + '</p></div>';
-          });
+    // Above the form: this form's unfinished photos in words (they are not part of the scan), and the recovery tray.
+    function drawTray() {
+      var box = $('[data-earlier]', form); if (!box) return Promise.resolve();
+      return DRAFT.tray(inst).then(function (l) {
+        if (!form.isConnected) return;
+        var hidden = $('#rest', form).hidden;
+        box.innerHTML = (kept.length ? '<div class="kept-note" role="status" data-unfinished><p><b>' + esc(T('Not finished yet: {what}.', { what: draftWords(kept) })) + '</b> ' + esc(T('Each one becomes part of this scan only when you finish it under Images and clips: open it, crop and redact it, then choose Use this image.')) + (hidden ? ' ' + esc(T('Choose the scan above to see Images and clips.')) : '') + '</p></div>' : '') +
+          (l.length ? '<div class="kept-note" role="status" data-traynote><p><b>' + esc(T('Kept on this phone, not part of any scan:')) + '</b> ' + esc(draftWords(l)) + '. ' + esc(T('They may come from different patients and scans. Choose only the ones that belong to this scan, one by one.')) + '</p><div class="btns"><button type="button" class="btn teal sm" data-opentray>' + esc(T('Choose from them')) + '</button></div></div>' : '');
+        var b = $('[data-opentray]', box); if (b) b.onclick = function () { openTray(); };
+      });
+    }
+    // The recovery tray over the form. Selected ones are chosen for this scan; the rest stay in the tray.
+    function openTray() {
+      return DRAFT.tray(inst).then(function (items) {
+        if (!form.isConnected) return;
+        if (!items.length) { closeSheet(); return drawTray(); }
+        sheet('<h2>' + esc(T('Kept photos and clips')) + '</h2>' + trayHtml(items, 'form'), function (root) {
+          bindTray(root, items, { mode: 'form', changed: function () { drawTray(); openTray(); }, kept: openTray, add: function (c) { closeSheet(); assignToForm(c); } });
         });
-      };
-      $('[data-dropearlier]', box).onclick = function () { discardKept(list); };
-    }
-    // Discarding kept photos or clips always asks: one taken in Wavelength exists nowhere else.
-    function discardKept(list) {
-      var only = list.some(function (x) { return x.media.captured; });
-      sheet('<h2>' + esc(T('Discard {what}?', { what: draftWords(list) })) + '</h2><p class="muted">' + esc(only ? T('At least one was taken in Wavelength and is not saved anywhere else on your phone.') : T('The originals stay in your phone\'s gallery.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Keep them')) + '</button><button class="btn ghost block" style="color:var(--red)" data-gone>' + esc(T('Discard')) + '</button></div>', function (root) {
-        // The previews let go too, so the WebView can erase the files themselves (it does once nothing uses them).
-        $('[data-gone]', root).onclick = function () { closeSheet(); list.forEach(function (x) { if (keptUrls[x.media.id]) { URL.revokeObjectURL(keptUrls[x.media.id]); delete keptUrls[x.media.id]; } }); Promise.all(list.map(function (x) { return DRAFT.drop(x.media.id); })).then(loadKept); };
       });
     }
-    loadKept();
+    // Chosen for this scan, one by one: an unfinished one becomes an Unfinished tile (part of the scan only once it is
+    // finished in the editor); one prepared in an earlier run (cropped and redacted) goes into the scan's images, where
+    // it can be checked, edited or removed. Nothing is said to be added that is not.
+    function assignToForm(c) {
+      if (c.length > 12 - count() - kept.length) {
+        sheet('<h2>' + esc(T('Too many for one scan')) + '</h2><p class="muted">' + esc(T('A scan holds up to 12 images or clips. Select fewer.')) + '</p><div class="btns"><button class="btn teal block" data-close>' + esc(T('OK')) + '</button></div>');
+        return Promise.resolve();
+      }
+      var ready = c.filter(function (x) { return x.state.stage === 'ready' && x.media.result; }), rest = c.filter(function (x) { return ready.indexOf(x) < 0; });
+      return Promise.all(c.map(function (x) { return DRAFT.assign(x, formKey, inst, ready.indexOf(x) >= 0 ? 'ready' : 'later', true); })).then(function () {
+        form.dataset.dirty = '1'; keepForm(true);
+        return loadKept();
+      }).then(function () {
+        var said = [];
+        if (rest.length) said.push(T('{what} chosen for this scan, not part of it yet: finish each one to add it.', { what: draftWords(rest) }));
+        if (ready.length) said.push(T('{what} prepared earlier added to this scan: check them under Images and clips.', { what: draftWords(ready) }));
+        toast(said.join(' '), 6000); announce(said.join(' '));
+      });
+    }
+    // An Unfinished tile's x: it is not part of the scan, so it can go back with the other kept ones, or be discarded.
+    function removeKept(k) {
+      sheet('<h2>' + esc(T('Take it out of this scan?')) + '</h2><p class="muted">' + esc(T('It is not part of the scan yet. Put it back with the other kept photos and clips, or discard it.')) + '</p><div class="btns"><button class="btn teal block" data-putback>' + esc(T('Put it back with the kept ones')) + '</button><button class="btn ghost block" style="color:var(--red)" data-disc>' + esc(T('Discard it')) + '</button><button class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div>', function (root) {
+        $('[data-putback]', root).onclick = function () { closeSheet(); DRAFT.release(k).then(loadKept); };
+        $('[data-disc]', root).onclick = function () { discardKept([k], function () { if (keptUrls[k.media.id]) { URL.revokeObjectURL(keptUrls[k.media.id]); delete keptUrls[k.media.id]; } loadKept(); }); };
+      });
+    }
+    loadKept().then(function () {
+      if (!S.trayAssign) return;
+      var ids = S.trayAssign; S.trayAssign = null;
+      return DRAFT.tray(inst).then(function (l) { var c = l.filter(function (x) { return ids.indexOf(x.media.id) >= 0; }); if (c.length && form.isConnected) return assignToForm(c); });
+    });
     // 1.0.14: the typed form, kept on this phone. Every named control except the file inputs, as [name, value] pairs
     // (ticked boxes and chosen radios only), with the list of names so unticked boxes come back unticked.
     function snapForm() {
@@ -1804,7 +1973,9 @@
     }
     // This form becomes the kept one: same record, same scan id, so saving it can only make one scan.
     function applyDraft(d) {
+      var was = inst;
       inst = d.id; newId = d.entryId; fdCreated = d.created || Date.now(); patientLink = d.patient || ''; form.dataset.draft = inst;
+      DRAFT.list().then(function (l) { return Promise.all(l.filter(function (x) { return x.media.inst === was; }).map(function (x) { return DRAFT.assign(x, formKey, inst, x.state.stage || 'later', x.media.fromTray); })); }).then(loadKept);
       if (editing) removed = (d.removed || []).filter(function (id) { return existing.some(function (x) { return x.id === id; }); });
       fillForm(d.data || {});
       form.dataset.dirty = '1'; drawGallery();
@@ -1826,14 +1997,17 @@
       ev.preventDefault();
       if (saving) return; // a second tap while the first save is still running
       // 1.0.14: a photo or clip kept for later is not part of the scan: say so before saving without it.
+      // 1.0.16: plainly: they will not be saved in this scan. Finish them now, save and keep them for later (back in the
+      // recovery tray, not in any scan), or go back.
       if (kept.length && !keptAsked) {
-        sheet('<h2>' + esc(T('Save without the unfinished {what}?', { what: draftWords(kept) })) + '</h2><p class="muted">' + esc(T('Unfinished photos and clips are not part of the scan until you finish them. If you save now they stay kept on this phone, and you can finish them later.')) + '</p><div class="btns"><button class="btn teal block" data-finish>' + esc(T('Finish them first')) + '</button><button class="btn ghost block" data-anyway>' + esc(T('Save without them')) + '</button></div>', function (root) {
+        sheet('<h2>' + esc(T('Not finished: {what}', { what: draftWords(kept) })) + '</h2><p class="muted">' + esc(T('Unfinished photos and clips are not part of the scan. If you save now, they will not be saved in this scan.')) + '</p><div class="btns"><button class="btn teal block" data-finish>' + esc(T('Finish them now')) + '</button><button class="btn ghost block" data-anyway>' + esc(T('Save, and keep them for later')) + '</button><button class="btn ghost block" data-close>' + esc(T('Go back')) + '</button></div>', function (root) {
           $('[data-finish]', root).onclick = function () { closeSheet(); var k = kept[0]; openNew(k.media.file, k.media.kind === 'clip', k.media.captured, k); };
           $('[data-anyway]', root).onclick = function () { closeSheet(); keptAsked = true; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true })); };
         });
         return;
       }
       keptAsked = false;
+      var unfinished = kept.slice(); // not saved in this scan: back to the recovery tray once it is saved
       var err = $('.err', form); err.hidden = true;
       var d = formData(form);
       var out = editing ? Object.assign({}, strip(editing)) : { id: newId, createdAt: Date.now() };
@@ -1846,7 +2020,7 @@
       out.exclude = mods.filter(function (m) { return ticked.indexOf(m) < 0; });
       // Required fields (unchanged from 1.0.9: application, a date not in the future, supervision): each one missing is
       // marked where it is, and the first is brought into view and focused for screen readers. Nothing is cleared.
-      var missing = [['type', T('Choose the application.')], ['date', out.date > today() ? T('The date cannot be in the future.') : T('Enter the date of the scan.')], ['supervision', T('Choose the level of supervision.')]].filter(function (x) { return !fieldOk(form, x[0]); });
+      var missing = [['type', T('Choose which scan you did.')], ['date', out.date > today() ? T('The date cannot be in the future.') : T('Enter the date of the scan.')], ['supervision', T('Choose the level of supervision.')]].filter(function (x) { return !fieldOk(form, x[0]); });
       $$('.field.invalid', form).forEach(function (fl) { markField(fl, ''); });
       if (missing.length) {
         missing.forEach(function (x) { markField($('[data-req="' + x[0] + '"]', form), x[1]); });
@@ -1862,7 +2036,7 @@
       var finish = function () {
         var btn = $('button[type=submit]', form);
         saving = true; busy(btn, true, T('Saving…'));
-        var keepImgs = existing.filter(function (x) { return removed.indexOf(x.id) < 0; });
+        var keepImgs = existing.filter(function (x) { return removed.indexOf(x.id) < 0; }), savedIds = draftImages.map(function (x) { return x.id; });
         out.images = keepImgs.concat(draftImages.map(function (x) { var o = { id: x.id, w: x.w, h: x.h, declared: true }; if (x.kind === 'clip') { o.kind = 'clip'; o.dur = x.dur; } return o; }));
         out._dirty = true; if (!editing) out._new = true;
         out.updatedAt = editing ? editing.updatedAt : 0;
@@ -1876,7 +2050,10 @@
           // Saved on this device. Nothing after this point may report the save as failed (a second Save would then
           // make a duplicate), so the screen change runs on its own.
           delete form.dataset.dirty; draftImages = [];
-          DRAFT.dropForm(formKey, ['ready']); // now in the logbook itself; anything kept for later stays kept
+          // 1.0.16: exactly the prepared copies now saved in the scan go (by id, from any run of the app, so none is
+          // offered again as a duplicate); unfinished ones go back to the recovery tray, kept and not in this scan.
+          savedIds.forEach(function (id) { DRAFT.drop(id); });
+          unfinished.forEach(function (x) { DRAFT.release(x); });
           clearTimeout(keepForm.t); DRAFT.dropFormDraft(inst); // the typed form is the saved scan now
           try { setKv('lastSetting', out.setting); NAT.haptic('success'); } catch (e) { /* not essential */ }
           setTimeout(function () {
@@ -5013,6 +5190,8 @@
     // 1.0.14: an open photo or clip editor handles Back itself: the keyboard first, then an open panel, then it asks
     // before anything is discarded (it never closes and loses the picture on one press).
     if (curEditor) { e.preventDefault(); curEditor.back(); return; }
+    // 1.0.16: a kept photo or clip opened from the recovery tray closes first, back to the list.
+    if (trayViewClose) { e.preventDefault(); trayViewClose(); return; }
     // The keyboard is open over a field: Back closes the keyboard and leaves the screen as it is.
     if (keyboardUp()) { e.preventDefault(); document.activeElement.blur(); return; }
     if (document.querySelector('.sheet-bg')) { e.preventDefault(); closeSheet(); return; }

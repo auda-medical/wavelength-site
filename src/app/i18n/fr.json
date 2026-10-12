@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* L'apprenant a fixé son propre objectif pour ce module, différent du chiffre du programme.",
 "12": "12",
@@ -2504,5 +2504,57 @@
 "Selected: {name}": "Sélectionné : {name}",
 "Thank you. The Wavelength team will confirm it is you before the listing counts towards your verification.": "Merci. L'équipe Wavelength confirmera qu'il s'agit bien de vous avant que la fiche compte pour votre vérification.",
 "That listing was not found. It may have changed: search again.": "Cette fiche est introuvable. Elle a peut-être changé : relancez la recherche.",
-"This is me": "C'est moi"
+"This is me": "C'est moi",
+"A scan holds up to 12 images or clips. Select fewer.": "Un examen contient au maximum 12 images ou clips. Sélectionnez-en moins.",
+"Add selected to this scan ({n})": "Ajouter la sélection à cet examen ({n})",
+"Check each one.": "Vérifiez chacun d’eux.",
+"Choose from them": "Choisir parmi eux",
+"Choose the scan above to see Images and clips.": "Choisissez l’examen ci-dessus pour voir Images et clips.",
+"Choose which scan you did.": "Choisissez l’examen que vous avez réalisé.",
+"Delete all": "Tout supprimer",
+"Delete all kept photos and clips?": "Supprimer toutes les photos et tous les clips conservés ?",
+"Discard selected ({n})": "Supprimer la sélection ({n})",
+"Each one becomes part of this scan only when you finish it under Images and clips: open it, crop and redact it, then choose Use this image.": "Chacun ne fait partie de cet examen qu’une fois terminé dans Images et clips : ouvrez-le, recadrez-le et masquez les identifiants, puis choisissez Utiliser cette image.",
+"Finish them now": "Les terminer maintenant",
+"I have checked them: none is needed for a scan": "Je les ai vérifiés : aucun n’est nécessaire pour un examen",
+"It is not part of the scan yet. Put it back with the other kept photos and clips, or discard it.": "Il ne fait pas encore partie de l’examen. Remettez-le avec les autres photos et clips conservés, ou supprimez-le.",
+"Kept for later": "Conservé pour plus tard",
+"Kept on this phone, not part of any scan:": "Conservés sur ce téléphone, dans aucun examen :",
+"Kept photos and clips": "Photos et clips conservés",
+"Kept when Wavelength closed": "Conservé à la fermeture de Wavelength",
+"Left by an earlier version": "Laissé par une version précédente",
+"None selected": "Aucune sélection",
+"Not finished yet: {what}.": "Pas encore terminés : {what}.",
+"Not finished: {what}": "Non terminés : {what}",
+"Nothing is kept on this phone.": "Rien n’est conservé sur ce téléphone.",
+"Open each one to check it, then select only the ones that belong to the same scan.": "Ouvrez chacun pour le vérifier, puis sélectionnez uniquement ceux qui appartiennent au même examen.",
+"Open each one to check it, then select only the ones that belong to this scan.": "Ouvrez chacun pour le vérifier, puis sélectionnez uniquement ceux qui appartiennent à cet examen.",
+"Open {name}": "Ouvrir {name}",
+"Prepared, not saved in a scan": "Préparé, enregistré dans aucun examen",
+"Put it back with the kept ones": "Le remettre avec les éléments conservés",
+"Review photos and clips": "Revoir les photos et clips",
+"Same patient as your {type} scan. Choose the next scan.": "Même patient que votre examen {type}. Choisissez l’examen suivant.",
+"Save, and keep them for later": "Enregistrer, et les conserver pour plus tard",
+"Scan not chosen": "Examen non choisi",
+"Start a scan with the selected ({n})": "Commencer un examen avec la sélection ({n})",
+"Take it out of this scan?": "Le retirer de cet examen ?",
+"They may come from different patients and scans. Choose only the ones that belong to this scan, one by one.": "Ils peuvent provenir de patients et d’examens différents. Choisissez un par un uniquement ceux qui appartiennent à cet examen.",
+"They were found together, but they may come from different patients and scans. Wavelength never adds them to a scan by itself, and none is selected until you select it.": "Ils ont été trouvés ensemble, mais peuvent provenir de patients et d’examens différents. Wavelength ne les ajoute jamais seul à un examen, et aucun n’est sélectionné tant que vous ne le sélectionnez pas.",
+"This cannot be undone.": "Cette action est irréversible.",
+"This deletes all {n} from this phone, including any that may belong to a scan you have not logged yet. It cannot be undone.": "Cela supprime les {n} éléments de ce téléphone, y compris ceux qui pourraient appartenir à un examen que vous n’avez pas encore enregistré. Cette action est irréversible.",
+"Too many for one scan": "Trop pour un seul examen",
+"Unfinished photos and clips are not part of the scan. If you save now, they will not be saved in this scan.": "Les photos et clips non terminés ne font pas partie de l’examen. Si vous enregistrez maintenant, ils ne seront pas enregistrés dans cet examen.",
+"{what} chosen for this scan, not part of it yet: finish each one to add it.": "{what} choisis pour cet examen, pas encore inclus : terminez chacun pour l’ajouter.",
+"{what} deleted.": "{what} supprimés.",
+"{what} discarded.": "{what} supprimés.",
+"{what} prepared earlier added to this scan: check them under Images and clips.": "{what} préparés auparavant ajoutés à cet examen : vérifiez-les dans Images et clips.",
+"Delete all {n} kept photos and clips": {
+"one": "Supprimer la photo ou le clip conservé",
+"other": "Supprimer les {n} photos et clips conservés"
+},
+"{n} selected": {
+"one": "{n} sélectionné",
+"other": "{n} sélectionnés"
+},
+"Photo": "Photo"
 }

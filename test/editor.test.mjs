@@ -203,7 +203,8 @@ test('annotation size: the middle of the slider is the usual size, and every kin
   // Close to the middle snaps to it.
   assert.deepEqual([-3, -1, 0, 2, 3, 4, -4].map(E.snapPos), [0, 0, 0, 0, 0, 4, -4]);
   // Sizes saved by 1.0.12 and 1.0.13 read back where they are on the new slider, and survive storage.
-  assert.deepEqual(['s', 'm', 'l'].map((k) => E.posOf({ type: 'text', size: E.SIZES[k] })), [-44, 0, 38]);
+  // (1.0.16's wider ends move them a little towards the middle: -44 and 38 on the 1.0.14 slider.)
+  assert.deepEqual(['s', 'm', 'l'].map((k) => E.posOf({ type: 'text', size: E.SIZES[k] })), [-39, 0, 34]);
   assert.equal(E.posOf({ type: 'picto' }), 0, 'a pictogram without a size is the usual size');
   const kept = E.cleanAnn([{ type: 'picto', picto: 'side-r', x: 0.5, y: 0.5, size: E.sizeAt('picto', 100) }, { type: 'text', text: 'Ao', x: 0.5, y: 0.5, size: E.sizeAt('text', -100) }]);
   assert.deepEqual(kept.map((a) => a.size), [E.sizeAt('picto', 100), E.sizeAt('text', -100)]);
@@ -216,8 +217,8 @@ test('annotation size changes what is drawn: text height, a line\'s width and he
   const radius = (a) => { const { ops, ctx } = rec(); E.drawAnn(ctx, a, 1000, 800); return ops.filter((o) => o[0] === 'arc').pop()[3]; };
   const t = (p) => ({ type: 'text', text: 'LV', x: 0.5, y: 0.5, size: E.sizeAt('text', p) });
   assert.ok(font(t(-100)) < font(t(0)) && font(t(0)) < font(t(100)));
-  assert.equal(font(t(-100)), Math.round(0.016 * 800), 'smallest text is a footnote (1.6% of the shorter side)');
-  assert.equal(font(t(100)), Math.round(0.3 * 800), 'largest text is a heading (30%)');
+  assert.equal(font(t(-100)), Math.round(0.012 * 800), 'smallest text is a footnote (1.2% of the shorter side; 1.6% in 1.0.14)');
+  assert.equal(font(t(100)), Math.round(0.42 * 800), 'largest text is a heading (42%; 30% in 1.0.14)');
   // A label that would run past the picture is drawn smaller, so it never overflows.
   assert.ok(font(t(100), 5000) < font(t(100), 40), 'a long, large label is fitted to the picture width');
   for (const type of ['arrow', 'circle', 'rect']) {
@@ -296,4 +297,22 @@ test('the app shows the Annotation size slider (Smaller to Larger, no percentage
     const t = JSON.parse(readFileSync(new URL(`../src/app/i18n/${lang}.json`, import.meta.url), 'utf8'));
     for (const k of ['Annotation size', 'Smaller', 'Larger', 'Keep editing', 'Keep for later', 'Leave this photo?', 'Choose a colour', 'Zoom in', 'Zoom out', 'Zoom {n} times. Tap to show the whole picture.']) assert.ok(t[k], `${lang}: ${k}`);
   }
+});
+
+// ---------- 1.0.16: a wider size range (owner's Fold7 check), the middle and every stored size unchanged ----------
+test('1.0.16 annotation size: the ends are further apart than 1.0.14, the middle and stored sizes are unchanged', () => {
+  const OLD = { text: [0.016, 0.3], dot: [0.014, 0.26], line: [0.016, 0.32], picto: [0.07, 0.92] };
+  for (const [k, [lo, hi]] of Object.entries(OLD)) {
+    assert.ok(E.RANGE[k].lo < lo && E.RANGE[k].hi > hi, `${k}: wider at both ends`);
+    assert.ok((E.RANGE[k].hi / E.RANGE[k].lo) > 1.5 * (hi / lo), `${k}: at least half as wide again`);
+  }
+  assert.equal(E.sizeAt('text', 0), 0.058); assert.equal(E.sizeAt('dot', 0), 0.058); assert.equal(E.sizeAt('arrow', 0), 0.058); assert.equal(E.sizeAt('picto', 0), 0.24);
+  // Usable at both ends: a footnote no smaller than 1.2% of the shorter side, a pictogram never bigger than the picture.
+  assert.ok(E.RANGE.text.lo >= 0.012 && E.RANGE.dot.lo >= 0.01 && E.RANGE.line.lo >= 0.01 && E.RANGE.picto.hi <= 0.96);
+  // Fine control around the middle: one slider step from the usual size changes it by less than 1%.
+  assert.ok(E.sizeAt('text', 4) / E.sizeAt('text', 0) < 1.01 && E.sizeAt('text', 0) / E.sizeAt('text', -4) < 1.01);
+  // Annotations saved by 1.0.12 to 1.0.15 keep exactly the size they were saved with (storage, backups, re-editing).
+  const old = [{ type: 'text', text: 'LV', x: 0.5, y: 0.5, size: 0.016 }, { type: 'dot', x: 0.2, y: 0.2, size: 0.26 }, { type: 'arrow', x: 0.1, y: 0.1, x2: 0.5, y2: 0.5, size: 0.042 }, { type: 'picto', picto: 'side-r', x: 0.5, y: 0.5, size: 0.92 }];
+  assert.deepEqual(E.cleanAnn(old).map((a) => a.size), [0.016, 0.26, 0.042, 0.92]);
+  for (const a of old) { const p = E.posOf(a); assert.ok(p > E.POS.min && p < E.POS.max, `${a.type} ${a.size} sits inside the new slider (${p})`); }
 });
