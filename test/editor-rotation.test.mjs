@@ -94,6 +94,9 @@ test('the editor: Size and Rotation together, Rotation live and one Undo step pe
   // Where the controls go follows the same rule as the editor's layout.
   assert.match(APP, /matchMedia\('\(min-width: 700px\) and \(min-aspect-ratio: 4\/5\)'\)/);
   assert.match(CSS, /@media \(min-width: 700px\) and \(min-aspect-ratio: 4\/5\) \{\n  \.editor \{ grid-template-rows: auto minmax\(0, 1fr\) auto auto; \}/);
-  assert.match(CSS, /@container \(min-width: 30em\) \{ \.editor \.ed-ctlgrid:not\(\.one\) \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\); \} \}/, 'side by side only when the group is wide enough for its text size');
+  assert.match(CSS, /\.editor \.ed-ctls\.wide \.ed-ctlgrid:not\(\.one\) \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\); \}/, 'side by side only when marked wide');
+  // Wide is measured at the text size actually shown (Android's font size enlarges text without changing CSS em).
+  assert.match(APP, /ctls\.classList\.toggle\('wide', w >= 30 \* f\)/, 'side by side only when the group is wide enough for its rendered text size');
+  assert.doesNotMatch(CSS, /@container/, 'no container query left to disagree with the measurement');
   assert.match(CSS, /\.editor \.ed-rot input\[type=range\] \{[^}]*height: 44px/, 'a full-size touch target');
 });

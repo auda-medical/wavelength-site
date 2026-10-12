@@ -2166,7 +2166,7 @@
     var tb = function (k, label, full, attrs) { return '<button type="button" class="tool et" ' + attrs + ' aria-label="' + esc(full || label) + '">' + ET[k] + '<span>' + esc(label) + '</span></button>'; };
     // 1.0.17: Size and Rotation together, one compact group. Side by side when the group is wide enough for both
     // (CSS, by its own width and text size), stacked otherwise; Rotation only for what can turn.
-    var ctlsHtml = '<div class="ed-ctls" data-ctls role="group" aria-label="' + esc(T('Annotation controls')) + '"><div class="ed-ctlgrid">' +
+    var ctlsHtml = '<div class="ed-ctls" data-ctls role="group" aria-label="' + esc(T('Annotation controls')) + '"><span class="ed-ctlem" aria-hidden="true">M</span><div class="ed-ctlgrid">' +
       '<div class="ed-size ed-ctl"><div class="ed-szhead"><label for="edsz">' + esc(T('Size')) + '</label><span class="ed-szfor" id="edszfor" data-szfor></span></div>' +
       '<div class="ed-szrow"><span class="sz-end" aria-hidden="true">' + esc(T('Smaller')) + '</span><span class="ed-sztrack"><input type="range" id="edsz" data-szr min="' + EDT.POS.min + '" max="' + EDT.POS.max + '" step="1" value="0" aria-describedby="edszfor"></span><span class="sz-end" aria-hidden="true">' + esc(T('Larger')) + '</span></div></div>' +
       '<div class="ed-rot ed-ctl" data-rotctl><div class="ed-szhead"><label for="edrot">' + esc(T('Rotation')) + '</label><span class="ed-szfor ed-rotval" id="edrotval" data-rotval aria-hidden="true"></span></div>' +
@@ -2535,7 +2535,12 @@
     // landscape, a tablet), so the annotation can be watched as it turns; in the Annotate panel otherwise.
     var ctls = $('[data-ctls]', el), ctlHome = $('[data-ctlhome]', el), ctlSlot = $('[data-ctlslot]', el);
     var SIDE = window.matchMedia ? window.matchMedia('(min-width: 700px) and (min-aspect-ratio: 4/5)') : null;
-    function placeCtls() { var want = SIDE && SIDE.matches ? ctlSlot : ctlHome; if (ctls.parentNode !== want) want.appendChild(ctls); }
+    // Side by side only when both fit at the text size actually shown (Android's font size enlarges text without
+    // changing CSS em, so this is measured here rather than in a container query).
+    function fitCtls() { var w = ctls.getBoundingClientRect().width, f = parseFloat(getComputedStyle(ctls).fontSize) || 16; ctls.classList.toggle('wide', w >= 30 * f); }
+    function placeCtls() { var want = SIDE && SIDE.matches ? ctlSlot : ctlHome; if (ctls.parentNode !== want) want.appendChild(ctls); fitCtls(); }
+    var ctlRO = window.ResizeObserver ? new ResizeObserver(fitCtls) : null;
+    if (ctlRO) { ctlRO.observe(ctls); ctlRO.observe($('.ed-ctlem', ctls)); } // a hidden letter: its size follows the text size
     placeCtls();
 
     // ---- Colour (1.0.14): one control. The square opens a continuous spectrum, with greys, the three colours used
@@ -2734,7 +2739,7 @@
       el: el, paint: paint, state: function () { return st; }, refresh: redraw, back: back, keep: keepNow,
       fail: function (msg) { var er = $('[data-err]', el); er.textContent = msg; er.hidden = false; el.classList.remove('working'); save.textContent = cfg.saveLabel; save.disabled = !decl.checked; },
       busy: function (on, label) { el.classList.toggle('working', !!on); save.disabled = !!on || !decl.checked; if (label) save.textContent = label; $('[data-err]', el).hidden = true; },
-      remove: function () { clearTimeout(keepT); if (curEditor === api0) curEditor = null; if (paintRaf) cancelAnimationFrame(paintRaf); if (viewRaf) cancelAnimationFrame(viewRaf); paintRaf = 0; viewRaf = 0; window.removeEventListener('resize', onResize); window.removeEventListener('pointerup', unhold, true); window.removeEventListener('pointercancel', unhold, true); el.remove(); cv.width = 0; cv.height = 0; }
+      remove: function () { clearTimeout(keepT); if (curEditor === api0) curEditor = null; if (paintRaf) cancelAnimationFrame(paintRaf); if (viewRaf) cancelAnimationFrame(viewRaf); paintRaf = 0; viewRaf = 0; window.removeEventListener('resize', onResize); if (ctlRO) ctlRO.disconnect(); window.removeEventListener('pointerup', unhold, true); window.removeEventListener('pointercancel', unhold, true); el.remove(); cv.width = 0; cv.height = 0; }
     };
     curEditor = api0;
     return api0;

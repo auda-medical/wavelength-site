@@ -112,10 +112,10 @@ await go('#/new?type=cardiac'); await sleep(2500); await pickPhoto(); await page
 await click('.editor [data-tab=annotate]'); await sleep(300); await addText('Ao'); const f1 = await rot();
 const fsize = await page.evaluate(() => getComputedStyle(document.querySelector('.ed-ctls')).fontSize);
 K.shot('F1-font-1.3-unfolded');
-sh('settings put system font_scale ' + (fs0 && fs0 !== 'null' ? fs0 : '1.0'));
 record('F1', 'Android font size 1.3, unfolded: the text is larger and Size and Rotation stack, so neither is cramped', f1.shown && !f1.side && parseFloat(fsize) > 16.5, { ...f1, fontSize: fsize });
 await click('.editor [data-a=cancel]'); await sleep(400); await page.evaluate(() => { const b = document.querySelector('.editor [data-cf=discard]'); if (b) b.click(); }); await sleep(600);
-K.adb('shell', 'am', 'force-stop', PKG); await relaunch();
+// The font size goes back only with Wavelength closed (changing it while open restarts the activity).
+K.adb('shell', 'am', 'force-stop', PKG); sh('settings put system font_scale ' + (fs0 && fs0 !== 'null' ? fs0 : '1.0')); await sleep(1500); await relaunch();
 // ---------- C: the clip editor on the phone ----------
 await go('#/new?type=cardiac'); await sleep(2500);
 await page.evaluate(() => new Promise((ok) => { const c = document.createElement('canvas'); c.width = 400; c.height = 300; const g = c.getContext('2d'); const rec = new MediaRecorder(c.captureStream(25), { mimeType: 'video/webm' }); const ch = []; rec.ondataavailable = (e) => e.data.size && ch.push(e.data); const t0 = performance.now(); const tick = () => { g.fillStyle = '#808080'; g.fillRect(0, 0, 400, 300); g.fillStyle = '#a0a0a0'; g.fillRect(((performance.now() - t0) / 10) % 400, 0, 6, 300); if (performance.now() - t0 < 3000) requestAnimationFrame(tick); else rec.stop(); }; rec.onstop = () => { const dt = new DataTransfer(); dt.items.add(new File([new Blob(ch, { type: 'video/webm' })], 'clip.webm', { type: 'video/webm' })); const i = document.querySelector('#vpick'); i.files = dt.files; i.dispatchEvent(new Event('change', { bubbles: true })); ok(); }; rec.start(100); tick(); }));

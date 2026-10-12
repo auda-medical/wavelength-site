@@ -1029,13 +1029,15 @@ html[data-theme="dark"] .sheet.pop { box-shadow: 0 12px 32px rgba(0,0,0,.45); }
 .tray-view-m img, .tray-view-m video { max-width: 100%; max-height: 100%; object-fit: contain; }
 .tray-view-tx { margin: 0; font-size: 14px; text-align: center; }
 
-/* 1.0.17: Annotation controls. Size and Rotation in one group. Side by side when the group is at least 30em wide
-   (its own width and text size decide, not the device: enlarged text needs more room, so they stack sooner);
+/* 1.0.17: Annotation controls. Size and Rotation in one group. Side by side (.wide, set by the editor) when the group
+   is at least 30 times its rendered text size wide (its own width and text size decide, not the device: enlarged text,
+   including Android's font size, which a CSS container query does not see, needs more room, so they stack sooner);
    stacked otherwise. Rotation is left out for what cannot turn, and Size then has the whole width. */
 .editor .ed-row.ed-opts { display: flex; align-items: center; gap: 14px; }
-.editor .ed-ctls { container-type: inline-size; margin-top: 4px; }
+.editor .ed-ctls { margin-top: 4px; position: relative; }
+.editor .ed-ctlem { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; white-space: nowrap; }
 .editor .ed-ctlgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px 22px; }
-@container (min-width: 30em) { .editor .ed-ctlgrid:not(.one) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.editor .ed-ctls.wide .ed-ctlgrid:not(.one) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .editor .ed-ctl { display: grid; gap: 2px; min-width: 0; }
 .editor .ed-ctl .ed-szhead { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .editor .ed-ctl .ed-szrow { display: flex; }
@@ -1066,9 +1068,7 @@ html[data-theme="dark"] .sheet.pop { box-shadow: 0 12px 32px rgba(0,0,0,.45); }
 /* The 1.0.14 placement of the Size heading and slider in the colour grid no longer applies inside the group. */
 .editor .ed-ctl .ed-szhead, .editor .ed-ctl .ed-szrow { grid-column: auto; grid-row: auto; }
 /* Side by side, each slider has the whole width of its half: the end words go under the track. */
-@container (min-width: 30em) {
-  .editor .ed-ctlgrid:not(.one) .ed-szrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "track track track" "lo . hi"; row-gap: 0; }
-  .editor .ed-ctlgrid:not(.one) .ed-szrow > .sz-end:first-child { grid-area: lo; font-size: 11px; }
-  .editor .ed-ctlgrid:not(.one) .ed-szrow > .ed-sztrack { grid-area: track; }
-  .editor .ed-ctlgrid:not(.one) .ed-szrow > .sz-end:last-child { grid-area: hi; font-size: 11px; }
-}
+.editor .ed-ctls.wide .ed-ctlgrid:not(.one) .ed-szrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "track track track" "lo . hi"; row-gap: 0; }
+.editor .ed-ctls.wide .ed-ctlgrid:not(.one) .ed-szrow > .sz-end:first-child { grid-area: lo; font-size: 11px; }
+.editor .ed-ctls.wide .ed-ctlgrid:not(.one) .ed-szrow > .ed-sztrack { grid-area: track; }
+.editor .ed-ctls.wide .ed-ctlgrid:not(.one) .ed-szrow > .sz-end:last-child { grid-area: hi; font-size: 11px; }
