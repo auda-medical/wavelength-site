@@ -175,9 +175,11 @@ export function compose(id, { cues, total }, { film = 'flagship' } = {}) {
   // Gentle rises into the lifts (ending on the cue), quiet.
   for (const c of cues) if (c.name === 'lift' || c.name === 'free') { const d = Math.min(1.8, c.at - 0.2); if (d > 0.6) mx.add('fx', c.at - d, riser(d, id === 'C' ? 0.5 : 0.4, Math.round(c.at))); }
   // The resolution: the home chord as the closing logo settles, left to ring and fade with the picture.
-  const endT = g.end, ringDur = Math.max(1.5, total - endT);
+  // The final chord follows the logo's settle by 0.12 s with a soft pad attack, so the logo sound is heard first and the
+  // music resolves beneath it (no ducking).
+  const endT = g.end + 0.12, ringDur = Math.max(1.5, total - endT);
   const fin = CH.D;
-  mx.addStereo('pad', endT, pad([62, 66, 69, 74, 76], ringDur, { attack: 0.25, release: 1.2, bright: 0.45, seed: 99 }), 0.9);
+  mx.addStereo('pad', endT, pad([62, 66, 69, 74, 76], ringDur, { attack: 0.45, release: 1.2, bright: 0.45, seed: 99 }), 0.9);
   if (id === 'A') { fin.arp.forEach((m, j) => mx.add('arp', endT + j * 0.06, synthPluck(midi(m), 0.6, { decay: 1.6, bright: 0.5 }), { pan: (j - 2) * 0.15 })); mx.add('bass', endT, bass(midi(38), 0.9, 0.7)); }
   else if (id === 'B') { fin.gtr.forEach((m, j) => mx.add('gtr', endT + j * 0.045, pluck(midi(m), 0.75, { bright: 0.42, decay: 3.2, seed: 70 + j }), { pan: (j - 2) * 0.16 })); mx.add('bass', endT, pluck(midi(38), 0.8, { bright: 0.2, decay: 1.4, seed: 5 })); }
   else { [50, 57, 62, 66, 69, 74].forEach((m, j) => mx.add('ost', endT + j * 0.03, piano(midi(m), ringDur, 0.5, { felt: 0.5 }), { pan: (j - 2.5) * 0.1 })); }

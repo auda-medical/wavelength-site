@@ -18,7 +18,7 @@ import { Flagship4, flagship4TL } from './v4/Flagship4.jsx';
 import { Short4, short4TL } from './v4/Short4.jsx';
 import { Ad4, ad4TL } from './v4/Ad4.jsx';
 import { RevealPreview4 } from './v4/RevealPreview4.jsx';
-import { SAMPLE4 } from './v4/plans.js';
+import { SAMPLE4, SUBSETS } from './v4/plans.js';
 
 const sampleLen = () => { const t = flagshipTL(); return ['supervisors', 'free'].reduce((a, k) => a + t.byScene[k].dur, 0); };
 const v2SampleLen = () => { const t = flagship2TL(); const k = ['brand', 'log', 'supervisors'].map((x) => t.byScene[x]); return k.reduce((a, x, i) => a + x.dur - (i < k.length - 1 ? Math.round((x.overlap || 0) * FPS) : 0), 0); };
@@ -71,6 +71,8 @@ export const Root = () => <>
   <Composition id="V4AdVertical" component={Ad4} defaultProps={{ vertical: true }} durationInFrames={ad4TL().total} fps={FPS} width={1080} height={1920} />
   <Composition id="V4AdCaptioned" component={Ad4} defaultProps={{ captions: true }} durationInFrames={ad4TL().total} fps={FPS} width={1920} height={1080} />
   <Composition id="V4AdVerticalCaptioned" component={Ad4} defaultProps={{ vertical: true, captions: true }} durationInFrames={ad4TL().total} fps={FPS} width={1080} height={1920} />
+  <Composition id="V4LogoPreview" component={Flagship4} defaultProps={{ only: SUBSETS.logo }} durationInFrames={flagship4TL(SUBSETS.logo).total} fps={FPS} width={1920} height={1080} />
+  <Composition id="V4ClosingPreview" component={Flagship4} defaultProps={{ only: SUBSETS.closing }} durationInFrames={flagship4TL(SUBSETS.closing).total} fps={FPS} width={1920} height={1080} />
   <Composition id="V4LogoReveal" component={RevealPreview4} defaultProps={{ variant: 'full' }} durationInFrames={120} fps={FPS} width={1920} height={1080} />
   <Composition id="V4LogoRevealCheck" component={RevealPreview4} defaultProps={{ variant: 'full', check: true }} durationInFrames={120} fps={FPS} width={1920} height={1080} />
   <Composition id="V4LogoRevealShort" component={RevealPreview4} defaultProps={{ variant: 'short' }} durationInFrames={80} fps={FPS} width={1920} height={1080} />

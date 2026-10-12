@@ -14,8 +14,10 @@ import { RATE, midi, rng, biq, filt, reverb, writeWav, lufs, truePeak } from './
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TAU = 2 * Math.PI;
 
-function tone(L, R, t0, f, gain, decay = 0.7) {
-  const s = Math.round(t0 * RATE), len = Math.round((decay * 1.5) * RATE), k = 6.9 / decay;
+// lenMul: how long the tone is computed, in multiples of its decay time (1.5 by default, as in every published file;
+// longer only for the extended-decay versions, which need the tone to continue below audibility).
+export function tone(L, R, t0, f, gain, decay = 0.7, lenMul = 1.5) {
+  const s = Math.round(t0 * RATE), len = Math.round((decay * lenMul) * RATE), k = 6.9 / decay;
   const P = [[1, 1, 1], [2, 0.22, 0.6], [3, 0.06, 0.4], [4.2, 0.025, 0.25]];
   for (let i = 0; i < len && s + i < L.length; i++) {
     const t = i / RATE;
@@ -39,11 +41,11 @@ function air(L, R, settle, gain) {
     L[i] += a * env * gain; R[i] += b * env * gain;
   }
 }
-function make(seconds, settle, kind, airGain) {
+export function make(seconds, settle, kind, airGain, { lenMul = 1.5, normalise = true } = {}) {
   const n = Math.round(seconds * RATE), L = new Float32Array(n), R = new Float32Array(n);
   air(L, R, settle, airGain);
-  if (kind === 'signature') { tone(L, R, settle - 0.13, midi(74), 0.38, 0.55); tone(L, R, settle, midi(81), 0.42, 0.75); }
-  else { tone(L, R, settle, midi(74), 0.22, 0.7); tone(L, R, settle, midi(81), 0.4, 0.75); }
+  if (kind === 'signature') { tone(L, R, settle - 0.13, midi(74), 0.38, 0.55, lenMul); tone(L, R, settle, midi(81), 0.42, 0.75, lenMul); }
+  else { tone(L, R, settle, midi(74), 0.22, 0.7, lenMul); tone(L, R, settle, midi(81), 0.4, 0.75, lenMul); }
   // Short room: a small reverb, mostly dry.
   const [rl, rr] = reverb(Float32Array.from(L), Float32Array.from(R), { room: 0.6, damp: 0.5, pre: 0.008 });
   filt(rl, biq('hp', 300)); filt(rr, biq('hp', 300));
@@ -57,7 +59,7 @@ function make(seconds, settle, kind, airGain) {
   return [L, R];
 }
 // Full reveal: settle at 2.0 s (frame 60); short reveal: 1.1 s (frame 33). Files end 1.1 s after the settle.
-for (const [name, settle, kind, ag] of [['reveal', 2.0, 'signature', 0.32], ['reveal-short', 1.1, 'signature', 0.22], ['reveal-single', 2.0, 'single', 0.32], ['reveal-short-single', 1.1, 'single', 0.22]]) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) for (const [name, settle, kind, ag] of [['reveal', 2.0, 'signature', 0.32], ['reveal-short', 1.1, 'signature', 0.22], ['reveal-single', 2.0, 'single', 0.32], ['reveal-short-single', 1.1, 'single', 0.22]]) {
   const [L, R] = make(settle + 1.1, settle, kind, ag);
   // Decay check: level of the last 100 ms relative to the peak.
   const tail = (() => { let p = 0, q = 0; const s = L.length - Math.round(0.1 * RATE); for (let i = 0; i < L.length; i++) { const a = Math.abs(L[i]); if (i >= s) q = Math.max(q, a); else p = Math.max(p, a); } return 20 * Math.log10(q / p); })();

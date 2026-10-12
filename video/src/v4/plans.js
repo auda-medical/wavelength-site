@@ -6,7 +6,7 @@ export const FLAGSHIP4_PLAN = [
   { scene: 'scan', min: 5.6, lead: 0.3, tail: 0.6, overlap: 0.5 },
   { scene: 'rota', min: 9.0, lead: 0.3, tail: 0.8, overlap: 0.5 },
   { scene: 'wait', min: 8.8, lead: 0.3, tail: 0.9, overlap: 0.5 },
-  { scene: 'brand', min: 9.9, lead: 2.5, tail: 0.6, overlap: 0.5 }, // narration starts 0.5 s after the logo settles
+  { scene: 'brand', min: 9.9, lead: 2.7, tail: 0.6, overlap: 0.5 }, // narration starts 0.7 s after the logo settles, after its resonance
   { scene: 'log', min: 12.5, lead: 0.4, tail: 0.8, overlap: 0.5 },
   { scene: 'verified', min: 10.5, lead: 0.4, tail: 0.8, overlap: 0.5 },
   { scene: 'request', min: 7.5, lead: 0.4, tail: 0.9, overlap: 0.5 },
@@ -15,7 +15,7 @@ export const FLAGSHIP4_PLAN = [
   { scene: 'progress', min: 8.5, lead: 0.4, tail: 0.6, overlap: 0.5 },
   { scene: 'free', min: 6.4, lead: 0.5, tail: 0.6, overlap: 0.5 },
   { scene: 'education', min: 8.5, lead: 0.4, tail: 0.6, overlap: 0.5 },
-  { scene: 'end', min: 7.0, lead: 1.5 }, // the tagline follows the closing logo's settle (1.1 s)
+  { scene: 'end', min: 7.0, lead: 1.8 }, // the tagline starts 0.7 s after the closing logo's settle (1.1 s)
 ];
 export const SHORT4_PLAN = [
   { scene: 'hook', min: 4.6, lead: 0.2, tail: 0.6, overlap: 0.4 },
@@ -32,6 +32,9 @@ export const AD4_PLAN = [
 ];
 // The comparison sample: problem, the brand reveal, the app, free, the close.
 export const SAMPLE4 = ['scan', 'rota', 'brand', 'request', 'free', 'end'];
+// Excerpts of the flagship used for comparisons: the sample, and the logo-sound preview (the end of the problem, the brand
+// reveal and its first narration line, then the closing logo: both places the logo sound is heard).
+export const SUBSETS = { sample: SAMPLE4, logo: ['wait', 'brand', 'end'], closing: ['education', 'end'] };
 export const PLANS = { flagship: FLAGSHIP4_PLAN, short: SHORT4_PLAN, ad: AD4_PLAN };
 
 // Scene length = narration + lead + tail (or `min`), with `overlap` cross-dissolves (as version 3). T: timings.json,

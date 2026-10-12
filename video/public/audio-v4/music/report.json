@@ -166,5 +166,33 @@
   "sideToMidDb": -12.9,
   "cues": "warm@0.00 main@6.10 end@15.27",
   "ms": 20794
+ },
+ "A/logo": {
+  "candidate": "A",
+  "name": "Uplifting modern technology",
+  "film": "logo",
+  "seconds": 25.93,
+  "lufs": -20,
+  "truePeak": -2.1,
+  "lowShare": 5.5,
+  "harshShare": 0.9,
+  "correlation": 0.88,
+  "sideToMidDb": -12.1,
+  "cues": "problem@0.00 lift@10.30 end@19.83",
+  "ms": 13148
+ },
+ "A/closing": {
+  "candidate": "A",
+  "name": "Uplifting modern technology",
+  "film": "closing",
+  "seconds": 15.2,
+  "lufs": -20,
+  "truePeak": -3.9,
+  "lowShare": 6.2,
+  "harshShare": 1.6,
+  "correlation": 0.89,
+  "sideToMidDb": -12.5,
+  "cues": "problem@0.00 warm@0.00 end@9.10",
+  "ms": 8913
  }
 }
