@@ -41,7 +41,10 @@ const routes = [];
   }
 })(DIST);
 const PRIVATE = /^\/(admin|email|volunteer)\//;
-const audited = routes.filter((r) => !PRIVATE.test(r)).sort();
+// Pages the local Worker cannot render because they use a Cloudflare-only API (HTMLRewriter): check these on the
+// live site after a release instead.
+const CLOUDFLARE_ONLY = { '/elearning/account/': 'uses HTMLRewriter (Cloudflare runtime only)' };
+const audited = routes.filter((r) => !PRIVATE.test(r) && !CLOUDFLARE_ONLY[r]).sort();
 const sitemap = [...fs.readFileSync(path.join(DIST, 'sitemap.xml'), 'utf8').matchAll(/<loc>https?:\/\/[^/]+(\/[^<]*)<\/loc>/g)].map((m) => m[1]);
 const notBuilt = sitemap.filter((u) => !audited.includes(u));
 const only = opt('routes', '');
@@ -103,8 +106,21 @@ async function scrollThrough(page) {
   await page.evaluate(async () => { const go = (y) => scrollTo({ top: y, behavior: 'instant' }); const step = innerHeight * 0.8; for (let y = 0; y < document.documentElement.scrollHeight; y += step) { go(y); await new Promise((r) => setTimeout(r, 80)); } go(document.documentElement.scrollHeight); await new Promise((r) => setTimeout(r, 1400)); go(0); await new Promise((r) => setTimeout(r, 300)); });
 }
 
-async function open(width, { reducedMotion = 'no-preference', javaScriptEnabled = true } = {}) {
+// Academy lessons, assessments and the learner account need a registered learner: each context registers an invented
+// one in the local Worker's in-memory database (example.invalid addresses), as a real learner does on a module page.
+const GATED = /^\/elearning\/([^/]+)\/(learn|assessment)\/|^\/elearning\/account\//;
+// Pages that redirect by design when opened without their link: the certificate page needs a certificate code.
+const EXPECTED_REDIRECT = { '/elearning/certificate/': '/elearning/' };
+let learners = 0;
+async function asLearner(ctx, route) {
+  const slug = (route.match(GATED) || [])[1] || 'lung';
+  const res = await ctx.request.post(BASE + '/api/academy/register', { headers: { Accept: 'application/json', Origin: BASE, 'Content-Type': 'application/json' }, data: { module: slug, first_name: 'Audit', last_name: 'Learner' + (++learners), email: `audit${learners}.${Date.now()}@example.invalid`, privacy: true } });
+  if (!res.ok()) throw new Error('learner registration ' + res.status() + ' ' + (await res.text()).slice(0, 120));
+}
+
+async function open(width, { reducedMotion = 'no-preference', javaScriptEnabled = true, route = '' } = {}) {
   const ctx = await browser.newContext({ ...devices['Pixel 7'], viewport: { width, height: 740 }, reducedMotion, javaScriptEnabled });
+  if (GATED.test(route)) await asLearner(ctx, route);
   const page = await ctx.newPage();
   const log = { errors: [], failed: [] };
   page.on('pageerror', (e) => log.errors.push('pageerror: ' + String(e.message || e).slice(0, 160)));
@@ -121,12 +137,14 @@ function record(route, width, scenario, ok, problems, m, log) {
 const MIN_TEXT = 30;
 
 async function fresh(route, width, label = 'fresh') {
-  const { ctx, page, log } = await open(width);
   const problems = [];
+  let ctx, page, log;
   try {
+    ({ ctx, page, log } = await open(width, { route }));
     const res = await page.goto(BASE + route, { waitUntil: 'load', timeout: 30000 });
     if (!res || res.status() !== 200) problems.push('HTTP ' + (res && res.status()));
-    if (new URL(page.url()).pathname !== route) problems.push('ended at ' + new URL(page.url()).pathname);
+    const landed = new URL(page.url()).pathname;
+    if (landed !== route && EXPECTED_REDIRECT[route] !== landed) problems.push('ended at ' + landed);
     await page.waitForTimeout(1500);
     const first = await page.evaluate(MEASURE);
     if (first.onScreen < MIN_TEXT) problems.push(`little visible text on the first screen (${first.onScreen} chars)`);
@@ -134,15 +152,15 @@ async function fresh(route, width, label = 'fresh') {
     const m = await page.evaluate(MEASURE);
     if (m.hiddenCount) problems.push(`${m.hiddenCount} text blocks laid out but invisible after scrolling`);
     if (m.overflow > 1) problems.push(`sideways scroll ${m.overflow}px`);
-    // The web app (/app/ and its sign-off, assessment and verification screens) is its own shell with no site header,
-    // footer or menu; it must still show readable text and stay within the screen.
-    const appShell = await page.evaluate(() => !!document.getElementById('app') && !document.querySelector('.site-header'));
-    if (!appShell) {
+    // The web app screens under /app/ (the logbook, supervisor sign-off, assessment and verification) have their own
+    // layout with no site header, footer or menu; they must still show readable text and stay within the screen.
+    const appScreen = /^\/app\//.test(route) && !m.header;
+    if (!appScreen) {
       if (!m.main) problems.push('no <main>');
       if (!m.header) problems.push('no .site-header');
       if (!m.footer) problems.push('no .site-footer');
       if (!m.toggle) problems.push('menu button missing or hidden');
-    } else if (!/^\/app\//.test(route)) problems.push('app shell outside /app/');
+    }
     if (m.height < m.vh * 0.8 || m.height > 80000) problems.push('implausible height ' + m.height);
     if (m.gap > m.vh * 1.5) problems.push(`empty stretch of ${m.gap}px inside <main>`);
     if (m.toggle) {
@@ -157,7 +175,7 @@ async function fresh(route, width, label = 'fresh') {
     if (log.failed.length) problems.push(log.failed.length + ' failed first-party requests');
     record(route, width, label, !problems.length, problems, { ...m, onScreen: first.onScreen }, log);
   } catch (e) { problems.push('exception: ' + String(e.message).slice(0, 160)); record(route, width, label, false, problems, null, log); }
-  await ctx.close();
+  if (ctx) await ctx.close();
 }
 
 // The text on screen must be visible: after load, in every scenario.
@@ -166,14 +184,17 @@ async function check(route, scenario, page, log, problems) {
   const m = await page.evaluate(MEASURE);
   const hiddenOnScreen = await page.evaluate(() => { let n = 0; document.querySelectorAll('main *').forEach((el) => { const r = el.getBoundingClientRect(); if (r.bottom > 0 && r.top < innerHeight && r.height && [...el.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim())) { let o = 1; for (let e = el; e && e.nodeType === 1; e = e.parentElement) o *= parseFloat(getComputedStyle(e).opacity); if (o < 0.1) n++; } }); return n; });
   if (hiddenOnScreen) problems.push(`${hiddenOnScreen} invisible text blocks on screen`);
-  if (m.onScreen < MIN_TEXT) problems.push(`little visible text on screen (${m.onScreen} chars) at y=${m.y}`);
+  // On a short page reloaded part-way down, the screen can hold mostly the footer, outside <main>: that is fine as
+  // long as nothing on screen is invisible.
+  const mainOnScreen = await page.evaluate(() => { const mn = document.querySelector('main'); if (!mn) return true; const r = mn.getBoundingClientRect(); return r.bottom > innerHeight * 0.5; });
+  if (m.onScreen < MIN_TEXT && mainOnScreen) problems.push(`little visible text on screen (${m.onScreen} chars) at y=${m.y}`);
   record(route, 360, scenario, !problems.length, problems, m, log);
 }
 
 async function scenarios(route) {
   const W = 360;
   // reload at the top, then part-way down, then cached reload (same context keeps the cache)
-  { const { ctx, page, log } = await open(W); try {
+  { const { ctx, page, log } = await open(W, { route }); try {
       await page.goto(BASE + route, { waitUntil: 'load' }); await page.waitForTimeout(400);
       await page.reload({ waitUntil: 'load' }); await check(route, 'reload-top', page, log, []);
       const h = await page.evaluate(() => document.documentElement.scrollHeight);
@@ -182,7 +203,7 @@ async function scenarios(route) {
       await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' })); await page.reload({ waitUntil: 'load' }); await check(route, 'cached-reload', page, log, []);
     } catch (e) { record(route, W, 'reload', false, ['exception: ' + e.message.slice(0, 160)]); } await ctx.close(); }
   // back/forward with a restored scroll position
-  { const { ctx, page, log } = await open(W); try {
+  { const { ctx, page, log } = await open(W, { route }); try {
       await page.goto(BASE + route, { waitUntil: 'load' });
       const h = await page.evaluate(() => document.documentElement.scrollHeight);
       await page.evaluate((y) => scrollTo({ top: y, behavior: 'instant' }), Math.floor(h * 0.4)); await page.waitForTimeout(500);
@@ -190,13 +211,13 @@ async function scenarios(route) {
       await page.goBack({ waitUntil: 'load' }); await check(route, 'back-forward', page, log, []);
     } catch (e) { record(route, W, 'back-forward', false, ['exception: ' + e.message.slice(0, 160)]); } await ctx.close(); }
   // slow network (about 400 kbit/s, 400 ms latency)
-  { const { ctx, page, log } = await open(W); try {
+  { const { ctx, page, log } = await open(W, { route }); try {
       const cdp = await ctx.newCDPSession(page);
       await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 400, downloadThroughput: 50000, uploadThroughput: 20000 });
       await page.goto(BASE + route, { waitUntil: 'load', timeout: 90000 }); await check(route, 'slow-network', page, log, []);
     } catch (e) { record(route, W, 'slow-network', false, ['exception: ' + e.message.slice(0, 160)]); } await ctx.close(); }
   // reduced motion: nothing invisible anywhere
-  { const { ctx, page, log } = await open(W, { reducedMotion: 'reduce' }); try {
+  { const { ctx, page, log } = await open(W, { reducedMotion: 'reduce', route }); try {
       await page.goto(BASE + route, { waitUntil: 'load' }); await page.waitForTimeout(800);
       const m = await page.evaluate(MEASURE); const p = [];
       if (m.hiddenCount) p.push(`${m.hiddenCount} invisible text blocks with reduced motion`);
@@ -204,7 +225,7 @@ async function scenarios(route) {
       record(route, W, 'reduced-motion', !p.length, p, m, log);
     } catch (e) { record(route, W, 'reduced-motion', false, ['exception: ' + e.message.slice(0, 160)]); } await ctx.close(); }
   // main.js blocked (a failed or slow script): content must show without it
-  { const { ctx, page, log } = await open(W); try {
+  { const { ctx, page, log } = await open(W, { route }); try {
       await page.route('**/assets/main.js*', (r) => r.abort());
       await page.goto(BASE + route, { waitUntil: 'load' }); await page.waitForTimeout(3000);
       const m = await page.evaluate(MEASURE); const p = [];
@@ -213,7 +234,7 @@ async function scenarios(route) {
       record(route, W, 'no-main-js', !p.length, p, m, null);
     } catch (e) { record(route, W, 'no-main-js', false, ['exception: ' + e.message.slice(0, 160)]); } await ctx.close(); }
   // JavaScript off
-  { const { ctx, page } = await open(W, { javaScriptEnabled: false }); try {
+  { const { ctx, page } = await open(W, { javaScriptEnabled: false, route }); try {
       await page.goto(BASE + route, { waitUntil: 'load' });
       const m = await page.evaluate(MEASURE).catch(() => null);
       // evaluate needs JS; with it off, read the server-rendered text instead
@@ -238,7 +259,7 @@ server.kill();
 
 const failures = results.filter((r) => !r.ok);
 const summary = {
-  when: new Date().toISOString(), routesInDist: routes.length, routesAudited: targets.length, excluded: routes.filter((r) => PRIVATE.test(r)),
+  when: new Date().toISOString(), routesInDist: routes.length, routesAudited: targets.length, excluded: routes.filter((r) => PRIVATE.test(r)), notAuditedLocally: CLOUDFLARE_ONLY,
   sitemapUrls: sitemap.length, sitemapNotBuilt: notBuilt, widths: [320, 360, 390, 412], checks: results.length, failed: failures.length,
   byScenario: Object.fromEntries([...new Set(results.map((r) => r.scenario))].map((s) => [s, { checks: results.filter((r) => r.scenario === s).length, failed: failures.filter((r) => r.scenario === s).length }])),
   failingRoutes: [...new Set(failures.map((r) => r.route))].sort(),
