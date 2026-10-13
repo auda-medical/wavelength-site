@@ -67,15 +67,36 @@
     walk(el);
   });
 
-  // Scroll reveals
-  var items = document.querySelectorAll('.reveal, .steps-line');
-  if ('IntersectionObserver' in window && !reduce) {
+  // Scroll reveals: decoration only, never a condition for seeing content. The stylesheet hides .reveal only under
+  // html.reveal-on, which is set here once an observer is running, so without this script everything shows.
+  // Threshold 0: a ratio threshold can never be met by an element taller than the screen (a long guide or pearl is
+  // 12,000+ px on a phone, at most ~5% visible at once), which left whole articles invisible. The sweep below also
+  // shows anything already on or above the screen (restored scroll, back/forward, an observer that never reports).
+  var items = Array.prototype.slice.call(document.querySelectorAll('.reveal, .steps-line'));
+  function show(el) { el.classList.add('in'); }
+  if ('IntersectionObserver' in window && !reduce && items.length) {
     var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.08 });
+      entries.forEach(function (e) { if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } });
+    }, { rootMargin: '0px 0px -5% 0px', threshold: 0 });
     items.forEach(function (el) { io.observe(el); });
+    doc.classList.add('reveal-on');
+    var pending = false;
+    var onSweep = function () { if (!pending) { pending = true; requestAnimationFrame(sweep); } };
+    var sweep = function () {
+      pending = false;
+      items = items.filter(function (el) {
+        if (el.classList.contains('in')) return false;
+        if (el.getBoundingClientRect().top < window.innerHeight) { show(el); io.unobserve(el); return false; }
+        return true;
+      });
+      if (!items.length) window.removeEventListener('scroll', onSweep);
+    };
+    window.addEventListener('scroll', onSweep, { passive: true });
+    window.addEventListener('pageshow', sweep);
+    window.addEventListener('load', function () { setTimeout(sweep, 400); });
+    setTimeout(sweep, 1200);
   } else {
-    items.forEach(function (el) { el.classList.add('in'); });
+    items.forEach(show);
   }
 
   // Hero waveform
