@@ -18,12 +18,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { chromium, devices } from 'playwright';
+import { chromium, webkit, devices } from 'playwright';
 
 const out = path.resolve(process.argv[2] || 'mobile-audit');
 const opt = (name, def) => { const i = process.argv.indexOf('--' + name); return i > 0 ? process.argv[i + 1] : def; };
 const CONC = Number(opt('concurrency', 6));
 const PORT = Number(opt('port', 8823));
+// --engine webkit: iPhone Safari's engine with an iPhone profile (npx playwright install webkit); default chromium,
+// Android Chrome with a Pixel profile. Same widths either way.
+const ENGINE = opt('engine', 'chromium');
+const DEVICE = ENGINE === 'webkit' ? devices['iPhone 15'] : devices['Pixel 7'];
 const DIST = path.resolve('dist');
 if (!fs.existsSync(path.join(DIST, 'index.html'))) { console.error('Run node build.js first'); process.exit(2); }
 fs.mkdirSync(out, { recursive: true });
@@ -54,7 +58,7 @@ const targets = only ? only.split(',') : audited;
 const server = spawn(process.execPath, ['--import', './test/helpers/register.mjs', 'tools/dev-worker.mjs', String(PORT), '--site'], { stdio: ['ignore', 'pipe', 'inherit'] });
 await new Promise((ok, bad) => { server.stdout.on('data', (d) => { if (/dev worker on/.test(d)) ok(); }); server.on('exit', () => bad(new Error('dev worker stopped'))); });
 const BASE = `http://localhost:${PORT}`;
-const browser = await chromium.launch();
+const browser = await (ENGINE === 'webkit' ? webkit : chromium).launch();
 
 // ---- In-page measurements ----
 const MEASURE = () => {
@@ -116,10 +120,16 @@ async function asLearner(ctx, route) {
   const slug = (route.match(GATED) || [])[1] || 'lung';
   const res = await ctx.request.post(BASE + '/api/academy/register', { headers: { Accept: 'application/json', Origin: BASE, 'Content-Type': 'application/json' }, data: { module: slug, first_name: 'Audit', last_name: 'Learner' + (++learners), email: `audit${learners}.${Date.now()}@example.invalid`, privacy: true } });
   if (!res.ok()) throw new Error('learner registration ' + res.status() + ' ' + (await res.text()).slice(0, 120));
+  // WebKit keeps no Secure cookie on http://localhost (Chromium treats localhost as secure): copy the login cookie in
+  // without that flag, for this local test only.
+  if (ENGINE === 'webkit') {
+    const cookies = res.headersArray().filter((h) => h.name.toLowerCase() === 'set-cookie').map((h) => h.value.split(';')[0].split('='));
+    await ctx.addCookies(cookies.map(([name, ...v]) => ({ name, value: v.join('='), url: BASE })));
+  }
 }
 
 async function open(width, { reducedMotion = 'no-preference', javaScriptEnabled = true, route = '' } = {}) {
-  const ctx = await browser.newContext({ ...devices['Pixel 7'], viewport: { width, height: 740 }, reducedMotion, javaScriptEnabled });
+  const ctx = await browser.newContext({ ...DEVICE, viewport: { width, height: 740 }, reducedMotion, javaScriptEnabled });
   if (GATED.test(route)) await asLearner(ctx, route);
   const page = await ctx.newPage();
   const log = { errors: [], failed: [] };
@@ -210,10 +220,13 @@ async function scenarios(route) {
       await page.goto(BASE + (route === '/' ? '/contact/' : '/'), { waitUntil: 'load' });
       await page.goBack({ waitUntil: 'load' }); await check(route, 'back-forward', page, log, []);
     } catch (e) { record(route, W, 'back-forward', false, ['exception: ' + e.message.slice(0, 160)]); } await ctx.close(); }
-  // slow network (about 400 kbit/s, 400 ms latency)
+  // slow network (Chromium: about 400 kbit/s and 400 ms latency; WebKit has no throttling, so every request waits 400 ms)
   { const { ctx, page, log } = await open(W, { route }); try {
-      const cdp = await ctx.newCDPSession(page);
-      await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 400, downloadThroughput: 50000, uploadThroughput: 20000 });
+      if (ENGINE === 'webkit') await page.route('**/*', (r) => setTimeout(() => r.continue().catch(() => {}), 400));
+      else {
+        const cdp = await ctx.newCDPSession(page);
+        await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 400, downloadThroughput: 50000, uploadThroughput: 20000 });
+      }
       await page.goto(BASE + route, { waitUntil: 'load', timeout: 90000 }); await check(route, 'slow-network', page, log, []);
     } catch (e) { record(route, W, 'slow-network', false, ['exception: ' + e.message.slice(0, 160)]); } await ctx.close(); }
   // reduced motion: nothing invisible anywhere
@@ -259,7 +272,7 @@ server.kill();
 
 const failures = results.filter((r) => !r.ok);
 const summary = {
-  when: new Date().toISOString(), routesInDist: routes.length, routesAudited: targets.length, excluded: routes.filter((r) => PRIVATE.test(r)), notAuditedLocally: CLOUDFLARE_ONLY,
+  when: new Date().toISOString(), engine: ENGINE, device: ENGINE === 'webkit' ? 'iPhone 15 profile' : 'Pixel 7 profile', routesInDist: routes.length, routesAudited: targets.length, excluded: routes.filter((r) => PRIVATE.test(r)), notAuditedLocally: CLOUDFLARE_ONLY,
   sitemapUrls: sitemap.length, sitemapNotBuilt: notBuilt, widths: [320, 360, 390, 412], checks: results.length, failed: failures.length,
   byScenario: Object.fromEntries([...new Set(results.map((r) => r.scenario))].map((s) => [s, { checks: results.filter((r) => r.scenario === s).length, failed: failures.filter((r) => r.scenario === s).length }])),
   failingRoutes: [...new Set(failures.map((r) => r.route))].sort(),
