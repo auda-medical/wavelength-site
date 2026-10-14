@@ -71,7 +71,7 @@ Details: `source-inventory.md`.
 - **Account.**
   - Workers Free.
   - One D1 database, `wavelength-volunteers` (`1d2a5805-b54f-4969-b0dc-8decaa5319cf`), bound as `DB`; matches `wrangler.jsonc`.
-  - Cron triggers read from the Cloudflare API: `wavelength-site` has 3 (`15 5 * * *`, `30 6 * * 2`, `30 7 * * 2`); OneRota's two Workers have none.
+  - Cron triggers read from the Cloudflare API: `wavelength-site` has 3 (`15 5 * * *`, `30 6 * * 2`, `30 7 * * 2`; since 14 Oct 2026 `30 6 * * TUE`, `30 7 * * TUE`, because Cloudflare's `2` is Monday); OneRota's two Workers have none.
   - This adds one, `4,14,24,34,44,54 * * * *`: **4 of the 5 the free plan allows per account**, leaving one for OneRota.
   - The supervisor and newsletter schedules are unchanged, and each cron still runs exactly one job.
 - **Schedule.**

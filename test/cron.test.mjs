@@ -21,16 +21,16 @@ function spies() {
 
 test('every cron maps to exactly one job', () => {
   assert.equal(DAILY_CRON, '15 5 * * *');
-  assert.deepEqual([...NEWSLETTER_CRONS], ['30 6 * * 2', '30 7 * * 2']);
+  assert.deepEqual([...NEWSLETTER_CRONS], ['30 6 * * TUE', '30 7 * * TUE']);
   assert.equal(jobFor('15 5 * * *'), 'supervisor-daily');
-  assert.equal(jobFor('30 6 * * 2'), 'newsletter');
-  assert.equal(jobFor('30 7 * * 2'), 'newsletter');
+  assert.equal(jobFor('30 6 * * TUE'), 'newsletter');
+  assert.equal(jobFor('30 7 * * TUE'), 'newsletter');
   for (const other of ['15 5 * * 2', '30 6 * * *', '* * * * *', '', undefined, null]) assert.equal(jobFor(other), null, String(other));
 });
 
 test('wrangler.jsonc carries exactly the four crons, each routed (the hourly source monitoring added October 2026)', () => {
   const crons = wranglerCrons();
-  assert.deepEqual(crons, ['30 6 * * 2', '30 7 * * 2', '15 5 * * *', '4,14,24,34,44,54 * * * *']);
+  assert.deepEqual(crons, ['30 6 * * TUE', '30 7 * * TUE', '15 5 * * *', '4,14,24,34,44,54 * * * *']);
   assert.ok(crons.length <= 5, 'the Workers free plan allows five cron triggers per account');
   assert.deepEqual(crons.filter((c) => jobFor(c) === 'source-monitor'), [MONITOR_CRON]);
   assert.equal(new Set(crons).size, crons.length, 'no duplicates');
@@ -41,7 +41,7 @@ test('wrangler.jsonc carries exactly the four crons, each routed (the hourly sou
 
 test('the daily cron runs only dailyLifecycle; each Tuesday cron only scheduledNewsletter; others nothing', async () => {
   const env = { DB: {} };
-  for (const [cron, expected] of [['15 5 * * *', ['dailyLifecycle']], ['30 6 * * 2', ['scheduledNewsletter']], ['30 7 * * 2', ['scheduledNewsletter']], ['0 0 * * *', []], [undefined, []]]) {
+  for (const [cron, expected] of [['15 5 * * *', ['dailyLifecycle']], ['30 6 * * TUE', ['scheduledNewsletter']], ['30 7 * * TUE', ['scheduledNewsletter']], ['0 0 * * *', []], [undefined, []]]) {
     const { calls, jobs } = spies(); const c = collectingCtx();
     const warn = mock.method(console, 'warn', () => {});
     runScheduled({ cron }, env, c, jobs);
@@ -56,7 +56,7 @@ test('the daily cron runs only dailyLifecycle; each Tuesday cron only scheduledN
 
 test('the hourly monitoring cron runs only monitorRun, and the existing crons never run it', async () => {
   const env = { DB: {} };
-  for (const [cron, expected] of [[MONITOR_CRON, ['monitorRun:cron']], [DAILY_CRON, ['dailyLifecycle']], ['30 6 * * 2', ['scheduledNewsletter']]]) {
+  for (const [cron, expected] of [[MONITOR_CRON, ['monitorRun:cron']], [DAILY_CRON, ['dailyLifecycle']], ['30 6 * * TUE', ['scheduledNewsletter']]]) {
     const calls = []; const c = collectingCtx();
     runScheduled({ cron }, env, c, { dailyLifecycle: async () => { calls.push('dailyLifecycle'); }, scheduledNewsletter: async () => { calls.push('scheduledNewsletter'); }, monitorRun: async (e, ctx, o) => { calls.push(`monitorRun:${o.trigger}`); } });
     await c.done();
@@ -137,10 +137,10 @@ test('simulated 05:15 daily cron: one job run, nothing else changes, and a secon
 // Each Tuesday cron, in summer (BST) and winter (GMT). scheduledNewsletter loads the issue only at 7am to 8am London
 // time; the issue here is on hold (ready false), so nothing reaches Zoho. The daily job never runs.
 for (const [when, cron, loads] of [
-  ['2026-10-13T06:30:00Z', '30 6 * * 2', true], // 07:30 BST
-  ['2026-10-13T07:30:00Z', '30 7 * * 2', false], // 08:30 BST
-  ['2026-12-01T06:30:00Z', '30 6 * * 2', false], // 06:30 GMT
-  ['2026-12-01T07:30:00Z', '30 7 * * 2', true], // 07:30 GMT
+  ['2026-10-13T06:30:00Z', '30 6 * * TUE', true], // 07:30 BST
+  ['2026-10-13T07:30:00Z', '30 7 * * TUE', false], // 08:30 BST
+  ['2026-12-01T06:30:00Z', '30 6 * * TUE', false], // 06:30 GMT
+  ['2026-12-01T07:30:00Z', '30 7 * * TUE', true], // 07:30 GMT
 ]) {
   test(`simulated Tuesday newsletter cron ${cron} at ${when}: newsletter only${loads ? ', issue loaded' : ', outside the send hour'}`, async () => {
     mock.timers.enable({ apis: ['Date'], now: new Date(when) });
@@ -176,4 +176,19 @@ test('the daily job does nothing on a Tuesday-newsletter-only schedule: an unkno
   warn.mock.restore();
   assert.deepEqual(dump(env), before);
   assert.deepEqual(assets, []);
+});
+
+// 14 Oct 2026: Cloudflare numbers weekdays 1 = Sunday to 7 = Saturday, so "30 6 * * 2" ran on MONDAY and the first
+// weekly Pearl (Tue 13 Oct) was never sent. A weekday in a Worker cron must be a name, never a number.
+test('no Worker cron gives its day of the week as a number', () => {
+  for (const c of wranglerCrons()) {
+    const dow = c.trim().split(/\s+/)[4];
+    assert.ok(dow === '*' || /^[A-Z]{3}([-,][A-Z]{3})*$/.test(dow), `${c}: name the weekday (SUN to SAT), Cloudflare reads 1 as Sunday`);
+  }
+});
+
+test('the newsletter crons are Tuesday by name, matched whatever the case, and the old Monday crons run nothing', () => {
+  assert.ok(NEWSLETTER_CRONS.every((c) => c.endsWith(' TUE')));
+  for (const c of ['30 6 * * tue', '30 7 * * Tue', ' 30 6  * * TUE ']) assert.equal(jobFor(c), 'newsletter', c);
+  for (const c of ['30 6 * * 2', '30 7 * * 2', '30 6 * * 3', '30 6 * * WED']) assert.equal(jobFor(c), null, c);
 });
