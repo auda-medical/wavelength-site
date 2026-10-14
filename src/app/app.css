@@ -19,7 +19,9 @@
   --safe-b: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); --safe-t: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+/* 1.0.17 (iPhone build 24): a double-tap never zooms the page. On iPhone the app shell blocks pinch zoom, so a
+   double-tap zoom could not be undone. Pinch zoom, where the browser allows it, is unaffected. */
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 a { color: var(--link); }
@@ -225,6 +227,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 .entry h3 { margin: 0; font-size: 15px; font-weight: 600; }
 .entry p { margin: 2px 0 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .entry .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+/* 1.0.17 (iPhone build 24): the text column may shrink, so a long line is cut with an ellipsis instead of widening the
+   card past the screen. A supervisor's learner list wraps the role and hospital line instead. */
+.entry .grow { min-width: 0; }
+.entry.sv-learner p { white-space: normal; overflow-wrap: anywhere; }
 .entry.s-red { border-left: 4px solid var(--red); }
 .entry.s-amber { border-left: 4px solid var(--amber); }
 .entry.s-green { border-left: 4px solid var(--green); }
