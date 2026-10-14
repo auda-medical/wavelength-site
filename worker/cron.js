@@ -15,10 +15,10 @@ export const NEWSLETTER_CRONS = Object.freeze(['30 6 * * TUE', '30 7 * * TUE']);
 export const MONITOR_CRON = '4,14,24,34,44,54 * * * *';
 
 // The cron string as Cloudflare hands it back, compared without regard to case or spacing (TUE, Tue, tue).
-const norm = (c) => (typeof c === 'string' ? c.trim().replace(/\s+/g, ' ').toUpperCase() : '');
+const cronKey = (c) => (typeof c === 'string' ? c.trim().replace(/\s+/g, ' ').toUpperCase() : '');
 export function jobFor(cron) {
   if (cron === DAILY_CRON) return 'supervisor-daily';
-  if (cron && NEWSLETTER_CRONS.includes(norm(cron))) return 'newsletter';
+  if (cron && NEWSLETTER_CRONS.includes(cronKey(cron))) return 'newsletter';
   if (cron === MONITOR_CRON) return 'source-monitor';
   return null;
 }
