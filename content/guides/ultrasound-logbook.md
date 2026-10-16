@@ -152,7 +152,7 @@ Any format works if it holds the minimum dataset and protects patient data.
 - **Paper** works on any shift but is easy to lose and hard to summarise.
 - **A spreadsheet** sums totals well but is clumsy on a phone at the bedside.
 - **The RCEM e-portfolio (risr/advance, formerly Kaizen)** has a procedural log and an ultrasound case reflection form, and links to your ARCP.
-- **The free Wavelength app** logs scans against RCEM, FAMUS and FUSIC targets, records supervisor sign-off in person or by link, keeps images on your phone and exports a PDF, Excel or CSV summary with a verification code. It is not yet connected directly to any e-portfolio, so you attach the export to your portfolio entry.
+- **The free [Wavelength POCUS logbook app](/pocus-logbook/)** logs scans against RCEM, FAMUS and FUSIC targets, records supervisor sign-off in person or by link, keeps images on your phone and exports a PDF, Excel or CSV summary with a verification code. It is not yet connected directly to any e-portfolio, so you attach the export to your portfolio entry.
 
 Whichever you choose, log on the day of the scan. A logbook rebuilt from memory before an assessment rarely matches the detail your supervisor expects.
 

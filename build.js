@@ -188,9 +188,14 @@ const NAV = [
 ];
 
 // seoTitle: the search-result title (brand added). title alone keeps the old "Title | Wavelength" pattern.
+// The brand is added only while the whole title stays within TITLE_MAX characters: Google cuts longer titles off and
+// already shows the site name (WebSite schema) above each result, so a long title keeps its keywords instead.
+const TITLE_MAX = 60;
+const brandTitle = (t) => (`${t} | ${site.name}`.length <= TITLE_MAX ? `${t} | ${site.name}` : t);
 function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png' }) {
   const canonical = url(pathname);
-  const fullTitle = seoTitle ? `${seoTitle} | ${site.name}` : title ? `${title} | ${site.name}` : `${site.name} | Point-of-care ultrasound education`;
+  const base = seoTitle || title;
+  const fullTitle = base ? brandTitle(base) : `${site.name} | Point-of-care ultrasound education`;
   const ld = [
     {
       '@context': 'https://schema.org',
@@ -2113,7 +2118,7 @@ const notFound = layout({
     const page = (enPath, { title, description, body, jsonld = [] }) => {
       const pathname = base + LOCAL[enPath];
       const alts = altsFor(enPath);
-      const fullTitle = `${title} | ${site.name}`;
+      const fullTitle = brandTitle(title);
       const nav = [[`${base}app/`, c('app')], [`${base}about/`, c('about')], [`${base}contact/`, c('contact')]];
       const ld = [{ '@context': 'https://schema.org', '@type': 'EducationalOrganization', '@id': url('/#org'), name: site.name, url: url('/') }, { '@context': 'https://schema.org', '@type': 'WebPage', name: title, url: url(pathname), inLanguage: hl }, ...jsonld];
       return `<!doctype html>
