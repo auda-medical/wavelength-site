@@ -252,6 +252,7 @@
   var NETR = window.WLNet;
   var WLV = window.WLVerified; // supervisor verification for display (src/app/verified.js)
   var SY = { lastOk: 0, lastTry: 0, fail: '', tries: 0, timer: 0, ran: false, err: null };
+  var SYNC_GRACE_FROM = Date.now(); // start, then each sign-in (setSyncDot: the first failed attempt waits for its retry)
   S.net = null; // the phone's network (WLNetwork plugin), or null where only navigator.onLine is known
   function deviceNet() { return S.net || { known: false, online: navigator.onLine !== false }; }
   function pendingList() { return S.entries.filter(function (e) { return e._dirty; }); }
@@ -311,6 +312,15 @@
     var st = syncState(), text = syncText(st), n = pendingList().length, now = Date.now();
     // While a retry the learner asked for runs, the warning it came from stays (with Trying…) instead of vanishing.
     var bst = st === 'syncing' && SY.userWaiting && SY.fail ? (SY.fail === 'timeout' ? 'unreachable' : SY.fail) : st;
+    // 1.0.18: in the first 20 seconds after the app starts or a learner signs in, one failed attempt to reach the
+    // server shows no warning while the automatic retry runs (an iPhone often has no route yet at that moment; the
+    // owner saw the amber warning and then a successful retry). A second failure, or a retry the learner asked for,
+    // shows it as before. The status pill is unchanged.
+    var grace = SYNC_GRACE_FROM + 20000 - now;
+    if (bst === 'unreachable' && SY.tries <= 1 && grace > 0 && !SY.userWaiting) {
+      bst = 'quiet';
+      clearTimeout(SY.graceTimer); SY.graceTimer = setTimeout(setSyncDot, grace + 50);
+    }
     if (bst !== BAN.st) { if (bst === 'synced') { if (BAN.shown) BAN.okUntil = now + 3000; BAN.shown = false; } BAN.st = bst; BAN.at = now; }
     var settle = bst === 'pending' ? 3000 : bst === 'syncing' ? 800 : 0, age = now - BAN.at;
     var b = NETR.banner(bst, n, { settled: age >= settle, justSynced: now < BAN.okUntil });
@@ -471,6 +481,7 @@
       return api('/api/app/signoffs').then(function (r) { stale(gen); if (r.ok) return setPending(r.signoffs); });
     }).then(function () { return loadAssessments(gen); }).then(function () {
       SY.fail = ''; SY.ran = true; SY.lastOk = Date.now(); SY.err = null; logAttempt(true, '');
+      window.dispatchEvent(new CustomEvent('wl:synced')); // 1.0.18: the server answers again (guide status retries)
       // Started offline: the account details and supervisor links could not load then, so fetch them now.
       if (!S.me) loadMe();
       // Supervisor links carry each supervisor's verification: refreshed with sync at most every five minutes, so an
@@ -500,8 +511,16 @@
       setSyncDot(); resumeShares();
       // Send rebased edits straight away, at most twice in a row so a misbehaving server cannot loop us.
       if (!conflicts) S.rebases = 0; else if (!S.again && (S.rebases = (S.rebases || 0) + 1) <= 2) sync();
-      if (['home', 'log', 'progress', 'entry', 'assess'].indexOf(route().name) >= 0 && !document.querySelector('form[data-dirty]') && !document.querySelector('.sheet-bg')) render(true);
+      // 1.0.18: a sync that finishes while a sheet is open (Retry sync in the sync panel) or a form is being typed in
+      // leaves the screen as it was; redrawSynced() then draws it when the sheet closes, so scans pulled down show at
+      // once instead of after a restart.
+      S.syncRedraw = true; redrawSynced();
     });
+  }
+  function redrawSynced() {
+    if (!S.syncRedraw || ['home', 'log', 'progress', 'entry', 'assess'].indexOf(route().name) < 0) return;
+    if (document.querySelector('form[data-dirty]') || document.querySelector('.sheet-bg')) return;
+    S.syncRedraw = false; render(true);
   }
   // The server had a newer copy than the one this device edited (another device, or a supervisor's sign-off).
   // A restored backup never overwrites a live server copy: the server copy wins. Otherwise the learner's latest
@@ -849,6 +868,7 @@
   var keepScroll = 0;
   function render(soft) {
     var r = route();
+    S.syncRedraw = false; // this draw shows whatever the last sync brought
     if (soft) keepScroll = window.scrollY;
     if (r.name === 'verify-email') return viewVerifyEmail(r);
     if (!S.account) {
@@ -1058,6 +1078,8 @@
   function cacheAccount(acc) { try { if (acc) localStorage.setItem('wl-acc', JSON.stringify(acc)); else localStorage.removeItem('wl-acc'); } catch (e) { /* storage blocked */ } }
   function cachedAccount() { try { return JSON.parse(localStorage.getItem('wl-acc') || 'null'); } catch (e) { return null; } }
   function signedIn(acc) {
+    keptLast = null; // never show another account's kept card, even for a moment
+    SYNC_GRACE_FROM = Date.now();
     S.account = acc; cacheAccount(acc);
     var pl = (acc.profile || {}).lang;
     var stored = null; try { stored = localStorage.getItem('wl-lang'); } catch (e) { /* blocked */ }
@@ -1065,7 +1087,7 @@
     return openDb(acc.id).then(function (db) { S.db = db; return Promise.all([all('entries'), all('kv')]); }).then(function (r) {
       S.entries = r[0] || []; S.kv = {}; (r[1] || []).forEach(function (x) { S.kv[x.k] = x.v; });
       S.assessments = S.kv.assessments || [];
-      clearTimeout(SY.timer); clearTimeout(SY.netTimer); SY = { lastOk: S.kv.lastSyncOk || 0, fail: '', tries: 0, timer: 0, ran: false, paused: !!SY.paused };
+      clearTimeout(SY.timer); clearTimeout(SY.netTimer); clearTimeout(SY.graceTimer); SY = { lastOk: S.kv.lastSyncOk || 0, fail: '', tries: 0, timer: 0, ran: false, paused: !!SY.paused };
       var was = authNote(); if (was && was.id === acc.id) authNote(null);
       var next = new URLSearchParams(location.search).get('next');
       if (next && /^\/elearning\//.test(next)) { location.href = next; return; }
@@ -1086,7 +1108,7 @@
   }
   // Logging out, or a login the server no longer accepts, never deletes this device's logbook: it stays in this
   // account's local database and syncs when the same account logs in here again.
-  function signedOut(to) { SESSION++; clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.sv = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
+  function signedOut(to) { SESSION++; keptLast = null; clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.sv = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
   // The server says this login has ended (expired, password changed, logged out from another device).
   function authExpired() {
     var acc = S.account; if (!acc) return;
@@ -1236,8 +1258,17 @@
   // Typed scan forms kept the same way are listed first (Review continues the form). Nothing is deleted by itself:
   // the card says how long items have been kept and how much space they take, so the learner can finish or discard them.
   // Home is drawn under #/ and, straight after logging in, under #/login: the card belongs to the Home screen that asked.
+  // 1.0.18: the card is drawn at once from the last one shown (inert until the stores are read), then replaced by the
+  // real one or removed. Before, every redraw of Home (each sync) took the card away and added it back a moment later,
+  // so it flickered two or three times.
+  var keptLast = null;
+  function keptPlace(main, el) { var a = $('.quick', main); a = a && a.closest('.card'); if (a && a.nextSibling) main.insertBefore(el, a.nextSibling); else main.insertBefore(el, main.firstChild); }
   function keptHomeCard() {
     var home = $('main', app);
+    if (keptLast && home && !$('[data-kepthome]', home) && !$('[data-keptghost]', home)) {
+      var ghost = document.createElement('div'); ghost.className = 'card kept-home'; ghost.setAttribute('data-keptghost', ''); ghost.inert = true; ghost.innerHTML = keptLast; keptPlace(home, ghost);
+    }
+    var dropGhost = function () { var g = home && $('[data-keptghost]', home); if (g) g.remove(); };
     Promise.all([DRAFT.list(), DRAFT.forms()]).then(function (r) {
       // 1.0.16: every kept photo and clip counts (none is hidden); those belonging to an unfinished scan form come back
       // with it (Review), the rest are reviewed one by one in the recovery tray (Review photos and clips).
@@ -1245,7 +1276,8 @@
       var forms = r[1].filter(function (d) { if (d.formKey === 'new' && S.entries.some(function (x) { return x.id === d.entryId; })) { DRAFT.dropFormDraft(d.id); return false; } return true; });
       var liveForm = {}; forms.forEach(function (d) { liveForm[d.id] = 1; });
       var tray = list.filter(function (x) { return !(x.media.inst && liveForm[x.media.inst]); });
-      var main = $('main', app); if ((!list.length && !forms.length) || !main || main !== home || $('[data-kepthome]', main)) return;
+      if (!list.length && !forms.length) { keptLast = null; dropGhost(); return; }
+      var main = $('main', app); if (!main || main !== home || $('[data-kepthome]', main)) { dropGhost(); return; }
       var fd = forms[0], fdEnt = fd && fd.formKey !== 'new' && S.entries.find(function (x) { return x.id === fd.entryId && !x.deleted; });
       var href = fd ? (fd.formKey === 'new' ? 'new' : fdEnt ? 'edit/' + fdEnt.id : '') : '';
       var bytes = 0, oldest = Date.now();
@@ -1263,9 +1295,10 @@
         if (!href) { ev.preventDefault(); draftTextSheet(fd, T('The scan these changes were for has been deleted, so they cannot be applied.'), function () { card.remove(); keptHomeCard(); }); return; }
         S.resumeForm = fd.id;
       };
-      var anchor = $('.quick', main); anchor = anchor && anchor.closest('.card');
-      if (anchor && anchor.nextSibling) main.insertBefore(card, anchor.nextSibling); else main.insertBefore(card, main.firstChild);
-    });
+      keptLast = card.innerHTML;
+      var g = $('[data-keptghost]', main);
+      if (g) main.replaceChild(card, g); else keptPlace(main, card);
+    }).catch(dropGhost);
   }
   // ---------- 1.0.16: the recovery tray ----------
   // Kept photos and clips that belong to no scan, each on its own: a preview, when it was taken or kept, its size and
@@ -2510,7 +2543,8 @@
       rotIn.disabled = !a || cfg.locked();
       rotIn.setAttribute('aria-valuetext', rotWords(n));
       rotIn.style.setProperty('--fill', (Number(rotIn.value) - EDT.ROT.min) / (EDT.ROT.max - EDT.ROT.min) * 100 + '%');
-      $('[data-rotval]', el).textContent = a ? rotWords(n) : T('Select text, a label, a pictogram or a box');
+      // 1.0.18: Straight also shows a green tick (the owner looked for one; the light haptic tick alone was missed).
+      $('[data-rotval]', el).innerHTML = a ? (n === 0 ? '<span class="rot-ok" aria-hidden="true">✓</span> ' : '') + esc(rotWords(n)) : esc(T('Select text, a label, a pictogram or a box'));
       $('.ed-rot', el).classList.toggle('off', !a);
     }
     function setRot(v) {
@@ -3717,12 +3751,20 @@
     };
     var stored = SRC.load(slug);
     if (stored) paint(SRC.describe(stored.guide, g, { cached: true, receivedOn: stored.receivedOn }));
-    api('/api/app/sources/guide/' + encodeURIComponent(slug)).then(function (res) {
-      if (!res || !res.ok || !res.guide) return;
-      SRC.save(slug, res.guide, res.today);
-      var here = route();
-      if (here.name === 'guides' && here.arg === slug) paint(SRC.describe(res.guide, g, { cached: false }));
-    }).catch(function () { /* offline: the stored answer stays, labelled with its day */ });
+    var here = function () { var r = route(); return r.name === 'guides' && r.arg === slug && line.isConnected; };
+    var ask = function () {
+      api('/api/app/sources/guide/' + encodeURIComponent(slug)).then(function (res) {
+        if (!res || !res.ok || !res.guide) return;
+        SRC.save(slug, res.guide, res.today);
+        if (here()) paint(SRC.describe(res.guide, g, { cached: false }));
+      }).catch(function () {
+        // Offline: the stored answer stays, labelled with its day. 1.0.18: asked again, once, when the connection
+        // comes back while this guide is still open (before, the live date showed only after leaving and returning).
+        var again = function () { window.removeEventListener('online', again); window.removeEventListener('wl:synced', again); if (here()) ask(); };
+        window.addEventListener('online', again); window.addEventListener('wl:synced', again);
+      });
+    };
+    ask();
   }
 
   // Supervisor search: results come only from current approvals whose holder opted in (worker/search.js). The ref is
@@ -4466,6 +4508,7 @@
     var had = $$('.sheet-bg'), still = reducedMotion();
     had.forEach(function (s) { if (still || keepOpener || s.classList.contains('pop')) { s.remove(); return; } s.className = 'sheet-gone'; s.setAttribute('aria-hidden', 'true'); s.inert = true; var d = s.firstChild; if (d) { d.className = 'sheet-was'; $$('[id]', s).forEach(function (x) { x.removeAttribute('id'); }); } setTimeout(function () { s.remove(); }, 170); });
     if (keepOpener || !had.length) return;
+    setTimeout(redrawSynced, 0); // after any sheet opened in its place
     var o = sheetOpener; sheetOpener = null;
     if (o && o.isConnected && o.focus) try { o.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }
   }

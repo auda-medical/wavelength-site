@@ -277,13 +277,16 @@
     ctx.lineTo(x2 - len * Math.cos(ang + 0.45), y2 - len * Math.sin(ang + 0.45));
     ctx.closePath();
   }
-  // The font height of a text annotation on a W x H frame: its size, made smaller only if the text would otherwise
-  // run past the picture's width, so a large label never overflows the image.
+  // The font height of a text annotation on a W x H frame: its size, made smaller only if the text and its padding
+  // (0.8 of the font height) would otherwise run past 96% of the picture's width, so a large label never overflows
+  // the image. 1.0.18: the cap is the largest height that fits, so a larger Size never gives a smaller label (before,
+  // the padding grew with the asked-for size and the label shrank over the top of the slider).
   function textSize(ctx, a, W, H) {
     var fs = sizeOf(a) * Math.min(W, H);
     ctx.font = fontFor(fs);
-    var tw = ctx.measureText(a.text || '').width, room = W * 0.96 - fs * 0.8;
-    return tw > room && tw > 0 ? Math.max(4, fs * Math.max(0.05, room) / tw) : fs;
+    var tw = ctx.measureText(a.text || '').width;
+    if (!(tw > 0) || tw + fs * 0.8 <= W * 0.96) return fs;
+    return Math.max(4, Math.min(fs, W * 0.96 / (tw / fs + 0.8)));
   }
   // One annotation on an output frame W x H. Every mark has an edge in the opposite tone, so it reads on greyscale
   // ultrasound whatever its colour.
