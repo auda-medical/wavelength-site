@@ -2564,5 +2564,13 @@
 "{n}° right": "{n}° nach rechts",
 "Select text, a label, a pictogram or a box": "Wählen Sie einen Text, eine Beschriftung, ein Piktogramm oder einen Rahmen",
 "Drag the label where you want it. Size makes it smaller or larger; Rotation turns it.": "Ziehen Sie die Beschriftung an die gewünschte Stelle. Die Größe macht sie kleiner oder größer, die Drehung dreht sie.",
-"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Ziehen Sie das Piktogramm an die gewünschte Stelle. Die Größe macht es kleiner oder größer, die Drehung dreht es."
+"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Ziehen Sie das Piktogramm an die gewünschte Stelle. Die Größe macht es kleiner oder größer, die Drehung dreht es.",
+"Professional registration verified: {body}": "Berufliche Registrierung verifiziert: {body}",
+"Wavelength verified supervisor for {scope}": "Von Wavelength verifizierter Supervisor für {scope}",
+"Approved by Wavelength to supervise: {list}": "Von Wavelength als Supervisor zugelassen für: {list}",
+"Wavelength-approved supervisors can sign off scans and record assessments from their own dashboard. The Wavelength team checks your registration and experience, and approves you for the areas the evidence supports.": "Von Wavelength zugelassene Supervisoren können Untersuchungen bestätigen und Prüfungen in ihrem eigenen Dashboard erfassen. Das Wavelength-Team prüft Ihre Registrierung und Erfahrung und lässt Sie für die Bereiche zu, die Ihre Nachweise belegen.",
+"Find a Wavelength-approved supervisor": "Von Wavelength zugelassenen Supervisor finden",
+"Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.": "In der Suche erscheinen nur aktuell von Wavelength zugelassene Supervisoren. Zulassung, Registrierung und E-Mail müssen alle aktuell sein.",
+"Wavelength-approved supervisor": "Von Wavelength zugelassener Supervisor",
+"Source monitoring is not set up yet.": "Die Quellenüberwachung ist noch nicht eingerichtet."
 }

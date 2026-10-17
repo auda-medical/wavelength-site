@@ -2564,5 +2564,13 @@
 "{n}° right": "{n}° a destra",
 "Select text, a label, a pictogram or a box": "Seleziona un testo, un’etichetta, un pittogramma o un riquadro",
 "Drag the label where you want it. Size makes it smaller or larger; Rotation turns it.": "Trascina l’etichetta dove vuoi. La dimensione la rende più piccola o più grande; la rotazione la ruota.",
-"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Trascina il pittogramma dove vuoi. La dimensione lo rende più piccolo o più grande; la rotazione lo ruota."
+"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Trascina il pittogramma dove vuoi. La dimensione lo rende più piccolo o più grande; la rotazione lo ruota.",
+"Professional registration verified: {body}": "Iscrizione professionale verificata: {body}",
+"Wavelength verified supervisor for {scope}": "Supervisore verificato Wavelength per {scope}",
+"Approved by Wavelength to supervise: {list}": "Approvato da Wavelength per supervisionare: {list}",
+"Wavelength-approved supervisors can sign off scans and record assessments from their own dashboard. The Wavelength team checks your registration and experience, and approves you for the areas the evidence supports.": "I supervisori approvati da Wavelength possono convalidare esami e registrare valutazioni dalla propria dashboard. Il team Wavelength verifica la tua iscrizione e la tua esperienza e ti approva per gli ambiti supportati dalle evidenze.",
+"Find a Wavelength-approved supervisor": "Trova un supervisore approvato da Wavelength",
+"Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.": "Nella ricerca compaiono solo i supervisori con approvazione Wavelength valida. Approvazione, iscrizione ed email devono essere tutte aggiornate.",
+"Wavelength-approved supervisor": "Supervisore approvato da Wavelength",
+"Source monitoring is not set up yet.": "Il monitoraggio delle fonti non è ancora configurato."
 }

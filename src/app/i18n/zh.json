@@ -2526,5 +2526,13 @@
 "{n}° right": "向右 {n}°",
 "Select text, a label, a pictogram or a box": "请选择文字、标签、示意图或方框",
 "Drag the label where you want it. Size makes it smaller or larger; Rotation turns it.": "把标签拖到想要的位置。“大小”使其变小或变大，“旋转”使其转动。",
-"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "把示意图拖到想要的位置。“大小”使其变小或变大，“旋转”使其转动。"
+"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "把示意图拖到想要的位置。“大小”使其变小或变大，“旋转”使其转动。",
+"Professional registration verified: {body}": "专业注册已核验：{body}",
+"Wavelength verified supervisor for {scope}": "Wavelength 已核验的 {scope} 督导",
+"Approved by Wavelength to supervise: {list}": "经 Wavelength 认可可督导：{list}",
+"Wavelength-approved supervisors can sign off scans and record assessments from their own dashboard. The Wavelength team checks your registration and experience, and approves you for the areas the evidence supports.": "经 Wavelength 认可的督导老师可在自己的面板中签核扫查并记录评估。Wavelength 团队会核查您的执业注册和经验，并按证据所支持的领域予以认可。",
+"Find a Wavelength-approved supervisor": "查找经 Wavelength 认可的督导老师",
+"Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.": "只有当前经 Wavelength 认可的督导老师才会出现在搜索中。您的认可、执业注册和邮箱都必须有效。",
+"Wavelength-approved supervisor": "Wavelength 认可督导老师",
+"Source monitoring is not set up yet.": "来源监测尚未设置。"
 }

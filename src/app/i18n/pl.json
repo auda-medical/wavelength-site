@@ -2640,5 +2640,13 @@
 "{n}° right": "{n}° w prawo",
 "Select text, a label, a pictogram or a box": "Zaznacz tekst, etykietę, piktogram lub ramkę",
 "Drag the label where you want it. Size makes it smaller or larger; Rotation turns it.": "Przeciągnij etykietę w wybrane miejsce. Rozmiar ją zmniejsza lub powiększa, a obrót ją obraca.",
-"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Przeciągnij piktogram w wybrane miejsce. Rozmiar go zmniejsza lub powiększa, a obrót go obraca."
+"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Przeciągnij piktogram w wybrane miejsce. Rozmiar go zmniejsza lub powiększa, a obrót go obraca.",
+"Professional registration verified: {body}": "Rejestracja zawodowa zweryfikowana: {body}",
+"Wavelength verified supervisor for {scope}": "Superwizor zweryfikowany przez Wavelength dla: {scope}",
+"Approved by Wavelength to supervise: {list}": "Zaakceptowany przez Wavelength do opieki nad: {list}",
+"Wavelength-approved supervisors can sign off scans and record assessments from their own dashboard. The Wavelength team checks your registration and experience, and approves you for the areas the evidence supports.": "Opiekunowie zaakceptowani przez Wavelength mogą zatwierdzać badania i zapisywać oceny we własnym panelu. Zespół Wavelength sprawdza Twój wpis do rejestru i doświadczenie oraz akceptuje Cię w obszarach, które potwierdzają dowody.",
+"Find a Wavelength-approved supervisor": "Znajdź opiekuna zaakceptowanego przez Wavelength",
+"Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.": "W wyszukiwarce pojawia się tylko opiekun z aktualną akceptacją Wavelength. Akceptacja, wpis do rejestru i e-mail muszą być aktualne.",
+"Wavelength-approved supervisor": "Opiekun zaakceptowany przez Wavelength",
+"Source monitoring is not set up yet.": "Monitorowanie źródeł nie jest jeszcze skonfigurowane."
 }

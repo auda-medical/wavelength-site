@@ -2640,5 +2640,13 @@
 "{n}° right": "{n}° вправо",
 "Select text, a label, a pictogram or a box": "Выберите текст, подпись, пиктограмму или рамку",
 "Drag the label where you want it. Size makes it smaller or larger; Rotation turns it.": "Перетащите подпись, куда нужно. Размер уменьшает или увеличивает её, поворот поворачивает её.",
-"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Перетащите пиктограмму, куда нужно. Размер уменьшает или увеличивает её, поворот поворачивает её."
+"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Перетащите пиктограмму, куда нужно. Размер уменьшает или увеличивает её, поворот поворачивает её.",
+"Professional registration verified: {body}": "Профессиональная регистрация подтверждена: {body}",
+"Wavelength verified supervisor for {scope}": "Руководитель, подтверждённый Wavelength, для {scope}",
+"Approved by Wavelength to supervise: {list}": "Одобрено Wavelength для руководства: {list}",
+"Wavelength-approved supervisors can sign off scans and record assessments from their own dashboard. The Wavelength team checks your registration and experience, and approves you for the areas the evidence supports.": "Руководители, одобренные Wavelength, могут подтверждать исследования и записывать оценки в своей панели. Команда Wavelength проверяет вашу регистрацию и опыт и одобряет вас для тех областей, которые подтверждают документы.",
+"Find a Wavelength-approved supervisor": "Найти руководителя, одобренного Wavelength",
+"Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.": "В поиске отображается только руководитель с действующим одобрением Wavelength. Одобрение, регистрация и почта должны быть актуальны.",
+"Wavelength-approved supervisor": "Руководитель, одобренный Wavelength",
+"Source monitoring is not set up yet.": "Мониторинг источников ещё не настроен."
 }

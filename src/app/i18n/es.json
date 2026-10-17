@@ -2564,5 +2564,13 @@
 "{n}° right": "{n}° a la derecha",
 "Select text, a label, a pictogram or a box": "Seleccione un texto, una etiqueta, un pictograma o un recuadro",
 "Drag the label where you want it. Size makes it smaller or larger; Rotation turns it.": "Arrastre la etiqueta adonde quiera. El tamaño la hace más pequeña o más grande; la rotación la gira.",
-"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Arrastre el pictograma adonde quiera. El tamaño lo hace más pequeño o más grande; la rotación lo gira."
+"Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.": "Arrastre el pictograma adonde quiera. El tamaño lo hace más pequeño o más grande; la rotación lo gira.",
+"Professional registration verified: {body}": "Registro profesional verificado: {body}",
+"Wavelength verified supervisor for {scope}": "Supervisor verificado por Wavelength para {scope}",
+"Approved by Wavelength to supervise: {list}": "Aprobado por Wavelength para supervisar: {list}",
+"Wavelength-approved supervisors can sign off scans and record assessments from their own dashboard. The Wavelength team checks your registration and experience, and approves you for the areas the evidence supports.": "Los supervisores aprobados por Wavelength pueden validar exploraciones y registrar evaluaciones desde su propio panel. El equipo de Wavelength comprueba su colegiación y experiencia, y le aprueba para las áreas que respaldan sus pruebas.",
+"Find a Wavelength-approved supervisor": "Buscar un supervisor aprobado por Wavelength",
+"Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.": "Solo aparecen en la búsqueda los supervisores con aprobación vigente de Wavelength. Su aprobación, colegiación y correo deben estar al día.",
+"Wavelength-approved supervisor": "Supervisor aprobado por Wavelength",
+"Source monitoring is not set up yet.": "La supervisión de fuentes aún no está configurada."
 }
