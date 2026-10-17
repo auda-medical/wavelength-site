@@ -49,9 +49,12 @@ test('one drawing function makes the clip preview and every recorded frame', () 
   assert.match(APP, /var CLIP_MAX = 10, CLIP_MIN = 1;/);
 });
 
-test('the Android back button cancels an open editor before anything else', () => {
+// 1.0.14: the editor handles Back itself, first (keyboard, then its panel, then it asks before discarding anything),
+// instead of being cancelled outright as in 1.0.11 to 1.0.13.
+test('the Android back button goes to an open editor before anything else, and never cancels it outright', () => {
   const back = slice("  window.addEventListener('wl:back'", '  var LOCK_AFTER');
-  assert.ok(back.indexOf(".editor [data-a=cancel]") > 0 && back.indexOf('.editor [data-a=cancel]') < back.indexOf('.sheet-bg'));
+  assert.ok(back.indexOf('curEditor.back()') > 0 && back.indexOf('curEditor.back()') < back.indexOf('.sheet-bg'));
+  assert.ok(!/\.editor \[data-a=cancel\]/.test(back), 'Back no longer clicks the Cancel button of the editor');
 });
 
 test('About Wavelength appears once, in Settings', () => {

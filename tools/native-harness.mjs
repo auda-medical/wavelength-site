@@ -9,7 +9,7 @@ import path from 'node:path';
 export const WWW = path.resolve('mobile/www');
 export const SITE = 'https://thewavelength.co.uk';
 // The app bundle the stand-in phone runs. An upgrade test points it at an older release's bundle, then at the new one.
-export const serve = { dir: WWW };
+export const serve = { dir: WWW, files: {} };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json' };
 if (!fs.existsSync(path.join(WWW, 'index.html'))) throw new Error('Build the bundle first: node mobile/scripts/build-www.mjs');
 
@@ -53,10 +53,23 @@ export const BRIDGE = `(() => {
       verifyIdentity: () => { if (!window.__bio.pass) throw new Error('Authentication failed'); return {}; },
     },
   };
+  // 1.0.16: the camera-capture plugin (WLCapture, Android), only when a test sets window.__captures = { files: [{ name,
+  // kind, size, modified, legacy, path }] } in an init script. The files themselves are served from serve.files (by
+  // path, at https://localhost/_capacitor_file_<path>, as Capacitor serves them). Removed names are remembered across
+  // reloads (localStorage), as files deleted on a phone stay deleted.
+  if (window.__captures) {
+    const gone = () => JSON.parse(localStorage.getItem('__capRemoved') || '[]');
+    impl.WLCapture = {
+      list: () => ({ files: window.__captures.files.filter((f) => !gone().includes(f.name)) }),
+      remove: (o) => { const g = gone(), n = (o.names || []).filter((x) => !g.includes(x)); localStorage.setItem('__capRemoved', JSON.stringify(g.concat(n))); (window.__capCalls = window.__capCalls || []).push(o); return { removed: n.length }; },
+    };
+  }
   const header = (name, methods, cb = []) => ({ name, methods: methods.map((m) => ({ name: m, rtype: 'promise' })).concat(cb.map((m) => ({ name: m, rtype: 'callback' }))) });
   window.Capacitor = {
     Plugins: {},
-    PluginHeaders: Object.entries(impl).map(([n, o]) => header(n, Object.keys(o), n === 'App' || n === 'WLNetwork' ? ['addListener', 'removeListener'] : [])),
+    // On a phone the native bridge supplies this: a file path as a URL the WebView can read (Android: _capacitor_file_).
+    convertFileSrc: (p) => 'https://localhost/_capacitor_file_' + p,
+    PluginHeaders: Object.entries(impl).map(([n, o]) => header(n, Object.keys(o), n === 'App' || n === 'WLNetwork' || n === 'WLCapture' ? ['addListener', 'removeListener'] : [])),
     nativePromise(plugin, method, options) {
       calls.push({ plugin, method, options, t: performance.now() });
       try { return Promise.resolve(impl[plugin][method](options || {})); } catch (e) { return Promise.reject(e); }
@@ -107,6 +120,7 @@ export async function harness({ api = 'http://localhost:8787', errors = [] } = {
     // The bundle, served as Capacitor serves it from the phone. Paths without a file fall back to index.html.
     await ctx.route('https://localhost/**', async (route) => {
       const u = new URL(route.request().url());
+      if (u.pathname.startsWith('/_capacitor_file_')) { const b = serve.files[decodeURIComponent(u.pathname.slice('/_capacitor_file_'.length))]; return b ? route.fulfill({ status: 200, headers: { 'Content-Type': 'image/jpeg' }, body: b }) : route.fulfill({ status: 404, body: '' }); }
       const root = serve.dir;
       let f = path.join(root, decodeURIComponent(u.pathname));
       if (!f.startsWith(root)) return route.fulfill({ status: 403, body: '' });

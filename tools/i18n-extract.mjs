@@ -52,7 +52,7 @@ for (const c of Object.values(JSON.parse(fs.readFileSync('data/supervision-polic
   for (const v of block.matchAll(q)) if (/\s/.test(v[1])) add(v[1].replace(/\\'/g, "'"));
   for (const m of s.matchAll(/sec\('[^']*', '((?:[^'\\]|\\.)*)', \[(.*)\]\)/g)) { add(m[1].replace(/\\'/g, "'")); for (const v of m[2].matchAll(q)) add(v[1].replace(/\\'/g, "'")); }
 }
-// 1.0.12 media editor: pictogram names and label-set names (src/app/editor.js), colour and size names. The clinical
+// 1.0.12 media editor: pictogram names and label-set names (src/app/editor.js), colour and shape names. The clinical
 // labels themselves (LV, IVC, Pleura...) stay as written: they are drawn into the picture, which is kept in English.
 {
   const ed = fs.readFileSync('src/app/editor.js', 'utf8');
@@ -62,7 +62,7 @@ for (const c of Object.values(JSON.parse(fs.readFileSync('data/supervision-polic
   const app = fs.readFileSync('src/app/app.js', 'utf8');
   const cn = (app.match(/var COLOUR_NAMES = \{([^\n]*)\};/) || [])[1] || '';
   for (const v of cn.matchAll(/:\s*'([^']*)'/g)) add(v[1]);
-  ['Small', 'Medium', 'Large', 'Arrow', 'Dot', 'Circle', 'Box', 'Pictogram'].forEach(add);
+  ['Arrow', 'Dot', 'Circle', 'Box', 'Pictogram'].forEach(add);
 }
 // Labels the Worker sends for display: link states, organisation kinds, the search badge, the review time.
 for (const f of ['worker/supervisor-lifecycle.js', 'worker/organisations.js', 'worker/search.js', 'worker/supervisor-apply.js']) {

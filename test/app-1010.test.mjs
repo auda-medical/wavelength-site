@@ -50,7 +50,8 @@ test('saving: one save at a time, Home afterwards, "synced" only once the server
 test('required fields are the same three as in 1.0.9', () => {
   const sub = slice("    form.addEventListener('submit', function (ev) {", '  // A SHA-256 of each image');
   const keys = [...sub.matchAll(/\[\['type'|\['date'|\['supervision'/g)].length;
-  assert.match(sub, /\[\['type', T\('Choose the application\.'\)\], \['date', [^\]]+\], \['supervision', T\('Choose the level of supervision\.'\)\]\]/);
+  // 1.0.16: still the same three; only the first one's message says scan (ChatGPT 12 Oct 10:51).
+  assert.match(sub, /\[\['type', T\('Choose which scan you did\.'\)\], \['date', [^\]]+\], \['supervision', T\('Choose the level of supervision\.'\)\]\]/);
   assert.ok(keys >= 1);
 });
 

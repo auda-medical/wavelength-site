@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 1.0.14: photos and clips from the camera, in Wavelength's private storage (WLChromeClient, CapturePlugin). -->
+    <files-path name="wl_captures" path="wl-captures/" />
     <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
 </paths>

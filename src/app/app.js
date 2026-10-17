@@ -100,6 +100,14 @@
     if (o && o.timeout) opt.timeout = o.timeout;
     return NAT.net(path, opt).then(function (r) {
       return r.json().catch(function (ex) { if (ex && ex.name === 'AbortError') { ex.network = true; ex.timeout = true; throw ex; } return { _nojson: true }; }).then(function (j) { j._status = r.status; if (j.error) j.error = T(j.error); if (r.status === 401 && j.auth === false && S.account) { authExpired(); } if (r.status === 426 && j.upgrade) { S.update = 'required'; showUpdate(); } return j; });
+    }).catch(function (ex) {
+      // 1.0.14: no connection, or no answer in time, reads in plain words wherever it is shown. The flags sync and
+      // the connection status rely on (network, timeout and the rest) are kept.
+      if (!netFail(ex)) throw ex;
+      var e = new Error(ex && ex.timeout ? T('Wavelength did not answer in time. Check your connection and try again.') : T('Could not reach Wavelength. Check your connection and try again.'));
+      for (var k in ex) if (Object.prototype.hasOwnProperty.call(ex, k)) e[k] = ex[k];
+      e.network = true; e.timeout = !!(ex && ex.timeout);
+      throw e;
     });
   }
   // A network failure or a call that got no answer, as opposed to an answer from the server.
@@ -730,19 +738,90 @@
   // A scan form with unsaved changes asks before any navigation (header back, tabs, links, the Android back button).
   // hashchange cannot be cancelled, so the previous address is put back without a render while the learner decides.
   var lastHash = location.hash, leaving = false;
-  window.addEventListener('hashchange', function () {
+  window.addEventListener('hashchange', function (ev) {
     var dirty = document.querySelector('form[data-dirty]');
     if (dirty && !leaving && location.hash !== lastHash) {
       var target = location.hash;
       history.replaceState(null, '', lastHash || '#/');
       sheet('<h2>' + esc(T('Discard changes?')) + '</h2><p class="muted">' + esc(T('This scan has changes you have not saved.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Keep editing')) + '</button><button class="btn ghost block danger-text" style="color:var(--red)" data-discard>' + esc(T('Discard changes')) + '</button></div>', function (root) {
-        $('[data-discard]', root).onclick = function () { closeSheet(); draftImages = []; delete dirty.dataset.dirty; leaving = true; location.hash = target; };
+        $('[data-discard]', root).onclick = function () { closeSheet(); draftImages = []; if (dirty.dataset.draft) { DRAFT.leaveForm(dirty.dataset.draft); DRAFT.dropFormDraft(dirty.dataset.draft); } delete dirty.dataset.dirty; leaving = true; location.hash = target; };
       });
       return;
     }
-    leaving = false; lastHash = location.hash;
-    render(); window.scrollTo(0, 0);
+    leaving = false;
+    var from = ev && ev.oldURL && ev.oldURL.indexOf('#') >= 0 ? ev.oldURL.slice(ev.oldURL.indexOf('#')) : lastHash;
+    var back = navArrive(from || '#/', location.hash || '#/');
+    lastHash = location.hash;
+    navReturning = back;
+    render();
+    navReturning = false;
+    if (navRestore) applyRestore(); else if (!back || !navMem[navKey(location.hash)]) window.scrollTo(0, 0);
   });
+
+  // ---------- 1.0.13: going back returns to the screen as it was left ----------
+  // Going back (the header's back arrow, the Android back button or gesture, the browser's back) to a screen in the
+  // trail that led here brings it back as the learner left it: its filters and search (which live in its address),
+  // the sections that were open, and the scroll position. The position is applied as soon as the screen's content is
+  // in the page (screens that load their content, like Guides, call mount() again when it arrives), before the browser
+  // paints, so the screen never shows its top first. Going forward to a screen (a tab, a link) starts it at the top.
+  var navTrail = [location.hash || '#/'], navMem = {}, navBack = '', navRestore = null, navReturning = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) { /* older browsers restore nothing anyway */ }
+  function navKey(h) { return String(h || '').replace(/^#\/?/, '').split('?')[0].replace(/\/+$/, ''); }
+  // Called on every address change, before the new screen is drawn: the page still shows the screen being left.
+  function navArrive(from, to) {
+    var m = $('main', app);
+    if (m) navMem[navKey(from)] = { hash: from, y: window.pageYOffset, at: navAnchor(m), open: $$('details', m).map(function (d) { return d.open; }) };
+    navTrail[navTrail.length - 1] = from; // its own address may have changed in place (a filter, a search)
+    var key = navKey(to), i = -1, j;
+    for (j = navTrail.length - 2; j >= 0; j--) if (navKey(navTrail[j]) === key) { i = j; break; }
+    var asked = navBack && navKey(navBack) === key; navBack = '';
+    // Back: asked for (back arrow, Android back), or the browser stepped to the previous address in the trail.
+    var back = i >= 0 && (asked || (i === navTrail.length - 2 && navTrail[i] === to));
+    navRestore = null;
+    if (!back) { navTrail.push(to); if (navTrail.length > 60) navTrail.splice(0, navTrail.length - 60); return false; }
+    navTrail.length = i + 1;
+    var mem = navMem[key];
+    // The back arrow names the bare screen; the filters and search it was left with come back with it.
+    if (mem && mem.hash !== to && to.indexOf('?') < 0 && mem.hash.indexOf('?') >= 0) history.replaceState(null, '', mem.hash);
+    navTrail[i] = location.hash;
+    if (mem) navRestore = { key: key, y: mem.y, at: mem.at, open: mem.open, until: Date.now() + 2000 };
+    return true;
+  }
+  // The element at the top of the visible screen (just under the header), as its place in the screen's markup, and
+  // how far down the screen it is. Restoring puts that element back at that height, so a banner shown above the
+  // list on one visit and not the other (the connection banner appears a moment after a screen is drawn) does not
+  // move the list. Never a banner itself: the next point down is tried.
+  function navAnchor(m) {
+    var head = $('header.top'), hb = head ? head.getBoundingClientRect().bottom : 0;
+    for (var dy = 12; dy < 260; dy += 60) {
+      var el = document.elementFromPoint(window.innerWidth / 2, Math.min(window.innerHeight - 1, hb + dy));
+      if (!el || !m.contains(el) || el === m || el.closest('[data-syncbanner], .upd')) continue;
+      var path = [];
+      for (var n = el; n && n !== m; n = n.parentElement) path.unshift(Array.prototype.indexOf.call(n.parentElement.children, n));
+      return { path: path, kind: navKind(el), top: el.getBoundingClientRect().top };
+    }
+    return null;
+  }
+  // The same element on the redrawn screen (same place in the markup, same kind), or null while it is not there yet.
+  function navFind(m, at) { var n = m; for (var i = 0; n && i < at.path.length; i++) n = n.children[at.path[i]]; return n && n !== m && navKind(n) === at.kind ? n : null; }
+  // An element's tag and classes, without the passing classes of the reveal animation.
+  function navKind(el) { return el.tagName + '.' + String(el.getAttribute('class') || '').replace(/\b(rv|in)\b/g, '').replace(/\s+/g, ' ').trim(); }
+  // Puts back open sections and the scroll position. If the content is not all there yet (still loading), it scrolls as
+  // far as it can and finishes when the content arrives; the learner's own touch, wheel or key cancels it.
+  function applyRestore() {
+    var r = navRestore; if (!r) return;
+    if (navKey(location.hash) !== r.key || Date.now() > r.until) { navRestore = null; return; }
+    var m = $('main', app); if (!m) return;
+    var ds = $$('details', m);
+    (r.open || []).forEach(function (o, i) { if (o && ds[i] && !ds[i].open) ds[i].open = true; });
+    var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    var el = r.at ? navFind(m, r.at) : null, y = el ? Math.round(window.pageYOffset + el.getBoundingClientRect().top - r.at.top) : r.y;
+    window.scrollTo(0, Math.max(0, Math.min(y, max)));
+    if (max >= y - 1) navRestore = null;
+  }
+  ['touchstart', 'wheel', 'keydown'].forEach(function (t) { window.addEventListener(t, function () { navRestore = null; }, { passive: true, capture: true }); });
+  // The header's back arrow is a back step, not a new visit.
+  document.addEventListener('click', function (e) { var a = e.target && e.target.closest && e.target.closest('header.top a.back'); if (a) navBack = a.getAttribute('href') || ''; }, true);
   window.addEventListener('online', function () { S.online = true; if (SY.fail === 'offline') SY.fail = ''; setSyncDot(); if (S.account) netKick(); });
   window.addEventListener('offline', function () { S.online = false; setSyncDot(); });
   // In the store apps, returning to the app arrives as wl:resume (below), which also reads the network first.
@@ -777,11 +856,11 @@
       return (authViews[r.name] || viewWelcome)(r);
     }
     if (!S.account.declarationAt || !(profile().onboarded)) return viewOnboard(r);
-    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute, guides: viewGuides, outstanding: viewOutstanding };
+    var views = { home: viewHome, log: viewLog, new: viewEdit, edit: viewEdit, entry: viewEntry, progress: viewProgress, me: viewMe, settings: viewSettings, signoff: viewSignoff, export: viewExport, evidence: viewEvidence, backup: viewBackup, targets: viewTargets, declaration: viewDeclaration, assess: viewAssess, supervisors: viewSupervisors, supervise: viewSupervise, professional: viewProfessional, supervisor: viewSupervisorRoute, guides: viewGuides, outstanding: viewOutstanding, kept: viewKept };
     (views[r.name] || viewHome)(r);
     setSyncDot();
     // A new screen fades in once (CSS, 180 ms, none with reduced motion). A redraw of the same screen does not.
-    if (!soft) { var mn = $('main', app); if (mn) mn.classList.add('enter'); }
+    if (!soft && !navReturning) { var mn = $('main', app); if (mn) mn.classList.add('enter'); }
     if (soft) window.scrollTo(0, keepScroll);
     revealIn(soft);
     if (!soft) announce();
@@ -827,7 +906,7 @@
     var h = text || ($('header.top h1') || $('h1', app) || {}).textContent || '';
     sr.textContent = ''; setTimeout(function () { sr.textContent = h; }, 60);
   }
-  function mount(html) { app.innerHTML = html; bindUpdate(); $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); }); bindLang(app); }
+  function mount(html) { app.innerHTML = html; bindUpdate(); $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); }); bindLang(app); if (navRestore) applyRestore(); }
 
   // ---------- Auth views ----------
   function authFrame(title, lede, body) {
@@ -911,15 +990,18 @@
       var d = formData(f); var b = $('button[type=submit]', f);
       var pwBad = pwProblem(f, 'pw');
       if (!f.checkValidity() || pwBad) { err.textContent = !(d.firstName && d.lastName && d.email) ? T('Complete your name and email.') : pwBad || (!d.terms ? T('Tick the box to accept the terms and privacy notice.') : T('Complete your name and email.')); err.hidden = false; return; }
+      if (f.dataset.sending) return; // one account request at a time, however many taps
+      f.dataset.sending = '1';
       busy(b, true, T('Creating your account…'));
       api('/api/app/signup', d).then(function (res) {
+        delete f.dataset.sending;
         if (!res.ok) throw new Error(res.error);
         if (!res.account && !res.checkEmail) throw new Error(T('Something went wrong. Please try again.'));
         if (d.newsletter && !NAT.on) joinNewsletter(d); // the store apps subscribe through the server (worker/app.js signup)
         // This email already has Academy certificates: the account is finished from a link sent to that address.
         if (res.checkEmail) { authFrame(T('Check your email.'), T('We have sent a message to {email}. Open it to finish setting up your account, or to log in if you already have one. Check your junk folder too.', { email: d.email }), '<a class="btn block" href="#/login">' + esc(T('Back to log in')) + '</a>'); return; }
         return saveLangAfter(res.account);
-      }).catch(function (ex) { busy(b, false); err.textContent = ex.message || T('Something went wrong. Please try again.'); err.hidden = false; });
+      }).catch(function (ex) { delete f.dataset.sending; busy(b, false); err.textContent = netFail(ex) ? T('Could not reach Wavelength. Check your connection and try again.') : ex.message || T('Something went wrong. Please try again.'); err.hidden = false; });
     });
   }
   function saveLangAfter(acc) { S.account = acc; if (LANG !== 'en' && (acc.profile || {}).lang !== LANG) return saveProfile({ lang: LANG }).then(function () { return signedIn(S.account); }, function () { return signedIn(acc); }); return signedIn(acc); }
@@ -1103,6 +1185,199 @@
     var nx = $('#nwx'); if (nx) nx.onclick = function () { setKv('news', []).then(function () { render(true); }); };
     bindFocus();
     loadThumbs();
+    keptHomeCard();
+    recoverCaptures();
+  }
+  // 1.0.14 (Android): camera captures left in Wavelength's private folder, because Android closed Wavelength while the
+  // camera was open, come back as kept photos and clips (offered, never added by themselves). Photos that versions
+  // before 1.0.14 left in the app's shared-storage folder are offered to review or delete. Nothing goes without the
+  // learner's choice. Once a run.
+  var capsChecked = false;
+  function recoverCaptures() {
+    if (capsChecked || !NAT.captures || !S.account) return;
+    capsChecked = true;
+    NAT.captures().then(function (files) {
+      var fresh = files.filter(function (f) { return !f.legacy; }), legacy = files.filter(function (f) { return f.legacy; });
+      return importCaptures(fresh, false).then(function (n) {
+        if (n) refreshKeptCard();
+        if (legacy.length) legacySheet(legacy);
+      });
+    });
+  }
+  // One at a time (clips are large): each file is removed only after the app holds its own copy.
+  function importCaptures(list, legacy) {
+    return list.reduce(function (p, f) {
+      return p.then(function (n) {
+        // 1.0.16: into the recovery tray (no scan form), each on its own; legacy marks a photo an earlier version left.
+        // 1.0.16: the copy must be the whole file (the size the phone reports) before the original may go; otherwise
+        // neither is touched and the file is offered again next time.
+        return NAT.captureFile(f).then(function (file) { if (f.size && file.size !== f.size) throw new Error('incomplete copy'); return DRAFT.recovered({ id: uid(), formKey: 'tray', inst: null, legacy: !!legacy, kind: f.kind, file: file, name: f.name, captured: true, created: f.modified || Date.now() }); })
+          .then(function () { return NAT.captureRemove([f.name], legacy).then(function () { return n + 1; }); }, function () { return n; });
+      });
+    }, Promise.resolve(0));
+  }
+  function refreshKeptCard() { var c = $('[data-kepthome]'); if (c) c.remove(); keptHomeCard(); }
+  function legacySheet(list) {
+    var size = (list.reduce(function (a, f) { return a + (f.size || 0); }, 0) / 1048576).toFixed(1) + ' MB';
+    sheet('<h2>' + esc(T('Photos left by earlier versions')) + '</h2><p class="muted">' + esc(N(list.length, 'Wavelength found {n} photo taken with Take photo in an earlier version. It is stored as taken, before any crop or redaction, in the Wavelength folder on this phone.', 'Wavelength found {n} photos taken with Take photo in earlier versions. They are stored as taken, before any crop or redaction, in the Wavelength folder on this phone.')) + ' (' + esc(size) + ')</p><p class="muted small">' + esc(T('Your scans kept their own copies when you saved them, so these are leftovers. They are not in your gallery, but a computer connected by cable may be able to see that folder.')) + '</p>' +
+      '<div class="btns"><button class="btn teal block" data-lgdel>' + esc(T('Delete the leftover copies')) + '</button><button class="btn ghost block" data-lgrev>' + esc(T('Review them first')) + '</button><button class="btn ghost block" data-close>' + esc(T('Not now')) + '</button></div>', function (root) {
+      $('[data-lgdel]', root).onclick = function () { closeSheet(); NAT.captureRemove(list.map(function (f) { return f.name; }), true).then(function (n) { toast(N(n, '{n} leftover photo deleted.', '{n} leftover photos deleted.')); }); };
+      // 1.0.16: straight to the recovery tray, where each photo is shown on its own.
+      $('[data-lgrev]', root).onclick = function () { closeSheet(); importCaptures(list, true).then(function (n) { refreshKeptCard(); if (n && route().name === 'home') go('kept'); }); };
+    });
+  }
+  // The camera app ignored Wavelength's private file and kept its own copy, usually in the phone's gallery.
+  window.addEventListener('wl:capture-elsewhere', function (ev) {
+    var clip = ev.detail && ev.detail.kind === 'clip';
+    sheet('<h2>' + esc(T('Your camera app kept a copy')) + '</h2><p class="muted">' + esc(clip ? T('Your camera app saved its own copy of this clip, usually in your phone\'s gallery. Wavelength cannot remove it. If it could identify a patient, delete it from your gallery.') : T('Your camera app saved its own copy of this photo, usually in your phone\'s gallery. Wavelength cannot remove it. If it could identify a patient, delete it from your gallery.')) + '</p><div class="btns"><button class="btn teal block" data-close>' + esc(T('OK')) + '</button></div>');
+  });
+  // 1.0.14: photos and clips kept on this phone but not part of a scan (Keep for later, or Wavelength closed while
+  // they were being prepared) are shown on Home until they are finished or discarded, so none is forgotten.
+  // Typed scan forms kept the same way are listed first (Review continues the form). Nothing is deleted by itself:
+  // the card says how long items have been kept and how much space they take, so the learner can finish or discard them.
+  // Home is drawn under #/ and, straight after logging in, under #/login: the card belongs to the Home screen that asked.
+  function keptHomeCard() {
+    var home = $('main', app);
+    Promise.all([DRAFT.list(), DRAFT.forms()]).then(function (r) {
+      // 1.0.16: every kept photo and clip counts (none is hidden); those belonging to an unfinished scan form come back
+      // with it (Review), the rest are reviewed one by one in the recovery tray (Review photos and clips).
+      var list = r[0].filter(function (x) { return x.media.file || x.media.result; });
+      var forms = r[1].filter(function (d) { if (d.formKey === 'new' && S.entries.some(function (x) { return x.id === d.entryId; })) { DRAFT.dropFormDraft(d.id); return false; } return true; });
+      var liveForm = {}; forms.forEach(function (d) { liveForm[d.id] = 1; });
+      var tray = list.filter(function (x) { return !(x.media.inst && liveForm[x.media.inst]); });
+      var main = $('main', app); if ((!list.length && !forms.length) || !main || main !== home || $('[data-kepthome]', main)) return;
+      var fd = forms[0], fdEnt = fd && fd.formKey !== 'new' && S.entries.find(function (x) { return x.id === fd.entryId && !x.deleted; });
+      var href = fd ? (fd.formKey === 'new' ? 'new' : fdEnt ? 'edit/' + fdEnt.id : '') : '';
+      var bytes = 0, oldest = Date.now();
+      list.forEach(function (x) { var m = x.media, res = m.result || {}; bytes += (m.file ? m.file.size : 0) + (res.blob ? res.blob.size : 0) + (res.thumb ? res.thumb.size : 0) + (res.base ? res.base.size : 0); oldest = Math.min(oldest, m.created || Date.now()); });
+      forms.forEach(function (d) { oldest = Math.min(oldest, d.created || d.updated || Date.now()); });
+      var what = [forms.length ? plural(forms.length, 'unfinished scan') : '', list.length ? draftWords(list) : ''].filter(Boolean).join(T(' and '));
+      var old = Date.now() - oldest > 14 * 864e5;
+      var card = document.createElement('div'); card.className = 'card kept-home'; card.setAttribute('data-kepthome', '');
+      card.innerHTML = '<div class="row"><span class="kept-ic" aria-hidden="true">' + (forms.length ? I.pen : I.camera) + '</span><div class="grow"><h3>' + esc(T('Kept on this phone')) + '</h3><p class="small muted" style="margin:0">' + esc(T('{what}, not saved in your logbook yet.', { what: what })) + '</p>' +
+        '<p class="small muted kept-meta">' + esc(T('Kept since {date}', { date: fmt(new Date(oldest).toISOString()) })) + (bytes ? ' · ' + esc(bytes < 104858 ? T('under 0.1 MB') : (bytes / 1048576).toFixed(1) + ' MB') : '') + (old ? '. ' + esc(T('Finish or discard them when you can: nothing is deleted by itself.')) : '') + '</p></div></div>' +
+        '<div class="btns">' + (fd ? '<a class="btn teal sm" data-kfform href="#/' + esc(href) + '">' + esc(T('Review')) + '</a>' : '') +
+        (tray.length ? '<a class="btn ' + (fd ? 'ghost' : 'teal') + ' sm" data-kftray href="#/kept">' + esc(T('Review photos and clips')) + '</a>' : '') + '</div>';
+      var fl = $('[data-kfform]', card);
+      if (fl) fl.onclick = function (ev) {
+        if (!href) { ev.preventDefault(); draftTextSheet(fd, T('The scan these changes were for has been deleted, so they cannot be applied.'), function () { card.remove(); keptHomeCard(); }); return; }
+        S.resumeForm = fd.id;
+      };
+      var anchor = $('.quick', main); anchor = anchor && anchor.closest('.card');
+      if (anchor && anchor.nextSibling) main.insertBefore(card, anchor.nextSibling); else main.insertBefore(card, main.firstChild);
+    });
+  }
+  // ---------- 1.0.16: the recovery tray ----------
+  // Kept photos and clips that belong to no scan, each on its own: a preview, when it was taken or kept, its size and
+  // where it came from. Nothing is selected to start with. The learner opens each one to check it, selects only the
+  // ones that belong to one scan and adds those to the scan form (or starts a scan with them from Home); the rest stay
+  // here. Discarding selected ones asks first, and deleting all of them is a separate choice with its own confirmation.
+  var trayThumbs = {}, trayViewClose = null;
+  // A small preview, made one at a time: photos from a phone camera are large, and 17 decoded at full size at once
+  // could exhaust the WebView's memory.
+  function trayThumb(m) {
+    if (trayThumbs[m.id]) return Promise.resolve(trayThumbs[m.id]);
+    var src = m.result && m.result.thumb ? m.result.thumb : m.kind !== 'clip' ? m.file : null;
+    if (!src) return Promise.resolve('');
+    var keep = function (u) { trayThumbs[m.id] = u; return u; };
+    if (src !== m.file || !window.createImageBitmap) return Promise.resolve(keep(URL.createObjectURL(src)));
+    return createImageBitmap(src, { resizeWidth: 240, resizeQuality: 'medium' }).then(function (b) {
+      var c = document.createElement('canvas'); c.width = b.width; c.height = b.height; c.getContext('2d').drawImage(b, 0, 0); if (b.close) b.close();
+      return new Promise(function (ok) { c.toBlob(function (bl) { ok(keep(URL.createObjectURL(bl || src))); }, 'image/jpeg', 0.8); });
+    }, function () { return keep(URL.createObjectURL(src)); });
+  }
+  function trayOrigin(x) {
+    var m = x.media;
+    // Earlier versions named their photos JPEG_...; 1.0.14 onwards names the camera's files WL_. Photos 1.0.15 imported
+    // carry no legacy mark (records are never migrated), so the name says where they came from.
+    if (m.legacy || (m.captured && /^JPEG_.*\.jpe?g$/i.test(m.name || ''))) return T('Left by an earlier version');
+    if (x.state.stage === 'ready' && m.result) return T('Prepared, not saved in a scan');
+    if (x.state.session === 'recovered') return T('Kept when Wavelength closed');
+    return T('Kept for later');
+  }
+  function traySize(x) { var m = x.media, r = m.result || {}, b = (m.file ? m.file.size : 0) || (r.blob ? r.blob.size : 0); return b < 104858 ? T('under 0.1 MB') : (b / 1048576).toFixed(1) + ' MB'; }
+  // Named by what it is and when it was taken or kept (never by its place in the list, which changes as items leave).
+  function trayName(x) { return (x.media.kind === 'clip' ? T('Clip') : T('Photo')) + ', ' + when(x.media.created); }
+  function trayHtml(items, mode) {
+    return '<div class="tray" data-tray>' +
+      '<p class="tray-warn" role="note"><b>' + esc(T('Check each one.')) + '</b> ' + esc(T('They were found together, but they may come from different patients and scans. Wavelength never adds them to a scan by itself, and none is selected until you select it.')) + '</p>' +
+      '<p class="small muted">' + esc(mode === 'form' ? T('Open each one to check it, then select only the ones that belong to this scan.') : T('Open each one to check it, then select only the ones that belong to the same scan.')) + '</p>' +
+      '<ul class="tray-list">' + items.map(function (x, i) {
+        var m = x.media, clip = m.kind === 'clip', name = trayName(x);
+        return '<li class="tray-it" data-trit="' + esc(m.id) + '"><input type="checkbox" id="trs' + i + '" data-trsel="' + esc(m.id) + '" aria-describedby="trd' + i + '">' +
+          '<button type="button" class="tray-th" data-trview="' + esc(m.id) + '" aria-label="' + esc(T('Open {name}', { name: name })) + '">' + (clip ? '<span class="tray-clip" aria-hidden="true">' + I.video + '</span>' : '<img alt="" data-trimg="' + esc(m.id) + '">') + '</button>' +
+          '<label class="tray-tx" for="trs' + i + '"><b>' + esc(name) + '</b><span id="trd' + i + '">' + esc([traySize(x), trayOrigin(x)].join(' · ')) + '</span></label></li>';
+      }).join('') + '</ul>' +
+      '<p class="tray-count" data-trcount aria-live="polite"></p>' +
+      '<div class="btns tray-bar"><button type="button" class="btn teal block" data-tradd disabled></button><button type="button" class="btn ghost block" data-trdrop disabled></button></div>' +
+      '<p class="tray-all"><button type="button" class="link small" data-trall>' + esc(N(items.length, 'Delete the kept photo or clip', 'Delete all {n} kept photos and clips')) + '</button></p></div>';
+  }
+  // opts: { mode: 'form' or 'home', add(selected), changed() after a discard, kept() when a discard is cancelled }.
+  function bindTray(root, items, opts) {
+    var sel = {};
+    var chosen = function () { return items.filter(function (x) { return sel[x.media.id]; }); };
+    var update = function () {
+      var n = chosen().length, add = $('[data-tradd]', root), drop = $('[data-trdrop]', root);
+      $('[data-trcount]', root).textContent = n ? N(n, '{n} selected', '{n} selected') : T('None selected');
+      add.textContent = opts.mode === 'form' ? T('Add selected to this scan ({n})', { n: n }) : T('Start a scan with the selected ({n})', { n: n });
+      drop.textContent = T('Discard selected ({n})', { n: n });
+      add.disabled = drop.disabled = !n;
+    };
+    $$('[data-trsel]', root).forEach(function (c) { c.checked = false; c.onchange = function () { sel[c.dataset.trsel] = c.checked; c.closest('.tray-it').classList.toggle('on', c.checked); update(); }; });
+    $$('[data-trview]', root).forEach(function (b) { b.onclick = function () { var i = items.findIndex(function (x) { return x.media.id === b.dataset.trview; }); if (i >= 0) trayViewer(items[i], trayName(items[i])); }; });
+    $('[data-tradd]', root).onclick = function () { var c = chosen(); if (c.length) opts.add(c); };
+    $('[data-trdrop]', root).onclick = function () { var c = chosen(); if (c.length) discardKept(c, opts.changed, opts.kept); };
+    $('[data-trall]', root).onclick = function () { deleteAllKept(items, opts.changed, opts.kept); };
+    items.reduce(function (p, x) {
+      return p.then(function () { var im = root.querySelector('[data-trimg="' + x.media.id + '"]'); if (!im || !im.isConnected) return; return trayThumb(x.media).then(function (u) { if (u && im.isConnected) im.src = u; }); });
+    }, Promise.resolve());
+    update();
+  }
+  // One kept photo or clip, full screen, to check it before choosing. Back or Close returns to the list.
+  function trayViewer(x, name) {
+    var m = x.media, clip = m.kind === 'clip', src = clip ? m.file || (m.result && m.result.blob) : (m.result && m.result.blob) || m.file;
+    if (!src) return;
+    var url = URL.createObjectURL(src), prev = document.activeElement;
+    var v = document.createElement('div'); v.className = 'tray-view'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', name);
+    v.innerHTML = '<div class="tray-view-m">' + (clip ? '<video src="' + url + '" controls muted playsinline></video>' : '<img alt="' + esc(name) + '" src="' + url + '">') + '</div>' +
+      '<p class="tray-view-tx"><b>' + esc(name) + '</b> · ' + esc(trayOrigin(x)) + '</p><div class="btns"><button type="button" class="btn light block" data-trclose>' + esc(T('Close')) + '</button></div>';
+    var key = function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
+    var close = function () { trayViewClose = null; v.remove(); URL.revokeObjectURL(url); document.removeEventListener('keydown', key, true); if (prev && prev.isConnected && prev.focus) try { prev.focus({ preventScroll: true }); } catch (e) { /* not focusable */ } };
+    trayViewClose = close;
+    document.addEventListener('keydown', key, true);
+    document.body.appendChild(v);
+    $('[data-trclose]', v).onclick = close;
+    $('[data-trclose]', v).focus();
+  }
+  // Discarding kept photos or clips always asks: one taken in Wavelength exists nowhere else.
+  function discardKept(list, after, cancelled) {
+    var only = list.some(function (x) { return x.media.captured; });
+    sheet('<h2>' + esc(T('Discard {what}?', { what: draftWords(list) })) + '</h2><p class="muted">' + esc(only ? T('At least one was taken in Wavelength and is not saved anywhere else on your phone.') : T('The originals stay in your phone\'s gallery.')) + ' ' + esc(T('This cannot be undone.')) + '</p><div class="btns"><button class="btn block" data-close data-keepk>' + esc(T('Keep them')) + '</button><button class="btn ghost block" style="color:var(--red)" data-gone>' + esc(T('Discard')) + '</button></div>', function (root) {
+      if (cancelled) $('[data-keepk]', root).addEventListener('click', function () { setTimeout(cancelled, 0); });
+      $('[data-gone]', root).onclick = function () { closeSheet(); list.forEach(function (x) { if (trayThumbs[x.media.id]) { URL.revokeObjectURL(trayThumbs[x.media.id]); delete trayThumbs[x.media.id]; } }); Promise.all(list.map(function (x) { return DRAFT.drop(x.media.id); })).then(function () { toast(T('{what} discarded.', { what: draftWords(list) })); if (after) after(); }); };
+    });
+  }
+  // Deleting every kept photo and clip: a separate choice, confirmed on its own (a tick, then Delete all).
+  function deleteAllKept(list, after, cancelled) {
+    sheet('<h2>' + esc(T('Delete all kept photos and clips?')) + '</h2><p class="muted">' + esc(T('This deletes all {n} from this phone, including any that may belong to a scan you have not logged yet. It cannot be undone.', { n: list.length })) + '</p>' +
+      '<label class="check"><input type="checkbox" data-allok><span>' + esc(T('I have checked them: none is needed for a scan')) + '</span></label>' +
+      '<div class="btns"><button class="btn block" data-close data-keepk>' + esc(T('Keep them')) + '</button><button class="btn ghost block" style="color:var(--red)" data-allgo disabled>' + esc(T('Delete all')) + '</button></div>', function (root) {
+      if (cancelled) $('[data-keepk]', root).addEventListener('click', function () { setTimeout(cancelled, 0); });
+      $('[data-allok]', root).onchange = function () { $('[data-allgo]', root).disabled = !this.checked; };
+      $('[data-allgo]', root).onclick = function () { if (!$('[data-allok]', root).checked) return; closeSheet(); Promise.all(list.map(function (x) { return DRAFT.drop(x.media.id); })).then(function () { toast(T('{what} deleted.', { what: draftWords(list) })); if (after) after(); }); };
+    });
+  }
+  // #/kept: the recovery tray from Home. Selected items start a new scan, assigned to it (still to be finished there).
+  function viewKept() {
+    mount(shell({ title: T('Kept photos and clips'), back: '' }, '<div data-traybox><p class="muted">' + esc(T('Loading…')) + '</p></div>'));
+    var box = $('[data-traybox]', app);
+    DRAFT.tray(null).then(function (items) {
+      if (!box.isConnected) return;
+      if (!items.length) { box.innerHTML = '<div class="card"><p class="muted">' + esc(T('Nothing is kept on this phone.')) + '</p><a class="btn teal" href="#/">' + esc(T('Home')) + '</a></div>'; return; }
+      box.innerHTML = trayHtml(items, 'home');
+      bindTray(box, items, { mode: 'home', changed: function () { if (route().name === 'kept') viewKept(); },
+        add: function (c) { S.trayAssign = c.map(function (x) { return x.media.id; }); go('new'); } });
+    });
   }
   // The four Home counts and where each opens. Own logbook only (supervised learners' scans are never in S.entries).
   function homeCounts(ents, month) {
@@ -1283,11 +1558,121 @@
     return { update: function () { if (!document.body.contains(t)) return; var w = words(); if (w !== $('[data-msg]', t).textContent) { $('[data-msg]', t).textContent = w; clearTimeout(timer); timer = setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 200); }, 4000); } } };
   }
   var draftImages = []; // images and clips added in the form but not yet saved: { id, blob, thumb, w, h, kind }
+
+  // ---------- 1.0.14: photos and clips are never lost to Back, an interruption or a closed app ----------
+  // Kept on this phone only, in its own database (wavelength-<account>-drafts): never synced, shared or put in a
+  // backup, and deleted with the account. Two kinds of record, by scan form (formKey 'new' or 'edit:<entry id>'):
+  //   editing  a new photo or clip with its original file and the edits so far (open in the editor, or Keep for later)
+  //   ready    a prepared photo or clip added to the scan but not yet saved with it
+  // Records from an earlier run of the app (another RUN) are never added to a scan by themselves: the scan form
+  // and Home offer them back, to add to this scan or discard, so nothing lands on the wrong patient's scan unnoticed.
+  // 1.0.16 (owner's Fold7 finding, ChatGPT 12 Oct 10:48): offered one by one, never as a group. Each record belongs
+  // to the scan form it was taken or chosen in (inst) or to none; those belonging to none wait in the recovery tray
+  // (Home, and Choose from them in a scan form), where each can be opened, and only the ones the learner selects are
+  // assigned to a scan. An assigned photo is part of the scan only once it is finished in the editor.
+  // A third store, forms, keeps what has been typed into a scan form that is not yet saved (one record per open form).
+  // Nothing here is deleted by itself: a record goes when its scan is saved, when the learner discards it, or with the
+  // account. (RUN, not SESSION: SESSION is the sign-out counter that sync checks.)
+  var RUN = uid();
+  var DRAFT = (function () {
+    var db = null, dbId = null, warned = false;
+    function name() { return 'wavelength-' + S.account.id + '-drafts'; }
+    function open() {
+      if (db && dbId === S.account.id) return Promise.resolve(db);
+      if (db) { db.close(); db = null; } // another account's drafts are never left open
+      return new Promise(function (ok, no) {
+        var r = indexedDB.open(name(), 2);
+        r.onupgradeneeded = function () { var d = r.result; ['media', 'state', 'forms'].forEach(function (n) { if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, { keyPath: 'id' }); }); };
+        r.onsuccess = function () { db = r.result; dbId = S.account.id; db.onversionchange = function () { db.close(); db = null; }; ok(db); };
+        r.onerror = function () { no(r.error); };
+      });
+    }
+    function tx(store, mode, fn) {
+      return open().then(function (d) { return new Promise(function (ok, no) { var t = d.transaction(store, mode), out = fn(t.objectStore(store)), res; if (out) out.onsuccess = function (e) { res = e.target.result; }; t.oncomplete = function () { ok(res); }; t.onerror = function () { no(t.error); }; t.onabort = function () { no(t.error); }; }); });
+    }
+    function fail(ex) { if (!warned) { warned = true; toast(T('Wavelength could not keep a safety copy on this phone. The phone may be short of storage.'), 5000); } throw ex; }
+    var api = {
+      // An editing record: the original file is written once; the edits go in the small state record as they change.
+      start: function (rec) { return tx('media', 'readwrite', function (s) { return s.put(rec); }).then(function () { return api.state(rec.id, { stage: 'editing' }); }).catch(fail); },
+      state: function (id, o) { o = Object.assign({}, o, { id: id, session: RUN, updated: Date.now() }); return tx('state', 'readwrite', function (s) { return s.put(o); }).catch(fail); },
+      ready: function (formKey, res, inst) { var rec = { id: res.id, formKey: formKey, inst: inst || null, fromTray: !!res.fromTray, kind: res.kind || 'image', created: Date.now(), result: res }; return tx('media', 'readwrite', function (s) { return s.put(rec); }).then(function () { return api.state(res.id, { stage: 'ready' }); }).catch(fail); },
+      drop: function (id) { return tx('media', 'readwrite', function (s) { return s.delete(id); }).then(function () { return tx('state', 'readwrite', function (s) { return s.delete(id); }); }).catch(function () { /* nothing to remove */ }); },
+      // Every record with its state: { media, state, earlier (from another run of the app) }.
+      list: function (formKey) {
+        if (!S.account) return Promise.resolve([]);
+        return Promise.all([tx('media', 'readonly', function (s) { return s.getAll(); }), tx('state', 'readonly', function (s) { return s.getAll(); })]).then(function (r) {
+          var st = {}; (r[1] || []).forEach(function (x) { st[x.id] = x; });
+          return (r[0] || []).filter(function (m) { return !formKey || m.formKey === formKey; }).map(function (m) { var s = st[m.id] || {}; return { media: m, state: s, earlier: s.session !== RUN }; }).sort(function (a, b) { return a.media.created - b.media.created; });
+        }).catch(function () { return []; });
+      },
+      // This run's records for a scan form (after the scan is saved or its changes discarded).
+      // 1.0.16: dropForm is no longer called: a saved scan drops exactly the prepared copies it saved (by id), and a form
+      // left with Discard changes uses leaveForm.
+      dropForm: function (formKey, stages) { return api.list(formKey).then(function (l) { return Promise.all(l.filter(function (x) { return !x.earlier && (!stages || stages.indexOf(x.state.stage) >= 0); }).map(function (x) { return api.drop(x.media.id); })); }); },
+      // A camera capture found after Wavelength closed: kept, from an earlier run, so it is offered and never added.
+      recovered: function (rec) { return tx('media', 'readwrite', function (s) { return s.put(rec); }).then(function () { return tx('state', 'readwrite', function (s) { return s.put({ id: rec.id, stage: 'later', session: 'recovered', updated: Date.now() }); }); }).catch(fail); },
+      // Typed scan forms: { id (the open form), formKey, entryId (the scan it saves as), base (the saved scan's stamp
+      // when an edit began), type, data { pairs, names }, removed, patient, created, updated, session }.
+      saveForm: function (rec) { rec = Object.assign({}, rec, { session: RUN, updated: Date.now() }); return tx('forms', 'readwrite', function (s) { return s.put(rec); }).catch(fail); },
+      forms: function () { if (!S.account) return Promise.resolve([]); return tx('forms', 'readonly', function (s) { return s.getAll(); }).then(function (l) { return (l || []).sort(function (a, b) { return b.updated - a.updated; }); }).catch(function () { return []; }); },
+      // A scan form left with Discard changes: photos and clips chosen for it from the recovery tray go back there as
+      // they were; its own prepared new photos go with the changes (as before); unfinished ones stay kept (tray).
+      leaveForm: function (inst) { if (!inst) return Promise.resolve(); return api.list().then(function (l) { return Promise.all(l.filter(function (x) { return x.media.inst === inst; }).map(function (x) { return x.media.fromTray ? api.release(x) : x.state.stage === 'ready' ? api.drop(x.media.id) : null; })); }); },
+      dropFormDraft: function (id) { return tx('forms', 'readwrite', function (s) { return s.delete(id); }).catch(function () { /* nothing to remove */ }); },
+      rekey: function (m, formKey) { var c = Object.assign({}, m, { formKey: formKey }); return tx('media', 'readwrite', function (s) { return s.put(c); }).catch(function () { /* left where it was */ }); },
+      // 1.0.16: a kept photo or clip belongs to one open scan form (inst, that form's id), or to none: then it waits in
+      // the recovery tray. assign() gives it to a form the learner chose it for; release() returns it to the tray as
+      // it is (its edits kept), from no run of the app, so no form ever takes it by itself.
+      assign: function (x, formKey, inst, stage, fromTray) { var c = Object.assign({}, x.media, { formKey: formKey, inst: inst, fromTray: !!fromTray }); return tx('media', 'readwrite', function (s) { return s.put(c); }).then(function () { return api.state(c.id, Object.assign({}, x.state, { stage: stage })); }).catch(fail); },
+      release: function (x) { var c = Object.assign({}, x.media, { formKey: 'tray', inst: null, fromTray: false }); return tx('media', 'readwrite', function (s) { return s.put(c); }).then(function () { return tx('state', 'readwrite', function (s) { return s.put(Object.assign({}, x.state, { id: c.id, stage: x.state.stage === 'ready' && c.result ? 'ready' : 'later', session: 'tray', updated: Date.now() })); }); }).catch(fail); },
+      // The recovery tray: every kept photo or clip that belongs to no form open now (exceptInst) and to no unfinished
+      // scan form kept on this phone. Left by earlier versions, kept when Wavelength closed, or kept for later from a
+      // scan that has since been saved: all wait here, each on its own, until the learner chooses.
+      tray: function (exceptInst) {
+        return Promise.all([api.list(), api.forms()]).then(function (r) {
+          var live = {}; r[1].forEach(function (d) { live[d.id] = 1; });
+          return r[0].filter(function (x) { var m = x.media; return (m.file || m.result) && !(m.inst && (m.inst === exceptInst || live[m.inst])); });
+        });
+      },
+      destroy: function (id) { if (db) { db.close(); db = null; } try { indexedDB.deleteDatabase('wavelength-' + id + '-drafts'); } catch (e) { /* nothing to delete */ } }
+    };
+    return api;
+  })();
+  // What a list of kept records holds, in words.
+  function draftWords(list) {
+    var im = list.filter(function (x) { return x.media.kind !== 'clip'; }).length, cl = list.length - im;
+    return [im ? plural(im, 'photo') : '', cl ? plural(cl, 'clip') : ''].filter(Boolean).join(T(' and '));
+  }
+  // A saved scan's content stamp, independent of key order and of sync bookkeeping (updatedAt changes when the server
+  // acknowledges a save, which is not a change of content). An unfinished edit is applied only to the version it began
+  // from: if the scan has changed since (another device, a sign-off, a later save), the edit is shown, never applied.
+  var STAMP_KEYS = ['type', 'date', 'setting', 'age', 'sex', 'indication', 'overall', 'quality', 'interpretation', 'confirmation', 'concordant', 'impact', 'supervision', 'supervisor', 'reflection', 'findings', 'noSignoff', 'exclude', 'images', 'media', 'signoff', 'deleted', 'patient'];
+  function stable(v) { if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']'; if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}'; return JSON.stringify(v === undefined ? null : v); }
+  function entryStamp(e) { var o = {}; STAMP_KEYS.forEach(function (k) { if (e[k] != null && e[k] !== '') o[k] = e[k]; }); var s = stable(o), h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36) + '.' + s.length; }
+  // An unfinished scan form in words: "Cardiac, 10 Oct 2026, 14:02".
+  function formDraftWords(d) { return [d.type && TYPES[d.type] ? T(TYPES[d.type].label) : T('Scan not chosen'), when(d.updated)].join(', '); }
+  // What was typed into an unfinished form that cannot be applied (its scan changed or was deleted): shown to read and
+  // copy, kept until the learner discards it.
+  function draftTextSheet(d, why, after) {
+    var by = {}; ((d.data && d.data.pairs) || []).forEach(function (p) { if (by[p[0]] == null) by[p[0]] = p[1]; });
+    var rows = [['indication', T('Indication')], ['interpretation', T('Your interpretation')], ['impact', T('Impact on management')], ['supervisor', T('Supervisor or mentor')], ['reflection', T('Your reflection')]].filter(function (x) { return by[x[0]]; });
+    sheet('<h2>' + esc(T('Unfinished changes')) + '</h2><p class="muted small">' + esc(why) + '</p>' +
+      (rows.length ? '<dl class="draft-text">' + rows.map(function (x) { return '<dt>' + esc(x[1]) + '</dt><dd>' + esc(by[x[0]]) + '</dd>'; }).join('') + '</dl>' : '<p class="small">' + esc(T('No typed text was kept, only choices.')) + '</p>') +
+      '<div class="btns"><button class="btn block" data-close>' + esc(T('Keep it for now')) + '</button><button class="btn ghost block" style="color:var(--red)" data-dropfd>' + esc(T('Discard it')) + '</button></div>', function (root) {
+      $('[data-dropfd]', root).onclick = function () { closeSheet(); DRAFT.dropFormDraft(d.id).then(after || function () {}); };
+    });
+  }
+  var curForm = null; // the open scan form, so leaving the app keeps what has been typed at once
   function viewEdit(r) {
     var editing = r.name === 'edit' ? S.entries.find(function (x) { return x.id === r.arg; }) : null;
+    var formKey = editing ? 'edit:' + editing.id : 'new', kept = [], keptUrls = {}; // 1.0.14: this form's kept photos and clips
     var copyFrom = r.q.get('copy') ? S.entries.find(function (x) { return x.id === r.q.get('copy'); }) : null;
     var e = editing ? JSON.parse(JSON.stringify(strip(editing))) : { date: today(), supervision: '', setting: (copyFrom || {}).setting || S.kv.lastSetting || '', age: (copyFrom || {}).age || '', sex: (copyFrom || {}).sex || '', type: r.q.get('type') || '' };
     if (copyFrom) { e.date = copyFrom.date; e.indication = copyFrom.indication; e.supervisor = copyFrom.supervisor; e.supervision = copyFrom.supervision; e.noSignoff = copyFrom.noSignoff; e.patient = copyFrom.patient || copyFrom.id; }
+    // 1.0.14: what is typed is kept on this phone as it changes (DRAFT forms). inst names this open form's record;
+    // newId is the id a new scan is saved under, fixed now, so a form continued after Wavelength closed saves as the
+    // same scan and never as a second one. baseStamp is the version of the scan an edit began from.
+    var inst = uid(), newId = editing ? editing.id : uid(), baseStamp = editing ? entryStamp(editing) : '', fdCreated = Date.now(), patientLink = copyFrom ? e.patient : '';
     if (!editing) draftImages = [];
     var mine = {}; myPaths().forEach(function (pid) { PATHS[pid].modules.forEach(function (m) { m.types.forEach(function (t) { mine[t] = 1; }); }); });
     var ordered = C.types.slice().sort(function (a, b) { return (mine[b.id] || 0) - (mine[a.id] || 0); });
@@ -1298,9 +1683,9 @@
     var section = function (key, title, inner, sub) { secN++; return '<section class="fs" id="fs-' + key + '" aria-labelledby="fsh-' + key + '"><header class="fs-h"><span class="fs-n" aria-hidden="true">' + secN + '</span><div class="fs-t"><h2 id="fsh-' + key + '">' + esc(title) + '</h2>' + (sub ? '<p class="fs-sub" id="fss-' + key + '">' + esc(sub) + '</p>' : '') + '</div></header><div class="fs-b">' + inner + '</div></section>'; };
     var req = '<span class="req">' + esc(T('Required')) + '</span>';
     var supOpts = '<div class="seg col sup" role="radiogroup" aria-labelledby="lab-supervision">' + C.supervision.map(function (o, i) { return '<input type="radio" name="supervision" id="supervision' + i + '" value="' + esc(o.id) + '"' + (e.supervision === o.id ? ' checked' : '') + ' aria-describedby="suph' + i + '"><label for="supervision' + i + '"><b>' + esc(T(o.label)) + '</b>' + (o.help ? '<span id="suph' + i + '">' + esc(T(o.help)) + '</span>' : '') + '</label>'; }).join('') + '</div>';
-    var body = '<form id="ef" class="scanform" novalidate>' +
-      (copyFrom ? '<div class="ok">' + esc(T('Same patient as your {type} scan. Choose the next application.', { type: T((TYPES[copyFrom.type] || {}).label || '') })) + '</div>' : '') +
-      section('type', T('Application'), '<div class="field" data-req="type"><span class="lab" id="lab-type">' + esc(T('Which scan did you do?')) + req + '</span><div class="seg types" role="radiogroup" aria-labelledby="lab-type">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>') +
+    var body = '<form id="ef" class="scanform" novalidate><div data-formdraft></div><div data-earlier></div>' +
+      (copyFrom ? '<div class="ok">' + esc(T('Same patient as your {type} scan. Choose the next scan.', { type: T((TYPES[copyFrom.type] || {}).label || '') })) + '</div>' : '') +
+      section('type', T('Scan'), '<div class="field" data-req="type"><span class="lab" id="lab-type">' + esc(T('Which scan did you do?')) + req + '</span><div class="seg types" role="radiogroup" aria-labelledby="lab-type">' + ordered.map(function (t, i) { return '<input type="radio" name="type" id="t' + i + '" value="' + t.id + '"' + (e.type === t.id ? ' checked' : '') + '><label for="t' + i + '">' + esc(T(t.label)) + '</label>'; }).join('') + '</div></div>') +
       '<div id="rest"' + (e.type ? '' : ' hidden') + '>' +
       '<p class="type-ok" id="typeok" aria-live="polite"></p>' +
       section('details', T('Scan details'),
@@ -1331,7 +1716,7 @@
       '<div class="err" hidden></div><div class="btns savebar"><button class="btn teal block" type="submit">' + esc(editing ? T('Save changes') : T('Save scan')) + '</button></div>' +
       '</div></form>';
     mount(shell({ title: editing ? T('Edit scan') : copyFrom ? T('Another scan') : T('Log a scan'), back: editing ? 'entry/' + editing.id : '', tab: 'new' }, body));
-    var form = $('#ef');
+    var form = $('#ef'); form.dataset.formkey = formKey; form.dataset.draft = inst;
     var drawFindings = function () {
       var t = TYPES[(form.querySelector('input[name=type]:checked') || {}).value];
       $('#rest').hidden = !t;
@@ -1368,8 +1753,12 @@
         });
       }, reducedMotion() ? 0 : hold);
     };
-    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; toDate(260); }); });
+    $$('input[name=type]', form).forEach(function (i) { i.addEventListener('change', function () { drawFindings(); form.dataset.dirty = '1'; toDate(260); if (kept.length) drawTray(); }); });
     form.addEventListener('input', function () { form.dataset.dirty = '1'; });
+    // Kept on this phone 0.6 s after the last change, and at once when the app is left (curForm).
+    form.addEventListener('input', function () { keepForm(); });
+    form.addEventListener('change', function () { keepForm(); });
+    curForm = { form: form, keep: function () { keepForm(true); } };
     // A required field marked as missing clears as soon as it is filled in.
     var clearInvalid = function (ev) { var fl = ev.target.closest && ev.target.closest('.field.invalid'); if (fl && fieldOk(form, fl.dataset.req)) markField(fl, ''); };
     form.addEventListener('change', clearInvalid); form.addEventListener('input', clearInvalid);
@@ -1389,7 +1778,9 @@
       // opens from its redacted copy, so redactions already made stay; clips cannot be edited after preparing.
       var edBtn = function (attr, id) { return '<span class="ed" ' + attr + '="' + id + '" role="button" tabindex="0" aria-label="' + esc(T('Edit image')) + '">' + ET.annotate + '</span>'; };
       var items = existing.filter(function (x) { return removed.indexOf(x.id) < 0; }).map(function (x) { return '<button type="button" data-old="' + x.id + '"><img alt="' + esc(T('Scan image')) + '" data-img="' + x.id + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : edBtn('data-edold', x.id)) + '<span class="x" data-rm="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; })
-        .concat(draftImages.map(function (x) { return '<button type="button"><img alt="' + esc(T('Scan image')) + '" src="' + URL.createObjectURL(x.thumb) + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : edBtn('data-eddr', x.id)) + '<span class="x" data-rmd="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; }));
+        .concat(draftImages.map(function (x) { return '<button type="button"><img alt="' + esc(T('Scan image')) + '" src="' + URL.createObjectURL(x.thumb) + '">' + (x.kind === 'clip' ? '<span class="play">▶</span>' : edBtn('data-eddr', x.id)) + '<span class="x" data-rmd="' + x.id + '" aria-label="' + esc(T('Remove')) + '">×</span></button>'; }))
+        // 1.0.14: kept for later (not yet part of the scan): tap to finish, or discard.
+        .concat(kept.map(function (x) { var m = x.media, clipK = m.kind === 'clip'; return '<button type="button" class="kept" data-kept="' + esc(m.id) + '" aria-label="' + esc(clipK ? T('Unfinished clip: tap to finish it') : T('Unfinished photo: tap to finish it')) + '">' + (clipK ? '<span class="kept-ic" aria-hidden="true">' + I.video + '</span>' : '<img alt="" src="' + keptUrl(m) + '">') + '<span class="kept-l">' + esc(T('Unfinished')) + '</span><span class="x" data-rmk="' + esc(m.id) + '" aria-label="' + esc(T('Discard')) + '">×</span></button>'; }));
       g.innerHTML = items.join('') + '<button type="button" class="add" id="addcam">' + I.camera + esc(T('Take photo')) + '</button><button type="button" class="add" id="addpick">' + I.file + esc(T('Choose')) + '</button><button type="button" class="add" id="addclip">' + I.video + esc(T('Clip')) + '</button>';
       $$('[data-img]', g).forEach(function (im) { getOne('images', im.dataset.img).then(function (rec) { if (rec) im.src = imgUrl(rec, true); }); });
       $('#addcam').onclick = function () { $('#cam').click(); };
@@ -1398,11 +1789,13 @@
         if (!clipSupported()) { toast(T('This phone cannot prepare clips. Save a still image instead.'), 4000); return; }
         sheet('<h2>' + esc(T('Add a clip')) + '</h2><p class="muted small">' + esc(T('Record the ultrasound screen for up to 10 seconds, or choose a clip from your phone. You then crop it, redact any identifiers and annotate it if you wish. Sound is removed.')) + '</p><div class="btns"><button class="btn teal block" data-v="vcam">' + esc(T('Record a clip')) + '</button><button class="btn ghost block" data-v="vpick">' + esc(T('Choose a clip')) + '</button></div>', function (root) { $$('[data-v]', root).forEach(function (b) { b.onclick = function () { closeSheet(); $('#' + b.dataset.v).click(); }; }); });
       };
-      $$('[data-rm]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); removed.push(x.dataset.rm); form.dataset.dirty = '1'; drawGallery(); }; });
-      $$('[data-rmd]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); draftImages = draftImages.filter(function (d) { return d.id !== x.dataset.rmd; }); drawGallery(); }; });
+      $$('[data-rm]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); removed.push(x.dataset.rm); form.dataset.dirty = '1'; drawGallery(); keepForm(); }; });
+      $$('[data-rmd]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); var id = x.dataset.rmd, di = draftImages.find(function (d) { return d.id === id; }); draftImages = draftImages.filter(function (d) { return d.id !== id; }); if (di && di.fromTray) DRAFT.list().then(function (l) { var y = l.find(function (z) { return z.media.id === id; }); if (y) return DRAFT.release(y); }).then(loadKept); else { DRAFT.drop(id); drawGallery(); } }; });
+      $$('[data-kept]', g).forEach(function (x) { x.onclick = function () { var k = kept.find(function (y) { return y.media.id === x.dataset.kept; }); if (k) openNew(k.media.file, k.media.kind === 'clip', k.media.captured, k); }; });
+      $$('[data-rmk]', g).forEach(function (x) { x.onclick = function (ev) { ev.stopPropagation(); var k = kept.find(function (y) { return y.media.id === x.dataset.rmk; }); if (k) removeKept(k); }; });
       var bindEd = function (x, go2) { x.onclick = function (ev) { ev.stopPropagation(); go2(); }; x.onkeydown = function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); go2(); } }; };
-      $$('[data-edold]', g).forEach(function (x) { bindEd(x, function () { var id = x.dataset.edold; getOne('images', id).then(function (rec) { if (!rec) return; reEdit(rec, function (res) { res.id = uid(); draftImages.push(res); removed.push(id); form.dataset.dirty = '1'; drawGallery(); }); }); }); });
-      $$('[data-eddr]', g).forEach(function (x) { bindEd(x, function () { var i = draftImages.findIndex(function (d) { return d.id === x.dataset.eddr; }); if (i < 0) return; reEdit(draftImages[i], function (res) { res.id = uid(); draftImages[i] = res; form.dataset.dirty = '1'; drawGallery(); }); }); });
+      $$('[data-edold]', g).forEach(function (x) { bindEd(x, function () { var id = x.dataset.edold; getOne('images', id).then(function (rec) { if (!rec) return; reEdit(rec, function (res) { res.id = uid(); draftImages.push(res); DRAFT.ready(formKey, res, inst); removed.push(id); form.dataset.dirty = '1'; drawGallery(); }); }); }); });
+      $$('[data-eddr]', g).forEach(function (x) { bindEd(x, function () { var i = draftImages.findIndex(function (d) { return d.id === x.dataset.eddr; }); if (i < 0) return; reEdit(draftImages[i], function (res) { res.id = uid(); res.fromTray = !!draftImages[i].fromTray; DRAFT.drop(draftImages[i].id); draftImages[i] = res; DRAFT.ready(formKey, res, inst); form.dataset.dirty = '1'; drawGallery(); }); }); });
     };
     var scanType = function () { var c = form.querySelector('input[name=type]:checked'); return c ? c.value : ''; };
     // Re-editing starts from the unannotated base when there is one. Without it (no annotations, or a backup that lost the
@@ -1415,32 +1808,223 @@
       var nextFile = function () {
         var f = files.shift(); if (!f) return;
         if (count() >= 12) { toast(T('Up to 12 images or clips per scan.')); return; }
-        (clip ? editClip(f, { type: scanType() }) : editImage(f, { type: scanType() })).then(function (res) { if (res) { res.id = uid(); draftImages.push(res); form.dataset.dirty = '1'; drawGallery(); } nextFile(); });
+        openNew(f, clip, inp.id === 'cam' || inp.id === 'vcam').then(nextFile);
       };
       nextFile();
     };
+    // 1.0.14: a new photo or clip, or one kept earlier (k), opened in the editor with its safety copy. The copy is
+    // written as the editor opens and follows every change; it goes when the photo is used or discarded, and stays
+    // (Keep for later, or Wavelength closing) otherwise.
+    function openNew(file, clip, captured, k) {
+      // Android: the camera wrote this into Wavelength's private folder. The app takes its own copy first; the camera's
+      // file is removed once the safety copy holds it (if that fails, it stays and is offered at the next start).
+      if (!k && captured && NAT.captures && file._wlCopy == null) {
+        var cname = file.name || '';
+        return file.arrayBuffer().then(function (buf) { var c = new File([buf], cname || (clip ? 'clip.mp4' : 'photo.jpg'), { type: file.type || (clip ? 'video/mp4' : 'image/jpeg'), lastModified: Date.now() }); c._wlCopy = cname; return openNew(c, clip, captured, k); },
+          function () { file._wlCopy = ''; return openNew(file, clip, captured, k); });
+      }
+      var m = k ? k.media : { id: uid(), formKey: formKey, inst: inst, kind: clip ? 'clip' : 'image', file: file, name: file.name || '', captured: !!captured, created: Date.now() };
+      if (!k) { var started = DRAFT.start(m); if (file._wlCopy) started.then(function () { NAT.captureRemove([file._wlCopy]); }, function () { /* kept in the camera folder */ }); }
+      else DRAFT.state(m.id, Object.assign({}, k.state, { stage: 'editing' }));
+      var s0 = k && k.state || {};
+      var opts = { type: scanType(), isNew: true, captured: m.captured, start: s0.st, sel: s0.clip,
+        keep: function (st, sel) { DRAFT.state(m.id, { stage: 'editing', st: st, clip: sel }); },
+        later: function () { DRAFT.list().then(function (l) { var x = l.find(function (y) { return y.media.id === m.id; }); DRAFT.state(m.id, Object.assign({}, x && x.state, { stage: 'later' })).then(loadKept); }); toast(clip ? T('Clip kept on this phone. Finish it from this scan.') : T('Photo kept on this phone. Finish it from this scan.'), 3500); },
+        discard: function () { DRAFT.drop(m.id).then(loadKept); } };
+      return (clip ? editClip(file, opts) : editImage(file, opts)).then(function (res) {
+        // 1.0.16: the scan form is kept at once with its new photo, so if Wavelength closes now the photo comes back
+        // with its scan (Review), not on its own.
+        if (res) { res.id = uid(); res.fromTray = !!m.fromTray; draftImages.push(res); form.dataset.dirty = '1'; DRAFT.drop(m.id); DRAFT.ready(formKey, res, inst); keepForm(true); }
+        loadKept();
+        return res;
+      });
+    }
+    // 1.0.16: this form's own photos and clips are the ones that belong to it (inst): taken or kept for later here, or
+    // chosen for it one by one from the recovery tray. They are its Unfinished tiles until finished; prepared ones of a
+    // form continued after Wavelength closed go back into it. Everything else waits in the recovery tray, offered
+    // here with Choose from them, never added by itself.
+    function keptUrl(m) { return keptUrls[m.id] || (keptUrls[m.id] = URL.createObjectURL(m.file)); }
+    function loadKept() {
+      return DRAFT.list().then(function (l) {
+        if (!form.isConnected) return;
+        var mine = l.filter(function (x) { return x.media.inst && x.media.inst === inst; });
+        mine.forEach(function (x) { if (x.state.stage === 'ready' && x.media.result && !draftImages.some(function (d) { return d.id === x.media.id; })) draftImages.push(Object.assign({}, x.media.result, { id: x.media.id, fromTray: !!x.media.fromTray })); });
+        kept = mine.filter(function (x) { return x.state.stage !== 'ready' && x.media.file; });
+        drawGallery(); return drawTray();
+      });
+    }
+    // Above the form: this form's unfinished photos in words (they are not part of the scan), and the recovery tray.
+    function drawTray() {
+      var box = $('[data-earlier]', form); if (!box) return Promise.resolve();
+      return DRAFT.tray(inst).then(function (l) {
+        if (!form.isConnected) return;
+        var hidden = $('#rest', form).hidden;
+        box.innerHTML = (kept.length ? '<div class="kept-note" role="status" data-unfinished><p><b>' + esc(T('Not finished yet: {what}.', { what: draftWords(kept) })) + '</b> ' + esc(T('Each one becomes part of this scan only when you finish it under Images and clips: open it, crop and redact it, then choose Use this image.')) + (hidden ? ' ' + esc(T('Choose the scan above to see Images and clips.')) : '') + '</p></div>' : '') +
+          (l.length ? '<div class="kept-note" role="status" data-traynote><p><b>' + esc(T('Kept on this phone, not part of any scan:')) + '</b> ' + esc(draftWords(l)) + '. ' + esc(T('They may come from different patients and scans. Choose only the ones that belong to this scan, one by one.')) + '</p><div class="btns"><button type="button" class="btn teal sm" data-opentray>' + esc(T('Choose from them')) + '</button></div></div>' : '');
+        var b = $('[data-opentray]', box); if (b) b.onclick = function () { openTray(); };
+      });
+    }
+    // The recovery tray over the form. Selected ones are chosen for this scan; the rest stay in the tray.
+    function openTray() {
+      return DRAFT.tray(inst).then(function (items) {
+        if (!form.isConnected) return;
+        if (!items.length) { closeSheet(); return drawTray(); }
+        sheet('<h2>' + esc(T('Kept photos and clips')) + '</h2>' + trayHtml(items, 'form'), function (root) {
+          bindTray(root, items, { mode: 'form', changed: function () { drawTray(); openTray(); }, kept: openTray, add: function (c) { closeSheet(); assignToForm(c); } });
+        });
+      });
+    }
+    // Chosen for this scan, one by one: an unfinished one becomes an Unfinished tile (part of the scan only once it is
+    // finished in the editor); one prepared in an earlier run (cropped and redacted) goes into the scan's images, where
+    // it can be checked, edited or removed. Nothing is said to be added that is not.
+    function assignToForm(c) {
+      if (c.length > 12 - count() - kept.length) {
+        sheet('<h2>' + esc(T('Too many for one scan')) + '</h2><p class="muted">' + esc(T('A scan holds up to 12 images or clips. Select fewer.')) + '</p><div class="btns"><button class="btn teal block" data-close>' + esc(T('OK')) + '</button></div>');
+        return Promise.resolve();
+      }
+      var ready = c.filter(function (x) { return x.state.stage === 'ready' && x.media.result; }), rest = c.filter(function (x) { return ready.indexOf(x) < 0; });
+      return Promise.all(c.map(function (x) { return DRAFT.assign(x, formKey, inst, ready.indexOf(x) >= 0 ? 'ready' : 'later', true); })).then(function () {
+        form.dataset.dirty = '1'; keepForm(true);
+        return loadKept();
+      }).then(function () {
+        var said = [];
+        if (rest.length) said.push(T('{what} chosen for this scan, not part of it yet: finish each one to add it.', { what: draftWords(rest) }));
+        if (ready.length) said.push(T('{what} prepared earlier added to this scan: check them under Images and clips.', { what: draftWords(ready) }));
+        toast(said.join(' '), 6000); announce(said.join(' '));
+      });
+    }
+    // An Unfinished tile's x: it is not part of the scan, so it can go back with the other kept ones, or be discarded.
+    function removeKept(k) {
+      sheet('<h2>' + esc(T('Take it out of this scan?')) + '</h2><p class="muted">' + esc(T('It is not part of the scan yet. Put it back with the other kept photos and clips, or discard it.')) + '</p><div class="btns"><button class="btn teal block" data-putback>' + esc(T('Put it back with the kept ones')) + '</button><button class="btn ghost block" style="color:var(--red)" data-disc>' + esc(T('Discard it')) + '</button><button class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div>', function (root) {
+        $('[data-putback]', root).onclick = function () { closeSheet(); DRAFT.release(k).then(loadKept); };
+        $('[data-disc]', root).onclick = function () { discardKept([k], function () { if (keptUrls[k.media.id]) { URL.revokeObjectURL(keptUrls[k.media.id]); delete keptUrls[k.media.id]; } loadKept(); }); };
+      });
+    }
+    loadKept().then(function () {
+      if (!S.trayAssign) return;
+      var ids = S.trayAssign; S.trayAssign = null;
+      return DRAFT.tray(inst).then(function (l) { var c = l.filter(function (x) { return ids.indexOf(x.media.id) >= 0; }); if (c.length && form.isConnected) return assignToForm(c); });
+    });
+    // 1.0.14: the typed form, kept on this phone. Every named control except the file inputs, as [name, value] pairs
+    // (ticked boxes and chosen radios only), with the list of names so unticked boxes come back unticked.
+    function snapForm() {
+      var pairs = [], names = {};
+      Array.prototype.forEach.call(form.elements, function (el) {
+        if (!el.name || el.type === 'file') return;
+        names[el.name] = 1;
+        if ((el.type === 'radio' || el.type === 'checkbox') && !el.checked) return;
+        pairs.push([el.name, el.value]);
+      });
+      return { pairs: pairs, names: Object.keys(names) };
+    }
+    function fillForm(data) {
+      var by = {}; (data.pairs || []).forEach(function (p) { (by[p[0]] = by[p[0]] || []).push(p[1]); });
+      var t = (by.type || [])[0], tr = t && $$('input[name=type]', form).find(function (i) { return i.value === t; });
+      if (tr) { tr.checked = true; drawFindings(); } // the application first: it draws its findings and pathways
+      Array.prototype.forEach.call(form.elements, function (el) {
+        if (!el.name || el.type === 'file' || el.name === 'type' || (data.names || []).indexOf(el.name) < 0) return;
+        var v = by[el.name] || [];
+        if (el.type === 'radio' || el.type === 'checkbox') el.checked = v.indexOf(el.value) >= 0; else el.value = v.length ? v[0] : '';
+      });
+    }
+    function keepForm(now) {
+      clearTimeout(keepForm.t);
+      var put2 = function () { if (!form.isConnected || !form.dataset.dirty) return; DRAFT.saveForm({ id: inst, formKey: formKey, entryId: newId, base: baseStamp, type: scanType(), data: snapForm(), removed: removed.slice(), patient: patientLink, created: fdCreated }); };
+      if (now) put2(); else keepForm.t = setTimeout(put2, 600);
+    }
+    // Unfinished forms for this scan (an edit) or for a new scan, other than this one. A new scan's form whose scan
+    // has since been saved is removed: the saved scan holds everything it had.
+    function formDrafts() {
+      return DRAFT.forms().then(function (l) {
+        var mine = [];
+        l.forEach(function (d) {
+          if (d.id === inst) return;
+          if (d.formKey === 'new' && S.entries.some(function (x) { return x.id === d.entryId; })) { DRAFT.dropFormDraft(d.id); return; }
+          if (editing ? d.entryId === editing.id : d.formKey === 'new') mine.push(d);
+        });
+        return mine;
+      });
+    }
+    // Offered, never applied by itself. An edit is offered to continue only if the scan is still the version it began
+    // from; otherwise what was typed can be read and copied, and is kept until discarded.
+    function drawFormDrafts() {
+      var box = $('[data-formdraft]', form); if (!box) return Promise.resolve();
+      return formDrafts().then(function (l) {
+        if (!form.isConnected) return;
+        if (!l.length) { box.innerHTML = ''; return; }
+        var d = l[0], more = l.length - 1, fresh = !editing || d.base === baseStamp;
+        var msg = !editing ? T('An unfinished scan was kept on this phone: {what}.', { what: formDraftWords(d) })
+          : fresh ? T('Unfinished changes to this scan were kept on this phone ({when}).', { when: when(d.updated) })
+            : T('Unfinished changes from {when} were kept, but this scan has changed since, so they were not applied.', { when: when(d.updated) });
+        box.innerHTML = '<div class="kept-note" role="status"><p>' + esc(msg) + (more ? ' ' + esc(N(more, '{n} more is kept.', '{n} more are kept.')) : '') + '</p><div class="btns">' +
+          (fresh ? '<button type="button" class="btn teal sm" data-fdgo>' + esc(editing ? T('Continue the changes') : T('Continue it')) + '</button>' : '<button type="button" class="btn teal sm" data-fdsee>' + esc(T('See what was typed')) + '</button>') +
+          '<button type="button" class="btn ghost sm" data-fddrop>' + esc(T('Discard')) + '</button></div></div>';
+        if (fresh) $('[data-fdgo]', box).onclick = function () { continueDraft(d); };
+        else $('[data-fdsee]', box).onclick = function () { draftTextSheet(d, T('This scan has changed since these changes were typed, so they cannot be applied safely. Copy anything you still need into the scan.'), drawFormDrafts); };
+        $('[data-fddrop]', box).onclick = function () {
+          sheet('<h2>' + esc(editing ? T('Discard the unfinished changes?') : T('Discard the unfinished scan?')) + '</h2><p class="muted">' + esc(T('What was typed will be deleted from this phone.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Keep it')) + '</button><button class="btn ghost block" style="color:var(--red)" data-gone>' + esc(T('Discard')) + '</button></div>', function (root) {
+            $('[data-gone]', root).onclick = function () { closeSheet(); DRAFT.dropFormDraft(d.id).then(drawFormDrafts); };
+          });
+        };
+      });
+    }
+    // Continuing into a form already typed in: what was typed here is kept as another unfinished scan first.
+    function continueDraft(d) {
+      if (!form.dataset.dirty) return applyDraft(d);
+      sheet('<h2>' + esc(T('Switch to the unfinished scan?')) + '</h2><p class="muted">' + esc(T('What you have entered here stays kept on this phone as another unfinished scan.')) + '</p><div class="btns"><button class="btn teal block" data-sw>' + esc(T('Switch')) + '</button><button class="btn ghost block" data-close>' + esc(T('Stay here')) + '</button></div>', function (root) {
+        $('[data-sw]', root).onclick = function () { closeSheet(); keepForm(true); delete form.dataset.dirty; S.resumeForm = d.id; render(); };
+      });
+    }
+    // This form becomes the kept one: same record, same scan id, so saving it can only make one scan.
+    function applyDraft(d) {
+      var was = inst;
+      inst = d.id; newId = d.entryId; fdCreated = d.created || Date.now(); patientLink = d.patient || ''; form.dataset.draft = inst;
+      DRAFT.list().then(function (l) { return Promise.all(l.filter(function (x) { return x.media.inst === was; }).map(function (x) { return DRAFT.assign(x, formKey, inst, x.state.stage || 'later', x.media.fromTray); })); }).then(loadKept);
+      if (editing) removed = (d.removed || []).filter(function (id) { return existing.some(function (x) { return x.id === id; }); });
+      fillForm(d.data || {});
+      form.dataset.dirty = '1'; drawGallery();
+      var box = $('[data-formdraft]', form); if (box) box.innerHTML = '<div class="kept-note" role="status"><p>' + esc(T('Continued from {when}. Check it, then save.', { when: when(d.updated) })) + '</p></div>';
+    }
+    if (S.resumeForm) {
+      var rf = S.resumeForm; S.resumeForm = null;
+      formDrafts().then(function (l) { var d = l.find(function (x) { return x.id === rf; }); if (d && form.isConnected && (!editing || d.base === baseStamp)) applyDraft(d); else drawFormDrafts(); });
+    } else drawFormDrafts();
+    // From Home: open the kept photo or clip straight away.
+    if (S.resumeDraft) { var rid = S.resumeDraft; S.resumeDraft = null; DRAFT.list(formKey).then(function (l) { var k = l.find(function (x) { return x.media.id === rid && x.media.file; }); if (k && form.isConnected) openNew(k.media.file, k.media.kind === 'clip', k.media.captured, k); }); }
     $('#cam').addEventListener('change', function () { onFiles(this); });
     $('#pick').addEventListener('change', function () { onFiles(this); });
     $('#vcam').addEventListener('change', function () { onFiles(this, true); });
     $('#vpick').addEventListener('change', function () { onFiles(this, true); });
     // Save
-    var saving = false;
+    var saving = false, keptAsked = false;
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
       if (saving) return; // a second tap while the first save is still running
+      // 1.0.14: a photo or clip kept for later is not part of the scan: say so before saving without it.
+      // 1.0.16: plainly: they will not be saved in this scan. Finish them now, save and keep them for later (back in the
+      // recovery tray, not in any scan), or go back.
+      if (kept.length && !keptAsked) {
+        sheet('<h2>' + esc(T('Not finished: {what}', { what: draftWords(kept) })) + '</h2><p class="muted">' + esc(T('Unfinished photos and clips are not part of the scan. If you save now, they will not be saved in this scan.')) + '</p><div class="btns"><button class="btn teal block" data-finish>' + esc(T('Finish them now')) + '</button><button class="btn ghost block" data-anyway>' + esc(T('Save, and keep them for later')) + '</button><button class="btn ghost block" data-close>' + esc(T('Go back')) + '</button></div>', function (root) {
+          $('[data-finish]', root).onclick = function () { closeSheet(); var k = kept[0]; openNew(k.media.file, k.media.kind === 'clip', k.media.captured, k); };
+          $('[data-anyway]', root).onclick = function () { closeSheet(); keptAsked = true; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true })); };
+        });
+        return;
+      }
+      keptAsked = false;
+      var unfinished = kept.slice(); // not saved in this scan: back to the recovery tray once it is saved
       var err = $('.err', form); err.hidden = true;
       var d = formData(form);
-      var out = editing ? Object.assign({}, strip(editing)) : { id: uid(), createdAt: Date.now() };
+      var out = editing ? Object.assign({}, strip(editing)) : { id: newId, createdAt: Date.now() };
       ['type', 'date', 'setting', 'age', 'sex', 'indication', 'overall', 'quality', 'interpretation', 'confirmation', 'concordant', 'impact', 'supervision', 'supervisor', 'reflection'].forEach(function (k) { out[k] = (d[k] || '').trim ? (d[k] || '').trim() : d[k]; });
       out.findings = readFindings();
       out.noSignoff = !!$('input[name=noSignoff]', form).checked; if (!out.noSignoff) delete out.noSignoff;
-      if (copyFrom) out.patient = e.patient;
+      if (patientLink) out.patient = patientLink;
       var mods = modulesForType(out.type).map(function (m) { return m.id; });
       var ticked = $$('input[name=count]:checked', form).map(function (i) { return i.value; });
       out.exclude = mods.filter(function (m) { return ticked.indexOf(m) < 0; });
       // Required fields (unchanged from 1.0.9: application, a date not in the future, supervision): each one missing is
       // marked where it is, and the first is brought into view and focused for screen readers. Nothing is cleared.
-      var missing = [['type', T('Choose the application.')], ['date', out.date > today() ? T('The date cannot be in the future.') : T('Enter the date of the scan.')], ['supervision', T('Choose the level of supervision.')]].filter(function (x) { return !fieldOk(form, x[0]); });
+      var missing = [['type', T('Choose which scan you did.')], ['date', out.date > today() ? T('The date cannot be in the future.') : T('Enter the date of the scan.')], ['supervision', T('Choose the level of supervision.')]].filter(function (x) { return !fieldOk(form, x[0]); });
       $$('.field.invalid', form).forEach(function (fl) { markField(fl, ''); });
       if (missing.length) {
         missing.forEach(function (x) { markField($('[data-req="' + x[0] + '"]', form), x[1]); });
@@ -1456,7 +2040,7 @@
       var finish = function () {
         var btn = $('button[type=submit]', form);
         saving = true; busy(btn, true, T('Saving…'));
-        var keepImgs = existing.filter(function (x) { return removed.indexOf(x.id) < 0; });
+        var keepImgs = existing.filter(function (x) { return removed.indexOf(x.id) < 0; }), savedIds = draftImages.map(function (x) { return x.id; });
         out.images = keepImgs.concat(draftImages.map(function (x) { var o = { id: x.id, w: x.w, h: x.h, declared: true }; if (x.kind === 'clip') { o.kind = 'clip'; o.dur = x.dur; } return o; }));
         out._dirty = true; if (!editing) out._new = true;
         out.updatedAt = editing ? editing.updatedAt : 0;
@@ -1470,6 +2054,11 @@
           // Saved on this device. Nothing after this point may report the save as failed (a second Save would then
           // make a duplicate), so the screen change runs on its own.
           delete form.dataset.dirty; draftImages = [];
+          // 1.0.16: exactly the prepared copies now saved in the scan go (by id, from any run of the app, so none is
+          // offered again as a duplicate); unfinished ones go back to the recovery tray, kept and not in this scan.
+          savedIds.forEach(function (id) { DRAFT.drop(id); });
+          unfinished.forEach(function (x) { DRAFT.release(x); });
+          clearTimeout(keepForm.t); DRAFT.dropFormDraft(inst); // the typed form is the saved scan now
           try { setKv('lastSetting', out.setting); NAT.haptic('success'); } catch (e) { /* not essential */ }
           setTimeout(function () {
             // A new scan goes back Home; an edit goes back to the scan. A short note says what actually happened,
@@ -1541,27 +2130,54 @@
     box: ic('<rect x="4" y="6" width="16" height="12" rx="1"/>', 20),
     picto: ic('<circle cx="12" cy="5" r="2"/><path d="M8 10h8l-1 5h-2l-1 6-1-6H9z"/>', 20),
     play: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>',
-    pause: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>'
+    pause: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>',
+    zin: ic('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M10.5 7.5v6M7.5 10.5h6"/>', 18),
+    zout: ic('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6"/>', 18)
   };
   var orientAfter = EDT.orientAfter;
   function orientWords(o) {
     if (!o.m) return ['', 'Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise'][o.r] ? T(['', 'Rotated 90° clockwise', 'Rotated 180°', 'Rotated 90° anticlockwise'][o.r]) : '';
     return T(['Flipped horizontally', 'Flipped horizontally, then rotated 90° clockwise', 'Flipped vertically', 'Flipped horizontally, then rotated 90° anticlockwise'][o.r]);
   }
-  var COLOUR_NAMES = { white: 'White', yellow: 'Yellow', cyan: 'Cyan', red: 'Red' };
-  var EDP = { mode: 'adjust', color: 'yellow', size: 'm', bg: 'outline', redact: 'black' }; // colour, size and fill are remembered while the app is open
+  // 1.0.14: the default annotation colour is kept on this phone (Set as default colour); the three colours used last
+  // are offered again in the colour picker. Mode, text background and redaction fill are remembered while the app is open.
+  function edPref(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+  function edPrefSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage blocked: kept for this session only */ } }
+  var EDP = { mode: 'adjust', color: EDT.hexOf(edPref('wl-ann-colour', '')) || EDT.COLOURS.yellow, bg: 'outline', bgc: null, redact: 'black' };
+  function recentColours() { try { return (JSON.parse(edPref('wl-ann-recent', '[]')) || []).map(EDT.hexOf).filter(Boolean).slice(0, 3); } catch (e) { return []; } }
+  function useColour(hex) { var r = recentColours().filter(function (c) { return c !== hex; }); r.unshift(hex); edPrefSet('wl-ann-recent', JSON.stringify(r.slice(0, 3))); }
+  var curEditor = null; // the open photo or clip editor, for the Android back button and app pauses
+  // 1.0.14: is the on-screen keyboard showing? Android shrinks the app's viewport when it opens (measured on a real
+  // WebView: 796 to 508 px). Android itself closes the keyboard on the first Back, and the field stays focused after,
+  // so a focused field alone does not mean the keyboard is up: Back only closes a keyboard that is really there.
+  var vpBase = { w: 0, h: 0 };
+  function vpNow() { var v = window.visualViewport; return { w: window.innerWidth, h: v ? v.height : window.innerHeight }; }
+  function trackVp() { var n = vpNow(); if (Math.abs(n.w - vpBase.w) > 1) vpBase = n; else if (n.h > vpBase.h) vpBase.h = n.h; }
+  window.addEventListener('resize', trackVp); if (window.visualViewport) window.visualViewport.addEventListener('resize', trackVp); trackVp();
+  function isTextField(el) { return !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'INPUT' && /^(text|search|email|url|tel|number|password|date)$/.test(el.type))); }
+  function keyboardUp() { var n = vpNow(); return isTextField(document.activeElement) && Math.abs(n.w - vpBase.w) <= 1 && vpBase.h - n.h > 120; }
   // cfg: kind ('image' | 'clip'), title, declText, saveLabel, media (clip controls), type (scan type), w and h (source
   // size), state (initial crop, orient, redact, ann), source() (what to draw), time() (clip seconds into the kept
   // selection, or null), locked() (true while a clip is being prepared), onState(), save(state, el), close(value).
   function mediaEditor(cfg) {
     $$('.toast').forEach(function (t) { t.remove(); }); // nothing may sit over the declaration or the tools
-    var st = JSON.parse(JSON.stringify(cfg.state)), st0 = JSON.stringify(st), undo = [], redo = [], sel = -1, tool = '', pending = null;
+    var st = JSON.parse(JSON.stringify(cfg.start || cfg.state)), st0 = JSON.stringify(cfg.state), undo = [], redo = [], sel = -1, tool = '', pending = null;
     var clip = cfg.kind === 'clip';
     var tb = function (k, label, full, attrs) { return '<button type="button" class="tool et" ' + attrs + ' aria-label="' + esc(full || label) + '">' + ET[k] + '<span>' + esc(label) + '</span></button>'; };
+    // 1.0.17: Size and Rotation together, one compact group. Side by side when the group is wide enough for both
+    // (CSS, by its own width and text size), stacked otherwise; Rotation only for what can turn.
+    var ctlsHtml = '<div class="ed-ctls" data-ctls role="group" aria-label="' + esc(T('Annotation controls')) + '"><span class="ed-ctlem" aria-hidden="true">M</span><div class="ed-ctlgrid">' +
+      '<div class="ed-size ed-ctl"><div class="ed-szhead"><label for="edsz">' + esc(T('Size')) + '</label><span class="ed-szfor" id="edszfor" data-szfor></span></div>' +
+      '<div class="ed-szrow"><span class="sz-end" aria-hidden="true">' + esc(T('Smaller')) + '</span><span class="ed-sztrack"><input type="range" id="edsz" data-szr min="' + EDT.POS.min + '" max="' + EDT.POS.max + '" step="1" value="0" aria-describedby="edszfor"></span><span class="sz-end" aria-hidden="true">' + esc(T('Larger')) + '</span></div></div>' +
+      '<div class="ed-rot ed-ctl" data-rotctl><div class="ed-szhead"><label for="edrot">' + esc(T('Rotation')) + '</label><span class="ed-szfor ed-rotval" id="edrotval" data-rotval aria-hidden="true"></span></div>' +
+      '<div class="ed-szrow"><span class="sz-end" aria-hidden="true">' + esc(T('Left')) + '</span><span class="ed-sztrack"><input type="range" id="edrot" data-rotr min="' + EDT.ROT.min + '" max="' + EDT.ROT.max + '" step="1" value="0"></span><span class="sz-end" aria-hidden="true">' + esc(T('Right')) + '</span></div></div>' +
+      '</div></div>';
     var el = document.createElement('div'); el.className = 'editor' + (clip ? ' clip' : ''); el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', cfg.title);
     el.innerHTML = '<div class="bar-top"><button type="button" class="tool" data-a="cancel">' + esc(T('Cancel')) + '</button><b class="ed-title">' + esc(cfg.title) + '</b><button type="button" class="tool" data-a="undo" disabled>' + esc(T('Undo')) + '</button><button type="button" class="tool" data-a="redo" disabled>' + esc(T('Redo')) + '</button></div>' +
-      '<div class="stage"><canvas tabindex="0" aria-label="' + esc(T('Picture being edited')) + '"></canvas><div class="sel" hidden></div><div class="ann-sel" hidden><span class="h" data-h="a"></span><span class="h" data-h="b"></span></div></div>' +
+      '<div class="stage"><canvas tabindex="0" aria-label="' + esc(T('Picture being edited')) + '"></canvas><div class="sel" hidden></div><div class="ann-sel" hidden><span class="h" data-h="a"></span><span class="h" data-h="b"></span></div>' +
+        '<div class="ed-zoom" role="group" aria-label="' + esc(T('Zoom')) + '"><button type="button" data-z="out" aria-label="' + esc(T('Zoom out')) + '">' + ET.zout + '</button><button type="button" class="ed-zval" data-z="fit"></button><button type="button" data-z="in" aria-label="' + esc(T('Zoom in')) + '">' + ET.zin + '</button></div></div>' +
       (cfg.media || '') +
+      '<div class="ed-ctlslot" data-ctlslot></div>' +
       '<div class="bar-bot">' +
       '<div class="ed-modes" role="tablist" aria-label="' + esc(T('Editing mode')) + '">' +
         '<button type="button" role="tab" class="ed-mode" data-tab="annotate" aria-selected="false">' + ET.annotate + '<span>' + esc(T('Annotate')) + '</span></button>' +
@@ -1573,15 +2189,17 @@
       '<div class="ed-panel" data-panel="redact" hidden><div class="ed-row"><span class="ed-lab">' + esc(T('Fill')) + '</span><div class="ed-seg" role="radiogroup" aria-label="' + esc(T('Redaction colour')) + '"><button type="button" role="radio" data-rc="black">' + esc(T('Black')) + '</button><button type="button" role="radio" data-rc="grey">' + esc(T('Grey')) + '</button></div><p class="ed-applied" data-rcount aria-live="polite"></p></div>' +
         '<p class="ed-note2">' + esc(T('Redaction is solid and is saved in the picture itself. Blurring is not offered, because it can leave identifiers readable.')) + '</p></div>' +
       '<div class="ed-panel" data-panel="annotate" hidden><div class="ed-tools ann-tools" role="toolbar" aria-label="' + esc(T('Annotation tools')) + '">' + tb('text', T('Text'), T('Add your own text'), 'data-at="text"') + tb('label', T('Label'), T('Add a clinical label'), 'data-at="label"') + tb('arrow', T('Arrow'), T('Draw an arrow'), 'data-at="arrow"') + tb('dot', T('Dot'), T('Place a pointer dot'), 'data-at="dot"') + tb('circle', T('Circle'), T('Draw a circle'), 'data-at="circle"') + tb('box', T('Box'), T('Draw a box'), 'data-at="rect"') + tb('picto', T('Pictogram'), T('Add a pictogram'), 'data-at="picto"') + '</div>' +
-        '<div class="ed-row ed-opts"><div class="ed-swatches" role="radiogroup" aria-label="' + esc(T('Colour')) + '">' + Object.keys(EDT.COLOURS).map(function (c) { return '<button type="button" role="radio" class="sw" data-col="' + c + '" style="--sw:' + EDT.COLOURS[c] + '" aria-label="' + esc(T(COLOUR_NAMES[c])) + '"></button>'; }).join('') + '</div><div class="ed-seg" role="radiogroup" aria-label="' + esc(T('Size')) + '">' + [['s', 'S', 'Small'], ['m', 'M', 'Medium'], ['l', 'L', 'Large']].map(function (z) { return '<button type="button" role="radio" data-sz="' + z[0] + '" aria-label="' + esc(T(z[2])) + '">' + z[1] + '</button>'; }).join('') + '</div></div>' +
-        '<div class="ed-selbar" hidden><p class="ed-applied" data-selname aria-live="polite"></p><div class="ed-selacts"><button type="button" class="tool" data-sa="edit">' + esc(T('Edit text')) + '</button><button type="button" class="tool" data-sa="bg">' + esc(T('Background')) + '</button><button type="button" class="tool" data-sa="turn">' + esc(T('Turn')) + '</button><button type="button" class="tool" data-sa="flip">' + esc(T('Mirror')) + '</button><button type="button" class="tool" data-sa="del">' + esc(T('Delete')) + '</button><button type="button" class="tool apply" data-sa="done">' + esc(T('Done')) + '</button></div>' +
+        '<div class="ed-row ed-opts"><div class="ed-colour"><button type="button" class="ed-colpick" data-colpick aria-haspopup="dialog" aria-label="' + esc(T('Choose a colour')) + '"></button><span class="ed-colnow" data-colnow role="img"></span></div>' +
+          '</div><div class="ed-ctlhome" data-ctlhome>' + ctlsHtml + '</div>' +
+        '<div class="ed-selbar" hidden><p class="ed-applied" data-selname aria-live="polite"></p><div class="ed-selacts"><button type="button" class="tool" data-sa="edit">' + esc(T('Edit text')) + '</button><button type="button" class="tool" data-sa="bg">' + esc(T('Background')) + '</button><button type="button" class="tool" data-sa="flip">' + esc(T('Mirror')) + '</button><button type="button" class="tool" data-sa="del">' + esc(T('Delete')) + '</button><button type="button" class="tool apply" data-sa="done">' + esc(T('Done')) + '</button></div>' +
         (clip ? '<div class="ed-seg ed-when" role="radiogroup" aria-label="' + esc(T('When it shows')) + '"><button type="button" role="radio" data-when="all">' + esc(T('Whole clip')) + '</button><button type="button" role="radio" data-when="from">' + esc(T('From here')) + '</button><button type="button" role="radio" data-when="until">' + esc(T('Until here')) + '</button></div><p class="ed-note2" data-whentext></p>' : '') + '</div>' +
         '<div class="ann-list" data-annlist></div></div>' +
       '<p class="ed-err" data-err role="alert" hidden></p>' +
       '<label class="check ed-decl"><input type="checkbox" data-decl><span>' + esc(cfg.declText) + '</span></label>' +
       '<button type="button" class="btn teal block" data-a="save" disabled>' + esc(cfg.saveLabel) + '</button>' +
       '<p class="ed-note">' + esc(T('Your original stays where it is on your phone. Wavelength keeps only this edited copy.')) + '</p></div>' +
-      '<div class="ed-pop" hidden role="dialog" aria-modal="true"></div>';
+      '<div class="ed-pop" hidden role="dialog" aria-modal="true"></div>' +
+      '<div class="ed-confirm" hidden role="alertdialog" aria-modal="true" aria-labelledby="edcft" aria-describedby="edcfb"></div>';
     document.body.appendChild(el);
     var cv = $('canvas', el), stage = $('.stage', el), box = $('.sel', el), asel = $('.ann-sel', el), pop = $('.ed-pop', el);
     var undoBtn = $('[data-a=undo]', el), redoBtn = $('[data-a=redo]', el), resetBtn = $('[data-a=reset]', el), applyBtn = $('[data-a=apply]', el), save = $('[data-a=save]', el), decl = $('[data-decl]', el);
@@ -1589,7 +2207,7 @@
     var snap = function () { return JSON.stringify(st); };
     var change = function () { undo.push(snap()); if (undo.length > 60) undo.shift(); redo = []; };
     var size = function () { return EDT.outSize(st.crop, st.orient, 1); };
-    var paint = function () { cfg.paint(cv, st); drawSel(); };
+    var paint = function () { var w0 = cv.width, h0 = cv.height; cfg.paint(cv, st); if (cv.width !== w0 || cv.height !== h0) fitView(); drawSel(); };
     // While a finger drags, the picture is redrawn at most once a frame (a full 2048 px repaint per pointer event is wasted).
     var paintRaf = 0;
     var paintSoon = function () { if (paintRaf) return; paintRaf = requestAnimationFrame(function () { paintRaf = 0; paint(); }); };
@@ -1607,15 +2225,16 @@
       var nr = st.redact.length;
       $('[data-rcount]', el).textContent = nr ? T('{n} areas redacted', { n: nr }) : '';
       $$('[data-rc]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.rc === EDP.redact)); });
-      $$('[data-col]', el).forEach(function (b) { var a = st.ann[sel]; b.setAttribute('aria-checked', String(b.dataset.col === (a ? a.color : EDP.color))); });
-      $$('[data-sz]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.sz === EDP.size)); });
+      var cnow = (st.ann[sel] && EDT.hexOf(st.ann[sel].color)) || EDP.color, cn = $('[data-colnow]', el);
+      cn.style.setProperty('--c', cnow); cn.setAttribute('aria-label', T('Colour in use: {c}', { c: cnow }));
+      showSize(); showRot();
       $$('[data-at]', el).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.at === tool)); });
       var a = st.ann[sel], sb = $('.ed-selbar', el);
       sb.hidden = !a;
       if (a) {
         $('[data-selname]', el).textContent = T('Selected: {what}', { what: EDT.describe(a, T) });
         $('[data-sa=edit]', el).hidden = a.type !== 'text'; $('[data-sa=bg]', el).hidden = a.type !== 'text';
-        $('[data-sa=turn]', el).hidden = ['text', 'picto', 'rect'].indexOf(a.type) < 0; $('[data-sa=flip]', el).hidden = a.type !== 'picto';
+        $('[data-sa=flip]', el).hidden = a.type !== 'picto';
         if (clip) {
           var w = a.t0 == null && a.t1 == null ? 'all' : a.t0 != null && a.t1 == null ? 'from' : a.t1 != null && a.t0 == null ? 'until' : 'range';
           $$('[data-when]', el).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.when === w)); });
@@ -1624,7 +2243,13 @@
       }
       $('[data-annlist]', el).innerHTML = st.ann.length ? '<span class="ed-lab">' + esc(T('On the picture')) + '</span>' + st.ann.map(function (x, i) { return '<button type="button" class="chipb" data-pick="' + i + '" aria-pressed="' + (i === sel) + '">' + esc(EDT.describe(x, T)) + '</button>'; }).join('') : '';
       if (cfg.onState) cfg.onState(st);
+      keepSoon();
     };
+    // 1.0.14: the work so far is kept on this phone as it changes (crop, redactions, annotations, a clip's selection),
+    // so an interruption that closes Wavelength does not lose it. Only for new photos and clips (cfg.keep).
+    var keepT = 0;
+    function keepNow() { clearTimeout(keepT); keepT = 0; if (cfg.keep) cfg.keep(JSON.parse(snap())); }
+    function keepSoon() { if (!cfg.keep) return; clearTimeout(keepT); keepT = setTimeout(keepNow, 600); }
     var redraw = function () { paint(); state(); };
     // ---- modes ----
     var TIPS = { adjust: T('Drag to choose the area to keep, then tap Apply crop. Most machines show patient details along the top: Trim top removes that strip.'), redact: clip ? T('Drag over any name, number, date or label. The redaction stays on every frame.') : T('Drag over any name, number, date or label to cover it.'), annotate: T('Choose a tool, then tap or drag on the picture. Tap an annotation to move, change or delete it.') };
@@ -1652,7 +2277,7 @@
       var t = cfg.time(), i = EDT.hit(mctx, st.ann, W, H, p.x, p.y, t);
       if (i >= 0 && (!tool || tool === 'text' || tool === 'label' || tool === 'picto')) { sel = i; drag = { kind: 'move', start: p, orig: JSON.stringify(st.ann[i]), before: snap() }; redraw(); return; }
       var nx = p.x / W, ny = p.y / H;
-      if (tool === 'dot') { change(); st.ann.push(newAnn({ type: 'dot', x: nx, y: ny })); sel = st.ann.length - 1; redraw(); return; }
+      if (tool === 'dot') { drag = { kind: 'dot', before: snap() }; st.ann.push(newAnn({ type: 'dot', x: nx, y: ny })); sel = st.ann.length - 1; redraw(); return; }
       if (tool === 'arrow' || tool === 'circle' || tool === 'rect') { drag = { kind: 'draw', start: p, before: snap() }; st.ann.push(newAnn(tool === 'arrow' ? { type: 'arrow', x: nx, y: ny, x2: nx, y2: ny } : { type: tool, x: nx, y: ny, w: 0, h: 0 })); sel = st.ann.length - 1; redraw(); return; }
       if (sel >= 0) { sel = -1; redraw(); }
     });
@@ -1684,6 +2309,7 @@
         return;
       }
       var a = st.ann[sel];
+      if (d.kind === 'dot') { undo.push(d.before); if (undo.length > 60) undo.shift(); redo = []; }
       if (d.kind === 'draw') {
         var small = !a || (a.type === 'arrow' ? Math.hypot((a.x2 - a.x) * cv.width, (a.y2 - a.y) * cv.height) < 12 : a.w * cv.width < 10 || a.h * cv.height < 10);
         if (small) { st.ann.pop(); sel = -1; } else { undo.push(d.before); redo = []; }
@@ -1698,48 +2324,56 @@
       var r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = r.width / cv.width, b = EDT.annBounds(mctx, a, cv.width, cv.height);
       asel.hidden = false;
       asel.style.left = (r.left - sr.left + b.x * k) + 'px'; asel.style.top = (r.top - sr.top + b.y * k) + 'px'; asel.style.width = b.w * k + 'px'; asel.style.height = b.h * k + 'px';
+      var rr = EDT.rotOf(a); asel.style.transform = rr ? 'rotate(' + rr + 'deg)' : ''; // 1.0.17: turned with it, about its centre
       var ha = $('[data-h=a]', asel), hb = $('[data-h=b]', asel);
       if (a.type === 'arrow') {
         ha.hidden = false; hb.hidden = false;
         ha.style.left = (a.x * cv.width - b.x) * k + 'px'; ha.style.top = (a.y * cv.height - b.y) * k + 'px';
         hb.style.left = (a.x2 * cv.width - b.x) * k + 'px'; hb.style.top = (a.y2 * cv.height - b.y) * k + 'px';
-      } else { ha.hidden = true; hb.hidden = false; hb.style.left = b.w * k + 'px'; hb.style.top = b.h * k + 'px'; }
+      } else if (a.type === 'circle' || a.type === 'rect') { ha.hidden = true; hb.hidden = false; hb.style.left = b.w * k + 'px'; hb.style.top = b.h * k + 'px'; }
+      else { ha.hidden = true; hb.hidden = true; } // text, labels, dots, pictograms: Annotation size, not a handle on the picture
     };
     $$('.h', asel).forEach(function (h) {
       h.addEventListener('pointerdown', function (ev) {
         ev.preventDefault(); ev.stopPropagation(); try { h.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ }
         var a = st.ann[sel]; if (!a) return;
-        var before = snap(), orig = JSON.parse(JSON.stringify(a)), which = h.dataset.h, p0 = at(ev), d0 = Math.hypot(p0.x - a.x * cv.width, p0.y - a.y * cv.height);
+        var before = snap(), orig = JSON.parse(JSON.stringify(a)), which = h.dataset.h;
+        // A pinch that starts while a handle is held puts the annotation back as it was.
+        handleAbort = function () { Object.assign(a, orig); h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); handleAbort = null; };
         var move = function (e2) {
-          var p = at(e2), W = cv.width, H = cv.height, m = Math.min(W, H);
+          var p = at(e2), W = cv.width, H = cv.height;
           if (a.type === 'arrow') { if (which === 'a') { a.x = p.x / W; a.y = p.y / H; } else { a.x2 = p.x / W; a.y2 = p.y / H; } }
-          else if (a.type === 'circle' || a.type === 'rect') { a.w = Math.max(0.02, p.x / W - a.x); a.h = Math.max(0.02, p.y / H - a.y); }
-          else {
-            // Text, dots and pictograms keep their centre; the handle scales them from where the drag began.
-            var dist = Math.hypot(p.x - a.x * W, p.y - a.y * H), lo = a.type === 'picto' ? 0.08 : 0.02, hi = a.type === 'picto' ? 0.6 : 0.2;
-            a.size = Math.max(lo, Math.min(hi, (orig.size || 0.058) * dist / Math.max(4, d0)));
+          else if (a.type === 'rect' && EDT.rotOf(a)) {
+            // 1.0.17: a turned box grows and shrinks about its centre, in its own frame, so it stays where it was and keeps its angle.
+            var ox = (orig.x + orig.w / 2) * W, oy = (orig.y + orig.h / 2) * H, th = -EDT.rotOf(a) * Math.PI / 180, ddx = p.x - ox, ddy = p.y - oy;
+            var lx = ddx * Math.cos(th) - ddy * Math.sin(th), ly = ddx * Math.sin(th) + ddy * Math.cos(th);
+            var nw = Math.max(0.02, Math.min(1, 2 * Math.abs(lx) / W)), nh = Math.max(0.02, Math.min(1, 2 * Math.abs(ly) / H));
+            a.w = nw; a.h = nh; a.x = orig.x + orig.w / 2 - nw / 2; a.y = orig.y + orig.h / 2 - nh / 2;
           }
+          else if (a.type === 'circle' || a.type === 'rect') { a.w = Math.max(0.02, Math.min(1 - a.x, p.x / W - a.x)); a.h = Math.max(0.02, Math.min(1 - a.y, p.y / H - a.y)); }
           paintSoon();
         };
-        var up = function () { h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); if (JSON.stringify(a) !== JSON.stringify(orig)) { undo.push(before); redo = []; } redraw(); };
+        var up = function () { handleAbort = null; h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); if (JSON.stringify(a) !== JSON.stringify(orig)) { undo.push(before); redo = []; } redraw(); };
         h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
       });
     });
     // Keyboard: arrows move the selected annotation, Delete removes it, Escape lets go of it.
     cv.addEventListener('keydown', function (e) {
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '0')) { e.preventDefault(); return e.key === '0' ? fitView(true) : zoomBy(e.key === '-' ? 1 / ZSTEP : ZSTEP); }
       var a = st.ann[sel]; if (!a || cfg.locked()) return;
       var step = e.shiftKey ? 0.05 : 0.01, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
       if (d) { e.preventDefault(); change(); a.x = Math.max(0, Math.min(1, a.x + d[0])); a.y = Math.max(0, Math.min(1, a.y + d[1])); if (a.type === 'arrow') { a.x2 += d[0]; a.y2 += d[1]; } redraw(); }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); change(); st.ann.splice(sel, 1); sel = -1; redraw(); }
     });
     var newAnn = function (o) {
-      var a = Object.assign({ color: EDP.color, size: o.type === 'picto' ? 0.24 : EDT.SIZES[EDP.size] }, o);
-      if (a.type === 'text') a.bg = a.bg || EDP.bg;
+      var a = Object.assign({ color: EDP.color, size: EDT.sizeBase(o.type) }, o);
+      if (a.type === 'text') { a.bg = a.bg || EDP.bg; if (a.bg === 'box' && EDP.bgc) a.bgc = EDP.bgc; }
       return a;
     };
     // ---- the small panels for text, labels and pictograms (inside the editor, above everything in it) ----
-    var closePop = function () { pop.hidden = true; pop.innerHTML = ''; var f = $('[data-at=' + (pending || 'text') + ']', el); pending = null; if (f) f.focus({ preventScroll: true }); };
-    var openPop = function (html, bind) { delete pop.dataset.ok; pop.innerHTML = '<div class="ed-popin">' + html + '</div>'; pop.hidden = false; bind(pop); var f = $('input,button', pop); if (f) setTimeout(function () { f.focus(); }, 30); };
+    var popFocusT = 0; // the panel's first field takes focus just after it opens; Back or closing cancels that
+    var closePop = function () { clearTimeout(popFocusT); pop.hidden = true; pop.innerHTML = ''; var f = pending === 'colpick' ? $('[data-colpick]', el) : $('[data-at=' + (pending || 'text') + ']', el); pending = null; if (f) f.focus({ preventScroll: true }); };
+    var openPop = function (html, bind) { delete pop.dataset.ok; pop.innerHTML = '<div class="ed-popin">' + html + '</div>'; pop.hidden = false; bind(pop); var f = $('input,button', pop); clearTimeout(popFocusT); if (f) popFocusT = setTimeout(function () { if (!pop.hidden && pop.contains(f)) f.focus(); }, 30); };
     var placeText = function (text) {
       text = String(text || '').trim().slice(0, 80); if (!text) return;
       change();
@@ -1747,7 +2381,7 @@
       if (pending === 'edit' && a && a.type === 'text') a.text = text;
       else { st.ann.push(newAnn({ type: 'text', text: text, x: 0.5, y: 0.5 })); sel = st.ann.length - 1; }
       closePop(); redraw();
-      tip(T('Drag the label where you want it. The corner handle changes its size.'));
+      tip(T('Drag the label where you want it. Size makes it smaller or larger; Rotation turns it.'));
     };
     var textPop = function (initial) {
       openPop('<form data-tf><label class="ed-lab" for="edtx">' + esc(T('Your text')) + '</label><input id="edtx" type="text" maxlength="80" autocomplete="off" value="' + esc(initial || '') + '"><p class="ed-note2">' + esc(T('Never type a patient name, number or date of birth.')) + '</p><div class="ed-popbtns"><button type="button" class="tool" data-x>' + esc(T('Cancel')) + '</button><button class="tool apply">' + esc(initial ? T('Change') : T('Add')) + '</button></div></form>', function (p) {
@@ -1777,17 +2411,18 @@
         $('[data-x]', p).onclick = closePop;
         $$('[data-pic]', p).forEach(function (b) {
           var c = $('canvas', b), g = c.getContext('2d'); EDT.drawAnn(g, { type: 'picto', picto: b.dataset.pic, x: 0.5, y: 0.5, size: 1, color: 'white' }, 96, 96);
-          b.onclick = function () { change(); st.ann.push(newAnn({ type: 'picto', picto: b.dataset.pic, x: 0.8, y: 0.2 })); sel = st.ann.length - 1; closePop(); redraw(); tip(T('Drag the pictogram where you want it. The corner handle changes its size.')); };
+          b.onclick = function () { change(); st.ann.push(newAnn({ type: 'picto', picto: b.dataset.pic, x: 0.8, y: 0.2 })); sel = st.ann.length - 1; closePop(); redraw(); tip(T('Drag the pictogram where you want it. Size makes it smaller or larger; Rotation turns it.')); };
         });
       });
     };
-    pop.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePop(); } });
+    pop.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); back(); } });
     // ---- buttons ----
     decl.addEventListener('change', function () { save.disabled = !decl.checked || cfg.locked(); });
     el.addEventListener('click', function (ev) {
       var t = ev.target.closest('button'); if (!t || t.disabled || pop.contains(t)) return;
       var d = t.dataset;
-      if (d.a === 'cancel') return cfg.close(null);
+      if (d.a === 'cancel') return leave();
+      if (d.z) return d.z === 'fit' ? fitView(true) : zoomBy(d.z === 'in' ? ZSTEP : 1 / ZSTEP);
       if (cfg.locked()) return; // the tools wait while a clip is being prepared or a photo saved
       if (d.tab) return setMode(d.tab);
       // Undo, redo and reset can bring back a covered or cropped-out area: the declaration is asked for again.
@@ -1797,7 +2432,7 @@
       if (d.a === 'reset') { change(); st = JSON.parse(st0); sel = -1; return redraw(); }
       if (d.a === 'apply' && drag === null) { var s = cropSel; cropSel = null; if (s) { change(); var k = k0(); setFrame(EDT.rectToSrc({ x: s.x / k, y: s.y / k, w: s.w / k, h: s.h / k }, st.crop, st.orient), st.orient); box.hidden = true; applyBtn.hidden = true; } return redraw(); }
       if (d.a === 'trim') { var o = size(), cut = o.h * 0.12; change(); setFrame(EDT.rectToSrc({ x: 0, y: cut, w: o.w, h: o.h - cut }, st.crop, st.orient), st.orient); return redraw(); }
-      if (d.a === 'rotate' || d.a === 'fliph' || d.a === 'flipv') { change(); setFrame(st.crop, orientAfter(st.orient, d.a)); NAT.haptic(); return redraw(); }
+      if (d.a === 'rotate' || d.a === 'fliph' || d.a === 'flipv') { change(); setFrame(st.crop, orientAfter(st.orient, d.a)); NAT.haptic(); fitView(); return redraw(); }
       if (d.a === 'save') return cfg.save(st, el);
       if (d.rc) { EDP.redact = d.rc; return state(); }
       if (d.at) {
@@ -1808,16 +2443,14 @@
         else tip(tool === 'arrow' ? T('Drag from the tail to the point of the arrow.') : tool === 'dot' ? T('Tap where the dot should go.') : tool ? T('Drag to draw it.') : TIPS.annotate);
         return redraw();
       }
-      if (d.col) { EDP.color = d.col; var a0 = st.ann[sel]; if (a0) { change(); a0.color = d.col; } return redraw(); }
-      if (d.sz) { EDP.size = d.sz; var a1 = st.ann[sel]; if (a1 && a1.type !== 'picto' && a1.type !== 'circle' && a1.type !== 'rect' && a1.type !== 'arrow') { change(); a1.size = EDT.SIZES[d.sz]; } return redraw(); }
+      if (d.colpick != null) return colourPop();
       if (d.pick != null) { sel = Number(d.pick); return redraw(); }
       var a = st.ann[sel];
       if (d.sa && a) {
         if (d.sa === 'done') { sel = -1; return redraw(); }
         if (d.sa === 'del') { change(); st.ann.splice(sel, 1); sel = -1; return redraw(); }
         if (d.sa === 'edit') { pending = 'edit'; return textPop(a.text); }
-        if (d.sa === 'bg') { change(); a.bg = a.bg === 'box' ? 'outline' : 'box'; EDP.bg = a.bg; return redraw(); }
-        if (d.sa === 'turn') { change(); a.rot = ((a.rot || 0) + 15) % 360; return redraw(); }
+        if (d.sa === 'bg') { change(); a.bg = a.bg === 'box' ? 'outline' : 'box'; if (a.bg === 'box' && EDP.bgc) a.bgc = EDP.bgc; else delete a.bgc; EDP.bg = a.bg; return redraw(); }
         if (d.sa === 'flip') { change(); a.flip = !a.flip; return redraw(); }
       }
       if (d.when && a) {
@@ -1828,24 +2461,288 @@
         return redraw();
       }
     });
-    // Escape and the Android back button: close a panel, let go of a selection, then cancel.
+    // ---- Annotation size (1.0.14): Smaller to Larger, the usual size in the exact middle ----
+    // The slider sizes the selected annotation: text and labels, dots, a line's thickness (arrows, circles, boxes) and
+    // pictograms, each on its own range, on a curve that is fine near the middle. With nothing selected it rests in the
+    // middle and waits: every new annotation starts at the usual size. One drag of the slider is one step of Undo.
+    var szIn = $('[data-szr]', el), szBefore = null;
+    var SZFOR = { text: T('Selected label: text size'), dot: T('Selected dot: size'), arrow: T('Selected arrow: line thickness'), circle: T('Selected circle: line thickness'), rect: T('Selected box: line thickness'), picto: T('Selected pictogram: size') };
+    var posWords = function (p) { return p === 0 ? T('Usual size') : p < 0 ? T('Smaller, {n} of 100', { n: -p }) : T('Larger, {n} of 100', { n: p }); };
+    function showSize() {
+      var a = st.ann[sel], p = a ? EDT.posOf(a) : 0;
+      if (szBefore === null) szIn.value = p;
+      szIn.disabled = !a || cfg.locked();
+      szIn.setAttribute('aria-valuetext', posWords(Number(szIn.value)));
+      szIn.style.setProperty('--fill', (Number(szIn.value) - EDT.POS.min) / (EDT.POS.max - EDT.POS.min) * 100 + '%');
+      $('.ed-size', el).classList.toggle('off', !a);
+      $('[data-szfor]', el).textContent = a ? SZFOR[a.type] : T('Select or add an annotation');
+    }
+    function setSize(v) {
+      var a = st.ann[sel]; if (!a) return;
+      // 1.0.17: the snap to the middle helps a finger or the mouse; arrow keys move one step at a time (before, a key
+      // press next to the middle was pulled straight back to it, so the slider could not be moved by keys at all).
+      var p = szDrag ? EDT.snapPos(v) : Math.round(Number(v) || 0);
+      if (szBefore === null) szBefore = snap();
+      a.size = EDT.sizeAt(a.type, p); paintSoon();
+      showSize();
+    }
+    function commitSize() {
+      if (szBefore !== null && szBefore !== snap()) { undo.push(szBefore); if (undo.length > 60) undo.shift(); redo = []; }
+      szBefore = null; redraw();
+    }
+    var szDrag = false;
+    szIn.addEventListener('pointerdown', function () { szDrag = true; });
+    szIn.addEventListener('keydown', function () { szDrag = false; });
+    szIn.addEventListener('input', function () { if (!cfg.locked()) setSize(szIn.value); });
+    szIn.addEventListener('change', function () { if (!cfg.locked()) { setSize(szIn.value); commitSize(); } });
+    // ---- Rotation (1.0.17): text and labels, pictograms and boxes, from 180° left to 180° right, Straight in the
+    // middle. The selected annotation turns as the slider moves, on a photo or a clip; one drag is one step of Undo.
+    // Arrows (their ends set the angle), dots and circles have no Rotation. Nothing selected: shown, not usable. ----
+    var rotIn = $('[data-rotr]', el), rotBefore = null, rotWasStraight = true;
+    var rotWords = function (n) { return n === 0 ? T('Straight') : n < 0 ? T('{n}° left', { n: -n }) : T('{n}° right', { n: n }); };
+    function showRot() {
+      var a = st.ann[sel], can = !a || EDT.canRotate(a);
+      $('[data-rotctl]', el).hidden = !can;
+      $('.ed-ctlgrid', el).classList.toggle('one', !can);
+      if (!can) return;
+      if (rotBefore === null) rotIn.value = a ? EDT.rotOf(a) : 0;
+      var n = rotDrag ? EDT.snapRot(rotIn.value) : EDT.normRot(rotIn.value);
+      rotIn.disabled = !a || cfg.locked();
+      rotIn.setAttribute('aria-valuetext', rotWords(n));
+      rotIn.style.setProperty('--fill', (Number(rotIn.value) - EDT.ROT.min) / (EDT.ROT.max - EDT.ROT.min) * 100 + '%');
+      $('[data-rotval]', el).textContent = a ? rotWords(n) : T('Select text, a label, a pictogram or a box');
+      $('.ed-rot', el).classList.toggle('off', !a);
+    }
+    function setRot(v) {
+      var a = st.ann[sel]; if (!a || !EDT.canRotate(a)) return;
+      if (rotBefore === null) rotBefore = snap();
+      var n = rotDrag ? EDT.snapRot(v) : EDT.normRot(v); // keys: exact degrees; a finger or the mouse: Straight snaps
+      if (n) a.rot = n; else delete a.rot; // straight is no turn at all, as for annotations made before 1.0.17
+      if (!n && !rotWasStraight) NAT.haptic(); // a light tick on reaching Straight
+      rotWasStraight = !n;
+      paintSoon(); showRot();
+    }
+    function commitRot() {
+      if (rotBefore !== null && rotBefore !== snap()) { undo.push(rotBefore); if (undo.length > 60) undo.shift(); redo = []; }
+      rotBefore = null; redraw();
+    }
+    rotIn.addEventListener('input', function () { if (!cfg.locked()) setRot(rotIn.value); });
+    rotIn.addEventListener('change', function () { if (!cfg.locked()) { setRot(rotIn.value); commitRot(); } });
+    var rotDrag = false;
+    rotIn.addEventListener('pointerdown', function () { var a = st.ann[sel]; rotWasStraight = !EDT.rotOf(a); rotDrag = true; });
+    rotIn.addEventListener('keydown', function () { rotDrag = false; });
+    // Where the controls sit: under the picture when the editor shows the picture beside the tools (unfolded,
+    // landscape, a tablet), so the annotation can be watched as it turns; in the Annotate panel otherwise.
+    var ctls = $('[data-ctls]', el), ctlHome = $('[data-ctlhome]', el), ctlSlot = $('[data-ctlslot]', el);
+    var SIDE = window.matchMedia ? window.matchMedia('(min-width: 700px) and (min-aspect-ratio: 4/5)') : null;
+    // Side by side only when both fit at the text size actually shown (Android's font size enlarges text without
+    // changing CSS em, so this is measured here rather than in a container query).
+    function fitCtls() { var w = ctls.getBoundingClientRect().width, f = parseFloat(getComputedStyle(ctls).fontSize) || 16; ctls.classList.toggle('wide', w >= 30 * f); }
+    function placeCtls() { var want = SIDE && SIDE.matches ? ctlSlot : ctlHome; if (ctls.parentNode !== want) want.appendChild(ctls); fitCtls(); }
+    var ctlRO = window.ResizeObserver ? new ResizeObserver(fitCtls) : null;
+    if (ctlRO) { ctlRO.observe(ctls); ctlRO.observe($('.ed-ctlem', ctls)); } // a hidden letter: its size follows the text size
+    placeCtls();
+
+    // ---- Colour (1.0.14): one control. The square opens a continuous spectrum, with greys, the three colours used
+    // last and Set as default colour; the circle beside it shows the colour in use. A selected annotation changes at
+    // once (one step of Undo per pick); otherwise the colour is for the next annotation. Text in a box has its own
+    // background colour. ----
+    function colourPop() {
+      var a = st.ann[sel], target = 'fg', before = null;
+      var hasBox = function () { var x = st.ann[sel]; return x && x.type === 'text'; };
+      var cur = function () { var x = st.ann[sel]; return target === 'bg' ? (x && EDT.hexOf(x.bgc)) || EDP.bgc || EDT.BOX : (x && EDT.hexOf(x.color)) || EDP.color; };
+      openPop('<div class="ed-picker"><p class="ed-lab" id="cpt">' + esc(T('Colour')) + '</p>' +
+        (hasBox() ? '<div class="ed-seg" role="radiogroup" aria-label="' + esc(T('What to colour')) + '"><button type="button" role="radio" data-ct="fg">' + esc(T('Text')) + '</button><button type="button" role="radio" data-ct="bg">' + esc(T('Background box')) + '</button></div>' : '') +
+        '<div class="cp-spec" data-spec tabindex="0" role="slider" aria-labelledby="cpt" aria-valuemin="0" aria-valuemax="360"><canvas width="360" height="120"></canvas><span class="cp-knob" aria-hidden="true"></span></div>' +
+        '<div class="cp-grey" data-grey tabindex="0" role="slider" aria-label="' + esc(T('White, grey or black')) + '" aria-valuemin="0" aria-valuemax="100"><canvas width="360" height="28"></canvas></div>' +
+        '<div class="cp-row"><span class="ed-lab">' + esc(T('Recent')) + '</span><span class="cp-recent" data-recent></span><span class="cp-now" data-cpnow aria-hidden="true"></span></div>' +
+        '<p class="ed-note2" data-cpwarn aria-live="polite"></p>' +
+        '<div class="ed-popbtns"><button type="button" class="tool" data-cpdef>' + esc(T('Set as default colour')) + '</button><button type="button" class="tool apply" data-x>' + esc(T('Done')) + '</button></div></div>', function (p) {
+        var spec = $('[data-spec]', p), grey = $('[data-grey]', p), knob = $('.cp-knob', p);
+        var sg = $('canvas', spec).getContext('2d'), gg = $('canvas', grey).getContext('2d');
+        for (var x = 0; x < 360; x++) for (var y = 0; y < 120; y++) { if (y % 4 && x % 2) continue; sg.fillStyle = EDT.hslHex(x, 100, 92 - y * 0.62); sg.fillRect(x, y, 2, 4); }
+        for (var g = 0; g < 360; g++) { gg.fillStyle = EDT.hslHex(0, 0, 100 - g / 3.6); gg.fillRect(g, 0, 1, 28); }
+        var show = function () {
+          var c = cur(), x = st.ann[sel];
+          $('[data-cpnow]', p).style.setProperty('--c', c);
+          $$('[data-ct]', p).forEach(function (bt) { bt.setAttribute('aria-checked', String(bt.dataset.ct === target)); });
+          $('[data-recent]', p).innerHTML = recentColours().map(function (h) { return '<button type="button" class="cp-sw" data-rc2="' + h + '" style="--c:' + h + '" aria-label="' + esc(T('Use {c}', { c: h })) + '"></button>'; }).join('');
+          $$('[data-rc2]', p).forEach(function (bt) { bt.onclick = function () { pick(bt.dataset.rc2); finish(); }; });
+          // Text in a box: say when the text and its box are too close to read easily.
+          var w = x && x.type === 'text' && x.bg === 'box' && EDT.contrast(EDT.hexOf(x.color) || '#FFFFFF', EDT.hexOf(x.bgc) || EDT.BOX) < 3;
+          $('[data-cpwarn]', p).textContent = w ? T('Low contrast: the text may be hard to read on its box.') : '';
+          $('[data-cpdef]', p).textContent = target === 'bg' ? T('Set as default box colour') : T('Set as default colour');
+        };
+        var pick = function (hex) {
+          var x = st.ann[sel];
+          if (x) { if (before === null) before = snap(); if (target === 'bg') { x.bg = 'box'; x.bgc = hex; } else x.color = hex; paintSoon(); }
+          if (target === 'bg') EDP.bgc = hex; else EDP.color = hex;
+          var cn = $('[data-colnow]', el); cn.style.setProperty('--c', target === 'bg' ? EDP.color : hex);
+          show();
+        };
+        var finish = function () { if (before !== null && before !== snap()) { undo.push(before); if (undo.length > 60) undo.shift(); redo = []; } before = null; useColour(cur()); show(); redraw(); };
+        var drag = function (box, fn) {
+          box.addEventListener('pointerdown', function (ev) { ev.preventDefault(); try { box.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ } fn(ev); box.onpointermove = fn; });
+          var up = function () { if (box.onpointermove) { box.onpointermove = null; finish(); } };
+          box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+        };
+        var hsAt = function (ev) { var r = spec.getBoundingClientRect(), h = Math.max(0, Math.min(359, (ev.clientX - r.left) / r.width * 360)), l = Math.max(18, Math.min(92, 92 - (ev.clientY - r.top) / r.height * 74)); knob.style.left = (h / 360 * 100) + '%'; knob.style.top = ((92 - l) / 74 * 100) + '%'; spec.setAttribute('aria-valuenow', Math.round(h)); return EDT.hslHex(h, 100, l); };
+        drag(spec, function (ev) { pick(hsAt(ev)); });
+        drag(grey, function (ev) { var r = grey.getBoundingClientRect(), k = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)); grey.setAttribute('aria-valuenow', Math.round(k * 100)); pick(EDT.hslHex(0, 0, 100 - k * 100)); });
+        // Keys: left and right walk the spectrum, up and down change lightness.
+        var kh = 50, kl = 55;
+        spec.addEventListener('keydown', function (e) { var d = { ArrowLeft: [-6, 0], ArrowRight: [6, 0], ArrowUp: [0, 4], ArrowDown: [0, -4] }[e.key]; if (!d) return; e.preventDefault(); kh = (kh + d[0] + 360) % 360; kl = Math.max(18, Math.min(92, kl + d[1])); pick(EDT.hslHex(kh, 100, kl)); finish(); });
+        grey.addEventListener('keydown', function (e) { var d = { ArrowLeft: -10, ArrowRight: 10 }[e.key]; if (!d) return; e.preventDefault(); kl = Math.max(0, Math.min(100, kl - d)); pick(EDT.hslHex(0, 0, kl)); finish(); });
+        $$('[data-ct]', p).forEach(function (bt) { bt.onclick = function () { target = bt.dataset.ct; show(); }; });
+        $('[data-cpdef]', p).onclick = function () {
+          if (target === 'bg') edPrefSet('wl-ann-box', cur()); else { edPrefSet('wl-ann-colour', cur()); EDP.color = cur(); }
+          toastIn(T('Default colour set. New annotations start in it.'));
+        };
+        $('[data-x]', p).onclick = function () { finish(); closePop(); };
+        show();
+      });
+      pending = 'colpick';
+    }
+
+    // ---- Leaving (1.0.14) ----
+    // Cancel, Back and the back gesture never throw work away silently. A new photo or clip that was changed, or one
+    // taken in Wavelength (so it exists nowhere else), asks first: Keep editing, Keep for later (kept on this phone,
+    // ready to finish from the scan) or Discard. Re-editing a saved photo asks before discarding the changes; the
+    // saved photo itself is never touched by leaving.
+    var conf = $('.ed-confirm', el);
+    var changed = function () { return snap() !== st0 || undo.length > 0 || !!(cfg.changed && cfg.changed()); };
+    function leave() {
+      if (!conf.hidden) return hideConfirm();
+      if (!changed() && !(cfg.isNew && cfg.captured)) { if (cfg.discard) cfg.discard(); return cfg.close(null); }
+      if (cfg.stopPlay) cfg.stopPlay();
+      var lines = [];
+      if (changed()) lines.push(cfg.isNew ? T('Your crop, redactions and annotations are not saved yet.') : T('Your changes are not saved yet.'));
+      if (cfg.isNew) lines.push(cfg.captured ? (clip ? T('This clip was recorded in Wavelength and is not saved anywhere else on your phone.') : T('This photo was taken in Wavelength and is not saved anywhere else on your phone.')) : T('The original stays in your phone\'s gallery.'));
+      else lines.push(T('The photo already saved in this scan stays as it was.'));
+      conf.innerHTML = '<div class="ed-cfin"><h2 id="edcft">' + esc(clip ? T('Leave this clip?') : T('Leave this photo?')) + '</h2><p id="edcfb">' + lines.map(esc).join(' ') + '</p>' +
+        '<div class="ed-cfbtns"><button type="button" class="btn teal block" data-cf="keep">' + esc(T('Keep editing')) + '</button>' +
+        (cfg.isNew && cfg.later ? '<button type="button" class="btn ghost block" data-cf="later">' + esc(T('Keep for later')) + '</button><p class="ed-note2">' + esc(T('Kept on this phone only, with your changes, until you finish it from the scan or discard it.')) + '</p>' : '') +
+        '<button type="button" class="btn ghost block danger" data-cf="discard">' + esc(cfg.isNew ? (clip ? T('Discard clip') : T('Discard photo')) : T('Discard changes')) + '</button></div></div>';
+      conf.hidden = false;
+      $$('[data-cf]', conf).forEach(function (bt) { bt.onclick = function () {
+        var w = bt.dataset.cf;
+        if (w === 'keep') return hideConfirm();
+        if (w === 'later') { keepNow(); conf.hidden = true; return cfg.later(); }
+        conf.hidden = true; if (cfg.discard) cfg.discard(); cfg.close(null);
+      }; });
+      setTimeout(function () { var k = $('[data-cf=keep]', conf); if (k) k.focus(); }, 30);
+    }
+    function hideConfirm() { conf.hidden = true; conf.innerHTML = ''; var c = $('[data-a=cancel]', el); if (c) c.focus({ preventScroll: true }); }
+    // The Android back button and gesture, and Escape: the keyboard first (the editor stays as it is), then an open
+    // panel, then the question above.
+    function back() {
+      clearTimeout(popFocusT);
+      var ae = document.activeElement;
+      if (el.contains(ae) && keyboardUp()) { ae.blur(); return; } // the keyboard was up: only it goes
+      if (!conf.hidden) return hideConfirm();
+      if (!pop.hidden) { if (pending === 'colpick') { var x = $('[data-x]', pop); if (x) return x.click(); } return closePop(); }
+      leave();
+    }
+
+    // ---- Magnification (1.0.13): pinch, the wheel, + and -, and the zoom buttons ----
+    // Screen only. Pointer positions are read back through the enlarged canvas (at() above) and nothing in st depends
+    // on the view, so annotations and redactions keep their place and size in the picture and in the saved file.
+    var ZSTEP = 1.5, view = { z: 1, tx: 0, ty: 0 }, pts = {}, pinch = null, handleAbort = null, viewRaf = 0;
+    var vbox = function () { return { L: cv.offsetLeft, T: cv.offsetTop, w: cv.offsetWidth, h: cv.offsetHeight, SW: stage.clientWidth, SH: stage.clientHeight }; };
+    var spt = function (ev) { var r = stage.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
+    var vcopy = function () { return { z: view.z, tx: view.tx, ty: view.ty }; };
+    function applyView() {
+      viewRaf = 0;
+      var on = view.z > 1.001, n = Math.round(view.z * 10) / 10, zv = $('[data-z=fit]', el), was = el.classList.contains('zoomed');
+      cv.style.transform = on ? 'translate(' + view.tx.toFixed(1) + 'px,' + view.ty.toFixed(1) + 'px) scale(' + view.z.toFixed(4) + ')' : '';
+      el.classList.toggle('zoomed', on);
+      // Said once on the way in and out, in the tip line: magnification is not annotation size.
+      if (on && !was) tip(T('Zoomed in. Zoom changes only your view: annotations keep their size and place in the picture.'));
+      else if (!on && was) tip(TIPS[EDP.mode]);
+      zv.textContent = (n % 1 ? n.toFixed(1) : String(n)) + '×';
+      zv.setAttribute('aria-label', on ? T('Zoom {n} times. Tap to show the whole picture.', { n: n }) : T('Zoom: the whole picture is shown'));
+      $('[data-z=out]', el).disabled = !on; $('[data-z=in]', el).disabled = view.z >= EDT.ZOOM.max - 0.001;
+      drawSel(); if (cropSel) showBox(cropSel);
+    }
+    function setView(v) { view = EDT.clampView(v, vbox()); if (!viewRaf) viewRaf = requestAnimationFrame(applyView); }
+    function fitView(now) { view = { z: 1, tx: 0, ty: 0 }; if (now) { if (viewRaf) cancelAnimationFrame(viewRaf); applyView(); } else if (!viewRaf) viewRaf = requestAnimationFrame(applyView); }
+    function zoomBy(k, p) { p = p || { x: stage.clientWidth / 2, y: stage.clientHeight / 2 }; setView(EDT.pinchView(view, p, p, view.z * k, vbox())); }
+    // A second finger takes back whatever the first one started (a box, a line, a dot, a move, a resize).
+    function abortGesture() {
+      if (handleAbort) handleAbort();
+      var d = drag; drag = null;
+      if (d) {
+        if (d.kind === 'box') { box.hidden = true; applyBtn.hidden = !cropSel; if (cropSel) showBox(cropSel); }
+        else if (d.kind === 'draw' || d.kind === 'dot') { st = JSON.parse(d.before); sel = -1; }
+        else if (d.kind === 'move' && st.ann[sel]) st.ann[sel] = JSON.parse(d.orig);
+      }
+      redraw();
+    }
+    var fingers = function () { return Object.keys(pts).map(function (k) { return pts[k]; }); };
+    var startPinch = function () {
+      var f = fingers();
+      if (f.length >= 2) pinch = { v0: vcopy(), m0: { x: (f[0].x + f[1].x) / 2, y: (f[0].y + f[1].y) / 2 }, d0: Math.max(12, Math.hypot(f[0].x - f[1].x, f[0].y - f[1].y)) };
+      else if (f.length === 1) pinch = { pan: true, v0: vcopy(), p0: f[0] }; // the last finger of a pinch moves the picture
+      else pinch = null;
+    };
+    // Capture phase on the stage, so a second finger is taken before the canvas sees it. Once two fingers are down,
+    // every finger belongs to the gesture until all are lifted: the last one off the glass never draws.
+    stage.addEventListener('pointerdown', function (ev) {
+      if (ev.pointerType === 'mouse' || ev.target.closest('.ed-zoom')) return;
+      pts[ev.pointerId] = spt(ev);
+      if (!pinch && fingers().length < 2) return;
+      ev.stopPropagation(); ev.preventDefault();
+      if (!pinch) abortGesture();
+      startPinch();
+    }, true);
+    stage.addEventListener('pointermove', function (ev) {
+      if (!pts[ev.pointerId]) return;
+      pts[ev.pointerId] = spt(ev);
+      if (!pinch) return;
+      ev.stopPropagation();
+      var f = fingers();
+      if (pinch.pan) { if (f[0]) setView({ z: pinch.v0.z, tx: pinch.v0.tx + f[0].x - pinch.p0.x, ty: pinch.v0.ty + f[0].y - pinch.p0.y }); return; }
+      if (f.length < 2) return;
+      setView(EDT.pinchView(pinch.v0, pinch.m0, { x: (f[0].x + f[1].x) / 2, y: (f[0].y + f[1].y) / 2 }, pinch.v0.z * Math.hypot(f[0].x - f[1].x, f[0].y - f[1].y) / pinch.d0, vbox()));
+    }, true);
+    var lift = function (ev) {
+      if (!pts[ev.pointerId]) return;
+      delete pts[ev.pointerId];
+      if (pinch) { ev.stopPropagation(); startPinch(); }
+    };
+    stage.addEventListener('pointerup', lift, true); stage.addEventListener('pointercancel', lift, true);
+    // A mouse or trackpad: the wheel (or a trackpad pinch, which arrives as a wheel with Ctrl) zooms about the pointer.
+    stage.addEventListener('wheel', function (ev) {
+      ev.preventDefault();
+      zoomBy(Math.exp(-ev.deltaY * (ev.deltaMode ? 0.05 : ev.ctrlKey ? 0.01 : 0.0018)), spt(ev));
+    }, { passive: false });
+    var onResize = function () { placeCtls(); setView(view); };
+    // The zoom buttons step aside while a finger or the mouse is on the picture, so they never hide what is being
+    // drawn or covered near the corner.
+    var held = {};
+    stage.addEventListener('pointerdown', function (ev) { if (!ev.target.closest('.ed-zoom')) { held[ev.pointerId] = 1; el.classList.add('touching'); } }, true);
+    var unhold = function (ev) { delete held[ev.pointerId]; if (!Object.keys(held).length) el.classList.remove('touching'); };
+    window.addEventListener('pointerup', unhold, true); window.addEventListener('pointercancel', unhold, true);
+    applyView();
+
+    // Escape works as Back does (back() above).
     el.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       e.preventDefault(); e.stopPropagation();
-      if (!pop.hidden) return closePop();
-      if (sel >= 0) { sel = -1; return redraw(); }
-      var c = $('[data-a=cancel]', el); if (c) c.click();
+      back();
     });
-    window.addEventListener('resize', drawSel);
+    window.addEventListener('resize', onResize);
     setTimeout(function () { var f = $('[data-a=cancel]', el); if (f && el.isConnected) f.focus({ preventScroll: true }); }, 30);
     if (document.fonts && document.fonts.load) document.fonts.load('600 40px "DM Sans"').then(function () { if (el.isConnected) paint(); }, function () {});
     setMode('adjust');
-    return {
-      el: el, paint: paint, state: function () { return st; }, refresh: redraw,
+    var api0 = {
+      el: el, paint: paint, state: function () { return st; }, refresh: redraw, back: back, keep: keepNow,
       fail: function (msg) { var er = $('[data-err]', el); er.textContent = msg; er.hidden = false; el.classList.remove('working'); save.textContent = cfg.saveLabel; save.disabled = !decl.checked; },
       busy: function (on, label) { el.classList.toggle('working', !!on); save.disabled = !!on || !decl.checked; if (label) save.textContent = label; $('[data-err]', el).hidden = true; },
-      remove: function () { if (paintRaf) cancelAnimationFrame(paintRaf); paintRaf = 0; window.removeEventListener('resize', drawSel); el.remove(); cv.width = 0; cv.height = 0; }
+      remove: function () { clearTimeout(keepT); if (curEditor === api0) curEditor = null; if (paintRaf) cancelAnimationFrame(paintRaf); if (viewRaf) cancelAnimationFrame(viewRaf); paintRaf = 0; viewRaf = 0; window.removeEventListener('resize', onResize); if (ctlRO) ctlRO.disconnect(); window.removeEventListener('pointerup', unhold, true); window.removeEventListener('pointercancel', unhold, true); el.remove(); cv.width = 0; cv.height = 0; }
     };
+    curEditor = api0;
+    return api0;
   }
   // Encodes a canvas as JPEG: 2048 px at quality 0.9 keeps fine text and speckle, stepping down only past the 1.5 MB
   // limit for encrypted sharing.
@@ -1862,6 +2759,8 @@
   // ---------- Photo editor ----------
   // file: a new photo; opts.annot and opts.type: re-editing a saved photo from its redacted copy (opts.file is that
   // copy) with its annotations, and the scan type for the label sets.
+  // 1.0.14, new photos (opts.isNew): opts.captured (taken in Wavelength, so nowhere else), opts.keep(state) to keep the
+  // work as it changes, opts.later() and opts.discard() for the leave question, opts.start to resume a kept draft.
   function editImage(file, opts) {
     opts = opts || {};
     return new Promise(function (resolve) {
@@ -1877,10 +2776,13 @@
         // Let go of the decoded original (its error handler first: clearing src would otherwise fire it).
         img.onerror = null; img.onload = null; img.removeAttribute('src');
         var st0 = { crop: { x: 0, y: 0, w: work.width, h: work.height }, orient: { r: 0, m: false }, redact: [], ann: EDT.cleanAnn((opts.annot || {}).ann) };
+        var start = resumeState(opts.start, st0);
         var saving = false, ed;
         var close = function (v) { ed.remove(); freeCanvas(work); resolve(v); };
         ed = mediaEditor({
-          kind: 'image', prior: opts.prior || null, title: opts.annot || opts.prior ? T('Edit image') : T('Prepare image'), declText: T('I have removed or covered every patient identifier in this image.'), saveLabel: T('Use this image'), type: opts.type, state: st0,
+          kind: 'image', prior: opts.prior || null, title: opts.annot || opts.prior ? T('Edit image') : T('Prepare image'), declText: T('I have removed or covered every patient identifier in this image.'), saveLabel: T('Use this image'), type: opts.type, state: st0, start: start,
+          isNew: !!opts.isNew, captured: !!opts.captured, keep: opts.keep ? function (s) { opts.keep(s, null); } : null,
+          later: opts.later ? function () { opts.later(); close(null); } : null, discard: opts.discard || null,
           paint: function (cv, st) { var o = EDT.outSize(st.crop, st.orient, 1); if (cv.width !== Math.round(o.w) || cv.height !== Math.round(o.h)) { cv.width = Math.round(o.w); cv.height = Math.round(o.h); } EDT.drawFrame(cv.getContext('2d'), work, st, 1, null, true); },
           time: function () { return null; }, locked: function () { return saving; },
           close: close,
@@ -1939,6 +2841,7 @@
       try { vid.currentTime = 1e7; } catch (e) { finish(); }
     });
   }
+  // opts as for editImage (1.0.14): isNew, captured, keep, later, discard, start; opts.sel resumes a kept selection.
   function editClip(file, opts) {
     opts = opts || {};
     return new Promise(function (resolve) {
@@ -1957,15 +2860,17 @@
         // dur 0: the phone could not tell the length. The selection still stops at the end of the clip.
         var known = dur > 0, total = known ? dur : CLIP_MAX;
         var startAt = 0, len = Math.min(CLIP_MAX, total), playing = false, raf = 0, busyRec = null, ed, el;
+        var len0 = len, sel0 = opts.sel && isFinite(opts.sel.start) && isFinite(opts.sel.len) ? opts.sel : null;
+        if (sel0) { startAt = Math.max(0, Math.min(Math.max(0, total - CLIP_MIN), sel0.start)); len = Math.max(CLIP_MIN, Math.min(CLIP_MAX, total - startAt, sel0.len)); }
         var f1 = function (n) { return (Math.round(n * 10) / 10).toFixed(1); };
         var media = '<div class="clipbar">' +
           '<div class="cb-row"><button type="button" class="tool play" data-a="play" aria-label="' + esc(T('Play the selection')) + '">' + ET.play + '</button>' +
           '<input type="range" data-scrub min="0" max="' + f1(total) + '" step="0.05" value="0" aria-label="' + esc(T('Position in the clip')) + '"><span class="cb-pos"><span data-pos>0.0</span> / <span data-total>' + (known ? f1(total) : '?') + '</span> s</span></div>' +
-          '<div class="cb-sel"><label>' + esc(T('Start')) + ' <b><span data-st>0.0</span> s</b><input type="range" data-start min="0" max="' + f1(Math.max(0, total - CLIP_MIN)) + '" step="0.1" value="0"></label>' +
-          '<label>' + esc(T('Length')) + ' <b><span data-ln>' + f1(len) + '</span> s</b><input type="range" data-len min="' + CLIP_MIN + '" max="' + f1(Math.min(CLIP_MAX, total)) + '" step="0.1" value="' + f1(len) + '"></label></div>' +
+          '<div class="cb-sel"><label>' + esc(T('Start')) + ' <b><span data-st>' + f1(startAt) + '</span> s</b><input type="range" data-start min="0" max="' + f1(Math.max(0, total - CLIP_MIN)) + '" step="0.1" value="' + f1(startAt) + '"></label>' +
+          '<label>' + esc(T('Length')) + ' <b><span data-ln>' + f1(len) + '</span> s</b><input type="range" data-len min="' + CLIP_MIN + '" max="' + f1(Math.min(CLIP_MAX, total - startAt)) + '" step="0.1" value="' + f1(len) + '"></label></div>' +
           '<p class="cb-ends">' + esc(T('Selected')) + ' <b><span data-st2>0.0</span> – <span data-en>' + f1(len) + '</span> s</b></p>' +
           '<p class="cb-sum" data-sum></p></div>';
-        var st0 = { crop: { x: 0, y: 0, w: W, h: H }, orient: { r: 0, m: false }, redact: [], ann: [] };
+        var st0 = { crop: { x: 0, y: 0, w: W, h: H }, orient: { r: 0, m: false }, redact: [], ann: [] }, start = resumeState(opts.start, st0);
         // Seconds into the kept selection: annotation times are stored this way, so they match the saved clip.
         var rel = function () { return Math.max(0, vid.currentTime - startAt); };
         var summary = function () {
@@ -1975,7 +2880,10 @@
         };
         var close = function (v) { stopPlay(); if (busyRec) busyRec.abort(); vid.removeAttribute('src'); vid.load(); URL.revokeObjectURL(url); ed.remove(); resolve(v); };
         ed = mediaEditor({
-          kind: 'clip', title: T('Prepare clip'), declText: T('I have removed or covered every patient identifier in this clip, in every frame.'), saveLabel: T('Use this clip'), media: media, type: opts.type, state: st0,
+          kind: 'clip', title: T('Prepare clip'), declText: T('I have removed or covered every patient identifier in this clip, in every frame.'), saveLabel: T('Use this clip'), media: media, type: opts.type, state: st0, start: start,
+          isNew: !!opts.isNew, captured: !!opts.captured, keep: opts.keep ? function (s) { opts.keep(s, { start: startAt, len: len }); } : null,
+          later: opts.later ? function () { opts.later(); close(null); } : null, discard: opts.discard || null,
+          changed: function () { return Math.abs(startAt) > 0.01 || Math.abs(len - len0) > 0.01; }, stopPlay: function () { stopPlay(); if (ed) ed.refresh(); },
           paint: function (cv, st) { var o = EDT.outSize(st.crop, st.orient, 1); if (cv.width !== Math.round(o.w) || cv.height !== Math.round(o.h)) { cv.width = Math.round(o.w); cv.height = Math.round(o.h); } EDT.drawFrame(cv.getContext('2d'), vid, st, 1, rel(), true); },
           time: rel, locked: function () { return !!busyRec; },
           onState: function () { if (el) summary(); },
@@ -2062,9 +2970,16 @@
             seek(startAt).then(ed.refresh);
           });
         }
-        seek(0).then(function () { ed.refresh(); showPos(); summary(); });
+        seek(startAt).then(function () { ed.refresh(); showPos(); summary(); });
       }
     });
+  }
+  // A kept draft's editor state, if it still fits this picture (the same file opens at the same size); otherwise none.
+  function resumeState(s, st0) {
+    if (!s || !s.crop || !s.orient) return null;
+    var c = s.crop, b = st0.crop;
+    if (!(c.x >= 0 && c.y >= 0 && c.w > 0 && c.h > 0 && c.x + c.w <= b.w + 0.5 && c.y + c.h <= b.h + 0.5)) return null;
+    return { crop: c, orient: { r: ((Number(s.orient.r) || 0) % 4 + 4) % 4, m: !!s.orient.m }, redact: Array.isArray(s.redact) ? s.redact : [], ann: EDT.cleanAnn(s.ann) };
   }
 
   // ---------- Entry detail ----------
@@ -2144,7 +3059,10 @@
       '<nav class="pw-tabs">' + mine.map(function (p) { return '<a href="#/progress/' + p + '"' + (p === pid ? ' aria-current="page"' : '') + '>' + esc(pwName(PATHS[p])) + '</a>'; }).join('') + '<a href="#/me?edit=pathways">+ ' + esc(T('Pathway')) + '</a></nav>' +
       (pid !== 'general' ? '<div class="legend"><span>' + esc(T('Under a third')) + '</span><span class="a">' + esc(T('On the way')) + '</span><span class="g">' + esc(T('Target met')) + '</span></div>' : '') + win +
       // 1.0.12: the guide for this pathway, and the whole library, one tap from Progress.
-      '<a class="card sv-link guide-link" href="#/guides/' + guideFor(pid) + '"><div class="row"><span class="gl-ic" aria-hidden="true">' + I.book + '</span><div class="grow"><h3>' + esc(T('Guides and accreditation')) + '</h3><p class="small muted" style="margin:0">' + esc(GUIDE_FOR[pid] ? T('What {pathway} asks for, step by step, with the official sources.', { pathway: pwName(ps.pw) }) : T('Compare pathways and find the official pages for yours.')) + '</p></div>' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</div></a>' +
+      // 1.0.14: "Guides and accreditation" is always the catalogue, whatever the primary pathway; the learner's own
+      // pathway guide (sign-off and evidence requirements) is its own, separately named destination.
+      '<div class="card guide-links"><a class="sv-link guide-link" data-guides="all" href="#/guides"><div class="row"><span class="gl-ic" aria-hidden="true">' + I.book + '</span><div class="grow"><h3>' + esc(T('Guides and accreditation')) + '</h3><p class="small muted" style="margin:0">' + esc(T('All of Wavelength\'s guides to accreditation and evidence, with the official sources.')) + '</p></div>' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</div></a>' +
+        (pid !== 'general' ? '<a class="sv-link guide-link" data-guides="mine" href="#/guides/' + guideFor(pid) + '"><div class="row"><span class="gl-ic" aria-hidden="true">' + I.target + '</span><div class="grow"><h3>' + esc(T('My accreditation pathway')) + '</h3><p class="small muted" style="margin:0">' + esc(GUIDE_FOR[pid] ? T('What {pathway} asks for, step by step: sign-off and evidence, with the official sources.', { pathway: pwName(ps.pw) }) : T('How {pathway} compares with other pathways, and its official pages.', { pathway: pwName(ps.pw) })) + '</p></div>' + SI.chev.replace('class="chev flip"', 'class="chev"') + '</div></a>' : '') + '</div>' +
       (mods || '<div class="empty"><p>' + esc(pid === 'general' ? T('Log any scan and it appears here. Tap Targets to set your own.') : T('No modules.')) + '</p><a class="btn teal" href="#/new">' + esc(T('Log a scan')) + '</a></div>') +
       '<p class="small muted" style="margin-top:18px">' + esc(ps.pw.source) + ' ' + esc(T('Targets checked {date}. Always confirm requirements with your supervisor and the current curriculum. You can adjust any target.', { date: fmt(ps.pw.checked) })) + '</p>'));
   }
@@ -2710,7 +3628,7 @@
   }
   function guideFor(pid) { return GUIDE_FOR[pid] || 'pocus-accreditation'; }
   function guideCard(g, lead) {
-    return '<a class="card sv-link guide-card' + (lead ? ' lead' : '') + '" href="#/guides/' + esc(g.slug) + '">' + (g.eyebrow ? '<p class="eyebrow" lang="en" dir="ltr">' + esc(g.eyebrow) + '</p>' : '') + '<h3 lang="en" dir="ltr">' + esc(g.title) + '</h3><p class="small muted" lang="en" dir="ltr">' + esc(g.summary) + '</p><p class="small guide-date">' + esc(g.reviewed ? T('Checked against official sources {date}', { date: fmt(g.reviewed) }) : T('Not dated: check each organisation\'s own page')) + '</p></a>';
+    return '<a class="card sv-link guide-card' + (lead ? ' lead' : '') + '" href="#/guides/' + esc(g.slug) + '">' + (g.eyebrow ? '<p class="eyebrow" lang="en" dir="ltr">' + esc(g.eyebrow) + '</p>' : '') + '<h3 lang="en" dir="ltr">' + esc(g.title) + '</h3><p class="small muted" lang="en" dir="ltr">' + esc(g.summary) + '</p><p class="small guide-date">' + esc(g.reviewed ? T('Last clinically reviewed: {date}', { date: fmt(g.reviewed) }) : T('Not dated: check each organisation\'s own page')) + '</p></a>';
   }
   function viewGuides(r) {
     if (r.arg === 'supervisor-verification') return viewGuideSupervision();
@@ -2744,11 +3662,14 @@
       if (!g) { mount(shell({ title: T('Guide'), back: 'guides' }, '<div class="card"><p class="small">' + esc(T('This guide is not in this version of the app.')) + '</p><div class="btns"><a class="btn" href="#/guides">' + esc(T('All guides')) + '</a></div></div>')); return; }
       var age = g.reviewed ? daysBetween(g.reviewed, today()) : null;
       var notice = '<aside class="guide-note" role="note"><p><b>' + esc(T('Wavelength\'s guide, not an official document.')) + '</b> ' + esc(T('Requirements are set by the bodies named, and can change after this copy was made. Check the current official guidance before you rely on it, and follow your supervisor and local rules.')) + '</p>' +
-        (g.reviewed ? '<p>' + esc(T('Checked against official sources {date}', { date: fmt(g.reviewed) })) + (g.updated && g.updated > g.reviewed ? ' · ' + esc(T('Updated {date}', { date: fmt(g.updated) })) : '') + '</p>' : '<p>' + esc(T('This guide is not dated against official sources. Check each organisation\'s own page.')) + '</p>') +
+        // Three dates that mean three things (October 2026): the two this copy carries, and "Source checked" only from
+        // the server (guideSourceStatus), never from this device's clock.
+        (g.reviewed ? '<p>' + esc(T('Last clinically reviewed: {date}', { date: fmt(g.reviewed) })) + ' · ' + esc(T('Guidance last updated: {date}', { date: fmt(g.updated && g.updated > g.reviewed ? g.updated : g.reviewed) })) + '</p>' : '<p>' + esc(T('This guide is not dated against official sources. Check each organisation\'s own page.')) + '</p>') +
+        '<p data-srcline hidden></p><p data-srcnewer hidden>' + esc(T('The website has a newer version of this guide than the copy in this app. Open it on the Wavelength website, or update the app.')) + '</p>' +
         (age != null && age > REVIEW_DAYS ? '<p class="guide-due">' + esc(T('Due for review: last checked more than a year ago.')) + '</p>' : '') + (LANG !== 'en' ? '<p>' + esc(T('Guides are in English.')) + '</p>' : '') + '</aside>';
       if (glance && g.glance) {
         mount(shell({ title: g.short, back: 'guides/' + slug }, notice + '<article class="guide-body card glance" lang="en" dir="ltr">' + g.glance.html + '</article><div class="btns"><a class="btn" href="#/guides/' + esc(slug) + '">' + esc(T('Read the full guide')) + '</a></div>'));
-        guideLinks($('main', app), G); return;
+        guideLinks($('main', app), G); guideSourceStatus(slug, g, $('main', app)); return;
       }
       var toc = (g.toc || []).length ? '<details class="card guide-toc"><summary>' + esc(T('Contents')) + '</summary><ol>' + g.toc.map(function (t) { return '<li><button type="button" class="link" data-goto="' + esc(t.id) + '">' + esc(t.label) + '</button></li>'; }).join('') + '</ol></details>' : '';
       var src = (g.sources || []).length ? '<section class="card guide-src"><h3>' + esc(T('Official sources')) + '</h3><p class="small muted">' + esc(T('Open the current version from the organisation itself:')) + '</p><ul lang="en" dir="ltr">' + g.sources.map(function (x) { return '<li><a href="' + esc(x.url) + '">' + esc(x.label) + '</a></li>'; }).join('') + '</ul></section>' : '';
@@ -2759,10 +3680,50 @@
         '<div class="btns"><a class="btn ghost block" href="/guides/' + esc(slug) + '/">' + esc(T('Open on the Wavelength website')) + '</a></div>'));
       var main = $('main', app);
       guideLinks(main, G);
+      guideSourceStatus(slug, g, main);
       $$('[data-goto]', main).forEach(function (b) { b.onclick = function () { var t = document.getElementById(b.dataset.goto); if (t) { scrollToField(t, true); t.setAttribute('tabindex', '-1'); t.focus({ preventScroll: true }); } }; });
     }).catch(function (ex) { mount(shell({ title: T('Guide'), back: 'guides' }, '<div class="card"><p class="small">' + esc(ex.message) + '</p></div>')); });
   }
 
+
+  // Guide source status (source monitoring, October 2026). The server's dates (GET /api/app/sources/guide/<slug>),
+  // shown at once from this device's last answer when there is one, labelled with the day it arrived, then replaced by
+  // the live answer. Offline, or against a server without source monitoring, the stored answer (or nothing) stays:
+  // the guide never waits for it. Rules in src/app/sourcestatus.js.
+  function guideSourceStatus(slug, g, root) {
+    var SRC = window.WLSources, line = $('[data-srcline]', root), newer = $('[data-srcnewer]', root);
+    if (!SRC || !line) return;
+    var box = $('[data-srcnotice]', root);
+    if (!box) { box = document.createElement('div'); box.className = 'guide-note guide-src-note'; box.setAttribute('role', 'status'); box.setAttribute('data-srcnotice', ''); box.hidden = true; line.parentNode.parentNode.insertBefore(box, line.parentNode.nextSibling); }
+    var paint = function (d) {
+      if (!d) return;
+      // One date for the guide only when every source's latest check succeeded; otherwise the date covers the sources
+      // that were, and each one that failed is named with its own last successful check (sourcestatus.js).
+      var text = d.checkedOn ? T('Source checked: {date}', { date: fmt(d.checkedOn) }) + (d.noChange ? ' ' + T('No changes detected during the latest check.') : '')
+        : d.partial ? T('Source checked: {date} for {ok} of {total} sources.', { date: fmt(d.partial.checkedOn), ok: d.partial.ok, total: d.partial.total }) + (d.notYet ? ' ' + T('Not yet checked: {n}.', { n: d.notYet }) : '')
+        : d.notChecked ? T('Official sources not yet checked automatically.') : '';
+      if (text && d.cached) text += ' ' + T('Shown from this device\'s last connection, {date}.', { date: fmt(d.receivedOn) });
+      line.textContent = text; line.hidden = !text;
+      var bad = $('[data-srcbad]', root);
+      if (!bad) { bad = document.createElement('p'); bad.setAttribute('data-srcbad', ''); bad.className = 'small'; line.parentNode.insertBefore(bad, line.nextSibling); }
+      bad.innerHTML = d.unavailable.length ? esc(T('Could not be checked at the latest attempt:')) + ' ' + d.unavailable.slice(0, 3).map(function (u) { return '<a href="' + esc(u.url) + '" target="_blank" rel="noopener noreferrer" lang="en" dir="ltr">' + esc(u.name) + '</a> (' + esc(u.lastCheckedOn ? T('last checked {date}', { date: fmt(u.lastCheckedOn) }) : T('not yet checked successfully')) + ')'; }).join('; ') + (d.unavailable.length > 3 ? '; +' + (d.unavailable.length - 3) : '') : '';
+      bad.hidden = !d.unavailable.length;
+      if (d.pending.length) {
+        var p = d.pending[0];
+        box.innerHTML = '<p>' + esc(T('An official source for this guide changed on {date}. This Wavelength summary is being reviewed. Until then, check the original guidance:', { date: fmt(p.detectedOn) })) + ' <a href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer" lang="en" dir="ltr">' + esc(p.source || T('Official sources')) + '</a></p>';
+        box.hidden = false;
+      } else { box.hidden = true; box.innerHTML = ''; }
+      if (newer) newer.hidden = !d.newer;
+    };
+    var stored = SRC.load(slug);
+    if (stored) paint(SRC.describe(stored.guide, g, { cached: true, receivedOn: stored.receivedOn }));
+    api('/api/app/sources/guide/' + encodeURIComponent(slug)).then(function (res) {
+      if (!res || !res.ok || !res.guide) return;
+      SRC.save(slug, res.guide, res.today);
+      var here = route();
+      if (here.name === 'guides' && here.arg === slug) paint(SRC.describe(res.guide, g, { cached: false }));
+    }).catch(function () { /* offline: the stored answer stays, labelled with its day */ });
+  }
 
   // Supervisor search: results come only from current approvals whose holder opted in (worker/search.js). The ref is
   // opaque; a request creates an invitation the supervisor accepts on their dashboard.
@@ -2839,7 +3800,7 @@
       banner +
       ((L2.invites || []).length ? '<h2 class="sec">' + esc(T('Invitations')) + '</h2>' + L2.invites.map(function (v) { return '<div class="card"><b>' + esc(v.learner) + '</b><p class="small muted" style="margin:2px 0 8px">' + esc([v.role, v.organisation].filter(Boolean).join(' · ')) + '</p><p class="small">' + esc(v.claimed ? T('Waiting for your Wavelength supervisor approval. Their supervision starts when you are approved.') : T('Asks you to supervise their ultrasound logbook. You will see their progress and written scan records, never their images.')) + '</p><div class="btns">' + (v.claimed ? '<a class="btn teal sm" href="#/supervisor">' + esc(T('Continue to supervisor verification')) + '</a>' : '<button class="btn teal sm" data-acc="' + v.id + '">' + esc(T('Accept')) + '</button>') + '<button class="btn ghost sm" data-dec="' + v.id + '">' + esc(T('Decline')) + '</button></div></div>'; }).join('') : '') +
       '<h2 class="sec">' + esc(T('Your learners')) + '</h2>' +
-      ((L2.learners || []).length ? L2.learners.map(function (x) { return '<a class="entry" href="#/supervise/' + x.id + '"><span class="thumb">' + esc((x.name.split(' ').slice(-2).map(function (w) { return w.charAt(0); }).join(''))) + '</span><div class="grow"><h3>' + esc(x.name) + '</h3><p>' + esc([x.role, x.organisation].filter(Boolean).join(' · ')) + '</p><div class="meta">' + x.pathways.map(function (p) { return '<span class="chip">' + esc((PATHS[p] || {}).label || p) + '</span>'; }).join('') + (x.pending ? '<span class="chip amber">' + esc(plural(x.pending, 'request waiting', 'requests waiting')) + '</span>' : '') + (x.available === false ? '<span class="chip red">' + esc(T('Paused')) + '</span>' : '') + '</div></div></a>'; }).join('')
+      ((L2.learners || []).length ? L2.learners.map(function (x) { return '<a class="entry sv-learner" href="#/supervise/' + x.id + '"><span class="thumb">' + esc((x.name.split(' ').slice(-2).map(function (w) { return w.charAt(0); }).join(''))) + '</span><div class="grow"><h3>' + esc(x.name) + '</h3><p>' + esc([x.role, x.organisation].filter(Boolean).join(' · ')) + '</p><div class="meta">' + x.pathways.map(function (p) { return '<span class="chip">' + esc((PATHS[p] || {}).label || p) + '</span>'; }).join('') + (x.pending ? '<span class="chip amber">' + esc(plural(x.pending, 'request waiting', 'requests waiting')) + '</span>' : '') + (x.available === false ? '<span class="chip red">' + esc(T('Paused')) + '</span>' : '') + '</div></div></a>'; }).join('')
         : '<div class="card"><p class="muted small">' + esc(T('No learners yet. Ask your trainees to add your email under Me, Your supervisors.')) + '</p></div>') +
       (function () { var ended = ((L2.ended || []).filter(function (x) { return x.role === 'supervisor'; })); return ended.length ? '<h2 class="sec">' + esc(T('Ended recently')) + '</h2><div class="card">' + ended.map(function (x) { return '<p class="small" style="margin:0 0 6px">' + esc(T('{name}: supervision ended on {date} ({who}).', { name: x.name || T('Learner'), date: fmt(x.endedAt), who: x.endedBy === 'you' ? T('ended by you') : x.endedBy === 'them' ? T('ended by the learner') : T('ended by Wavelength') })) + '</p>'; }).join('') + '</div>' : ''; })() +
       '<div class="btns">' + guideLink() + '</div>'));
@@ -3809,8 +4770,12 @@
         if (bad) { err.textContent = bad; err.hidden = false; return; }
         var b = $('#bk'); busy(b, true, T('Creating backup…')); prog.hidden = false;
         makeBackup(p1, function (msg) { prog.textContent = msg; }).then(function (out) {
-          $('#bkp').value = ''; $('#bkp2').value = ''; busy(b, false); prog.hidden = true;
-          return setKv('lastBackup', new Date().toISOString()).then(function () { backupReady(out); });
+          // 1.0.14: every new backup asks for the acknowledgement again, so it is cleared with the passphrases.
+          $('#bkp').value = ''; $('#bkp2').value = ''; $('#bkok').checked = false; busy(b, false); prog.hidden = true;
+          return setKv('lastBackup', new Date().toISOString()).then(function () {
+            backupReady(out);
+            if (route().name === 'backup') viewBackup(); // the summary shows the new backup date, the form starts afresh
+          });
         }).catch(function (ex) { busy(b, false); prog.hidden = true; err.textContent = T('The backup was not created: {why}', { why: (ex && ex.message) || ex }); err.hidden = false; });
       });
       $('#rb').onclick = function () { $('#rf').click(); };
@@ -4107,7 +5072,7 @@
           ev.preventDefault();
           api('/api/app/account/delete', { password: $('#dp', root).value, keepCertificates: !!($('#kc', root) || {}).checked }).then(function (res) {
             if (!res.ok) { var er = $('.err', root); er.textContent = res.error; er.hidden = false; return; }
-            var name = 'wavelength-' + S.account.id; S.db.close(); indexedDB.deleteDatabase(name); closeSheet(); toast(T('Your account is deleted.')); signedOut();
+            var name = 'wavelength-' + S.account.id; S.db.close(); indexedDB.deleteDatabase(name); DRAFT.destroy(S.account.id); closeSheet(); toast(T('Your account is deleted.')); signedOut();
           });
         });
       });
@@ -4293,12 +5258,16 @@
   // Android back: close an open sheet, then follow the header's back link, then return to Home, then leave the app.
   window.addEventListener('wl:back', function (e) {
     if (document.querySelector('.app-lock')) return;
-    // An open photo or clip editor: back cancels it (nothing is added), as its Cancel button does.
-    var ed = document.querySelector('.editor [data-a=cancel]');
-    if (ed) { e.preventDefault(); ed.click(); return; }
+    // 1.0.14: an open photo or clip editor handles Back itself: the keyboard first, then an open panel, then it asks
+    // before anything is discarded (it never closes and loses the picture on one press).
+    if (curEditor) { e.preventDefault(); curEditor.back(); return; }
+    // 1.0.16: a kept photo or clip opened from the recovery tray closes first, back to the list.
+    if (trayViewClose) { e.preventDefault(); trayViewClose(); return; }
+    // The keyboard is open over a field: Back closes the keyboard and leaves the screen as it is.
+    if (keyboardUp()) { e.preventDefault(); document.activeElement.blur(); return; }
     if (document.querySelector('.sheet-bg')) { e.preventDefault(); closeSheet(); return; }
     var b = document.querySelector('header.top a.back');
-    if (b) { e.preventDefault(); location.hash = b.getAttribute('href'); return; }
+    if (b) { e.preventDefault(); navBack = b.getAttribute('href'); location.hash = navBack; return; }
     var r = route().name;
     if (S.account ? r !== 'home' : (r === 'login' || r === 'signup' || r === 'reset')) { e.preventDefault(); go(S.account ? '' : 'welcome'); }
   });
@@ -4311,6 +5280,9 @@
     resumeSync(e.detail && e.detail.away);
   });
   window.addEventListener('wl:pause', pauseRetries);
+  // 1.0.14: leaving the app (another app, the camera, the lock screen) keeps the open editor's work at once.
+  window.addEventListener('wl:pause', function () { if (curEditor) curEditor.keep(); if (curForm && curForm.form.isConnected) curForm.keep(); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState !== 'hidden') return; if (curEditor) curEditor.keep(); if (curForm && curForm.form.isConnected) curForm.keep(); });
   // The lock setting was read late (slow secure storage at start): lock now.
   window.addEventListener('wl:lock', function () { if (S.account && NAT.lockOn()) showLock(); });
   // On start the lock covers the screen before the logbook is drawn behind it.
@@ -4380,7 +5352,10 @@
     setTimeout(function () { if (app.querySelector('[data-boot]')) { diag('path', 'recovery'); viewRecovery(); } }, BOOT_WAIT);
     var opened = function () { diag('ui', Date.now() - t0); };
     var open = function (acc) { lockFirst(); return signedIn(acc).then(opened); };
-    var offline = function () { if (c && c.id && (!NAT.on || NAT.signedIn())) return open(c); render(); opened(); };
+    // 1.0.14: a slow answer never redraws a screen the learner has already moved to (they may be typing into Create
+    // account or Log in). Only the start screen and the recovery screen give way to what the answer says.
+    var starting = function () { return !!app.querySelector('[data-boot], [data-recovery]'); };
+    var offline = function () { if (c && c.id && (!NAT.on || NAT.signedIn())) return open(c); if (starting()) render(); opened(); };
     NAT.ready.then(function () {
       // The app on a phone that is signed in opens its logbook from the phone at once, behind the app lock when it
       // is on. The server check (loadMe) runs behind it: a login the server no longer accepts still signs out.
@@ -4394,6 +5369,7 @@
         // A server error, or an answer that is not the API's (a captive portal page): open from the phone.
         if (res._status >= 500 || res._nojson) return offline();
         cacheAccount(null);
+        if (!starting()) return opened();
         if (qs.get('login')) location.hash = '#/login';
         else if (res.academy && !location.hash.match(/login|signup|reset/)) location.hash = '#/signup';
         render(); opened();
@@ -4411,6 +5387,7 @@
     else authFrame(T('Wavelength is taking longer than usual to start.'), T('Your entries stay saved on this device. Check your connection, then try again.'),
       '<div class="btns"><button class="btn teal block" type="button" data-retry>' + esc(T('Try again')) + '</button>' + (cachedAccount() ? '' : '<a class="btn ghost block" href="#/login">' + esc(T('Log in')) + '</a>') + '</div>');
     $('[data-retry]').onclick = function () { location.reload(); };
+    var shown = $('.auth', app); if (shown) shown.setAttribute('data-recovery', ''); // boot's late answer may replace this screen
   }
   // A short record of the last 10 starts on this device (timings and outcomes only, no personal data), shown in
   // Settings under Sync, so a slow or stuck start on a phone can be explained without debugging tools.

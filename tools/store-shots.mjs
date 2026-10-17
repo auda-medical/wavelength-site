@@ -66,16 +66,18 @@ async function capture(page, dir, settle) {
     shots.push(f);
     if (hero) {
       const el = page.locator(hero).first();
-      if (await el.count()) { await el.scrollIntoViewIfNeeded(); await el.screenshot({ path: path.join(dir, name + '-hero.png') }); }
+      if (await el.count()) { await el.scrollIntoViewIfNeeded(); await page.waitForTimeout(900); /* sections fade in as they scroll into view */ await el.screenshot({ path: path.join(dir, name + '-hero.png') }); }
       else console.log('note: no hero element for ' + name);
     }
   }
   await shot('home', '#/', null, '.stats');
   await shot('progress', '#/progress', async () => { await page.evaluate(() => { let best = null, top = -1; document.querySelectorAll('main .mod-head').forEach((h) => { const v = parseInt((h.querySelector('.ring') || h).textContent, 10) || 0; if (v > top && v < 100) { top = v; best = h; } }); if (best) best.parentElement.setAttribute('data-hero', '1'); window.scrollTo(0, 0); }); }, '[data-hero]');
   await shot('log', '#/log', async () => { const b = page.locator('button, a, label').filter({ hasText: /^Signed off · \d+$/ }).first(); if (await b.count()) { await b.click(); await page.waitForTimeout(500); } }, 'main .entry');
-  await shot('new', '#/new', async () => { await page.click('label[for=t0]'); await page.waitForTimeout(400); await page.evaluate(() => window.scrollTo(0, 0)); });
   await shot('entry', '#/entry/' + entries[0].id, null, '.signbox');
-  await shot('me', '#/me', async () => { await page.evaluate(() => { const c = document.querySelector('#lck'); if (c) c.checked = true; window.scrollTo(0, 0); }); }, '.card:has(#lck)');
+  // App lock lives under Me > Settings > Security (1.0.12 and later): show it switched on, scrolled into view.
+  await shot('me', '#/settings', async () => { await page.evaluate(() => { const c = document.querySelector('#lck'); if (c) { c.checked = true; const card = c.closest('.card'); const h = card && card.previousElementSibling; (h || card).scrollIntoView({ block: 'start' }); window.scrollBy(0, -70); } else window.scrollTo(0, 0); }); }, '.card:has(#lck)');
+  // Last: once a scan type is chosen, leaving the form asks whether to discard it (1.0.14 and later).
+  await shot('new', '#/new', async () => { await page.click('label[for=t0]'); await page.waitForTimeout(400); await page.evaluate(() => window.scrollTo(0, 0)); });
   return shots;
 }
 

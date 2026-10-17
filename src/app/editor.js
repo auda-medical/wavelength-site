@@ -68,10 +68,95 @@
     return clampRect({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) }, crop);
   }
 
+  // ---------- Magnification (1.0.13) ----------
+  // The preview is enlarged on screen only, with a CSS transform translate(tx, ty) scale(z) from the canvas's top-left
+  // corner. Every pointer position is read back through the transformed box, so drawing, moving and redacting land on
+  // the same picture pixels at any zoom, and nothing saved depends on it. b: the canvas's unzoomed box inside the stage
+  // (L, T, w, h) and the stage size (SW, SH), all in CSS pixels.
+  var ZOOM = { min: 1, max: 5 };
+  // Keeps the picture filling the stage when it is larger than it, and centred when it is smaller.
+  function clampView(v, b) {
+    var z = Math.max(ZOOM.min, Math.min(ZOOM.max, Number(v.z) || 1));
+    var ax = function (t, size, at, room) { var s = size * z; return s <= room ? (room - s) / 2 - at : Math.max(room - s - at, Math.min(-at, t)); };
+    return { z: z, tx: ax(Number(v.tx) || 0, b.w, b.L, b.SW), ty: ax(Number(v.ty) || 0, b.h, b.T, b.SH) };
+  }
+  // Zoom to z with the picture point that was under m0 (stage coordinates) at view v0 moved to m: a pinch whose
+  // fingers also move pans as it zooms. With m0 equal to m it zooms about that point (buttons, the wheel).
+  function pinchView(v0, m0, m, z, b) {
+    var ux = (m0.x - b.L - v0.tx) / v0.z, uy = (m0.y - b.T - v0.ty) / v0.z;
+    return clampView({ z: z, tx: m.x - b.L - z * ux, ty: m.y - b.T - z * uy }, b);
+  }
+
   // ---------- Annotations ----------
   var COLOURS = { white: '#FFFFFF', yellow: '#FFD60A', cyan: '#22D3EE', red: '#FF453A' };
   var SIZES = { s: 0.042, m: 0.058, l: 0.08 };
   var TYPES = ['text', 'arrow', 'dot', 'circle', 'rect', 'picto'];
+  // a.size is the stored value, a fraction of the picture's shorter side: the font height of text and labels, a dot's
+  // size, the line thickness and arrowhead of arrows, circles and boxes (their extent is drawn, not sized), and the
+  // plate of a pictogram. Zooming the editor never changes it: sizes are fractions of the picture, not the screen.
+  //
+  // 1.0.14: the Annotation size slider runs from -100 (Smaller) through 0 (the usual size, the exact middle) to 100
+  // (Larger), on a curve: fine steps near the middle, strong ones towards the ends. Each kind has its own range, so a
+  // line can be a hairline or bold and a label can be a footnote or a heading, without either running off the picture.
+  // 1.0.16 (owner's Fold7 check, 12 Oct): the ends are about twice as far apart, the middle unchanged: the usual size
+  // is still the exact middle and the curve keeps fine steps around it. Stored sizes never change; only where an
+  // older size sits on the slider does. Every end stays usable: text at least 1.2% of the picture's shorter side, a
+  // line at least a pixel, a pictogram no larger than the picture (drawPicto caps it at 0.96).
+  var POS = { min: -100, max: 100, snap: 3, curve: 1.7 };
+  var RANGE = {
+    text: { base: 0.058, lo: 0.012, hi: 0.42 },  // font height (1.0.14: 0.016 to 0.3)
+    dot: { base: 0.058, lo: 0.01, hi: 0.4 },     // dot radius is 0.32 of this (1.0.14: 0.014 to 0.26)
+    line: { base: 0.058, lo: 0.01, hi: 0.46 },   // arrows, circles, boxes: line thickness 0.17x to 7.9x the usual (1.0.14: 0.016 to 0.32)
+    picto: { base: 0.24, lo: 0.045, hi: 0.96 }   // the plate's side (1.0.14: 0.07 to 0.92)
+  };
+  function rangeOf(type) { return RANGE[type === 'arrow' || type === 'circle' || type === 'rect' ? 'line' : type] || RANGE.text; }
+  function sizeBase(type) { return rangeOf(type).base; }
+  function sizeOf(a) { return a && a.size ? a.size : sizeBase(a && a.type); }
+  // The stored size for a slider position, and the slider position of a stored size (1.0.12 and 1.0.13 sizes included).
+  function sizeAt(type, pos) {
+    var r = rangeOf(type), p = Number(pos); if (!isFinite(p)) p = 0;
+    p = Math.max(POS.min, Math.min(POS.max, p));
+    var e = Math.pow(Math.abs(p) / 100, POS.curve);
+    return Math.round(r.base * Math.pow((p >= 0 ? r.hi : r.lo) / r.base, e) * 1e4) / 1e4;
+  }
+  function posOf(a) {
+    var r = rangeOf(a && a.type), v = sizeOf(a) / r.base;
+    if (Math.abs(v - 1) < 1e-6) return 0;
+    var end = v > 1 ? r.hi / r.base : r.lo / r.base, t = Math.log(v) / Math.log(end);
+    return Math.round(Math.max(0, Math.min(1, Math.pow(Math.max(0, t), 1 / POS.curve))) * 100) * (v > 1 ? 1 : -1);
+  }
+  // A position close enough to the middle is the middle, so the usual size is easy to find again by feel.
+  function snapPos(pos) { pos = Math.round(Number(pos) || 0); return Math.abs(pos) <= POS.snap ? 0 : Math.max(POS.min, Math.min(POS.max, pos)); }
+
+  // ---------- Rotation (1.0.17) ----------
+  // Text (and clinical labels, which are text), pictograms and boxes can be turned to follow oblique anatomy, from 180°
+  // left to 180° right, 0 being straight. Arrows take their angle from their two ends; a dot and a circle look the
+  // same at any angle, so they have none. a.rot is whole degrees; an annotation without one is straight (0), exactly as
+  // before. Older values (1.0.12 to 1.0.16 stored 0 to 359 from the Turn button) keep their look: 345 is 15° left.
+  var ROT = { min: -180, max: 180, snap: 3 };
+  function canRotate(a) { return !!a && (a.type === 'text' || a.type === 'picto' || a.type === 'rect'); }
+  // Any finite angle as a whole degree from -179 to 180 (a turn of 180 left and 180 right is the same).
+  function normRot(v) { v = Number(v); if (!isFinite(v)) return 0; v = ((Math.round(v) % 360) + 360) % 360; return v > 180 ? v - 360 : v; }
+  // Close to straight is straight, so the centre is easy to find again by feel.
+  function snapRot(v) { var n = normRot(v); return Math.abs(n) <= ROT.snap ? 0 : n; }
+  function rotOf(a) { return canRotate(a) ? normRot(a.rot || 0) : 0; }
+
+  // ---------- Colours (1.0.14) ----------
+  // An annotation's colour is one of the named colours of 1.0.12 or any #rrggbb from the colour picker. Marks are
+  // edged in the opposite tone, so a dark colour still shows on a dark ultrasound background and a light one on a
+  // bright area.
+  function hexOf(c) { if (typeof c !== 'string') return null; if (Object.prototype.hasOwnProperty.call(COLOURS, c)) return COLOURS[c]; return /^#[0-9a-f]{6}$/i.test(c) ? c.toUpperCase() : null; }
+  function rgbOf(c) { var h = hexOf(c) || '#FFFFFF'; return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function luminance(c) { return rgbOf(c).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (s, v, i) { return s + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+  function contrast(a, b) { var x = luminance(a), y = luminance(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function edgeFor(c) { return luminance(c) < 0.18 ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.85)'; }
+  function hslHex(h, s, l) {
+    h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+    var k = function (n) { return (n + h / 30) % 12; }, a = s * Math.min(l, 1 - l);
+    var f = function (n) { return Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))))); };
+    return '#' + [f(0), f(8), f(4)].map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('').toUpperCase();
+  }
+  var BOX = '#050B14'; // the usual background box behind text
   // The points that carry an annotation's position, in output fractions (for mapping through a crop or turn).
   function annPoints(a) {
     if (a.type === 'arrow') return [{ x: a.x, y: a.y }, { x: a.x2, y: a.y2 }];
@@ -79,7 +164,8 @@
     return [{ x: a.x, y: a.y }];
   }
   // Moves annotations with the picture when the crop or orientation changes: each point goes back to source pixels
-  // under the old frame and forward under the new one. Text stays upright. Returns { ann, dropped }: annotations whose
+  // under the old frame and forward under the new one. Text stays upright. 1.0.17: a turned text or pictogram keeps
+  // its turn on screen; a turned box keeps covering the same area (a quarter turn swaps its sides, a mirror its tilt). Returns { ann, dropped }: annotations whose
   // anchor falls outside the new crop are dropped (the caller says so, and Undo brings them back).
   function mapAnnotations(ann, from, to) {
     var fo = outSize(from.crop, from.orient, 1), no = outSize(to.crop, to.orient, 1), out = [], dropped = 0;
@@ -94,6 +180,7 @@
       if (a.type === 'arrow') { c.x = cl(pts[0].x); c.y = cl(pts[0].y); c.x2 = cl(pts[1].x); c.y2 = cl(pts[1].y); }
       else if (a.type === 'circle' || a.type === 'rect') { var x1 = cl(Math.min(pts[0].x, pts[1].x)), y1 = cl(Math.min(pts[0].y, pts[1].y)), x2 = cl(Math.max(pts[0].x, pts[1].x)), y2 = cl(Math.max(pts[0].y, pts[1].y)); c.x = x1; c.y = y1; c.w = x2 - x1; c.h = y2 - y1; }
       else { c.x = cl(pts[0].x); c.y = cl(pts[0].y); }
+      if (a.type === 'rect' && c.rot && !!from.orient.m !== !!to.orient.m) { c.rot = normRot(-c.rot); if (!c.rot) delete c.rot; }
       out.push(c);
     });
     return { ann: out, dropped: dropped };
@@ -159,10 +246,10 @@
   // ---------- Drawing ----------
   function drawPicto(ctx, a, W, H) {
     var p = PICTO[a.picto]; if (!p) return;
-    var m = Math.min(W, H), size = (a.size || 0.24) * m, col = COLOURS[a.color] || a.color || '#fff';
+    var m = Math.min(W, H), size = Math.min(sizeOf(a), 0.96) * m, col = hexOf(a.color) || '#FFFFFF';
     ctx.save();
     ctx.translate(a.x * W, a.y * H);
-    if (a.rot) ctx.rotate(a.rot * Math.PI / 180);
+    if (rotOf(a)) ctx.rotate(rotOf(a) * Math.PI / 180);
     var s = size / 100;
     // A dark rounded plate: a pictogram is a label laid over the picture, never part of the image data.
     ctx.fillStyle = 'rgba(5,11,20,.78)'; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = Math.max(1, size * 0.012);
@@ -170,14 +257,15 @@
     ctx.beginPath(); ctx.moveTo(-hw + r, -hw); ctx.arcTo(hw, -hw, hw, hw, r); ctx.arcTo(hw, hw, -hw, hw, r); ctx.arcTo(-hw, hw, -hw, -hw, r); ctx.arcTo(-hw, -hw, hw, -hw, r); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.save();
     ctx.scale(a.flip ? -s : s, s); ctx.translate(-50, -50);
-    ctx.strokeStyle = col; ctx.lineWidth = 3.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = luminance(col) < 0.05 ? '#9DABBA' : col; ctx.lineWidth = 3.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     p.parts.forEach(function (d) { var pp = path2d(d); if (pp) ctx.stroke(pp); });
-    if (p.spot) { ctx.fillStyle = a.color === 'yellow' ? '#FF453A' : '#FFD60A'; ctx.beginPath(); ctx.arc(p.spot[0], p.spot[1], 6, 0, Math.PI * 2); ctx.fill(); }
+    // The spot is yellow, or red when the drawing itself is yellowish, so it always stands out from the outline.
+    if (p.spot) { var c = rgbOf(col); ctx.fillStyle = c[0] > 170 && c[1] > 150 && c[2] < 120 ? '#FF453A' : '#FFD60A'; ctx.beginPath(); ctx.arc(p.spot[0], p.spot[1], 6, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
     // Labels upright, at mirrored positions when the drawing is flipped.
     (p.labels || []).forEach(function (l) {
       var lx = (a.flip ? 100 - l[1] : l[1]) - 50, ly = l[2] - 50, fs = 11 * (l[3] || 1) * s;
-      ctx.font = fontFor(fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col;
+      ctx.font = fontFor(fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = luminance(col) < 0.05 ? '#DCE4EC' : col;
       ctx.fillText(l[0], lx * s, ly * s);
     });
     ctx.restore();
@@ -189,39 +277,50 @@
     ctx.lineTo(x2 - len * Math.cos(ang + 0.45), y2 - len * Math.sin(ang + 0.45));
     ctx.closePath();
   }
-  // One annotation on an output frame W x H. Every mark has a dark edge so it reads on greyscale ultrasound.
+  // The font height of a text annotation on a W x H frame: its size, made smaller only if the text would otherwise
+  // run past the picture's width, so a large label never overflows the image.
+  function textSize(ctx, a, W, H) {
+    var fs = sizeOf(a) * Math.min(W, H);
+    ctx.font = fontFor(fs);
+    var tw = ctx.measureText(a.text || '').width, room = W * 0.96 - fs * 0.8;
+    return tw > room && tw > 0 ? Math.max(4, fs * Math.max(0.05, room) / tw) : fs;
+  }
+  // One annotation on an output frame W x H. Every mark has an edge in the opposite tone, so it reads on greyscale
+  // ultrasound whatever its colour.
   function drawAnn(ctx, a, W, H) {
-    var m = Math.min(W, H), col = COLOURS[a.color] || a.color || '#fff', dark = 'rgba(0,0,0,.85)';
-    var lw = Math.max(2, m * 0.0065 * (a.size ? a.size / SIZES.m : 1));
+    var m = Math.min(W, H), col = hexOf(a.color) || '#FFFFFF', edge = edgeFor(col), k = sizeOf(a) / RANGE.line.base;
+    var lw = Math.max(1, m * 0.0065 * k);
     ctx.save();
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     if (a.type === 'text') {
-      var fs = (a.size || SIZES.m) * m;
-      ctx.translate(a.x * W, a.y * H); if (a.rot) ctx.rotate(a.rot * Math.PI / 180);
+      var fs = textSize(ctx, a, W, H);
+      ctx.translate(a.x * W, a.y * H); if (rotOf(a)) ctx.rotate(rotOf(a) * Math.PI / 180);
       ctx.font = fontFor(fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       var tw = ctx.measureText(a.text || '').width;
       if (a.bg === 'box') {
         var px = fs * 0.35, py = fs * 0.22;
-        ctx.fillStyle = 'rgba(5,11,20,.72)';
+        ctx.globalAlpha = 0.85; ctx.fillStyle = hexOf(a.bgc) || BOX;
         ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-tw / 2 - px, -fs / 2 - py, tw + px * 2, fs + py * 2, fs * 0.25); else ctx.rect(-tw / 2 - px, -fs / 2 - py, tw + px * 2, fs + py * 2); ctx.fill();
-      } else { ctx.strokeStyle = dark; ctx.lineWidth = Math.max(2, fs * 0.2); ctx.strokeText(a.text || '', 0, 0); }
+        ctx.globalAlpha = 1;
+      } else { ctx.strokeStyle = edge; ctx.lineWidth = Math.max(2, fs * 0.2); ctx.strokeText(a.text || '', 0, 0); }
       ctx.fillStyle = col; ctx.fillText(a.text || '', 0, 0);
     } else if (a.type === 'arrow') {
-      var x1 = a.x * W, y1 = a.y * H, x2 = a.x2 * W, y2 = a.y2 * H, head = Math.max(lw * 3.4, m * 0.03);
+      // The head follows the line: a hairline arrow has a small head, a bold one a large head.
+      var x1 = a.x * W, y1 = a.y * H, x2 = a.x2 * W, y2 = a.y2 * H, head = Math.max(lw * 3.4, m * 0.03 * Math.min(1, Math.sqrt(k)));
       var ang = Math.atan2(y2 - y1, x2 - x1), sx = x2 - Math.cos(ang) * head * 0.8, sy = y2 - Math.sin(ang) * head * 0.8;
-      ctx.strokeStyle = dark; ctx.lineWidth = lw + 3; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(sx, sy); ctx.stroke();
-      arrowHead(ctx, x1, y1, x2, y2, head + 2); ctx.fillStyle = dark; ctx.fill();
+      ctx.strokeStyle = edge; ctx.lineWidth = lw + 3; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(sx, sy); ctx.stroke();
+      arrowHead(ctx, x1, y1, x2, y2, head + 2); ctx.fillStyle = edge; ctx.fill();
       ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(sx, sy); ctx.stroke();
       arrowHead(ctx, x1, y1, x2, y2, head); ctx.fillStyle = col; ctx.fill();
     } else if (a.type === 'dot') {
-      var rr = (a.size || SIZES.m) * m * 0.32;
-      ctx.beginPath(); ctx.arc(a.x * W, a.y * H, rr + 2, 0, Math.PI * 2); ctx.fillStyle = dark; ctx.fill();
+      var rr = sizeOf(a) * m * 0.32;
+      ctx.beginPath(); ctx.arc(a.x * W, a.y * H, rr + 2, 0, Math.PI * 2); ctx.fillStyle = edge; ctx.fill();
       ctx.beginPath(); ctx.arc(a.x * W, a.y * H, rr, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
     } else if (a.type === 'circle' || a.type === 'rect') {
       var bx = a.x * W, by = a.y * H, bw = a.w * W, bh = a.h * H;
       var shape = function () { ctx.beginPath(); if (a.type === 'circle') ctx.ellipse(bx + bw / 2, by + bh / 2, Math.max(1, bw / 2), Math.max(1, bh / 2), 0, 0, Math.PI * 2); else ctx.rect(bx, by, bw, bh); };
-      ctx.translate(bx + bw / 2, by + bh / 2); if (a.rot && a.type === 'rect') ctx.rotate(a.rot * Math.PI / 180); ctx.translate(-(bx + bw / 2), -(by + bh / 2));
-      shape(); ctx.strokeStyle = dark; ctx.lineWidth = lw + 3; ctx.stroke();
+      ctx.translate(bx + bw / 2, by + bh / 2); if (rotOf(a)) ctx.rotate(rotOf(a) * Math.PI / 180); ctx.translate(-(bx + bw / 2), -(by + bh / 2));
+      shape(); ctx.strokeStyle = edge; ctx.lineWidth = lw + 3; ctx.stroke();
       shape(); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
     } else if (a.type === 'picto') {
       ctx.restore(); drawPicto(ctx, a, W, H); return;
@@ -252,21 +351,30 @@
   // Bounds of an annotation in output pixels (W x H), for selection and hit testing.
   function annBounds(ctx, a, W, H) {
     var m = Math.min(W, H);
-    if (a.type === 'text') { var fs = (a.size || SIZES.m) * m; ctx.font = fontFor(fs); var tw = ctx.measureText(a.text || '').width; return { x: a.x * W - tw / 2 - fs * 0.4, y: a.y * H - fs * 0.75, w: tw + fs * 0.8, h: fs * 1.5 }; }
-    if (a.type === 'dot') { var r = (a.size || SIZES.m) * m * 0.32 + m * 0.02; return { x: a.x * W - r, y: a.y * H - r, w: r * 2, h: r * 2 }; }
-    if (a.type === 'picto') { var s = (a.size || 0.24) * m; return { x: a.x * W - s / 2, y: a.y * H - s / 2, w: s, h: s }; }
+    // A small annotation still has a finger-sized area to pick it up by (about 6% of the picture's shorter side).
+    var grow = function (b) { var need = m * 0.06; if (b.w < need) { b.x -= (need - b.w) / 2; b.w = need; } if (b.h < need) { b.y -= (need - b.h) / 2; b.h = need; } return b; };
+    if (a.type === 'text') { var fs = textSize(ctx, a, W, H); ctx.font = fontFor(fs); var tw = ctx.measureText(a.text || '').width; return grow({ x: a.x * W - tw / 2 - fs * 0.4, y: a.y * H - fs * 0.75, w: tw + fs * 0.8, h: fs * 1.5 }); }
+    if (a.type === 'dot') { var r = sizeOf(a) * m * 0.32 + m * 0.02; return grow({ x: a.x * W - r, y: a.y * H - r, w: r * 2, h: r * 2 }); }
+    if (a.type === 'picto') { var s = Math.min(sizeOf(a), 0.96) * m; return grow({ x: a.x * W - s / 2, y: a.y * H - s / 2, w: s, h: s }); }
     if (a.type === 'arrow') { var pad = m * 0.03, x1 = Math.min(a.x, a.x2) * W, y1 = Math.min(a.y, a.y2) * H; return { x: x1 - pad, y: y1 - pad, w: Math.abs(a.x2 - a.x) * W + pad * 2, h: Math.abs(a.y2 - a.y) * H + pad * 2 }; }
     var p2 = m * 0.02; return { x: a.x * W - p2, y: a.y * H - p2, w: a.w * W + p2 * 2, h: a.h * H + p2 * 2 };
   }
   function distToSeg(px, py, x1, y1, x2, y2) { var dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / L)) : 0; return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy)); }
+  // A point in an annotation's own (unturned) frame: turned back about its centre, so a turned label is picked up by
+  // its letters and not by the empty corners of an upright box. b is annBounds (centred on the annotation).
+  function unturn(a, b, x, y) {
+    var r = rotOf(a); if (!r) return { x: x, y: y };
+    var cx = b.x + b.w / 2, cy = b.y + b.h / 2, th = -r * Math.PI / 180, dx = x - cx, dy = y - cy;
+    return { x: cx + dx * Math.cos(th) - dy * Math.sin(th), y: cy + dx * Math.sin(th) + dy * Math.cos(th) };
+  }
   // The topmost annotation under output point (x, y) at time t, or -1.
   function hit(ctx, ann, W, H, x, y, t) {
     var m = Math.min(W, H);
     for (var i = ann.length - 1; i >= 0; i--) {
       var a = ann[i]; if (!annAt(a, t)) continue;
       if (a.type === 'arrow') { if (distToSeg(x, y, a.x * W, a.y * H, a.x2 * W, a.y2 * H) < m * 0.04) return i; continue; }
-      var b = annBounds(ctx, a, W, H);
-      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return i;
+      var b = annBounds(ctx, a, W, H), q = unturn(a, b, x, y);
+      if (q.x >= b.x && q.x <= b.x + b.w && q.y >= b.y && q.y <= b.y + b.h) return i;
     }
     return -1;
   }
@@ -287,13 +395,15 @@
       if (!a || typeof a !== 'object' || TYPES.indexOf(a.type) < 0) return null;
       bad = false;
       var n = function (v, lo, hi) { var r = num(v, lo, hi); if (r === null) bad = true; return r; };
-      var o = { type: a.type, x: n(a.x, 0, 1), y: n(a.y, 0, 1), color: typeof a.color === 'string' && COLOURS.hasOwnProperty(a.color) ? a.color : 'white' };
-      if (a.type === 'text') { o.text = String(a.text == null ? '' : a.text).slice(0, 80); o.bg = a.bg === 'box' ? 'box' : 'outline'; }
+      // A named colour (1.0.12, 1.0.13) or a #rrggbb from the colour picker (1.0.14); anything else is white.
+      var o = { type: a.type, x: n(a.x, 0, 1), y: n(a.y, 0, 1), color: typeof a.color === 'string' && COLOURS.hasOwnProperty(a.color) ? a.color : hexOf(a.color) || 'white' };
+      if (a.type === 'text') { o.text = String(a.text == null ? '' : a.text).slice(0, 80); o.bg = a.bg === 'box' ? 'box' : 'outline'; if (o.bg === 'box' && hexOf(a.bgc)) o.bgc = hexOf(a.bgc); }
       if (a.type === 'arrow') { o.x2 = n(a.x2, 0, 1); o.y2 = n(a.y2, 0, 1); }
       if (a.type === 'circle' || a.type === 'rect') { o.w = n(a.w, -1, 1); o.h = n(a.h, -1, 1); }
       if (a.type === 'picto') { if (typeof a.picto !== 'string' || !PICTO.hasOwnProperty(a.picto)) return null; o.picto = a.picto; if (a.flip) o.flip = true; }
       if (a.size != null && a.size !== 0) o.size = n(a.size, 0.01, 1);
-      if (a.rot) { var rt = num(a.rot, -3600, 3600); if (rt !== null) o.rot = Math.round(rt) % 360; }
+      // 1.0.17: only what can turn keeps a turn, as a whole degree from -179 to 180; anything else (not a number) is straight.
+      if (canRotate(a) && a.rot != null && isFinite(Number(a.rot))) { var rt = normRot(a.rot); if (rt) o.rot = rt; }
       if (a.t0 != null) { var t0 = num(a.t0, 0, 600); if (t0 !== null) o.t0 = Math.round(t0 * 100) / 100; }
       if (a.t1 != null) { var t1 = num(a.t1, 0, 600); if (t1 !== null) o.t1 = Math.round(t1 * 100) / 100; }
       return bad ? null : o;
@@ -304,6 +414,8 @@
   root.WLEditor = {
     orientAfter: orientAfter, composeOrient: composeOrient, outSize: outSize, setOrient: setOrient, toSrc: toSrc, toOut: toOut, rectToSrc: rectToSrc, clampRect: clampRect,
     mapAnnotations: mapAnnotations, annAt: annAt, drawFrame: drawFrame, drawAnn: drawAnn, annBounds: annBounds, hit: hit, describe: describe, cleanAnn: cleanAnn,
-    COLOURS: COLOURS, SIZES: SIZES, PICTOS: PICTOS, PICTO: PICTO, PRESETS: PRESETS, GROUP_LABEL: GROUP_LABEL, groupsFor: groupsFor, pictosFor: pictosFor
+    ROT: ROT, canRotate: canRotate, normRot: normRot, snapRot: snapRot, rotOf: rotOf, unturn: unturn,
+    COLOURS: COLOURS, SIZES: SIZES, POS: POS, RANGE: RANGE, sizeBase: sizeBase, sizeOf: sizeOf, sizeAt: sizeAt, posOf: posOf, snapPos: snapPos, textSize: textSize,
+    hexOf: hexOf, luminance: luminance, contrast: contrast, edgeFor: edgeFor, hslHex: hslHex, BOX: BOX, ZOOM: ZOOM, clampView: clampView, pinchView: pinchView, PICTOS: PICTOS, PICTO: PICTO, PRESETS: PRESETS, GROUP_LABEL: GROUP_LABEL, groupsFor: groupsFor, pictosFor: pictosFor
   };
 })(typeof window !== 'undefined' ? window : globalThis);

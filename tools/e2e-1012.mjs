@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { harness, net, DEVICE, serve, WWW } from './native-harness.mjs';
 import { localOnly } from './local-only.mjs';
+import { setColour } from './editor-colour.mjs';
 
 const OUT = path.resolve(process.argv[2] || 'e2e-1012-out');
 const API = process.argv[4] || 'http://localhost:8787';
@@ -404,13 +405,13 @@ if (want('E')) {
   await shot(page, 'E4-labels');
   await page.click('.editor [data-lbl="LV"]'); await sleep(200);
   await page.click('.editor [data-sa=done]');
-  await page.click('.editor [data-col=cyan]');
+  await setColour(page, 'cyan');
   await page.click('.editor [data-at=rect]'); await dragOn(page, [0.6, 0.6], [0.9, 0.9]);
   await page.click('.editor [data-sa=done]').catch(() => {});
-  await page.click('.editor [data-col=red]');
+  await setColour(page, 'red');
   await page.click('.editor [data-at=dot]'); await tapOn(page, [0.25, 0.75]);
   await page.click('.editor [data-sa=done]').catch(() => {});
-  await page.click('.editor [data-col=white]');
+  await setColour(page, 'white');
   await page.click('.editor [data-at=arrow]'); await dragOn(page, [0.1, 0.55], [0.4, 0.55]);
   await page.click('.editor [data-sa=done]').catch(() => {});
   await page.click('.editor [data-at=circle]'); await dragOn(page, [0.55, 0.1], [0.75, 0.3]);
@@ -513,7 +514,7 @@ if (want('C')) {
   const aaaFirst = await page.$$eval('.editor .ed-pop .ed-lab', (l) => l[1] && l[1].textContent);
   await page.click('.editor [data-lbl="Ao"]'); await sleep(200);
   await page.click('.editor [data-sa=done]');
-  await page.click('.editor [data-col=red]'); await page.click('.editor [data-at=dot]');
+  await setColour(page, 'red'); await page.click('.editor [data-at=dot]');
   await tapOn(page, [0.75, 0.75]);
   await page.evaluate(() => { const s = document.querySelector('.editor [data-scrub]'); s.value = 1.5; s.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(600);
   await page.click('.editor [data-when=from]'); await sleep(200);
@@ -635,9 +636,9 @@ if (want('G')) {
   for (const [pw, first] of [['rcem', 'rcem-ultrasound-sign-off'], ['famus', 'famus-accreditation'], ['fusic', 'fusic-accreditation'], ['acem', 'pocus-accreditation']]) {
     const acc = await account('Gu', 'Ide', [pw]);
     const { ctx, page } = await phone({ acc });
-    await go(page, '#/progress'); await page.waitForSelector('.guide-link');
-    const fromProgress = await page.$eval('.guide-link', (a) => a.getAttribute('href'));
-    await page.click('.guide-link'); await page.waitForSelector('.guide-body'); 
+    await go(page, '#/progress'); await page.waitForSelector('.guide-link[data-guides=mine]');
+    const fromProgress = await page.$eval('.guide-link[data-guides=mine]', (a) => a.getAttribute('href'));
+    await page.click('.guide-link[data-guides=mine]'); await page.waitForSelector('.guide-body'); 
     const opened = await page.evaluate(() => location.hash);
     await go(page, '#/guides'); await page.waitForSelector('.guide-card.lead');
     const lead = await page.$eval('.guide-card.lead', (a) => a.getAttribute('href'));
@@ -648,7 +649,7 @@ if (want('G')) {
   const { ctx, page } = await phone();
   await go(page, '#/guides/rcem-ultrasound-sign-off'); await page.waitForSelector('.guide-body h2');
   const g = await page.evaluate(() => ({ note: document.querySelector('.guide-note').textContent, toc: document.querySelectorAll('[data-goto]').length, src: [...document.querySelectorAll('.guide-src a')].map((a) => [a.getAttribute('href'), a.target]), internal: [...document.querySelectorAll('.guide-body a')].map((a) => a.getAttribute('href')).filter((h) => h.startsWith('#/guides/')), ids: [...document.querySelectorAll('.guide-body h2')].map((h) => h.id) }));
-  record('G2', 'A guide says it is Wavelength\'s, not an official document, with its check date and official sources', /not an official document/.test(g.note) && /Checked against official sources 4 Oct 2026/.test(g.note) && g.src.length >= 5 && g.src.every(([h, t]) => /^https:\/\//.test(h) && t === '_blank'), JSON.stringify({ note: g.note.slice(0, 160), sources: g.src.length }));
+  record('G2', 'A guide says it is Wavelength\'s, not an official document, with its check date and official sources', /not an official document/.test(g.note) && /Last clinically reviewed: 4 Oct 2026/.test(g.note) && g.src.length >= 5 && g.src.every(([h, t]) => /^https:\/\//.test(h) && t === '_blank'), JSON.stringify({ note: g.note.slice(0, 160), sources: g.src.length }));
   record('G3', 'Contents list, and links to other guides open inside the app', g.toc >= 10 && g.internal.length >= 1, `${g.toc} sections; ${g.internal.join(', ')}`);
   // Same source as the website: the section ids match the built /guides/ page.
   const site = fs.readFileSync('dist/guides/rcem-ultrasound-sign-off/index.html', 'utf8');
@@ -762,7 +763,7 @@ if (only.includes('R')) {
     await page.click('.editor [data-tab=annotate]'); await sleep(500);
     await page.click('.editor [data-at=label]'); await page.waitForSelector('.editor .ed-pop:not([hidden])'); await sleep(900); await page.click('.editor [data-lbl="LV"]'); await sleep(700);
     await page.click('.editor [data-sa=done]').catch(() => {});
-    await page.click('.editor [data-col=cyan]'); await page.click('.editor [data-at=arrow]'); await dragOn(page, [0.15, 0.7], [0.45, 0.55]); await sleep(700);
+    await setColour(page, 'cyan'); await page.click('.editor [data-at=arrow]'); await dragOn(page, [0.15, 0.7], [0.45, 0.55]); await sleep(700);
     await page.click('.editor [data-sa=done]').catch(() => {});
     await page.click('.editor [data-at=picto]'); await sleep(700); await page.click('.editor [data-pic="heart-a4c"]'); await sleep(900);
     await page.click('.editor [data-sa=done]').catch(() => {});
