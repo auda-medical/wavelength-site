@@ -2724,5 +2724,7 @@
 "Find a Wavelength-approved supervisor": "ابحث عن مشرف موافَق عليه من Wavelength",
 "Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.": "لا يظهر في البحث إلا مشرف لديه موافقة سارية من Wavelength. يجب أن تكون موافقتك وتسجيلك وبريدك الإلكتروني كلها سارية.",
 "Wavelength-approved supervisor": "مشرف موافَق عليه من Wavelength",
-"Source monitoring is not set up yet.": "لم يتم إعداد مراقبة المصادر بعد."
+"Source monitoring is not set up yet.": "لم يتم إعداد مراقبة المصادر بعد.",
+"Help": "مساعدة",
+"How to use the logbook": "كيفية استخدام السجل"
 }

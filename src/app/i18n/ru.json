@@ -2648,5 +2648,7 @@
 "Find a Wavelength-approved supervisor": "Найти руководителя, одобренного Wavelength",
 "Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.": "В поиске отображается только руководитель с действующим одобрением Wavelength. Одобрение, регистрация и почта должны быть актуальны.",
 "Wavelength-approved supervisor": "Руководитель, одобренный Wavelength",
-"Source monitoring is not set up yet.": "Мониторинг источников ещё не настроен."
+"Source monitoring is not set up yet.": "Мониторинг источников ещё не настроен.",
+"Help": "Справка",
+"How to use the logbook": "Как пользоваться журналом"
 }

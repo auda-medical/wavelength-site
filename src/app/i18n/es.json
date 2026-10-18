@@ -2572,5 +2572,7 @@
 "Find a Wavelength-approved supervisor": "Buscar un supervisor aprobado por Wavelength",
 "Only a current Wavelength-approved supervisor can be found in search. Your approval, registration and email all need to be current.": "Solo aparecen en la búsqueda los supervisores con aprobación vigente de Wavelength. Su aprobación, colegiación y correo deben estar al día.",
 "Wavelength-approved supervisor": "Supervisor aprobado por Wavelength",
-"Source monitoring is not set up yet.": "La supervisión de fuentes aún no está configurada."
+"Source monitoring is not set up yet.": "La supervisión de fuentes aún no está configurada.",
+"Help": "Ayuda",
+"How to use the logbook": "Cómo usar el cuaderno"
 }

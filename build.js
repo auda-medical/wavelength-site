@@ -181,6 +181,7 @@ const NAV = [
   { href: '/pocus-logbook/', label: 'App', match: ['/app/', '/pocus-logbook/'], children: [
     { href: '/pocus-logbook/', label: 'POCUS logbook and portfolio', short: 'Logbook', text: 'Your portfolio, tailored to your accrediting body.' },
     { href: '/app/get/', label: 'Download the app', short: 'Download', text: 'Free for iPhone, Android and the browser.' },
+    { href: '/pocus-logbook/help/', label: 'Logbook help', short: 'Help', text: 'How to use the app, one task at a time.' },
   ] },
   { href: '/faculty/', label: 'Faculty' },
   { href: '/about/', label: 'About' },
@@ -1981,6 +1982,34 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
   </div>
   <div class="post-cta reveal" style="max-width:none"><div><h3>Start your logbook today</h3><p>Free for every clinician who scans. Open it on your phone and add it to your home screen.</p></div><a class="btn btn-teal" href="/app/get/">Get the free app ${arrow}</a></div>
 </div></section>`,
+  });
+}
+
+// Logbook help (1.0.18): how to use the app, task by task, linked from the app (Me > Help) and the App menu. The
+// words in bold are the app's own button and screen names (English); keep them in step with src/app/app.js.
+{
+  const href = '/pocus-logbook/help/';
+  const H = [
+    ['start', 'Getting started', `<ol><li>Install Wavelength from the App Store or Google Play, or open it in your browser: see <a class="text-link" href="/app/get/">Download the app</a>.</li><li>Create your account with your name, email and a password, and confirm your email address from the message we send.</li><li>Choose your pathways, for example RCEM, FAMUS or FUSIC. <b>Progress</b> then shows your scans against each pathway's targets.</li></ol>`],
+    ['log', 'Log a scan', `<ol><li>Tap the round <b>+ Log</b> button in the middle of the bottom bar.</li><li>Choose the application and check the date.</li><li>Record what you found, your image quality and your interpretation. Add the confirmation and the impact on management if you know them.</li><li>Choose the <b>Level of supervision</b> and, if you like, your supervisor.</li><li>Add a reflection if you want it to count as a reflective note.</li><li>Tap <b>Save scan</b>.</li></ol><p>Log on the day of the scan. If Wavelength closes before you save, Home shows <b>Kept on this phone</b>: tap <b>Review</b> to carry on where you left off. Nothing is added to your logbook until you save it.</p>`],
+    ['media', 'Photos and clips', `<p>In a scan, under <b>Images and clips</b>, tap <b>Take photo</b>, <b>Choose</b> or <b>Clip</b> (up to 10 seconds, with sound removed). The editor then has three modes:</p><ul><li><b>Adjust</b>: crop, trim, rotate and flip.</li><li><b>Redact</b>: cover identifiers with a solid block. Blurring is not offered, because it can leave text readable.</li><li><b>Annotate</b>: labels, your own text, arrows, boxes, circles, dots and pictograms. <b>Size</b> and <b>Rotation</b> change the selected one; <b>Straight</b> is in the middle of Rotation.</li></ul><p>Before you save, confirm that you removed or covered every patient identifier (in every frame of a clip). Photos and clips taken with the camera from Wavelength go straight into the app's own storage, not your phone's gallery.</p>`],
+    ['sync', 'What syncs, and what stays on your phone', `<ul><li><b>Your written logbook entries sync</b> to your Wavelength account, so they appear on every phone, tablet or browser where you log in.</li><li><b>Photos and clips never leave your phone.</b> They are not uploaded to Wavelength, so they do not appear on another device. The only exception is a sign-off link you choose to send with images: they are encrypted on your phone, and deleted when your supervisor signs, you cancel, or after 14 days.</li><li>The sync label at the top of the app shows this device's status. Tap it for details and <b>Retry sync</b>. Offline, everything keeps working and syncs when you are back online.</li></ul>`],
+    ['backup', 'Back up, restore and move to a new phone', `<p>Because photos and clips stay on your phone, a backup is their only copy anywhere else.</p><ol><li>Tap <b>Me</b>, then <b>Back up and restore</b>.</li><li>Choose a passphrase, type it twice and tick the box. Wavelength cannot recover a forgotten passphrase.</li><li>Tap <b>Create encrypted backup</b>, then <b>Share or save</b>, and keep the file somewhere safe: Files or iCloud Drive on iPhone, Google Drive or OneDrive on Android, or your computer.</li></ol><p><b>On a new phone</b>, install Wavelength and log in: your written entries come back by themselves. Then open <b>Me</b>, <b>Back up and restore</b>, tap <b>Choose backup file</b>, enter the passphrase and tap <b>Restore</b>. Only what is missing is added, so nothing is duplicated. This works between Android and iPhone in either direction: move the file by email, cloud storage, AirDrop or Quick Share.</p>`],
+    ['signoff', 'Supervisor sign-off', `<ol><li>Tap <b>Logbook</b>, then <b>Sign-off</b> at the top.</li><li>Select the scans and choose how your supervisor signs: <b>In person</b> on your phone, or with a link you send them.</li><li>Your supervisor confirms each scan or queries it, and signs by hand or types their name.</li></ol><p>Each sign-off gets a code that anyone can check at <a class="text-link" href="/verify/">thewavelength.co.uk/verify</a>. Editing a signed scan voids its sign-off. You can mark a scan as not needing sign-off.</p>`],
+    ['assess', 'Assessments', `<p>In <b>Progress</b>, tap <b>Request assessment</b> on a module, or open a saved scan and tap <b>Use for an assessment</b>. Your assessor completes it with you <b>In person</b> on your phone, or from a secure link on any device (it works for 14 days). Formative assessments guide your learning; summative, DOPS and final assessments count towards your targets when your assessor judges you competent. Each one has a code anyone can verify.</p>`],
+    ['export', 'Export your logbook', `<p>Tap <b>Me</b>, then <b>Export your logbook</b>, and choose PDF, Excel or CSV for your portfolio or ARCP. You can add a verified summary: a snapshot of your progress with a code and QR code that assessors can check. You can withdraw a summary at any time.</p>`],
+    ['lock', 'Lock the app', `<p>In <b>Me</b>, under <b>Security</b>, tick <b>Lock the app with fingerprint or face</b>. Wavelength then asks for your fingerprint, face or phone passcode when it opens and after it has been in the background for a while.</p>`],
+    ['help', 'Still stuck?', `<p>Email <a class="text-link" href="mailto:hello@thewavelength.co.uk">hello@thewavelength.co.uk</a>. In the app, <b>Me</b>, then <b>About Wavelength</b>, then <b>Contact support</b> adds your app version for us. See also the <a class="text-link" href="/app-terms/">logbook terms of use</a>, the <a class="text-link" href="/privacy/">privacy notice</a> and the <a class="text-link" href="/guides/ultrasound-logbook/">ultrasound logbook guide</a> on what to record.</p>`],
+  ];
+  pages[href] = layout({
+    title: 'Logbook help',
+    seoTitle: 'Logbook help: how to use the Wavelength app',
+    pathname: href,
+    description: 'How to use the free Wavelength POCUS logbook: logging scans, photos and clips, what syncs, backups and moving phones, supervisor sign-off, exports and app lock.',
+    jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'POCUS logbook', href: '/pocus-logbook/' }, { label: 'Help', href }])],
+    body: `${pageHero({ eyebrow: 'POCUS logbook', title: 'Logbook help.', lede: 'How to use the Wavelength app, one task at a time.', crumbs: [{ label: 'POCUS logbook', href: '/pocus-logbook/' }, { label: 'Help' }] })}
+<section class="section"><div class="wrap guide-wrap"><nav class="guide-toc reveal" aria-label="Contents"><p class="eyebrow">Contents</p><ol>${H.map(([id, t]) => `<li><a href="#${id}">${t}</a></li>`).join('')}</ol></nav>
+<article class="prose post reveal">${H.map(([id, t, body]) => `<h2 id="${id}">${t}</h2>${body}`).join('\n')}</article></div></section>`,
   });
 }
 

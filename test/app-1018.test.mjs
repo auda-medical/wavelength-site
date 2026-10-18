@@ -63,3 +63,13 @@ test('one failed attempt in the first 20 s after start or sign-in shows no warni
   assert.match(APP, /SYNC_GRACE_FROM = Date\.now\(\);\n    S\.account = acc;/);
   assert.match(APP, /clearTimeout\(SY\.graceTimer\); SY = \{ lastOk/);
 });
+
+test('Help: the website has the logbook help page and the app links to it from Me and About', () => {
+  const BUILD = readFileSync(new URL('../build.js', import.meta.url), 'utf8');
+  assert.match(BUILD, /const href = '\/pocus-logbook\/help\/';/);
+  assert.match(BUILD, /\{ href: '\/pocus-logbook\/help\/', label: 'Logbook help', short: 'Help'/);
+  for (const words of ['+ Log', 'Save scan', 'Back up and restore', 'Create encrypted backup', 'Choose backup file', 'Export your logbook', 'Request assessment', 'Use for an assessment', 'Lock the app with fingerprint or face', 'About Wavelength', 'Contact support'])
+    assert.ok(APP.includes(`T('${words}')`) || APP.includes(`'${words}'`) || (words === '+ Log' && APP.includes("T('Log')")), 'the help page names an app label that exists: ' + words);
+  assert.match(APP, /<a href="\/pocus-logbook\/help\/" target="_blank" rel="noopener">' \+ esc\(T\('How to use the logbook'\)\)/);
+  assert.match(APP, /<a href="\/pocus-logbook\/help\/" target="_blank" rel="noopener">' \+ esc\(T\('Help'\)\)/);
+});
