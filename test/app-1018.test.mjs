@@ -73,3 +73,11 @@ test('Help: the website has the logbook help page and the app links to it from M
   assert.match(APP, /<a href="\/pocus-logbook\/help\/" target="_blank" rel="noopener">' \+ esc\(T\('How to use the logbook'\)\)/);
   assert.match(APP, /<a href="\/pocus-logbook\/help\/" target="_blank" rel="noopener">' \+ esc\(T\('Help'\)\)/);
 });
+
+test('Help questions: every screen path named exists where the help says it is', () => {
+  const BUILD = readFileSync(new URL('../build.js', import.meta.url), 'utf8');
+  for (const label of ['App language', 'Log out other devices', 'Delete my account', 'Lock the app with fingerprint or face', 'Your supervisors', 'Learners you supervise', 'Become a Wavelength supervisor', 'Targets', 'Request assessment', 'In person', 'Settings'])
+    assert.ok(APP.includes(`T('${label}')`), 'app label exists: ' + label);
+  assert.match(APP, /href="#\/settings" aria-label="' \+ esc\(T\('Settings'\)\) \+ '">' \+ I\.gear/, 'Me has the gear icon for Settings');
+  assert.match(BUILD, /faqLd\(HQ\.flatMap/, 'the questions are also published as FAQ structured data');
+});
