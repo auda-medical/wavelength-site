@@ -69,6 +69,8 @@ async function addText(page, text = 'Liver', box = true) { await page.click('.ed
 async function addLabel(page) { await page.click('.editor [data-at=label]'); await page.waitForSelector('.editor .ed-pop [data-lbl]'); await page.click('.editor .ed-pop [data-lbl]'); await sleep(250); }
 async function addPicto(page) { await page.click('.editor [data-at=picto]'); await page.waitForSelector('.editor .ed-pop [data-pic]'); await page.click('.editor .ed-pop [data-pic]'); await sleep(250); }
 async function drawShape(page, tool) { await page.click(`.editor [data-at=${tool}]`); const b = await page.$eval('.editor canvas', (c) => { const r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }); await page.mouse.move(b.x + b.w * 0.3, b.y + b.h * 0.3); await page.mouse.down(); await page.mouse.move(b.x + b.w * 0.55, b.y + b.h * 0.5, { steps: 6 }); await page.mouse.up(); await sleep(250); }
+// 1.0.18: Straight is shown with a green tick before the word (the owner's request); the tick is required, not just allowed.
+const STRAIGHT = '✓ Straight';
 const ui = (page) => page.evaluate(() => { const r = document.querySelector('.editor [data-rotr]'), c = document.querySelector('[data-rotctl]'); return { shown: !!c && !c.hidden, v: r ? Number(r.value) : null, text: (document.querySelector('[data-rotval]') || {}).textContent, valuetext: r && r.getAttribute('aria-valuetext'), disabled: r && r.disabled, one: document.querySelector('.ed-ctlgrid').classList.contains('one'), undo: !document.querySelector('.editor [data-a=undo]').disabled }; });
 // The editor's working copy (kept on this phone as it changes): the annotations as stored.
 const kept = (page, accId) => page.evaluate((id) => new Promise((ok) => { const r = indexedDB.open('wavelength-' + id + '-drafts'); r.onsuccess = () => { const q = r.result.transaction('state').objectStore('state').getAll(); q.onsuccess = () => { r.result.close(); const s = q.result.filter((x) => x.st && x.st.ann).sort((a, b) => b.updated - a.updated)[0]; ok(s ? s.st : null); }; }; r.onerror = () => ok(null); }), accId);
@@ -116,7 +118,7 @@ if (want('T') || want('U') || want('H') || want('N')) {
       await turnTo(page, cdp, 30, how); const right = await ui(page);
       await sleep(800); const st = await kept(page, acc.id); const a = st && st.ann[st.ann.length - 1];
       const near = (v, t) => Math.abs(v - t) <= 3;
-      record(`T-${kind}`, `${kind} (${how}): Rotation shown; left, Straight, right; the value in words; stored in whole degrees`, s0.shown && !s0.disabled && s0.text === 'Straight' && near(left.v, -30) && /° left$/.test(left.text) && left.valuetext === left.text && mid.text === 'Straight' && mid.v === 0 && near(right.v, 30) && /° right$/.test(right.text) && a && Number.isInteger(a.rot) && near(a.rot, 30), { s0: s0.text, left: left.text, mid: mid.text, right: right.text, stored: a && a.rot });
+      record(`T-${kind}`, `${kind} (${how}): Rotation shown; left, Straight, right; the value in words; stored in whole degrees`, s0.shown && !s0.disabled && s0.text === STRAIGHT && near(left.v, -30) && /° left$/.test(left.text) && left.valuetext === left.text && mid.text === STRAIGHT && mid.v === 0 && near(right.v, 30) && /° right$/.test(right.text) && a && Number.isInteger(a.rot) && near(a.rot, 30), { s0: s0.text, left: left.text, mid: mid.text, right: right.text, stored: a && a.rot });
       if (kind === 'text') await page.screenshot({ path: path.join(SHOTS, 'T-text-30-right-cover.png') });
       await page.click('.editor [data-sa=done]'); await sleep(150);
     }
@@ -133,7 +135,7 @@ if (want('T') || want('U') || want('H') || want('N')) {
     // Gently back to Straight: 2° snaps to 0 and says so.
     await page.focus('.editor [data-rotr]'); await page.evaluate(() => { const s = document.querySelector('.editor [data-rotr]'); s.value = 2; s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); }); await sleep(900);
     const snapped = { ui: await ui(page), st: (await kept(page, acc.id)).ann[0] };
-    record('T-straight', 'Close to the centre snaps to Straight, stored as no turn at all (as before 1.0.17)', snapped.ui.text === 'Straight' && !('rot' in snapped.st), { text: snapped.ui.text, rot: snapped.st.rot });
+    record('T-straight', 'Close to the centre snaps to Straight, stored as no turn at all (as before 1.0.17)', snapped.ui.text === STRAIGHT && !('rot' in snapped.st), { text: snapped.ui.text, rot: snapped.st.rot });
   }
   // ---------- N: arrows, dots, circles ----------
   if (want('N')) {
