@@ -44,7 +44,7 @@
    "draft": false,
    "reviewed": "2026-10-04",
    "updated": "2026-10-11",
-   "contentVersion": "487913ebe7ca138f",
+   "contentVersion": "18a62c9ba5f6c4a2",
    "sources": [
     "g:5385918cc2ee",
     "g:50f2134f87a3",
@@ -915,5 +915,5 @@
    "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the RCEM ultrasound education and training page with the two scales the guide cites."
   }
  ],
- "version": "52b03b8c1d57d987"
+ "version": "8bb3f8463bc0b66d"
 }
