@@ -8,6 +8,7 @@
 //                                          the supervisor labelled "Not yet verified by Wavelength".
 // Nothing here runs before migration 0012 (lifecycleReady): every function falls back to today's behaviour.
 import LOGBOOK from '../data/logbook.json';
+import { requestReminders } from './alerts.js';
 import { lifecycleReady, fullName, SITE } from './app-util.js';
 import { currentStatus, scopeLabel, logEvent, PURGE_EVIDENCE_DAYS, recheckDue } from './professional.js';
 import { queueStmt, deliver, deliverLater } from './notify.js';
@@ -253,6 +254,8 @@ export async function dailyLifecycle(env) {
   await step('drafts', () => dropStaleDrafts(env));
   await step('recheck', () => recheckDue(env));
   await step('stuck', () => markStuckSends(env));
+  // 19 Oct 2026: one reminder for a sign-off or assessment request still waiting three days on (alerts.js).
+  await step('request-reminders', () => requestReminders(env));
   await step('email', () => deliver(env, null, 100));
   await step('retention', () => retention(env));
   const failed = Object.values(counts).some((c) => c && c.error);

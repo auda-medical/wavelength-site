@@ -46,6 +46,7 @@ import { handleSearch, searchOn } from './search.js';
 import { appEvent, activity, count, forgetLearner } from './metrics.js';
 import { actionsForSignoff } from './verification/pathways.js';
 import { acceptRequest, declineRequest, reviewState, REVIEW_STATES } from './review.js';
+import * as AL from './alerts.js';
 
 import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady, sigKind, withSigKind, splitSigKind } from './app-util.js';
 
@@ -420,7 +421,7 @@ async function applySignoff(env, so, decisions, sup, method, ratings = {}, snap 
   }
 }
 
-async function signoffRequest(env, l, req) {
+async function signoffRequest(env, l, req, ctx) {
   const d = await body(req);
   const entries = await entriesFor(env, l, d && d.entryIds);
   if (!entries.length) return json({ ok: false, error: 'Choose at least one saved entry.' }, 400);
@@ -431,6 +432,8 @@ async function signoffRequest(env, l, req) {
   if (d.supervisorLink && !link) return json({ ok: false, error }, 400);
   await env.DB.prepare('INSERT INTO signoffs (id, learner_id, method, token_hash, entry_ids, snapshot, expires_at, supervisor_name, supervisor_email, supervisor_id) VALUES (?,?,?,?,?,?,?,?,?,?)')
     .bind(id, l.id, 'remote', await sha256(t), JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snapshotOf(entries)), Date.now() + 14 * 864e5, clip(d.supervisorName, 120), clip(d.supervisorEmail, 160).toLowerCase(), link ? link.supervisor_id : null).run();
+  // 19 Oct 2026: a request sent to a dashboard tells the supervisor at once (alerts.js).
+  if (link) await AL.signoffRequested(env, ctx, { code: id, learnerId: l.id, supervisorId: link.supervisor_id, count: entries.length });
   return json({ ok: true, code: id, link: `${new URL(req.url).origin}/app/sign/#${t}`, expires: 14, toDashboard: !!link });
 }
 
@@ -537,7 +540,7 @@ async function signoffList(env, l) {
   }) });
 }
 // Returned requests (decision 3): send to another approved supervisor, or to a one-off assessor with a fresh link.
-async function signoffReassign(env, l, req) {
+async function signoffReassign(env, l, req, ctx) {
   const d = await body(req);
   const so = d && await env.DB.prepare("SELECT * FROM signoffs WHERE id = ? AND learner_id = ? AND status = 'pending'").bind(clip(d.code, 20), l.id).first();
   if (!so) return json({ ok: false, error: 'This request is no longer open.' }, 404);
@@ -547,6 +550,7 @@ async function signoffReassign(env, l, req) {
     env.DB.prepare("UPDATE signoffs SET supervisor_id = ?, returned_at = NULL, returned_reason = NULL, token_hash = NULL, expires_at = MAX(expires_at, ?) WHERE id = ? AND status = 'pending'").bind(link.supervisor_id, Date.now() + 14 * 864e5, so.id),
     auditStmt(env, { actorType: 'learner', actorId: l.id, action: 'request.reassign', subjectType: 'signoff', subjectId: so.id, meta: { link: link.id } }),
   ]);
+  await AL.signoffRequested(env, ctx, { code: so.id, learnerId: l.id, supervisorId: link.supervisor_id, count: JSON.parse(so.entry_ids || '[]').length });
   return json({ ok: true, code: so.id, toDashboard: true });
 }
 async function signoffRelink(env, l, req) {
@@ -686,7 +690,7 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'reset/request') return resetRequest(env, req, ctx);
     if (p === 'reset/complete') return resetComplete(env, req);
     if (p === 'signoff/complete') return signoffComplete(env, req, ctx);
-    if (p === 'assessment/complete') return SV.assessmentComplete(env, req);
+    if (p === 'assessment/complete') return SV.assessmentComplete(env, req, ctx);
     const l = await learner(env, req);
     if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
     if (p !== 'account/delete') activity(env, ctx, l.id);
@@ -698,7 +702,7 @@ async function routeApp(req, env, ctx, url, p) {
     const found = await handleSearch(env, l, req, url, p, ctx, body);
     if (found) return found;
     if (p === 'sync') return syncPost(env, l, req, ctx);
-    if (p === 'signoff/request') return signoffRequest(env, l, req);
+    if (p === 'signoff/request') return signoffRequest(env, l, req, ctx);
     if (p === 'signoff/inperson') return signoffInPerson(env, l, req);
     if (p === 'signoff/cancel') return signoffCancel(env, l, req);
     if (p === 'signoff/image') return signoffImageUpload(env, l, req, url);
@@ -706,12 +710,12 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'evidence') return createEvidence(env, l, await body(req), { code, clip, fullName, profileOf, json, origin: url.origin });
     if (p === 'evidence/withdraw') return withdrawEvidence(env, l, await body(req), clip, json);
     if (p === 'account/delete') return deleteAccount(env, l, req, ctx);
-    if (p === 'signoff/reassign') return signoffReassign(env, l, req);
+    if (p === 'signoff/reassign') return signoffReassign(env, l, req, ctx);
     if (p === 'signoff/relink') return signoffRelink(env, l, req);
-    if (p === 'assessment/reassign') return SV.assessmentReassign(env, l, req);
+    if (p === 'assessment/reassign') return SV.assessmentReassign(env, l, req, ctx);
     if (p === 'assessment/relink') return SV.assessmentRelink(env, l, req);
     if (p === 'supervise/assessment/amend') return SV.superviseAssessmentAmend(env, l, req);
-    if (p === 'assessment/request') return SV.assessmentRequest(env, l, req);
+    if (p === 'assessment/request') return SV.assessmentRequest(env, l, req, ctx);
     if (p === 'assessment/inperson') return SV.assessmentInPerson(env, l, req);
     if (p === 'assessment/cancel') return SV.assessmentCancel(env, l, req);
     if (p === 'supervisors/add') return SV.supervisorAdd(env, l, req, ctx);
@@ -722,10 +726,10 @@ async function routeApp(req, env, ctx, url, p) {
     if (lst) return lst;
     if (p === 'email/resend') return resendEmail(env, l);
     if (p === 'supervise/signoff') return SV.superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, (so, dec, sup) => { const m = notifyLearner(env, so, dec, sup); if (ctx && ctx.waitUntil) ctx.waitUntil(m); });
-    if (p === 'supervise/assessment') return SV.superviseAssessmentComplete(env, l, req);
-    if (p === 'supervise/assessment/new') return SV.superviseAssessmentNew(env, l, req);
+    if (p === 'supervise/assessment') return SV.superviseAssessmentComplete(env, l, req, ctx);
+    if (p === 'supervise/assessment/new') return SV.superviseAssessmentNew(env, l, req, ctx);
     if (p === 'supervise/request/accept') return acceptRequest(env, l, req);
-    if (p === 'supervise/request/decline') return declineRequest(env, l, req);
+    if (p === 'supervise/request/decline') return declineRequest(env, l, req, ctx);
     const sv = await handleSupervisorApply(env, l, req, url, p, ctx);
     if (sv) return sv;
     const pro = await handleProfessional(env, l, req, url, p);

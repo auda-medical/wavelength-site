@@ -4,6 +4,7 @@
 // Supervisor links: a learner invites a supervisor by email. Once the supervisor accepts in their own app, they see
 // the learner's progress and the written logbook (never images), and sign-off or assessment requests addressed to them.
 import LOGBOOK from '../data/logbook.json';
+import * as AL from './alerts.js';
 import { SITE, json, clip, EMAIL, sha256, token, code, body, fullName, profileOf, contentHash, SIGNED_FIELDS, verificationReady, lifecycleReady, sigKind, withSigKind } from './app-util.js';
 import { buildSummary, signedAssessments } from './evidence.js';
 import { sendMail, learner as learnerOf } from './academy.js';
@@ -59,12 +60,15 @@ function formError(f, kind) {
 }
 // The assessor's verified status is captured with the signature and never changed afterwards. Only the dashboard
 // route identifies the assessor by their Wavelength account; in person and by link, the details are as declared.
-async function finishAssessment(env, row, f, sup, sig, supervisorId, method) {
+async function finishAssessment(env, row, f, sup, sig, supervisorId, method, ctx) {
   const who = await env.DB.prepare('SELECT a.learner_id, a.kind, l.title, l.first_name, l.last_name FROM assessments a JOIN learners l ON l.id = a.learner_id WHERE a.id = ?').bind(row.id).first();
   const snap = await snapshotFor(env, { pathway: row.pathway, module: row.module, declared: sup, method, accountId: supervisorId || null, learnerName: who ? fullName(who) : null, actions: actionsForAssessment(row.kind || who && who.kind) });
   const r = await env.DB.prepare(`UPDATE assessments SET status = 'signed', outcome = ?, assessed_on = ?, data = ?, supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL, supervisor_id = COALESCE(?, supervisor_id)${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
     .bind(f.outcome, f.date, JSON.stringify({ ...JSON.parse(row.data || '{}'), ...f }), sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sig, supervisorId || null, ...(snap ? [JSON.stringify(snap)] : []), row.id).run();
-  return !!(r.meta && r.meta.changes); // false when another submission signed it first
+  const ok = !!(r.meta && r.meta.changes); // false when another submission signed it first
+  // 19 Oct 2026: the learner hears at once (alerts.js), except for an assessment signed on their own phone.
+  if (ok && who && method !== 'in-person') await AL.assessmentSigned(env, ctx, { code: row.id, learnerId: who.learner_id, supervisorName: sup.name, kind: who.kind });
+  return ok;
 }
 const publicRow = (r) => ({
   id: r.id, pathway: r.pathway, module: r.module, kind: r.kind, method: r.method, status: r.status, outcome: r.outcome, assessed_on: r.assessed_on,
@@ -93,7 +97,7 @@ export async function eligibleLink(env, learnerId, linkId, need) {
   if (!el.ok) return { link: null, error: el.reasons.includes('out_of_scope') ? 'This supervisor is not approved by Wavelength for everything in this request. Choose another supervisor, or send a one-off link.' : 'This supervisor is not available for Wavelength supervision at present. Choose another supervisor, or send a one-off link.' };
   return { link };
 }
-export async function assessmentRequest(env, l, req) {
+export async function assessmentRequest(env, l, req, ctx) {
   const d = await body(req);
   if (!d || !moduleOf(d.pathway, d.module) || !KINDS.includes(d.kind)) return json({ ok: false, error: 'Choose the pathway module and type of assessment.' }, 400);
   const entries = await entriesFor(env, l.id, d.entryIds);
@@ -102,6 +106,7 @@ export async function assessmentRequest(env, l, req) {
   const t = token(), id = code('AS');
   await env.DB.prepare("INSERT INTO assessments (id, learner_id, pathway, module, kind, method, entry_ids, snapshot, data, token_hash, expires_at, supervisor_id, supervisor_name) VALUES (?,?,?,?,?,'remote',?,?,?,?,?,?,?)")
     .bind(id, l.id, d.pathway, d.module, d.kind, JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snap(entries)), JSON.stringify({ learnerReflection: clip(d.learnerReflection, 3000), topic: clip(d.topic, 160) }), await sha256(t), Date.now() + 14 * 864e5, link ? link.supervisor_id : null, clip(d.supervisorName, 120)).run();
+  if (link) await AL.assessmentRequested(env, ctx, { code: id, learnerId: l.id, supervisorId: link.supervisor_id, kind: d.kind });
   return json({ ok: true, code: id, link: `${new URL(req.url).origin}/app/assess/#${t}`, toDashboard: !!link });
 }
 export async function assessmentInPerson(env, l, req) {
@@ -146,7 +151,7 @@ export async function assessmentView(env, url) {
   if (a.expires_at < Date.now()) return json({ ok: false, error: 'This assessment link has expired. Ask the learner to send a new one.' }, 410);
   return json(viewOf(a));
 }
-export async function assessmentComplete(env, req) {
+export async function assessmentComplete(env, req, ctx) {
   const d = await body(req);
   const a = d && await byToken(env, d.token);
   if (!a || a.status !== 'pending' || a.expires_at < Date.now()) return json({ ok: false, error: 'This assessment link is no longer valid.' }, 410);
@@ -165,7 +170,7 @@ export async function assessmentComplete(env, req) {
     ]);
     return json({ ok: false, blocked: true, error: NEUTRAL_REFUSAL }, 403);
   }
-  if (!(await finishAssessment(env, a, f, sup, sig, null, 'remote'))) return json({ ok: false, error: 'This assessment link is no longer valid.' }, 410);
+  if (!(await finishAssessment(env, a, f, sup, sig, null, 'remote', ctx))) return json({ ok: false, error: 'This assessment link is no longer valid.' }, 410);
   return json({ ok: true, code: a.id });
 }
 
@@ -490,7 +495,7 @@ export async function superviseSignoffComplete(env, l, req, applySignoff, cleanS
   if (notify) notify(so, decisions, sup);
   return json({ ok: true, code: so.id });
 }
-export async function superviseAssessmentComplete(env, l, req) {
+export async function superviseAssessmentComplete(env, l, req, ctx) {
   const d = await body(req);
   const a = d && await env.DB.prepare("SELECT * FROM assessments WHERE id = ? AND supervisor_id = ? AND status = 'pending'").bind(clip(d.code, 20), l.id).first();
   if (!a || a.expires_at < Date.now()) return json({ ok: false, error: 'This request is no longer open.' }, 404);
@@ -501,12 +506,12 @@ export async function superviseAssessmentComplete(env, l, req) {
   if (err) return json({ ok: false, error: err }, 400);
   if (!sup.name || !sup.role || !d.confirm) return json({ ok: false, error: 'Enter your name and role, and tick the confirmation.' }, 400);
   if (!SIG.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box.' }, 400);
-  if (!(await finishAssessment(env, a, f, sup, sig, l.id, 'dashboard'))) return json({ ok: false, error: 'This request is no longer open.' }, 404);
+  if (!(await finishAssessment(env, a, f, sup, sig, l.id, 'dashboard', ctx))) return json({ ok: false, error: 'This request is no longer open.' }, 404);
   await env.DB.prepare("UPDATE assessments SET method = 'dashboard' WHERE id = ?").bind(a.id).run();
   return json({ ok: true, code: a.id });
 }
 // A supervisor records an assessment for a linked learner on their own device, without a request.
-export async function superviseAssessmentNew(env, l, req) {
+export async function superviseAssessmentNew(env, l, req, ctx) {
   const d = await body(req);
   if (!d) return json({ ok: false, error: 'You no longer supervise this learner.' }, 404);
   if (!moduleOf(d.pathway, d.module) || !KINDS.includes(d.kind)) return json({ ok: false, error: 'Choose the pathway module and type of assessment.' }, 400);
@@ -522,7 +527,7 @@ export async function superviseAssessmentNew(env, l, req) {
   const id = code('AS');
   await env.DB.prepare("INSERT INTO assessments (id, learner_id, pathway, module, kind, method, entry_ids, snapshot, data, supervisor_id) VALUES (?,?,?,?,?,'dashboard',?,?,'{}',?)")
     .bind(id, t.id, d.pathway, d.module, d.kind, JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snap(entries)), l.id).run();
-  await finishAssessment(env, { id, data: '{}', pathway: d.pathway, module: d.module, kind: d.kind }, f, sup, sig, l.id, 'dashboard');
+  await finishAssessment(env, { id, data: '{}', pathway: d.pathway, module: d.module, kind: d.kind }, f, sup, sig, l.id, 'dashboard', ctx);
   return json({ ok: true, code: id });
 }
 
@@ -588,7 +593,7 @@ export async function superviseAssessmentAmend(env, l, req) {
 }
 
 // ---------- Returned requests: the learner reassigns, sends to a one-off assessor, or cancels ----------
-export async function assessmentReassign(env, l, req) {
+export async function assessmentReassign(env, l, req, ctx) {
   const d = await body(req);
   const a = d && await env.DB.prepare("SELECT * FROM assessments WHERE id = ? AND learner_id = ? AND status = 'pending'").bind(clip(d.code, 20), l.id).first();
   if (!a) return json({ ok: false, error: 'This request is no longer open.' }, 404);
@@ -598,6 +603,7 @@ export async function assessmentReassign(env, l, req) {
     env.DB.prepare("UPDATE assessments SET supervisor_id = ?, returned_at = NULL, returned_reason = NULL, expires_at = MAX(expires_at, ?) WHERE id = ? AND status = 'pending'").bind(link.supervisor_id, Date.now() + 14 * 864e5, a.id),
     auditStmt(env, { actorType: 'learner', actorId: l.id, action: 'request.reassign', subjectType: 'assessment', subjectId: a.id, meta: { link: link.id } }),
   ]);
+  await AL.assessmentRequested(env, ctx, { code: a.id, learnerId: l.id, supervisorId: link.supervisor_id, kind: a.kind });
   return json({ ok: true, code: a.id });
 }
 export async function assessmentRelink(env, l, req) {

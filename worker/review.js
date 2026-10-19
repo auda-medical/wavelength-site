@@ -12,6 +12,7 @@
 import { json, clip, body, lifecycleReady } from './app-util.js';
 import { auditStmt } from './audit.js';
 import { nowIso } from './time.js';
+import { requestDeclined } from './alerts.js';
 
 export const REVIEW_STATES = {
   pending: 'Waiting for the supervisor', under_review: 'Under review', declined: 'Declined by the supervisor', returned: 'Came back to you',
@@ -56,7 +57,7 @@ export async function acceptRequest(env, l, req) {
 
 // POST supervise/request/decline { kind, code, reason }: the request goes back to the learner with the reason, who can
 // send it to someone else or cancel it (the existing returned-request flow). Nothing is signed or changed in the logbook.
-export async function declineRequest(env, l, req) {
+export async function declineRequest(env, l, req, ctx) {
   if (!(await ready(env))) return json({ ok: false, error: 'Not available yet.' }, 404);
   const d = await body(req);
   const reason = clip(d && d.reason, 500);
@@ -68,5 +69,8 @@ export async function declineRequest(env, l, req) {
     env.DB.prepare(`UPDATE ${o.t} SET returned_from = supervisor_id, supervisor_id = NULL, returned_at = ?, returned_reason = 'declined', declined_at = ?, decline_reason = ?, token_hash = NULL WHERE id = ? AND status = 'pending' AND supervisor_id = ?`).bind(at, at, reason, o.row.id, l.id),
     auditStmt(env, { actorType: 'supervisor', actorId: l.id, action: 'request.decline', subjectType: d.kind, subjectId: o.row.id, meta: { length: reason.length } }, { ifChanged: true }),
   ]);
-  return json({ ok: true, state: 'declined', changed: !!(out[0] && out[0].meta && out[0].meta.changes) });
+  const changed = !!(out[0] && out[0].meta && out[0].meta.changes);
+  // 19 Oct 2026: the learner hears at once (alerts.js); the reason stays in the app, never in the email.
+  if (changed) await requestDeclined(env, ctx, { what: d.kind === 'assessment' ? 'as' : 'so', code: o.row.id, learnerId: o.row.learner_id, supervisorName: [l.title, l.first_name, l.last_name].filter(Boolean).join(' ') });
+  return json({ ok: true, state: 'declined', changed });
 }

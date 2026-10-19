@@ -201,6 +201,44 @@ export function render(kind, d) {
       paragraphs: [hi, `${d.learner} found you in Wavelength's supervisor search and asked you to supervise their ultrasound logbook.`, 'Accept or decline it in your supervisor dashboard. Nothing is shared until you accept.'],
       button: { href: `${APP}/supervise`, label: 'Open your dashboard' },
     }),
+    // Request and outcome notices (alerts.js, 19 Oct 2026). Names and counts only: no findings, images or reasons.
+    // The links open the right screen of the logbook (in the app itself once it handles app links, 1.0.20).
+    req_signoff: () => ({
+      subject: `${d.learner} sent you ${d.count === 1 ? 'a scan' : `${d.count} scans`} to sign off`,
+      heading: 'Sign-off request',
+      paragraphs: [hi, `${d.learner} sent you ${d.count === 1 ? 'a scan' : `${d.count} scans`} to review and sign off in Wavelength.`, 'Open your supervisor dashboard to review and sign, or to decline with a reason so they can ask someone else.'],
+      button: { href: `${APP}/supervise`, label: 'Review and sign' },
+    }),
+    req_assess: () => ({
+      subject: `${d.learner} sent you an assessment to complete`,
+      heading: 'Assessment request',
+      paragraphs: [hi, `${d.learner} asked you to complete a ${String(d.kind || 'assessment').toLowerCase()} in Wavelength.`, 'Open your supervisor dashboard to complete and sign it, or to decline with a reason so they can ask someone else.'],
+      button: { href: `${APP}/supervise`, label: 'Open the assessment' },
+    }),
+    rem_signoff: () => ({
+      subject: `Reminder: ${d.learner} is waiting for your sign-off`,
+      heading: 'Waiting for your sign-off',
+      paragraphs: [hi, `${d.learner} sent you scans to sign off in Wavelength three days ago, and they are still waiting.`, 'If you cannot review them, decline the request with a reason so they can ask someone else.'],
+      button: { href: `${APP}/supervise`, label: 'Review and sign' },
+    }),
+    rem_assess: () => ({
+      subject: `Reminder: ${d.learner} is waiting for an assessment`,
+      heading: 'Waiting for your assessment',
+      paragraphs: [hi, `${d.learner} asked you to complete an assessment in Wavelength three days ago, and it is still waiting.`, 'If you cannot do it, decline the request with a reason so they can ask someone else.'],
+      button: { href: `${APP}/supervise`, label: 'Open the assessment' },
+    }),
+    as_signed: () => ({
+      subject: `Your ${String(d.kind || 'assessment').toLowerCase()} has been signed`,
+      heading: 'Assessment signed',
+      paragraphs: [hi, `${d.supervisor} completed and signed your ${String(d.kind || 'assessment').toLowerCase()} in Wavelength.`, 'Open the app to read it.', 'To stop these emails, untick the setting under Me, Settings, in the app.'],
+      button: { href: `${APP}/assess`, label: 'See your assessment' },
+    }),
+    req_declined: () => ({
+      subject: `${d.supervisor} could not take your ${d.what}`,
+      heading: 'Request declined',
+      paragraphs: [hi, `${d.supervisor} declined your ${d.what} in Wavelength and gave a reason.`, 'Open the app to read the reason, then send it to another supervisor or cancel it.', 'To stop these emails, untick the setting under Me, Settings, in the app.'],
+      button: { href: `${APP}/outstanding`, label: 'Open your requests' },
+    }),
   };
   const f = T[kind];
   if (!f) return null;

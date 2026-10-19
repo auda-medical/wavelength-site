@@ -122,7 +122,7 @@ test('simulated 05:15 daily cron: one job run, nothing else changes, and a secon
       const counts = JSON.parse(runs[n - 1].counts);
       assert.deepEqual(counts, {
         expiry: { expired: 0, people: 0 }, reminders: counts.reminders, lapses: { started: 0, cleared: 0, escalated: 0 },
-        purge: { purged: 0 }, drafts: { deleted: 0 }, recheck: { checked: 0 }, stuck: { unknown: 0 }, email: counts.email,
+        purge: { purged: 0 }, drafts: { deleted: 0 }, recheck: { checked: 0 }, stuck: { unknown: 0 }, 'request-reminders': { queued: 0 }, email: counts.email,
         retention: { events: 0, audit: 0, outbox: 0, jobs: 0 },
       });
       assert.equal(counts.reminders.queued, 0);

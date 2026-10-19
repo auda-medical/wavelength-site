@@ -5,6 +5,7 @@
 //                 organisations, logins), with its own login and session
 //   /elearning/*, /api/*  Wavelength Academy (worker/academy.js)
 import { preflight, withNative } from './native.js';
+import { appLinkFile } from './app-links.js';
 import { handleAcademy, sendCertificate } from './academy.js';
 import { handleApp } from './app.js';
 import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
@@ -453,6 +454,8 @@ export default {
     }
     // Cookieless website measurement (worker/metrics.js): always 204, never fails visibly.
     if (p === '/api/m') return beacon(req, env, ctx);
+    // App links: the files that let a logbook link open the installed app (worker/app-links.js).
+    if (p.startsWith('/.well-known/')) { const r = appLinkFile(p); if (r) return r; }
     // Stripe webhook (worker/bookings.js): 404 until STRIPE_WEBHOOK_SECRET is set.
     if (p === '/api/stripe/webhook') return handleStripe(req, env);
     // A supervisor confirms (or disputes) that they are the person listed in an official directory, from a link sent to
