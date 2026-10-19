@@ -2633,5 +2633,11 @@
 "Type their name": "Namen eingeben",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "Ihr Supervisor sieht sie jetzt in der App, mit {n}. Sie werden benachrichtigt, wenn er antwortet.",
 "Your supervisor sees it in their app now. You get a notification when they reply.": "Ihr Supervisor sieht sie jetzt in der App. Sie werden benachrichtigt, wenn er antwortet.",
-"{name} sees it in their app, with the images you include, and gets a notification.": "{name} sieht sie in der App, mit den Bildern, die Sie beifügen, und erhält eine Benachrichtigung."
+"{name} sees it in their app, with the images you include, and gets a notification.": "{name} sieht sie in der App, mit den Bildern, die Sie beifügen, und erhält eine Benachrichtigung.",
+"Check the connection.": "Prüfen Sie die Verbindung.",
+"Could not send it: {why}": "Senden nicht möglich: {why}",
+"I have checked every image and clip in this scan. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "Ich habe jedes Bild und jeden Clip dieser Untersuchung geprüft. Es sind kein Patientenname, keine Nummer, kein Geburtsdatum, kein Krankenhausname und keine andere Kennung mehr vorhanden, und das Teilen mit {name} entspricht der Informations-Governance-Richtlinie meines Krankenhauses.",
+"Sending to {name}…": "Wird an {name} gesendet…",
+"Tick the declaration about your images to send them, or choose Save as draft.": "Haken Sie die Erklärung zu Ihren Bildern an, um sie zu senden, oder wählen Sie Als Entwurf speichern.",
+"Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "Bleiben auf diesem Telefon, außer Sie senden sie zur Bestätigung. Schneiden Sie Kennungen vor dem Speichern zu und schwärzen Sie sie; Anmerkungen nach Wunsch. Clips bis 10 Sekunden, ohne Ton."
 }

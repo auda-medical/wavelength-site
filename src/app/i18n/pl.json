@@ -2709,5 +2709,11 @@
 "Type their name": "Wpisz imię i nazwisko",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "Opiekun widzi ją teraz w aplikacji, z: {n}. Dostaniesz powiadomienie, gdy odpowie.",
 "Your supervisor sees it in their app now. You get a notification when they reply.": "Opiekun widzi ją teraz w aplikacji. Dostaniesz powiadomienie, gdy odpowie.",
-"{name} sees it in their app, with the images you include, and gets a notification.": "{name} widzi ją w aplikacji, z dołączonymi obrazami, i dostaje powiadomienie."
+"{name} sees it in their app, with the images you include, and gets a notification.": "{name} widzi ją w aplikacji, z dołączonymi obrazami, i dostaje powiadomienie.",
+"Check the connection.": "Sprawdź połączenie.",
+"Could not send it: {why}": "Nie udało się wysłać: {why}",
+"I have checked every image and clip in this scan. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "Sprawdziłem każdy obraz i klip w tym badaniu. Nie pozostało żadne imię i nazwisko, numer, data urodzenia pacjenta, nazwa szpitala ani inny identyfikator, a udostępnienie ich osobie {name} jest zgodne z polityką zarządzania informacją mojego szpitala.",
+"Sending to {name}…": "Wysyłanie do: {name}…",
+"Tick the declaration about your images to send them, or choose Save as draft.": "Zaznacz oświadczenie o obrazach, aby je wysłać, albo wybierz Zapisz jako szkic.",
+"Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "Zostają na tym telefonie, chyba że wyślesz je do podpisu. Przed zapisaniem przytnij i zamaskuj identyfikatory, a jeśli chcesz, dodaj adnotacje. Klipy do 10 sekund, bez dźwięku."
 }

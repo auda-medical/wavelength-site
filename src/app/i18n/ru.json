@@ -2709,5 +2709,11 @@
 "Type their name": "Введите имя",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "Руководитель уже видит запрос в приложении ({n}). Вы получите уведомление, когда он ответит.",
 "Your supervisor sees it in their app now. You get a notification when they reply.": "Руководитель уже видит запрос в приложении. Вы получите уведомление, когда он ответит.",
-"{name} sees it in their app, with the images you include, and gets a notification.": "{name} видит запрос в приложении вместе с приложенными изображениями и получает уведомление."
+"{name} sees it in their app, with the images you include, and gets a notification.": "{name} видит запрос в приложении вместе с приложенными изображениями и получает уведомление.",
+"Check the connection.": "Проверьте подключение.",
+"Could not send it: {why}": "Не удалось отправить: {why}",
+"I have checked every image and clip in this scan. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "Я проверил каждое изображение и клип этого исследования. Не осталось имени, номера, даты рождения пациента, названия больницы или иных идентификаторов, и передача их {name} соответствует политике управления информацией моей больницы.",
+"Sending to {name}…": "Отправляем: {name}…",
+"Tick the declaration about your images to send them, or choose Save as draft.": "Отметьте заявление об изображениях, чтобы отправить их, или выберите «Сохранить как черновик».",
+"Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "Остаются на этом телефоне, если вы не отправите их на подпись. Перед сохранением обрежьте и скройте идентификаторы, при желании добавьте пометки. Клипы до 10 секунд, без звука."
 }

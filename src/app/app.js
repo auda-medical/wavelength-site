@@ -1833,9 +1833,10 @@
       section('supervision', T('Supervision'),
         '<div class="field" data-req="supervision"><span class="lab" id="lab-supervision">' + esc(T('Level of supervision')) + req + '</span>' + supOpts + '</div>' +
         supField +
+        '<div class="field" id="senddeclf" hidden><label class="check"><input type="checkbox" id="senddecl"><span id="senddecltx"></span></label></div>' +
         '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>' + esc(T('No sign-off needed for this scan')) + '</span></label></div>') +
       section('media', T('Images and clips'),
-        '<div class="field"><p class="hint" id="media-hint">' + esc(T('Stay on this phone only. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
+        '<div class="field"><p class="hint" id="media-hint">' + esc(T('Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
         '<input type="file" accept="image/*" capture="environment" id="cam" hidden><input type="file" accept="image/*" id="pick" hidden multiple><input type="file" accept="video/*" capture="environment" id="vcam" hidden><input type="file" accept="video/*" id="vpick" hidden></div>') +
       section('reflection', T('Reflection'),
         '<div class="field"><label for="refl">' + esc(T('Your reflection')) + '</label><p class="hint">' + esc(T('What you learned and what you will do differently. Counts as a reflective note.')) + '</p><textarea id="refl" name="reflection">' + esc(e.reflection || '') + '</textarea></div>') +
@@ -1856,6 +1857,8 @@
       var b1 = $('#sv1', form), b2 = $('#sv2', form), hint = $('#savehint', form); if (!b2) return;
       var lvl = (form.querySelector('input[name=supervision]:checked') || {}).value || '', none = !!(form.querySelector('input[name=noSignoff]') || {}).checked, ps = pickedSup();
       var set = function (t1, a1, t2, a2, h) { b1.textContent = t1; b1.dataset.after = a1; b2.hidden = !t2; if (t2) { b2.textContent = t2; b2.dataset.after = a2; } hint.textContent = h || ''; };
+      var dbox = $('#senddeclf', form), direct = lvl === 'mentored' && !none && ps && ps.link && count() > 0;
+      if (dbox) { dbox.hidden = !direct; if (direct) $('#senddecltx', form).textContent = T('I have checked every image and clip in this scan. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital\'s information governance policy.', { name: ps.name }); }
       if (!lvl) set(T('Save scan'), '', '', '', '');
       else if (none) set(T('Save to my logbook'), '', '', '', T('No sign-off needed for this scan.'));
       else if (lvl === 'direct') set(T('Save and sign now: supervisor is with me'), 'person', T('Save as draft'), 'draft', T('Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.'));
@@ -1870,7 +1873,9 @@
       if (!act || act === 'draft') { if (act === 'draft') toast(T('Saved as a draft. Send it for sign-off from Scans when you are ready.'), 4000); return; }
       var en = S.entries.find(function (x) { return x.id === id; });
       if (!en || en._dirty || !navigator.onLine) { toast(T('Saved on this device. Send it for sign-off from Scans once it has synced.'), 5000); return; }
-      if (act === 'person') signInPerson([id]); else signByLink([id], { sup: ps && ps.link ? ps.link : null });
+      if (act === 'person') { signInPerson([id]); return; }
+      var linked = ps && ps.link ? activeSupervisors().find(function (x) { return String(x.id) === String(ps.link); }) : null;
+      if (linked) sendDirect(id, linked); else signByLink([id], { sup: null });
     };
     var drawFindings = function () {
       var t = TYPES[(form.querySelector('input[name=type]:checked') || {}).value];
@@ -1929,6 +1934,7 @@
     var count = function () { return existing.length - removed.length + draftImages.length; };
     var drawGallery = function () {
       var g = $('#gal');
+      if (syncSave) setTimeout(syncSave, 0); // 1.0.21: the image declaration appears once the scan has images
       // 1.0.12: a photo can be opened again to change its annotations, crop, orientation or add redactions. It
       // opens from its redacted copy, so redactions already made stay; clips cannot be edited after preparing.
       var edBtn = function (attr, id) { return '<span class="ed" ' + attr + '="' + id + '" role="button" tabindex="0" aria-label="' + esc(T('Edit image')) + '">' + ET.annotate + '</span>'; };
@@ -2191,6 +2197,12 @@
       }
       // The server refuses an entry over 20,000 characters, so say so here rather than keep one that cannot sync.
       if (JSON.stringify(strip(out)).length > 19000) { err.textContent = T('This scan has too much text to sync. Shorten the reflection or other notes.'); err.hidden = false; return; }
+      var psNow = editing ? null : pickedSup();
+      if (!editing && afterAct === 'send' && psNow && psNow.link && count() > 0 && !$('#senddecl', form).checked) {
+        markField($('#senddeclf', form), T('Tick the declaration about your images to send them, or choose Save as draft.'));
+        scrollToField($('#senddeclf', form), true); NAT.haptic('warning');
+        return;
+      }
       var hits = guard(out);
       var finish = function () {
         var btn = $('button[type=submit]', form);
@@ -3485,6 +3497,34 @@
         });
       });
     });
+  }
+  // 1.0.21 (owner, 20 Oct): Save and send to <name> sends at once; the declaration was ticked on the scan form.
+  function sendDirect(id, sup) {
+    var canShare = !!(S.me && S.me.imageShare && window.crypto && crypto.subtle), clipsOk = !!(S.me && S.me.clipShare), code = null, t0 = Date.now();
+    var name = sup.name || sup.email, msg = function (out) { return T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(1, 'ultrasound scan'), link: out.link }); };
+    toast(T('Sending to {name}…', { name: name }), 6000);
+    (canShare ? imagesFor(id) : Promise.resolve([])).then(function (im) {
+      var set = { entry: id, images: im.filter(function (x) { return clipsOk || !isClip(x); }).slice(0, 12) }, sets = set.images.length ? [set] : [], n = set.images.length;
+      return api('/api/app/signoff/request', { entryIds: [id], supervisorName: name, supervisorId: sup.supervisorId || null, supervisorLink: sup.id }, { timeout: 45000 }).catch(function (ex) {
+        if (!ex || !ex.timeout) throw ex;
+        return api('/api/app/signoffs').then(function (r) {
+          var hit = (r.signoffs || []).find(function (x) { return x.status === 'pending' && x.expires_at >= t0 + 14 * 864e5 - 120000 && x.entry_ids.indexOf(id) >= 0; });
+          if (!hit) throw ex;
+          return { ok: true, code: hit.id, link: '', toDashboard: true };
+        }, function () { throw ex; });
+      }).then(function (res) {
+        if (!res.ok) throw new Error(res.error);
+        code = res.code;
+        if (!n) return { link: res.link, images: 0, dash: res.toDashboard };
+        return shareImages(res.code, sets, null, { link: res.link, dash: res.toDashboard, scans: 1, entries: [id], expires: Date.now() + 14 * 864e5 }).then(function (k) { return { link: res.link ? res.link + '.' + k : '', images: n, dash: res.toDashboard }; });
+      });
+    }).then(function (out) { NAT.haptic('success'); linkReady(out, msg(out), T('Ultrasound logbook sign-off')); sync(); })
+      .catch(function (ex) {
+        if (ex && ex.share) { shareFailed(ex.share, ex, function (k) { linkReady({ link: ex.share.link ? ex.share.link + '.' + k : '', images: ex.share.files.length, dash: ex.share.dash }, msg({ link: ex.share.link }), T('Ultrasound logbook sign-off')); }); return; }
+        if (code) api('/api/app/signoff/cancel', { code: code }).then(function () { del('shares', code); });
+        toast(T('Could not send it: {why}', { why: (ex && ex.message) || T('Check the connection.') }), 6000);
+        signByLink([id], { sup: sup.id });
+      });
   }
   function linkReady(out, msg, subject) {
     // 1.0.21: sent to a linked supervisor's dashboard: it is there now, with the images; the link is optional.
