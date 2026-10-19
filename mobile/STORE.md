@@ -67,6 +67,8 @@ In nine languages: English, French, Spanish, German, Italian, Polish, Arabic, Ru
 
 Wavelength is independent of RCEM, FAMUS, the Intensive Care Society, EUSEM, ACEM, CPoCUS and ACEP. Your supervisor and accrediting body decide what evidence they accept. Wavelength is a logbook and education tool. It does not diagnose, and it is not a medical device.
 
+Have a suggestion for the app? Tell us at hello@thewavelength.co.uk. Every idea is read by the Wavelength team.
+
 ## Apple App Privacy (nutrition label)
 
 Data used to track you: none. No third-party advertising or analytics SDKs.
@@ -91,6 +93,7 @@ Device backups: images and clips are excluded from iCloud and iTunes backups (th
   - App activity: other user-generated content (written logbook entries, sign-offs and assessments).
   - Photos and videos: photos, videos. Optional: only images and clips a learner chooses to share with a supervisor in a sign-off link. Encrypted on your phone before upload; Wavelength stores only the encrypted copy and never receives the key. Deleted after sign-off, on cancel, or when the link expires (14 days).
 - Photos and videos are declared as collected (owner's decision, October 2026, replacing the earlier "not collected" answer). The supervisor's page that decrypts them is served by Wavelength, so the strict end-to-end exemption does not clearly apply. Images and clips otherwise stay on the phone and never sync. The privacy notice explains the encrypted sharing. Apple App Privacy: same answer.
+- Device or other IDs (from 1.0.20): the phone-notification token, collected only when the person turns phone notifications on; app functionality; not shared; deleted when they turn notifications off, log out on that phone or delete the account. Delivered through Google Firebase Cloud Messaging and Apple (processors). Apple App Privacy: Identifiers > Device ID, App Functionality, linked to the user, not tracking (DPIA Amendment 4, signed 19 October 2026).
 - Data encrypted in transit: yes.
 - Fingerprint and face unlock: handled by the phone; the app receives only pass or fail. Not collected.
 - Users can request deletion: yes, in the app and at https://thewavelength.co.uk/app/delete-account/ (covers supervisor verification data too).
@@ -121,6 +124,10 @@ Email verification (built October 2026) needs no change to these answers. Profes
 ## Release 1.0.17 (23): what's new (both stores, under 500 characters)
 
 Turn text, labels, pictograms and boxes with the new Rotation control beside Size, and watch them turn on the image or clip. Photos left by earlier versions are reviewed one by one: nothing is selected until you choose it, and only the photos you finish are saved in a scan. The scan form now starts with "Which scan did you do?". Annotation sizes have a wider range. Supervisors see clearer verification details.
+
+## Release 1.0.20 (27): what's new (both stores, under 500 characters)
+
+Get a phone notification when a supervisor signs off your scans, queries them or asks for more information, and when someone sends you scans to sign. Turn it on in Me, Settings. Supervisors can now ask for more information without signing, and you send it back in one tap. Email links open the app. Wavelength recovers by itself after your phone has kept it asleep. Have a suggestion? Tell us from Me, Help.
 
 ## Export compliance (Apple) and encryption
 
