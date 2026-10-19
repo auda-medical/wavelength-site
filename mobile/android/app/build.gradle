@@ -28,9 +28,11 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
+            // 1.0.18: R8 shrinks, optimises and obfuscates the app's code (Google Play "DEX code optimisation", due Feb
+            // 2027). Capacitor and its plugins bring their own keep rules; the app's own rules are in proguard-rules.pro.
+            minifyEnabled true
             if (System.getenv("WL_KEYSTORE")) signingConfig signingConfigs.release
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
