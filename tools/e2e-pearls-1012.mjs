@@ -79,8 +79,10 @@ for (const [w, h, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
   await page.goto(`${BASE}/learn/${issue.slug}/test/`);
   const built = await page.evaluate(() => [...document.querySelectorAll('#q1 .quiz-opt')].map((b) => [b.querySelector('.quiz-l').textContent, b.querySelector('span:last-child').textContent.trim()]));
   const same = JSON.stringify(built.map(([l, t]) => [l, `${l} ${t}`])) === JSON.stringify(e.answers.map(([l, t]) => [l, t]));
-  const camp = e.links.filter((l) => /utm_campaign=/.test(l)).every((l) => /utm_campaign=pearl-tamponade/.test(l));
-  record('E1', `Newsletter issue: "${e.h1}", every learn link goes to ${issue.slug}, every campaign tag is pearl-tamponade, images load`, e.h1 === issue.subject && !wrong.length && camp && imgOk.every((s) => s === 200), { wrong, imgOk, camp });
+  // The week's campaign tag: pearl-<key> from the queue (was fixed to tamponade, the first issue).
+  const tag = 'pearl-' + ((JSON.parse(fs.readFileSync(new URL('../data/pearl-issues.json', import.meta.url), 'utf8')).issues.find((x) => x.slug === issue.slug) || {}).key || 'tamponade');
+  const camp = e.links.filter((l) => /utm_campaign=/.test(l)).every((l) => l.includes('utm_campaign=' + tag));
+  record('E1', `Newsletter issue: "${e.h1}", every learn link goes to ${issue.slug}, every campaign tag is ${tag}, images load`, e.h1 === issue.subject && !wrong.length && camp && imgOk.every((s) => s === 200), { wrong, imgOk, camp });
   record('E2', 'The four answer buttons in the email match the built test page, letter for letter', same && e.answers.length === 4, { email: e.answers, built });
   await page.goto(`${BASE}/email/pearl/`); await page.screenshot({ path: path.join(OUT, 'E-issue.png'), fullPage: true });
   await ctx.close();
