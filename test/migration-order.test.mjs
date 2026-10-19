@@ -11,7 +11,9 @@ const DIR = new URL('../migrations/', import.meta.url);
 const ALL = readdirSync(DIR).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
 const sql = (f) => readFileSync(new URL(f, DIR), 'utf8');
 const LATE = ['0014_business_analytics.sql', '0015_credential_authorisation.sql'];
-const PRODUCTION = [...ALL.filter((f) => !LATE.includes(f)), ...LATE];
+// Migrations after 0017 (0018 phone notifications, October 2026) run in numeric order after 0014 and 0015.
+const UPTO = ALL.filter((f) => f < '0018');
+const PRODUCTION = [...UPTO.filter((f) => !LATE.includes(f)), ...LATE, ...ALL.filter((f) => f >= '0018')];
 
 function build(order) {
   const db = new DatabaseSync(':memory:');
@@ -27,7 +29,7 @@ function schema(db) {
 }
 
 test('production order (0016 and 0017 before 0014 and 0015) gives exactly the numeric-order schema', () => {
-  assert.deepEqual(ALL.slice(-4), ['0014_business_analytics.sql', '0015_credential_authorisation.sql', '0016_source_monitoring.sql', '0017_admin_accounts.sql']);
+  assert.deepEqual(UPTO.slice(-4), ['0014_business_analytics.sql', '0015_credential_authorisation.sql', '0016_source_monitoring.sql', '0017_admin_accounts.sql']);
   const a = schema(build(ALL)), b = schema(build(PRODUCTION));
   assert.deepEqual(b.tables, a.tables);
   assert.deepEqual(b.cols, a.cols);

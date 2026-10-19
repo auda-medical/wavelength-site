@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Обучающийся установил собственную цель для этого модуля, отличную от цифры программы.",
 "12": "12",
@@ -2666,5 +2666,15 @@
 "You are no longer linked to this supervisor. Send it to someone else.": "Вы больше не связаны с этим руководителем. Отправьте другому человеку.",
 "Your changes are still syncing. Try again in a moment.": "Изменения ещё синхронизируются. Попробуйте чуть позже.",
 "your supervisor": "вашему руководителю",
-"{name} asked for more information: {note}": "{name} запрашивает дополнительные сведения: {note}"
+"{name} asked for more information: {note}": "{name} запрашивает дополнительные сведения: {note}",
+"A notification shows names only, never anything about a patient.": "Уведомление показывает только имена, никогда ничего о пациенте.",
+"A notification shows names only, never anything about a patient. You can turn this off at any time in Me, Settings.": "Уведомление показывает только имена, никогда ничего о пациенте. Отключить можно в любой момент в разделе «Я», «Настройки».",
+"Email me about sign-offs: when someone sends me scans or an assessment to sign, and when a supervisor signs, queries or asks for more": "Присылать письма о подписях: когда мне присылают исследования или оценку на подпись и когда руководитель подписывает, задаёт вопрос или просит дополнить",
+"Get notified on this phone?": "Получать уведомления на этом телефоне?",
+"Notifications are off for Wavelength in your phone's settings. Turn them on there, then try again.": "Уведомления Wavelength отключены в настройках телефона. Включите их там и попробуйте снова.",
+"Phone notifications for the same, on this phone": "Уведомления о том же на этом телефоне",
+"Phone notifications off.": "Уведомления отключены.",
+"Phone notifications on.": "Уведомления включены.",
+"Turn on notifications": "Включить уведомления",
+"Wavelength can tell you when someone sends you scans or an assessment to sign, and when a supervisor signs off your scans, queries them or asks for more.": "Wavelength может сообщать, когда вам присылают исследования или оценку на подпись и когда руководитель подписывает ваши исследования, задаёт вопрос или просит дополнить."
 }

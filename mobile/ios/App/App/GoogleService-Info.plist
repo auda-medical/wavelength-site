@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyCU9ubPhV92qOL8z6vVha8cNeg7ZykgQB8</string>
+	<key>GCM_SENDER_ID</key>
+	<string>263915440846</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>uk.co.thewavelength.app</string>
+	<key>PROJECT_ID</key>
+	<string>wavelength-ed149</string>
+	<key>STORAGE_BUCKET</key>
+	<string>wavelength-ed149.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:263915440846:ios:1c962b001c2b2a6d0ade9f</string>
+</dict>
+</plist>

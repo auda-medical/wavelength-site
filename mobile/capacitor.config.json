@@ -18,7 +18,25 @@
     "SystemBars": {
       "style": "DARK",
       "insetsHandling": "css"
+    },
+    "FirebaseMessaging": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
     }
   },
-  "appendUserAgent": "WavelengthApp"
+  "appendUserAgent": "WavelengthApp",
+  "experimental": {
+    "ios": {
+      "spm": {
+        "packageOptions": {
+          "@capacitor-firebase/messaging": {
+            "symlink": true
+          }
+        }
+      }
+    }
+  }
 }

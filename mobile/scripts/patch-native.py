@@ -71,6 +71,24 @@ if 'android:fullBackupContent=' not in m:
     m = m.replace('android:allowBackup="false"', 'android:allowBackup="false"\n        android:fullBackupContent="false"', 1)
 if 'android:dataExtractionRules=' not in m:
     m = m.replace('android:fullBackupContent="false"', 'android:fullBackupContent="false"\n        android:dataExtractionRules="@xml/data_extraction_rules"', 1)
+# 1.0.20: app links for /app/ and the Firebase notification icon, colour and channel (see the manifest).
+if 'android:autoVerify="true"' not in m:
+    m = m.replace('''                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>''', '''                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="thewavelength.co.uk" android:path="/app/" />
+            </intent-filter>
+        </activity>
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_wavelength" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/wl_deep" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="requests" />
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
+        <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />''', 1)
 # 1.0.18: no orientation lock in the manifest (Google Play large-screen guidance). MainActivity keeps phones in
 # portrait and lets tablets and unfolded foldables turn.
 m = m.replace('\n            android:screenOrientation="portrait"', '')

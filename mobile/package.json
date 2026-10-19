@@ -9,6 +9,7 @@
     "assets": "capacitor-assets generate --ios --android --iconBackgroundColor '#0A1526' --splashBackgroundColor '#0A1526' && node ../tools/app-icons.mjs"
   },
   "dependencies": {
+    "@capacitor-firebase/messaging": "8.5.2",
     "@capacitor/android": "8.5.1",
     "@capacitor/app": "8.1.2",
     "@capacitor/browser": "8.0.5",
@@ -18,7 +19,8 @@
     "@capacitor/ios": "8.5.1",
     "@capacitor/preferences": "8.0.1",
     "@capacitor/share": "8.0.3",
-    "@capgo/capacitor-native-biometric": "8.7.0"
+    "@capgo/capacitor-native-biometric": "8.7.0",
+    "firebase": "12.19.0"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "263915440846",
+    "project_id": "wavelength-ed149",
+    "storage_bucket": "wavelength-ed149.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:263915440846:android:590cc83e7620da590ade9f",
+        "android_client_info": {
+          "package_name": "uk.co.thewavelength.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-vbT57W-IM-NDsTY0-bxxZTr2UiQ2360"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

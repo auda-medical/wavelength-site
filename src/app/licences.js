@@ -63,6 +63,21 @@ window.WL_LICENCES = {
    "platform": "app"
   },
   {
+   "name": "@capacitor-firebase/messaging",
+   "version": "8.5.2",
+   "licence": "Apache-2.0",
+   "copyright": "Copyright Robin Genz (Capawesome) and contributors",
+   "note": "Phone notifications, with Google Firebase Cloud Messaging (Apache-2.0)",
+   "platform": "app"
+  },
+  {
+   "name": "firebase",
+   "version": "12.19.0",
+   "licence": "Apache-2.0",
+   "copyright": "Copyright Google LLC",
+   "platform": "app"
+  },
+  {
    "name": "jsPDF",
    "version": "2.5.2",
    "licence": "MIT",

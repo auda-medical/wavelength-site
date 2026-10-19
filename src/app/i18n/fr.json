@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* L'apprenant a fixé son propre objectif pour ce module, différent du chiffre du programme.",
 "12": "12",
@@ -2590,5 +2590,15 @@
 "You are no longer linked to this supervisor. Send it to someone else.": "Vous n’êtes plus lié à ce superviseur. Envoyez-la à quelqu’un d’autre.",
 "Your changes are still syncing. Try again in a moment.": "Vos modifications sont encore en cours de synchronisation. Réessayez dans un instant.",
 "your supervisor": "votre superviseur",
-"{name} asked for more information: {note}": "{name} a demandé plus d’informations : {note}"
+"{name} asked for more information: {note}": "{name} a demandé plus d’informations : {note}",
+"A notification shows names only, never anything about a patient.": "Une notification n’affiche que des noms, jamais d’information sur un patient.",
+"A notification shows names only, never anything about a patient. You can turn this off at any time in Me, Settings.": "Une notification n’affiche que des noms, jamais d’information sur un patient. Vous pouvez la désactiver à tout moment dans Moi, Réglages.",
+"Email me about sign-offs: when someone sends me scans or an assessment to sign, and when a supervisor signs, queries or asks for more": "M’envoyer un e-mail pour les validations : quand on m’envoie des examens ou une évaluation à signer, et quand un superviseur signe, interroge ou demande des compléments",
+"Get notified on this phone?": "Recevoir des notifications sur ce téléphone ?",
+"Notifications are off for Wavelength in your phone's settings. Turn them on there, then try again.": "Les notifications de Wavelength sont désactivées dans les réglages du téléphone. Activez-les, puis réessayez.",
+"Phone notifications for the same, on this phone": "Notifications sur ce téléphone pour les mêmes événements",
+"Phone notifications off.": "Notifications désactivées.",
+"Phone notifications on.": "Notifications activées.",
+"Turn on notifications": "Activer les notifications",
+"Wavelength can tell you when someone sends you scans or an assessment to sign, and when a supervisor signs off your scans, queries them or asks for more.": "Wavelength peut vous prévenir quand on vous envoie des examens ou une évaluation à signer, et quand un superviseur valide vos examens, les interroge ou demande des compléments."
 }

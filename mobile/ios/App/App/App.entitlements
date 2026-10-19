@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 1.0.20: phone notifications (APNs; Xcode sets production for App Store builds) and Universal Links for the logbook
+     (verified by https://thewavelength.co.uk/.well-known/apple-app-site-association, /app/ only). -->
+<plist version="1.0">
+<dict>
+	<key>aps-environment</key>
+	<string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:thewavelength.co.uk</string>
+	</array>
+</dict>
+</plist>

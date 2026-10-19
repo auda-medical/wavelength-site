@@ -18,7 +18,8 @@ test('every runtime dependency of the store app is in the open-source licences',
   const pkg = (d) => JSON.parse(read('mobile/node_modules/' + d + '/package.json'));
   for (const d of deps) {
     let p; try { p = pkg(d); } catch { continue; } // node_modules not installed: the name check above still runs
-    const c = L.components.find((x) => x.name.includes(d) || (/^@capacitor\/(core|android|ios)$/.test(d) && x.name.startsWith('Capacitor')));
+    // An exact name first: "firebase" is also part of "@capacitor-firebase/messaging".
+    const c = L.components.find((x) => x.name === d) || L.components.find((x) => x.name.includes(d) || (/^@capacitor\/(core|android|ios)$/.test(d) && x.name.startsWith('Capacitor')));
     assert.equal(c.licence, p.license, d + ' licence');
     assert.equal(c.version, p.version, d + ' version');
   }

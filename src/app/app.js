@@ -1134,7 +1134,8 @@
       var next = new URLSearchParams(location.search).get('next');
       if (next && /^\/elearning\//.test(next)) { location.href = next; return; }
       if (location.search) history.replaceState(null, '', '/app/' + location.hash);
-      render(); sync(); loadMe(); loadLinks(); acceptPendingInvite();
+      var opened = NAT.takeOpen ? NAT.takeOpen() : ''; if (opened) location.hash = opened;
+      render(); sync(); loadMe(); loadLinks(); acceptPendingInvite(); offerPush();
     });
   }
   // A supervisor invitation link carries a one-time token (#/supervise?invite=...). It is kept for this tab until
@@ -1150,6 +1151,48 @@
   }
   // Logging out, or a login the server no longer accepts, never deletes this device's logbook: it stays in this
   // account's local database and syncs when the same account logs in here again.
+  // ---------- Phone notifications and app links (1.0.20) ----------
+  // The store apps can show a notification when a request arrives or a supervisor decides (worker/push.js). Asked once,
+  // after sign-in, and switched in Settings; a token moves with the account signed in on the phone and is removed at
+  // sign-out. A tap on a notification, or an email link to the logbook, opens that screen (native.js: wl:open).
+  function pushIsOn() { try { return localStorage.getItem('wl-push') === '1'; } catch (e) { return false; } }
+  function pushRegister(t) {
+    if (!t) return Promise.resolve(false);
+    return api('/api/app/push/register', { token: t.token, platform: t.platform, version: NAT.version || '' }).then(function (r) { if (r.ok) { try { localStorage.setItem('wl-push', '1'); } catch (e) { /* storage blocked */ } } return !!r.ok; }, function () { return false; });
+  }
+  function pushEnable() {
+    return NAT.push.enable().then(function (t) {
+      if (!t) { toast(T('Notifications are off for Wavelength in your phone\'s settings. Turn them on there, then try again.'), 6000); return false; }
+      return pushRegister(t).then(function (ok) { toast(ok ? T('Phone notifications on.') : T('Could not save. Check your connection.')); return ok; });
+    }, function () { toast(T('Could not save. Check your connection.')); return false; });
+  }
+  function pushDisable() {
+    try { localStorage.removeItem('wl-push'); } catch (e) { /* storage blocked */ }
+    return NAT.push.token().then(function (t) { return t ? api('/api/app/push/unregister', { token: t.token }) : null; }).then(function () { return NAT.push.disable(); }).then(function () { toast(T('Phone notifications off.')); }, function () {});
+  }
+  function logoutNow() {
+    var off = NAT.push && pushIsOn() ? NAT.push.token().then(function (t) { return t ? api('/api/app/push/unregister', { token: t.token }, { timeout: 5000 }) : null; }).then(function () { return NAT.push.disable(); }, function () {}) : Promise.resolve();
+    return off.then(function () { try { localStorage.removeItem('wl-push'); } catch (e) { /* storage blocked */ } return api('/api/app/logout', {}, { timeout: 8000 }); });
+  }
+  // Once, a little after sign-in: offer notifications (the phone's own question follows only if they say yes).
+  function offerPush() {
+    if (!NAT.push || pushIsOn()) return;
+    try { if (localStorage.getItem('wl-push-asked')) return; } catch (e) { return; }
+    NAT.push.permission().then(function (st) {
+      if (st === 'granted') return NAT.push.token().then(pushRegister);
+      if (st !== 'prompt') return;
+      setTimeout(function () {
+        if (!S.account || document.querySelector('.sheet-bg') || document.querySelector('.app-lock')) return;
+        try { localStorage.setItem('wl-push-asked', String(Date.now())); } catch (e) { /* storage blocked */ }
+        sheet('<h2>' + esc(T('Get notified on this phone?')) + '</h2><p class="muted">' + esc(T('Wavelength can tell you when someone sends you scans or an assessment to sign, and when a supervisor signs off your scans, queries them or asks for more.')) + '</p><p class="small muted">' + esc(T('A notification shows names only, never anything about a patient. You can turn this off at any time in Me, Settings.')) + '</p><div class="btns"><button class="btn teal block" data-pushyes>' + esc(T('Turn on notifications')) + '</button><button class="btn ghost block" data-close>' + esc(T('Not now')) + '</button></div>', function (root) {
+          $('[data-pushyes]', root).onclick = function () { closeSheet(); pushEnable(); };
+        });
+      }, 5000);
+    });
+  }
+  if (NAT.push) NAT.push.onToken(function (t) { if (S.account && pushIsOn()) pushRegister(t); });
+  window.addEventListener('wl:open', function (e) { if (S.account && e.detail && e.detail.hash) { NAT.takeOpen(); location.hash = e.detail.hash; } });
+  window.addEventListener('wl:notice', function (e) { var d = e.detail || {}; toast((d.title ? d.title + ': ' : '') + (d.body || ''), 6000); if (S.account) { S.sv = null; loadLinks(); } });
   function signedOut(to) { SESSION++; keptLast = null; clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.sv = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
   // The server says this login has ended (expired, password changed, logged out from another device).
   function authExpired() {
@@ -5154,7 +5197,9 @@
       '<h2 class="sec">' + esc(T('Backup')) + '</h2><div class="card"><p class="small muted" style="margin:0 0 10px">' + esc(S.kv.lastBackup ? T('Last backup file created {date}', { date: fmt(S.kv.lastBackup) }) : T('No backup file created on this device yet')) + '. ' + esc(T('Backups are encrypted with a passphrase you choose and saved where you decide.')) + '</p><a class="btn sm" href="#/backup">' + esc(T('Back up and restore')) + '</a></div>' +
       '<h2 class="sec">' + esc(T('Appearance')) + '</h2><div class="card"><div class="theme-pick" role="radiogroup" aria-label="' + esc(T('Appearance')) + '">' + opt('system', 's', T('Match my phone')) + opt('light', '', T('Light')) + opt('dark', 'd', T('Dark')) + '</div><p class="small muted" style="margin:12px 0 0">' + esc(T('Match my phone follows the light or dark setting on your phone.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Language')) + '</h2><div class="card set-lang"><div class="row"><span>' + I.globe + '</span><b class="grow">' + esc(T('App language')) + '</b>' + langPicker('lang-m') + '</div><p class="small muted" style="margin:8px 0 0">' + esc(T('Exports and certificates stay in English so any assessor can read them.')) + '</p></div>' +
-      '<h2 class="sec">' + esc(T('Notifications')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="nte"' + (p.notifyEmail === false ? '' : ' checked') + '><span>' + esc(T('Email me when a supervisor signs off or queries my scans by link or from their dashboard')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('The app also shows new sign-offs on your home screen and logbook.')) + '</p></div>' +
+      '<h2 class="sec">' + esc(T('Notifications')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="nte"' + (p.notifyEmail === false ? '' : ' checked') + '><span>' + esc(T('Email me about sign-offs: when someone sends me scans or an assessment to sign, and when a supervisor signs, queries or asks for more')) + '</span></label>' +
+        (NAT.push ? '<label class="check" style="margin-top:10px"><input type="checkbox" id="ntp"' + (pushIsOn() ? ' checked' : '') + '><span>' + esc(T('Phone notifications for the same, on this phone')) + '</span></label><p class="hint">' + esc(T('A notification shows names only, never anything about a patient.')) + '</p>' : '') +
+        '<p class="small muted" style="margin:8px 0 0">' + esc(T('The app also shows new sign-offs on your home screen and logbook.')) + '</p></div>' +
       lockCard() +
       '<h2 class="sec">' + esc(T('Account')) + '</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">' + esc(T('Current password')) + '</label><input id="c1" name="current" type="password" autocomplete="current-password"></div>' + pwFields('c2', T('New password'), 'password') + '<button class="btn sm ghost">' + esc(T('Change password')) + '</button></form></div>' +
       '<div class="btns"><button class="btn ghost block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="loa">' + esc(T('Log out of all other devices')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
@@ -5165,10 +5210,11 @@
     $$('input[name=theme]').forEach(function (i) { i.onchange = function () { if (window.WLTheme) WLTheme.set(i.value); NAT.haptic(); }; });
     bindPw($('#cpw'), 'c2');
     $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; var bad = pwProblem(f, 'c2'); if (bad) { toast(bad, 5000); return; } api('/api/app/password', formData(f)).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
+    var ntp = $('#ntp'); if (ntp) ntp.onchange = function () { var on = ntp.checked; ntp.disabled = true; (on ? pushEnable() : pushDisable().then(function () { return false; })).then(function (ok) { ntp.disabled = false; ntp.checked = !!ok; }); };
     $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? T('Sign-off emails on.') : T('Sign-off emails off.')); }).catch(function (ex) { toast(ex.message); }); };
     bindLockCard();
     $('#lo').onclick = function () {
-      var out = function () { api('/api/app/logout', {}, { timeout: 8000 }).then(function () { signedOut(); }, function () { signedOut(); }); };
+      var out = function () { logoutNow().then(function () { signedOut(); }, function () { signedOut(); }); };
       var n = pendingList().length;
       if (!n) return out();
       sheet('<h2>' + esc(T('Log out?')) + '</h2><p class="muted small">' + esc(N(n, '{n} entry on this device has not synced yet.', '{n} entries on this device have not synced yet.')) + ' ' + esc(T('It stays saved on this device and syncs when you log in here again.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Stay logged in')) + '</button><button class="btn ghost block" data-ok>' + esc(T('Log out')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); out(); }; });
@@ -5408,7 +5454,7 @@
     document.body.appendChild(el);
     $('[data-unlock]', el).onclick = unlock;
     // Logging in again needs the account password, so the lock starts off after that (it can be turned on again).
-    $('[data-lockout]', el).onclick = function () { NAT.setLock(false); api('/api/app/logout', {}, { timeout: 8000 }).then(function () { signedOut(); }, function () { signedOut(); }); };
+    $('[data-lockout]', el).onclick = function () { NAT.setLock(false); logoutNow().then(function () { signedOut(); }, function () { signedOut(); }); };
     unlock();
   }
   function unlock() {

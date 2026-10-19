@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* حدّد المتدرّب هدفًا خاصًا لهذه الوحدة يختلف عن رقم المنهج.",
 "12": "12",
@@ -2742,5 +2742,15 @@
 "You are no longer linked to this supervisor. Send it to someone else.": "لم تعد مرتبطًا بهذا المشرف. أرسله إلى شخص آخر.",
 "Your changes are still syncing. Try again in a moment.": "ما زالت تغييراتك قيد المزامنة. حاول مرة أخرى بعد قليل.",
 "your supervisor": "مشرفك",
-"{name} asked for more information: {note}": "طلب {name} مزيدًا من المعلومات: {note}"
+"{name} asked for more information: {note}": "طلب {name} مزيدًا من المعلومات: {note}",
+"A notification shows names only, never anything about a patient.": "لا يعرض الإشعار سوى الأسماء، ولا شيء عن أي مريض.",
+"A notification shows names only, never anything about a patient. You can turn this off at any time in Me, Settings.": "لا يعرض الإشعار سوى الأسماء، ولا شيء عن أي مريض. يمكنك إيقافه في أي وقت من أنا، الإعدادات.",
+"Email me about sign-offs: when someone sends me scans or an assessment to sign, and when a supervisor signs, queries or asks for more": "أرسل لي بريدًا إلكترونيًا بشأن التوقيعات: عندما يرسل إليّ أحدهم فحوصات أو تقييمًا للتوقيع، وعندما يوقّع المشرف أو يستفسر أو يطلب المزيد",
+"Get notified on this phone?": "هل تريد تلقي الإشعارات على هذا الهاتف؟",
+"Notifications are off for Wavelength in your phone's settings. Turn them on there, then try again.": "إشعارات Wavelength متوقفة في إعدادات هاتفك. شغّلها من هناك ثم حاول مرة أخرى.",
+"Phone notifications for the same, on this phone": "إشعارات الهاتف للأمور نفسها، على هذا الهاتف",
+"Phone notifications off.": "تم إيقاف إشعارات الهاتف.",
+"Phone notifications on.": "تم تشغيل إشعارات الهاتف.",
+"Turn on notifications": "تشغيل الإشعارات",
+"Wavelength can tell you when someone sends you scans or an assessment to sign, and when a supervisor signs off your scans, queries them or asks for more.": "يمكن لـ Wavelength إعلامك عندما يرسل إليك أحدهم فحوصات أو تقييمًا للتوقيع، وعندما يوقّع المشرف على فحوصاتك أو يستفسر عنها أو يطلب المزيد."
 }

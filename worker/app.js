@@ -47,6 +47,7 @@ import { appEvent, activity, count, forgetLearner } from './metrics.js';
 import { actionsForSignoff } from './verification/pathways.js';
 import { acceptRequest, declineRequest, moreInfoRequest, reviewState, REVIEW_STATES } from './review.js';
 import * as AL from './alerts.js';
+import { registerDevice, unregisterDevice, pushReady, pushPerson } from './push.js';
 
 import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady, sigKind, withSigKind, splitSigKind } from './app-util.js';
 
@@ -267,6 +268,7 @@ async function deleteAccount(env, l, req, ctx) {
     env.DB.prepare('DELETE FROM signoffs WHERE learner_id = ?').bind(l.id),
     env.DB.prepare('DELETE FROM evidence_summaries WHERE learner_id = ?').bind(l.id),
     env.DB.prepare('DELETE FROM password_resets WHERE learner_id = ?').bind(l.id),
+    ...((await pushReady(env)) ? [env.DB.prepare('DELETE FROM push_devices WHERE learner_id = ?').bind(l.id)] : []),
     ...supervision,
     ...((await verificationReady(env)) ? deleteProfessional(env, l, life) : []),
   ];
@@ -496,12 +498,14 @@ async function signoffComplete(env, req, ctx) {
 // the code only, never findings. Learners turn this off in the app (profile.notifyEmail = false).
 export async function notifyLearner(env, so, decisions, sup) {
   try {
-    const l = await env.DB.prepare('SELECT email, title, first_name, last_name, profile FROM learners WHERE id = ?').bind(so.learner_id).first();
-    if (!l || !l.email || profileOf(l).notifyEmail === false) return;
     const ids = JSON.parse(so.entry_ids || '[]');
     const ok = ids.filter((id) => decisions[id] === 'confirmed').length;
     const q = ids.filter((id) => decisions[id] === 'query').length;
     if (!ok && !q) return;
+    // 1.0.20: also to the learner's phones, with its own switch (worker/push.js).
+    await pushPerson(env, so.learner_id, 'so_done', { supervisor: sup.name, count: ok, queried: q });
+    const l = await env.DB.prepare('SELECT email, title, first_name, last_name, profile FROM learners WHERE id = ?').bind(so.learner_id).first();
+    if (!l || !l.email || profileOf(l).notifyEmail === false) return;
     const n = (k) => `${k} ${k === 1 ? 'scan' : 'scans'}`;
     const what = [ok ? `signed off ${n(ok)}` : '', q ? `queried ${n(q)}` : ''].filter(Boolean).join(' and ');
     const link = `${SITE}/app/#/log?s=${q ? 'todo' : 'signed'}`;
@@ -704,6 +708,9 @@ async function routeApp(req, env, ctx, url, p) {
     if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
     if (p !== 'account/delete') activity(env, ctx, l.id);
     if (p === 'profile') return saveProfile(env, l, req);
+    // 1.0.20: this phone may receive notifications for this account (worker/push.js).
+    if (p === 'push/register') return json(await registerDevice(env, l, await body(req)));
+    if (p === 'push/unregister') return json(await unregisterDevice(env, l, await body(req)));
     if (p === 'password') return changePassword(env, l, req);
     if (p === 'logout-all') return logoutAll(env, l, req);
     const org = await handleOrganisations(env, req, url, p, l, ctx, body);

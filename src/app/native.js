@@ -237,6 +237,47 @@
     return info;
   }
 
+  // ---------- Phone notifications and app links (1.0.20) ----------
+  // Notifications go through Firebase Cloud Messaging, which reaches iPhones through Apple's APNs. Permission is asked
+  // only when the person turns notifications on in the app, never at start. Tapping a notification, or a link to the
+  // logbook (https://thewavelength.co.uk/app/#screen, from a Wavelength email: Android App Links, iPhone Universal
+  // Links), opens that screen. A link that arrives before the logbook has started waits for it (takeOpen).
+  // Only when the native plugin is really there (an older app, or a build without Firebase, has none).
+  var FM = on && (typeof cap.isPluginAvailable !== 'function' || cap.isPluginAvailable('FirebaseMessaging')) ? plugin('FirebaseMessaging') : null;
+  var quiet = function (p) { if (p && typeof p.catch === 'function') p.catch(function () {}); };
+  var pendingOpen = '';
+  function openUrl(u) {
+    try {
+      var x = new URL(u, SITE);
+      if (x.pathname !== '/app/' && x.pathname !== '/app') return;
+      pendingOpen = /^#\/[A-Za-z0-9/_?=&.%-]*$/.test(x.hash) ? x.hash : '#/';
+      window.dispatchEvent(new CustomEvent('wl:open', { detail: { hash: pendingOpen } }));
+    } catch (e) { /* not a logbook link */ }
+  }
+  if (App) {
+    quiet(App.addListener('appUrlOpen', function (e) { if (e && e.url) openUrl(e.url); }));
+    if (App.getLaunchUrl) App.getLaunchUrl().then(function (r) { if (r && r.url) openUrl(r.url); }, function () {});
+  }
+  if (FM) {
+    quiet(FM.addListener('notificationActionPerformed', function (e) { var d = e && e.notification && e.notification.data; if (d && d.url) openUrl(d.url); }));
+    // In the foreground Android shows nothing by itself: the logbook shows the notice in the page instead.
+    quiet(FM.addListener('notificationReceived', function (e) { var n = e && e.notification; if (n) window.dispatchEvent(new CustomEvent('wl:notice', { detail: { title: n.title || '', body: n.body || '', url: (n.data && n.data.url) || '' } })); }));
+    if (PLATFORM === 'android' && FM.createChannel) FM.createChannel({ id: 'requests', name: 'Sign-off requests and outcomes', description: 'Requests sent to you, and what your supervisor decided', importance: 4, visibility: 0 }).catch(function () {});
+  }
+  var push = !FM ? null : {
+    // 'granted', 'denied' or 'prompt' (not asked yet).
+    permission: function () { return FM.checkPermissions().then(function (r) { return (r && r.receive) || 'prompt'; }, function () { return 'denied'; }); },
+    enable: function () {
+      return FM.requestPermissions().then(function (r) {
+        if (!r || r.receive !== 'granted') return null;
+        return FM.getToken().then(function (t) { return t && t.token ? { token: t.token, platform: PLATFORM } : null; });
+      });
+    },
+    token: function () { return FM.getToken().then(function (t) { return t && t.token ? { token: t.token, platform: PLATFORM } : null; }, function () { return null; }); },
+    disable: function () { return FM.deleteToken().then(function () {}, function () {}); },
+    onToken: function (fn) { quiet(FM.addListener('tokenReceived', function (e) { if (e && e.token) fn({ token: e.token, platform: PLATFORM }); })); }
+  };
+
   // Android draws behind the status and navigation bars from Android 15. Mark the page so CSS can keep content clear.
   if (on) document.documentElement.classList.add('native', 'native-' + (cap.getPlatform ? cap.getPlatform() : 'app'));
 
@@ -264,6 +305,8 @@
     captures: Cap ? captures : null,
     captureRemove: captureRemove,
     captureFile: captureFile,
+    push: push,
+    takeOpen: function () { var h = pendingOpen; pendingOpen = ''; return h; },
     plugin: plugin
   };
 })();

@@ -20,7 +20,24 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- 1.0.20: a link to the logbook (https://thewavelength.co.uk/app/, its screen in the #fragment), from a
+                 Wavelength email or anywhere, opens the app. Verified by /.well-known/assetlinks.json on the site.
+                 Only /app/ itself: the one-off signing pages (/app/sign/, /app/assess/) stay in the browser. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="thewavelength.co.uk" android:path="/app/" />
+            </intent-filter>
         </activity>
+
+        <!-- 1.0.20: phone notifications (Firebase Cloud Messaging): the small white icon, its colour and the channel. -->
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_wavelength" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/wl_deep" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="requests" />
+        <!-- No token until the learner turns notifications on in the app; no Firebase analytics. -->
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
+        <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
