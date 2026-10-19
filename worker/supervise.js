@@ -469,7 +469,14 @@ export async function superviseSignoffView(env, l, url) {
   if (!so || so.expires_at < Date.now()) return json({ ok: false, error: 'This request is no longer open.' }, 404);
   const g = await guard(env, l, so.learner_id, { types: typesIn(so.snapshot) });
   if (g.res) return g.res;
-  return json({ ok: true, code: so.id, learner: fullName(so), entries: JSON.parse(so.snapshot) });
+  // 1.0.21: images the learner shared with this request, and the key their app sent for a dashboard request.
+  let images = [], imageKey = null;
+  if (env.IMAGE_SHARE === 'true' && env.SHARED_IMAGES) {
+    const [m, k] = await Promise.all([env.SHARED_IMAGES.get(`so:${so.id}:m`, 'json'), env.SHARED_IMAGES.get(`so:${so.id}:k`)]);
+    images = Array.isArray(m) ? m : [];
+    imageKey = images.length && k ? k : null;
+  }
+  return json({ ok: true, code: so.id, learner: fullName(so), entries: JSON.parse(so.snapshot), images, imageKey });
 }
 export async function superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, notify) {
   const d = await body(req);

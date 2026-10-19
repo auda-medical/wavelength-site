@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted. 1.0.21 strings (images in the supervisor app, clearer saving) were added on 19 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* 学员为此模块设定了自己的目标，与课程大纲数值不同。",
 "12": "12",
@@ -2567,5 +2567,33 @@
 "Ideas for the app go straight to the Wavelength team.": "您对应用的想法会直接发送给 Wavelength 团队。",
 "My suggestion:": "我的建议：",
 "Suggest an improvement": "提出改进建议",
-"Wavelength app suggestion": "Wavelength 应用建议"
+"Wavelength app suggestion": "Wavelength 应用建议",
+"A linked supervisor sees the request in their app, with any images you include, and gets a notification.": "已关联的督导老师会在其应用中看到请求及您附上的图像，并收到通知。",
+"After saving, choose who to send it to.": "保存后，选择发送给谁。",
+"Also send a link (optional)": "同时发送链接（可选）",
+"An independent scan needs no sign-off, but you can ask for one.": "独立扫查无需签署，但您可以申请签署。",
+"Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish.": "确认或质询每次扫查，如愿意，可评价图像质量和诊断准确性。",
+"From your earlier scans": "来自您之前的扫查",
+"Images are encrypted before they leave this phone and only the supervisor you send them to can open them. They delete when your supervisor signs, when you cancel the request, or after 14 days.": "图像在离开这部手机前即已加密，只有您发送给的督导老师才能打开。督导老师签署、您取消请求或 14 天后，图像即被删除。",
+"Linked supervisor: signs in their app": "已关联的督导老师：在其应用中签署",
+"No images were attached to this request. If you need them, tap Ask for more information.": "此请求未附图像。如需图像，请点按“请求补充信息”。",
+"Only if your supervisor prefers to open it from an email or message. Anyone with the link can sign, so send it only to your supervisor.": "仅当督导老师更愿意从电子邮件或消息中打开时使用。任何拥有链接的人都能签署，因此只发给您的督导老师。",
+"Opening {n}…": "正在打开 {n}…",
+"Request sent": "请求已发送",
+"Save and request sign-off": "保存并申请签署",
+"Save and send for sign-off": "保存并发送签署",
+"Save and send to {name}": "保存并发送给 {name}",
+"Save and sign now: supervisor is with me": "保存并立即签署：督导老师在我身边",
+"Save as draft": "保存为草稿",
+"Save to my logbook": "保存到我的日志",
+"Saved as a draft. Send it for sign-off from Scans when you are ready.": "已保存为草稿。准备好后，请在“扫查”中发送签署。",
+"Saved on this device. Send it for sign-off from Scans once it has synced.": "已保存在此设备上。同步后，请在“扫查”中发送签署。",
+"Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.": "立即签署：保存后马上把手机交给督导老师。草稿：保存在日志中，稍后在“扫查”中发送签署。",
+"Someone else": "其他人",
+"The learner shared images by link only. Ask them to send you the link, or update their app and send again.": "学员仅通过链接分享了图像。请让对方发送链接，或更新应用后重新发送。",
+"These images could not be opened. Ask the learner to send them again.": "无法打开这些图像。请让学员重新发送。",
+"Type their name": "输入姓名",
+"Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "督导老师现在可在其应用中看到请求及 {n}。对方回复时您会收到通知。",
+"Your supervisor sees it in their app now. You get a notification when they reply.": "督导老师现在可在其应用中看到请求。对方回复时您会收到通知。",
+"{name} sees it in their app, with the images you include, and gets a notification.": "{name} 会在其应用中看到请求及您附上的图像，并收到通知。"
 }

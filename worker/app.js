@@ -20,7 +20,9 @@
 // Logbook entries hold text only. Images stay on the learner's device. The one exception is encrypted image
 // sharing in sign-off links (IMAGE_SHARE = "true"): the phone encrypts with AES-GCM and keeps the key in the link's
 // #fragment, so this Worker stores only ciphertext in KV (SHARED_IMAGES), deleted on sign-off, cancel, account
-// deletion or after 14 days. See the DPIA before changing any of this.
+// deletion or after 14 days. 1.0.21 (owner, 19 Oct 2026): for a request sent to a linked supervisor's dashboard the
+// learner's app also sends the key (so:<id>:k, same expiry), so that supervisor, signed in, sees the images in the app
+// (GET supervise/signoff/image); it is deleted with the images. See the DPIA before changing any of this.
 import { passwordProblem } from './password.js';
 import { isNativeOrigin } from './native.js';
 import { zohoSubscribe } from './newsletter.js';
@@ -594,7 +596,7 @@ const IMG_MAX = 1572864, CLIP_MAX = 12 * 1048576 + 64, IMG_PER_ENTRY = 12, IMG_P
 const clipOn = (env) => imgOn(env) && env.CLIP_SHARE === 'true';
 const imgKey = (id, entry, n) => `so:${id}:${entry}:${n}`;
 async function ownPending(env, l, c) {
-  const so = await env.DB.prepare("SELECT id, entry_ids, expires_at, status FROM signoffs WHERE id = ? AND learner_id = ? AND method = 'remote'").bind(clip(c, 20), l.id).first();
+  const so = await env.DB.prepare("SELECT id, entry_ids, expires_at, status, supervisor_id FROM signoffs WHERE id = ? AND learner_id = ? AND method = 'remote'").bind(clip(c, 20), l.id).first();
   return so && so.status === 'pending' && so.expires_at > Date.now() + 120000 ? so : null;
 }
 async function signoffImageUpload(env, l, req, url) {
@@ -623,7 +625,10 @@ async function signoffImagesCommit(env, l, req) {
   const list = (Array.isArray(d.images) ? d.images : []).slice(0, IMG_PER_LINK).map((i) => ({ entry: clip(i && i.entry, 40), n: Number(i && i.n), w: Math.min(20000, Number(i && i.w) || 0), h: Math.min(20000, Number(i && i.h) || 0), kind: i && i.kind === 'clip' && clipOn(env) ? 'clip' : 'image', type: i && i.kind === 'clip' && /^video\/(mp4|webm)$/.test(i.type || '') ? i.type : 'image/jpeg' }))
     .filter((i) => ids.includes(i.entry) && Number.isInteger(i.n) && i.n >= 0 && i.n < IMG_PER_ENTRY && !seen.has(i.entry + ':' + i.n) && seen.add(i.entry + ':' + i.n));
   await env.SHARED_IMAGES.put(`so:${so.id}:m`, JSON.stringify(list), { expiration: Math.floor(so.expires_at / 1000) });
-  return json({ ok: true, count: list.length });
+  // 1.0.21: a dashboard request: the key, so the addressed supervisor can open the images in the app.
+  const dashKey = so.supervisor_id && typeof d.key === 'string' && /^[A-Za-z0-9_-]{43}$/.test(d.key);
+  if (dashKey) await env.SHARED_IMAGES.put(`so:${so.id}:k`, d.key, { expiration: Math.floor(so.expires_at / 1000) });
+  return json({ ok: true, count: list.length, dashboard: !!dashKey });
 }
 async function signoffImageGet(env, url) {
   if (!imgOn(env)) return json({ ok: false }, 404);
@@ -634,11 +639,20 @@ async function signoffImageGet(env, url) {
   if (!buf) return json({ ok: false }, 404);
   return new Response(buf, { headers: { 'Content-Type': 'application/octet-stream', ...HEAD } });
 }
+// 1.0.21: one encrypted image of a request addressed to this signed-in supervisor (their dashboard), while it is open.
+async function superviseImageGet(env, l, url) {
+  if (!imgOn(env)) return json({ ok: false }, 404);
+  const so = await env.DB.prepare("SELECT id, expires_at FROM signoffs WHERE id = ? AND supervisor_id = ? AND status = 'pending'").bind(clip(url.searchParams.get('code'), 20), l.id).first();
+  if (!so || so.expires_at < Date.now()) return json({ ok: false }, 410);
+  const buf = await env.SHARED_IMAGES.get(imgKey(so.id, clip(url.searchParams.get('entry'), 40), Number(url.searchParams.get('n'))), 'arrayBuffer');
+  if (!buf) return json({ ok: false }, 404);
+  return new Response(buf, { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store', ...HEAD } });
+}
 async function deleteSharedImages(env, id) {
   if (!env.SHARED_IMAGES || !id) return;
   const m = await env.SHARED_IMAGES.get(`so:${id}:m`, 'json');
   const keys = (Array.isArray(m) ? m : []).map((i) => imgKey(id, i.entry, i.n));
-  await Promise.all([...keys, `so:${id}:m`].map((k) => env.SHARED_IMAGES.delete(k)));
+  await Promise.all([...keys, `so:${id}:m`, `so:${id}:k`].map((k) => env.SHARED_IMAGES.delete(k)));
 }
 
 async function verify(env, url) {
@@ -777,6 +791,7 @@ async function routeApp(req, env, ctx, url, p) {
   if (p === 'supervise/learner') return SV.superviseLearner(env, l, url);
   if (p === 'supervise/learner/scans') return SV.superviseLearnerScans(env, l, url);
   if (p === 'supervise/signoff') return SV.superviseSignoffView(env, l, url);
+  if (p === 'supervise/signoff/image') return superviseImageGet(env, l, url);
   const found = await handleSearch(env, l, req, url, p, ctx, body);
   if (found) return found;
   const sv = await handleSupervisorApply(env, l, req, url, p, ctx);

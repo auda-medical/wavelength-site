@@ -1795,6 +1795,15 @@
     var mine = {}; myPaths().forEach(function (pid) { PATHS[pid].modules.forEach(function (m) { m.types.forEach(function (t) { mine[t] = 1; }); }); });
     var ordered = C.types.slice().sort(function (a, b) { return (mine[b.id] || 0) - (mine[a.id] || 0); });
     var supNames = []; live().forEach(function (x) { if (x.supervisor && supNames.indexOf(x.supervisor) < 0) supNames.push(x.supervisor); });
+    // 1.0.21 (owner): the supervisor as cards, linked supervisors first (they can sign in their app), then earlier names.
+    var picks = activeSupervisors().map(function (x) { return { name: x.name || x.email, link: x.id }; });
+    supNames.forEach(function (n) { if (!picks.some(function (p) { return p.name === n; })) picks.push({ name: n, link: '' }); });
+    picks = picks.slice(0, 8);
+    var pickedAt = picks.findIndex(function (p) { return p.name === (e.supervisor || ''); });
+    var supField = !picks.length ? '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"></div>'
+      : '<div class="field"><span class="lab" id="lab-supv">' + esc(T('Supervisor or mentor')) + '</span><div class="seg col sup" role="radiogroup" aria-labelledby="lab-supv">' + picks.map(function (p, i) { return '<input type="radio" name="suppick" id="sp' + i + '" value="' + i + '"' + (pickedAt === i ? ' checked' : '') + '><label for="sp' + i + '"><b>' + esc(p.name) + '</b><span>' + esc(p.link ? T('Linked supervisor: signs in their app') : T('From your earlier scans')) + '</span></label>'; }).join('') +
+        '<input type="radio" name="suppick" id="spx" value="other"' + (pickedAt < 0 && e.supervisor ? ' checked' : '') + '><label for="spx"><b>' + esc(T('Someone else')) + '</b><span>' + esc(T('Type their name')) + '</span></label></div>' +
+        '<input id="supv" name="supervisor" type="text" aria-labelledby="lab-supv" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '" style="margin-top:8px"' + (pickedAt < 0 && e.supervisor ? '' : ' hidden') + '></div>';
     // 1.0.11: the form in clearly marked sections (presentation only: every field, value and name is unchanged).
     // Level 1, a section with a numbered header; level 2, each question's label; level 3, its answers and hints.
     var secN = 0;
@@ -1823,7 +1832,7 @@
         '<div class="field"><label for="impact">' + esc(T('Impact on management')) + '</label><input id="impact" name="impact" type="text" placeholder="' + esc(T('For example, changed fluid plan, avoided CT')) + '" value="' + esc(e.impact || '') + '"></div>') +
       section('supervision', T('Supervision'),
         '<div class="field" data-req="supervision"><span class="lab" id="lab-supervision">' + esc(T('Level of supervision')) + req + '</span>' + supOpts + '</div>' +
-        '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" list="supl" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"><datalist id="supl">' + supNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></div>' +
+        supField +
         '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>' + esc(T('No sign-off needed for this scan')) + '</span></label></div>') +
       section('media', T('Images and clips'),
         '<div class="field"><p class="hint" id="media-hint">' + esc(T('Stay on this phone only. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
@@ -1831,10 +1840,38 @@
       section('reflection', T('Reflection'),
         '<div class="field"><label for="refl">' + esc(T('Your reflection')) + '</label><p class="hint">' + esc(T('What you learned and what you will do differently. Counts as a reflective note.')) + '</p><textarea id="refl" name="reflection">' + esc(e.reflection || '') + '</textarea></div>') +
       '<div id="counts"></div>' +
-      '<div class="err" hidden></div><div class="btns savebar"><button class="btn teal block" type="submit">' + esc(editing ? T('Save changes') : T('Save scan')) + '</button></div>' +
+      '<div class="err" hidden></div><div class="btns savebar"><button class="btn teal block" type="submit" data-after="" id="sv1">' + esc(editing ? T('Save changes') : T('Save scan')) + '</button>' + (editing ? '' : '<button class="btn ghost block" type="submit" data-after="draft" id="sv2" hidden>' + esc(T('Save as draft')) + '</button>') + '</div>' + (editing ? '' : '<p class="hint" id="savehint" aria-live="polite"></p>') +
       '</div></form>';
     mount(shell({ title: editing ? T('Edit scan') : copyFrom ? T('Another scan') : T('Log a scan'), back: editing ? 'entry/' + editing.id : '', tab: 'new' }, body));
     var form = $('#ef'); form.dataset.formkey = formKey; form.dataset.draft = inst;
+    // 1.0.21: the supervisor cards fill the name; the save buttons follow the level of supervision.
+    var afterAct = '';
+    var pickedSup = function () { var c = form.querySelector('input[name=suppick]:checked'); return c && c.value !== 'other' ? picks[Number(c.value)] : null; };
+    var syncSup = function () {
+      var c = form.querySelector('input[name=suppick]:checked'), box = $('#supv', form); if (!c || !box) return;
+      if (c.value === 'other') { box.hidden = false; if (picks.some(function (p) { return p.name === box.value; })) box.value = ''; }
+      else { box.hidden = true; box.value = picks[Number(c.value)].name; }
+    };
+    var syncSave = function () {
+      var b1 = $('#sv1', form), b2 = $('#sv2', form), hint = $('#savehint', form); if (!b2) return;
+      var lvl = (form.querySelector('input[name=supervision]:checked') || {}).value || '', none = !!(form.querySelector('input[name=noSignoff]') || {}).checked, ps = pickedSup();
+      var set = function (t1, a1, t2, a2, h) { b1.textContent = t1; b1.dataset.after = a1; b2.hidden = !t2; if (t2) { b2.textContent = t2; b2.dataset.after = a2; } hint.textContent = h || ''; };
+      if (!lvl) set(T('Save scan'), '', '', '', '');
+      else if (none) set(T('Save to my logbook'), '', '', '', T('No sign-off needed for this scan.'));
+      else if (lvl === 'direct') set(T('Save and sign now: supervisor is with me'), 'person', T('Save as draft'), 'draft', T('Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.'));
+      else if (lvl === 'mentored') set(ps && ps.link ? T('Save and send to {name}', { name: ps.name }) : T('Save and send for sign-off'), 'send', T('Save as draft'), 'draft', ps && ps.link ? T('{name} sees it in their app, with the images you include, and gets a notification.', { name: ps.name }) : T('After saving, choose who to send it to.'));
+      else set(T('Save to my logbook'), '', T('Save and request sign-off'), 'send', T('An independent scan needs no sign-off, but you can ask for one.'));
+    };
+    form.addEventListener('change', function (ev) { if (ev.target && ev.target.name === 'suppick') syncSup(); syncSave(); });
+    $$('button[data-after]', form).forEach(function (b) { b.addEventListener('click', function () { afterAct = b.dataset.after || ''; }); });
+    setTimeout(function () { syncSup(); syncSave(); }, 0);
+    // After a new scan is saved and synced: sign now, or send the request (the scan must be on the server first).
+    var runAfter = function (id, act, ps) {
+      if (!act || act === 'draft') { if (act === 'draft') toast(T('Saved as a draft. Send it for sign-off from Scans when you are ready.'), 4000); return; }
+      var en = S.entries.find(function (x) { return x.id === id; });
+      if (!en || en._dirty || !navigator.onLine) { toast(T('Saved on this device. Send it for sign-off from Scans once it has synced.'), 5000); return; }
+      if (act === 'person') signInPerson([id]); else signByLink([id], { sup: ps && ps.link ? ps.link : null });
+    };
     var drawFindings = function () {
       var t = TYPES[(form.querySelector('input[name=type]:checked') || {}).value];
       $('#rest').hidden = !t;
@@ -2181,9 +2218,9 @@
           setTimeout(function () {
             // A new scan goes back Home; an edit goes back to the scan. A short note says what actually happened,
             // and changes to "synced" only once the server has acknowledged this scan.
-            var note = savedNote(out.id, !editing);
+            var note = savedNote(out.id, !editing), act = editing ? '' : afterAct, ps = pickedSup();
             go(editing ? 'entry/' + out.id : '');
-            sync().then(function () { note.update(); });
+            sync().then(function () { note.update(); runAfter(out.id, act, ps); }, function () { runAfter(out.id, act, ps); });
           }, 0);
         }, function (ex) {
           // Not saved: stay on the form with everything as entered.
@@ -3343,7 +3380,8 @@
   // Posts the manifest for every file that is up, then returns the key for the link fragment.
   function finishShare(q) {
     var list = q.files.filter(function (f) { return f.state === 'done' || f.state === 'shared'; }).map(function (f) { return { entry: f.entry, n: f.n, w: f.w, h: f.h, kind: f.kind, type: f.type }; });
-    return api('/api/app/signoff/images', { code: q.code, images: list, declared: true }).then(function (j) {
+    // 1.0.21: a request sent to a linked supervisor's dashboard also sends the key, so they see the images in the app.
+    return api('/api/app/signoff/images', { code: q.code, images: list, declared: true, key: q.dash ? b64u(q.raw) : undefined }).then(function (j) {
       if (!j.ok) throw new Error(j.error || T('Could not share the images.'));
       q.posted = Date.now(); q.files = q.files.filter(function (f) { return f.state === 'done' || f.state === 'shared'; });
       q.files.forEach(function (f) { f.state = 'shared'; });
@@ -3407,9 +3445,9 @@
       var count = sets.reduce(function (a, st) { return a + st.images.length; }, 0);
       var imgPart = count ? '<div class="field"><label class="check"><input type="checkbox" id="incl" checked><span>' + esc(T('Include {n} for your supervisor to review', { n: plural(count, 'image') })) + '</span></label>' +
         '<div id="inclbox"><div class="gallery" style="margin-top:8px">' + sets.map(function (st) { return st.images.map(function (rec) { return '<button type="button" disabled><img alt="" src="' + imgUrl(rec, true) + '">' + (isClip(rec) ? '<span class="play">▶</span>' : '') + '</button>'; }).join(''); }).join('') + '</div>' +
-        '<p class="hint">' + esc(T('Images are encrypted on this phone. Wavelength cannot open them. They delete when your supervisor signs, when you cancel the request, or after 14 days.')) + '</p>' +
+        '<p class="hint">' + esc(T('Images are encrypted before they leave this phone and only the supervisor you send them to can open them. They delete when your supervisor signs, when you cancel the request, or after 14 days.')) + '</p>' +
         '<label class="check"><input type="checkbox" id="decl"><span>' + esc(T('I have checked every image above. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them follows my hospital\'s information governance policy.')) + '</span></label></div></div>' : '';
-      var supPart = sups.length ? '<div class="field"><label for="tosup">' + esc(T('Send to')) + '</label><select id="tosup"><option value="">' + esc(T('A link I send myself')) + '</option>' + sups.map(function (s) { return '<option value="' + s.id + '" data-uid="' + esc(s.id) + '"' + (opts.sup && String(opts.sup) === String(s.id) ? ' selected' : '') + '>' + esc(T('{name}\'s dashboard (and a link)', { name: s.name || s.email })) + '</option>'; }).join('') + '</select><p class="hint">' + esc(T('A linked supervisor sees the request in their app. Images open only from the link, so send it too if you include images.')) + '</p></div>' : '';
+      var supPart = sups.length ? '<div class="field"><label for="tosup">' + esc(T('Send to')) + '</label><select id="tosup"><option value="">' + esc(T('A link I send myself')) + '</option>' + sups.map(function (s) { return '<option value="' + s.id + '" data-uid="' + esc(s.id) + '"' + (opts.sup && String(opts.sup) === String(s.id) ? ' selected' : '') + '>' + esc(T('{name}\'s dashboard (and a link)', { name: s.name || s.email })) + '</option>'; }).join('') + '</select><p class="hint">' + esc(T('A linked supervisor sees the request in their app, with any images you include, and gets a notification.')) + '</p></div>' : '';
       var pendingSups = ((S.links || {}).supervisors || []).length - sups.length;
       if (pendingSups > 0) supPart += '<p class="hint">' + esc(T('Supervisors who have not yet accepted, or whose verification is still pending, do not appear here.')) + ' ' + guideLink() + '</p>';
       sheet('<h2>' + esc(opts.replaces ? T('Send back to {name}', { name: opts.name || T('your supervisor') }) : T('Request sign-off')) + '</h2><p class="muted small">' + esc(T('Your supervisor sees the record of {scans}. The link works for 14 days. Anyone with the link sees what it holds, so send it only to your supervisor.', { scans: plural(ids.length, 'scan') })) + '</p><form id="lf">' + supPart + '<div class="field"><label for="ln2">' + esc(T('Supervisor name (optional)')) + '</label><input id="ln2" name="supervisorName" type="text"></div>' + imgPart + '<div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Create request')) + '</button></div></form>', function (root) {
@@ -3422,8 +3460,18 @@
           busy(b, true);
           var code = null, supSel = $('#tosup', root), supId = supSel ? supSel.value : '';
           var ready = function (out) { closeSheet(); linkReady(out, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(ids.length, 'ultrasound scan'), link: out.link }), T('Ultrasound logbook sign-off')); viewSignoff(route()); };
-          var supLink = supId ? sups.find(function (s) { return String(s.id) === supId; }) : null;
-          api('/api/app/signoff/request', { entryIds: ids, supervisorName: $('#ln2', root).value, supervisorId: supLink ? supLink.supervisorId || null : null, supervisorLink: supId || null, replaces: opts.replaces || undefined }).then(function (res) {
+          var supLink = supId ? sups.find(function (s) { return String(s.id) === supId; }) : null, t0 = Date.now();
+          api('/api/app/signoff/request', { entryIds: ids, supervisorName: $('#ln2', root).value, supervisorId: supLink ? supLink.supervisorId || null : null, supervisorLink: supId || null, replaces: opts.replaces || undefined }, { timeout: 45000 }).catch(function (ex) {
+            // 1.0.21 (owner, 19 Oct): the request had arrived although the answer came too late. Look before saying it failed.
+            if (!ex || !ex.timeout) throw ex;
+            b.textContent = T('Checking…');
+            return api('/api/app/signoffs').then(function (r) {
+              var hit = (r.signoffs || []).find(function (x) { return x.status === 'pending' && x.expires_at >= t0 + 14 * 864e5 - 120000 && ids.every(function (id) { return x.entry_ids.indexOf(id) >= 0; }); });
+              if (!hit) throw ex;
+              if (supId) return { ok: true, code: hit.id, link: '', toDashboard: true };
+              return api('/api/app/signoff/cancel', { code: hit.id }).then(function () { throw ex; }); // a link we never received cannot be sent
+            }, function () { throw ex; });
+          }).then(function (res) {
             if (!res.ok) throw new Error(res.error);
             code = res.code;
             if (!withImages) return { link: res.link, images: 0, dash: res.toDashboard };
@@ -3439,7 +3487,18 @@
     });
   }
   function linkReady(out, msg, subject) {
-    var html = '<h2>' + esc(T('Request ready')) + '</h2>' + (out.dash ? '<div class="ok">' + esc(T('It is waiting in your supervisor\'s dashboard too.')) + '</div>' : '') + '<p class="small muted">' + esc(T('Send the link by email, WhatsApp or Teams.')) + ' ' + esc(out.images ? T('It holds the key to {n}, so send it only to your supervisor.', { n: plural(out.images, 'encrypted image') }) : T('Anyone with the link can sign, so send it only to your supervisor.')) + '</p><div class="card" style="word-break:break-all;font-size:13px">' + esc(out.link) + '</div><div class="btns">' + (navigator.share ? '<button class="btn teal block" data-share>' + esc(T('Share link')) + '</button>' : '') + '<button class="btn block" data-copy>' + esc(T('Copy link')) + '</button><a class="btn ghost block" href="mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(msg) + '">' + esc(T('Email it')) + '</a><button class="btn ghost block" data-close>' + esc(T('Done')) + '</button></div>';
+    // 1.0.21: sent to a linked supervisor's dashboard: it is there now, with the images; the link is optional.
+    if (out.dash) {
+      var dh = '<h2>' + esc(T('Request sent')) + '</h2><div class="ok">' + esc(out.images ? T('Your supervisor sees it in their app now, with {n}. You get a notification when they reply.', { n: plural(out.images, 'image') }) : T('Your supervisor sees it in their app now. You get a notification when they reply.')) + '</div>' +
+        '<div class="btns"><button class="btn teal block" data-close>' + esc(T('Done')) + '</button></div>' +
+        (out.link ? '<details class="small muted" style="margin-top:12px"><summary>' + esc(T('Also send a link (optional)')) + '</summary><p>' + esc(T('Only if your supervisor prefers to open it from an email or message. Anyone with the link can sign, so send it only to your supervisor.')) + '</p><div class="btns">' + (navigator.share ? '<button class="btn block" data-share>' + esc(T('Share link')) + '</button>' : '') + '<button class="btn ghost block" data-copy>' + esc(T('Copy link')) + '</button></div></details>' : '');
+      sheet(dh, function (r2) {
+        var sh2 = $('[data-share]', r2); if (sh2) sh2.onclick = function () { navigator.share({ title: subject, text: msg }).catch(function () {}); };
+        var cp2 = $('[data-copy]', r2); if (cp2) cp2.onclick = function () { copy(out.link); };
+      });
+      return;
+    }
+    var html = '<h2>' + esc(T('Request ready')) + '</h2><p class="small muted">' + esc(T('Send the link by email, WhatsApp or Teams.')) + ' ' + esc(out.images ? T('It holds the key to {n}, so send it only to your supervisor.', { n: plural(out.images, 'encrypted image') }) : T('Anyone with the link can sign, so send it only to your supervisor.')) + '</p><div class="card" style="word-break:break-all;font-size:13px">' + esc(out.link) + '</div><div class="btns">' + (navigator.share ? '<button class="btn teal block" data-share>' + esc(T('Share link')) + '</button>' : '') + '<button class="btn block" data-copy>' + esc(T('Copy link')) + '</button><a class="btn ghost block" href="mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(msg) + '">' + esc(T('Email it')) + '</a><button class="btn ghost block" data-close>' + esc(T('Done')) + '</button></div>';
     sheet(html, function (r2) {
       var sh = $('[data-share]', r2); if (sh) sh.onclick = function () { navigator.share({ title: subject, text: msg }).catch(function () {}); };
       $('[data-copy]', r2).onclick = function () { copy(out.link); };
@@ -4045,16 +4104,54 @@
       $$('[data-sv-as]').forEach(function (b) { b.onclick = function () { dashAssess(res.assessmentRequests[Number(b.dataset.svAs)], id); }; });
     }).catch(function (ex) { svFail(T('Learner'), back, ex); });
   }
+  // 1.0.21: the images of a dashboard request, decrypted on this device with the key the learner's app sent, with the
+  // same "Review copy" marking as the link page (sign.js).
+  function unb64u(str) { str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str.length % 4) str += '='; var bin = atob(str), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+  function dashImages(root, res, byEntry) {
+    var stamp = T('Review copy') + ' · ' + res.learner + ' · ' + new Date().toLocaleDateString(LOCALES[LANG], { day: 'numeric', month: 'short', year: 'numeric' });
+    var fail = function (box) { box.innerHTML = '<p class="small err">' + esc(T('These images could not be opened. Ask the learner to send them again.')) + '</p>'; };
+    crypto.subtle.importKey('raw', unb64u(res.imageKey), 'AES-GCM', false, ['decrypt']).then(function (key) {
+      Object.keys(byEntry).forEach(function (entry) {
+        var box = root.querySelector('[data-simgs="' + entry + '"]'); if (!box) return;
+        Promise.all(byEntry[entry].map(function (im) {
+          return NAT.net('/api/app/supervise/signoff/image?code=' + encodeURIComponent(res.code) + '&entry=' + encodeURIComponent(entry) + '&n=' + im.n, { credentials: 'same-origin', timeout: 60000 }).then(function (r) { if (!r.ok) throw new Error('gone'); return r.arrayBuffer(); }).then(function (buf) {
+            var u = new Uint8Array(buf);
+            return crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12), additionalData: new TextEncoder().encode(res.code + ':' + entry + ':' + im.n) }, key, u.slice(12));
+          }).then(function (plain) {
+            if (im.kind === 'clip') {
+              var wrap = document.createElement('div'); wrap.className = 'review-clip';
+              var v = document.createElement('video'); v.src = URL.createObjectURL(new Blob([plain], { type: im.type || 'video/mp4' })); v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true; v.controls = true; v.setAttribute('playsinline', ''); v.setAttribute('controlsList', 'nodownload noremoteplayback'); v.disablePictureInPicture = true; v.oncontextmenu = function (ev) { ev.preventDefault(); };
+              var mark = document.createElement('span'); mark.className = 'review-mark'; mark.textContent = stamp;
+              wrap.appendChild(v); wrap.appendChild(mark);
+              return wrap;
+            }
+            return createImageBitmap(new Blob([plain], { type: 'image/jpeg' })).then(function (bmp) {
+              var cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height; cv.className = 'review-img';
+              var g = cv.getContext('2d'); g.drawImage(bmp, 0, 0);
+              var fs = Math.max(14, Math.round(cv.width / 40)); g.font = '600 ' + fs + 'px DM Sans, system-ui, sans-serif'; g.textBaseline = 'bottom';
+              var w = g.measureText(stamp).width; g.fillStyle = 'rgba(15,30,51,.7)'; g.fillRect(0, cv.height - fs * 1.8, w + fs, fs * 1.8); g.fillStyle = '#fff'; g.fillText(stamp, fs / 2, cv.height - fs * 0.4);
+              g.save(); g.globalAlpha = 0.14; g.translate(cv.width / 2, cv.height / 2); g.rotate(-Math.PI / 7); g.font = '600 ' + fs * 2 + 'px DM Sans, system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#fff'; g.fillText(T('REVIEW COPY'), 0, 0); g.restore();
+              cv.oncontextmenu = function (ev) { ev.preventDefault(); };
+              return cv;
+            });
+          });
+        })).then(function (els) { box.innerHTML = ''; els.forEach(function (c) { box.appendChild(c); }); }).catch(function () { fail(box); });
+      });
+    }).catch(function () { $$('[data-simgs]', root).forEach(fail); });
+  }
   function myPre() { var a = S.account || {}; return { name: a.name, role: profile().grade || a.role || '', registration: profile().registration || '', noEmail: true }; }
   // Opening a request marks it "Under review" for the learner; Decline sends it back with a reason (worker/review.js).
   function markOpened(kind, code) { api('/api/app/supervise/request/accept', { kind: kind, code: code }).catch(function () { /* older servers: nothing to mark */ }); }
   // 19 Oct 2026 (owner): a supervisor who cannot sign yet (no images, a detail missing) asks for more without signing or
   // ticking anything; the request goes back to the learner, who adds it and sends it back to them.
   function declineButton(kind, code) { return '<div class="btns" style="margin:4px 0 14px"><button type="button" class="btn sm" data-more="' + kind + ':' + esc(code) + '">' + esc(T('Ask for more information')) + '</button><button type="button" class="btn ghost sm" data-decline="' + kind + ':' + esc(code) + '">' + esc(T('Decline this request')) + '</button></div>'; }
-  function bindDecline(root) {
+  // reopen: what Cancel goes back to (the request being reviewed), 1.0.21.
+  function bindDecline(root, reopen) {
+    var back = function (r2) { var c = $('[data-close]', r2); if (c && reopen) { c.removeAttribute('data-close'); c.onclick = function () { reopen(); }; } };
     $$('[data-more]', root).forEach(function (b) { b.onclick = function () {
       var v = b.dataset.more.split(':');
       sheet('<h2>' + esc(T('Ask for more information')) + '</h2><p class="muted small">' + esc(T('Nothing is signed. The request goes back to the learner with your note; they add what you need and send it back to you.')) + '</p><form id="mif"><div class="field"><label for="mir">' + esc(T('What do you need?')) + '</label><textarea id="mir" maxlength="500" rows="3" required placeholder="' + esc(T('For example: please add the images of each view.')) + '"></textarea></div><div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Send back for more information')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (r2) {
+        back(r2);
         $('#mif', r2).addEventListener('submit', function (ev) {
           ev.preventDefault(); var err = $('.err', r2); err.hidden = true; var bb = $('button.teal', r2); busy(bb, true);
           api('/api/app/supervise/request/more', { kind: v[0], code: v[1], note: $('#mir', r2).value }).then(function (r3) { if (!r3.ok) throw new Error(r3.error); closeSheet(); toast(T('Sent back. The learner will add what you asked for and send it back to you.'), 4000); loadLinks(); S.sv = null; render(true); })
@@ -4065,6 +4162,7 @@
     $$('[data-decline]', root).forEach(function (b) { b.onclick = function () {
       var v = b.dataset.decline.split(':');
       sheet('<h2>' + esc(T('Decline this request')) + '</h2><p class="muted small">' + esc(T('It goes back to the learner, who can send it to someone else. Nothing in their logbook changes.')) + '</p><form id="dcf"><div class="field"><label for="dcr">' + esc(T('Reason')) + '</label><textarea id="dcr" maxlength="500" rows="3" required></textarea></div><div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Decline')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (r2) {
+        back(r2);
         $('#dcf', r2).addEventListener('submit', function (ev) {
           ev.preventDefault(); var err = $('.err', r2); err.hidden = true;
           api('/api/app/supervise/request/decline', { kind: v[0], code: v[1], reason: $('#dcr', r2).value }).then(function (r3) { if (!r3.ok) throw new Error(r3.error); closeSheet(); toast(T('Declined. The request has gone back to the learner.'), 3500); loadLinks(); S.sv = null; render(true); })
@@ -4077,8 +4175,12 @@
     api('/api/app/supervise/signoff?code=' + encodeURIComponent(code)).then(function (res) {
       if (!res.ok) { toast(res.error); return; }
       markOpened('signoff', code);
-      sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish. Images open only from the link the learner sent you.')) + '</p>' + declineButton('signoff', code) + res.entries.map(function (e) { return entryCard(e, true); }).join('') + signoffFormHtml(myPre()), function (root) {
-        bindDecline(root);
+      var imgs = res.images || [], byEntry = {};
+      imgs.forEach(function (im) { (byEntry[im.entry] = byEntry[im.entry] || []).push(im); });
+      var imgNote = !imgs.length ? T('No images were attached to this request. If you need them, tap Ask for more information.') : res.imageKey ? '' : T('The learner shared images by link only. Ask them to send you the link, or update their app and send again.');
+      sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish.')) + '</p>' + (imgNote ? '<div class="warn small">' + esc(imgNote) + '</div>' : '') + declineButton('signoff', code) + res.entries.map(function (e) { return entryCard(e, true) + (res.imageKey && byEntry[e.id] ? '<div class="review-imgs" data-simgs="' + esc(e.id) + '"><p class="small muted">' + esc(T('Opening {n}…', { n: plural(byEntry[e.id].length, 'image') })) + '</p></div>' : ''); }).join('') + signoffFormHtml(myPre()), function (root) {
+        bindDecline(root, function () { dashSignoff(code, learnerId); });
+        if (res.imageKey) dashImages(root, res, byEntry);
         var f = $('#pf', root), pad = F.bindSig(root, T);
         f.addEventListener('submit', function (ev) {
           ev.preventDefault(); var d = collectSignoff(root, f, pad); if (!d) return; d.code = code;
@@ -4107,7 +4209,7 @@
   }
   function dashAssess(a, learnerId) {
     markOpened('assessment', a.code);
-    dashAssessSheet(kindLabel(a.kind), T('{name}: {module}.', { name: a.learner, module: a.pathwayLabel + ' ' + T(a.moduleLabel) }), { kind: a.kind, topics: a.topics, learnerReflection: (a.data || {}).learnerReflection, pick: declineButton('assessment', a.code), bind: bindDecline },
+    dashAssessSheet(kindLabel(a.kind), T('{name}: {module}.', { name: a.learner, module: a.pathwayLabel + ' ' + T(a.moduleLabel) }), { kind: a.kind, topics: a.topics, learnerReflection: (a.data || {}).learnerReflection, pick: declineButton('assessment', a.code), bind: function (root) { bindDecline(root, function () { dashAssess(a, learnerId); }); } },
       function (d) { d.code = a.code; return api('/api/app/supervise/assessment', d); }, learnerId);
   }
   function dashAssessNew(res, learnerId) {
@@ -5125,7 +5227,9 @@
       '<h2 class="sec">' + esc(T('Certificates')) + ' <a href="/elearning/account/">' + esc(T('All')) + '</a></h2>' + (certs.length ? certs.map(function (c) { return '<div class="entry"><span class="thumb">' + I.cert + '</span><a class="grow" style="text-decoration:none;color:inherit" href="/elearning/certificate/' + esc(c.code) + '/"><h3>' + esc(c.module_title) + '</h3><p>' + esc(fmt(c.issued_on)) + ' · ' + esc(c.code) + '</p></a><button class="btn ghost sm" type="button" data-sharecert="' + esc(c.code) + '" data-title="' + esc(c.module_title) + '" aria-label="' + esc(T('Share certificate')) + '">' + I.share + '</button></div>'; }).join('') : '<div class="card"><p class="muted small">' + esc(T('Pass a free Academy module to earn a verifiable CPD certificate.')) + '</p><a class="btn sm" href="/elearning/">' + esc(T('Browse modules')) + '</a></div>') +
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div>' + orgField('m4', T('Organisation'), acc.organisation, acc.organisationId) + '<div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
       '<h2 class="sec">' + esc(T('Help')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="/pocus-logbook/help/" target="_blank" rel="noopener">' + esc(T('How to use the logbook')) + '</a><a href="' + esc(suggestMail()) + '">' + esc(T('Have a suggestion? Tell us')) + '</a></div><p class="small muted" style="margin:8px 0 0">' + esc(T('Ideas for the app go straight to the Wavelength team.')) + '</p></div>' + // 1.0.18: website help page (in-app browser on phones)
-      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up and restore')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>'));
+      '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up and restore')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
+      '<div class="btns"><button class="btn ghost block" id="melo">' + esc(T('Log out')) + '</button></div>'));
+    $('#melo').onclick = askLogout;
     // 1.0.11: About Wavelength lives in Settings only (the gear, top right), not twice.
     if (editPw) $('#pf').scrollIntoView();
     $$('[data-sharecert]').forEach(function (b) { b.onclick = function () { shareCertificate(b.dataset.sharecert, b.dataset.title); }; });
@@ -5187,6 +5291,13 @@
     if (b) b.onclick = function () { if (!b.disabled) retryNow(); };
   }
   // ---------- Settings: appearance, language, notifications, app lock, account ----------
+  // Settings and Me (1.0.21): log out, asking first when entries on this device have not synced.
+  function askLogout() {
+    var out = function () { logoutNow().then(function () { signedOut(); }, function () { signedOut(); }); };
+    var n = pendingList().length;
+    if (!n) return out();
+    sheet('<h2>' + esc(T('Log out?')) + '</h2><p class="muted small">' + esc(N(n, '{n} entry on this device has not synced yet.', '{n} entries on this device have not synced yet.')) + ' ' + esc(T('It stays saved on this device and syncs when you log in here again.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Stay logged in')) + '</button><button class="btn ghost block" data-ok>' + esc(T('Log out')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); out(); }; });
+  }
   function viewSettings() {
     var p = profile();
     var certs = (S.me && S.me.certificates) || [];
@@ -5213,12 +5324,7 @@
     var ntp = $('#ntp'); if (ntp) ntp.onchange = function () { var on = ntp.checked; ntp.disabled = true; (on ? pushEnable() : pushDisable().then(function () { return false; })).then(function (ok) { ntp.disabled = false; ntp.checked = !!ok; }); };
     $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? T('Sign-off emails on.') : T('Sign-off emails off.')); }).catch(function (ex) { toast(ex.message); }); };
     bindLockCard();
-    $('#lo').onclick = function () {
-      var out = function () { logoutNow().then(function () { signedOut(); }, function () { signedOut(); }); };
-      var n = pendingList().length;
-      if (!n) return out();
-      sheet('<h2>' + esc(T('Log out?')) + '</h2><p class="muted small">' + esc(N(n, '{n} entry on this device has not synced yet.', '{n} entries on this device have not synced yet.')) + ' ' + esc(T('It stays saved on this device and syncs when you log in here again.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Stay logged in')) + '</button><button class="btn ghost block" data-ok>' + esc(T('Log out')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); out(); }; });
-    };
+    $('#lo').onclick = askLogout;
     $('#loa').onclick = function () {
       sheet('<h2>' + esc(T('Log out of all other devices?')) + '</h2><p class="muted small">' + esc(T('Every other phone, tablet and browser signed in to your account is logged out. Logbook entries they have not synced stay on them until someone logs in there again. This device stays logged in.')) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Log out other devices')) + '</button><button class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div>', function (root) {
         $('[data-ok]', root).onclick = function () { var b = this; busy(b, true); api('/api/app/logout-all', { keepThisDevice: true }).then(function (res) { closeSheet(); toast(res.ok ? T('Other devices are logged out.') : res.error, 4000); }).catch(function () { busy(b, false); toast(T('Could not log out other devices. Check your connection.')); }); };

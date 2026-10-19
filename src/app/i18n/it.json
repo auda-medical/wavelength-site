@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted. 1.0.21 strings (images in the supervisor app, clearer saving) were added on 19 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Lo specializzando ha fissato un proprio obiettivo per questo modulo, diverso dal valore del curriculum.",
 "12": "12",
@@ -2605,5 +2605,33 @@
 "Ideas for the app go straight to the Wavelength team.": "Le idee per l’app arrivano direttamente al team Wavelength.",
 "My suggestion:": "Il mio suggerimento:",
 "Suggest an improvement": "Suggerisci un miglioramento",
-"Wavelength app suggestion": "Suggerimento per l’app Wavelength"
+"Wavelength app suggestion": "Suggerimento per l’app Wavelength",
+"A linked supervisor sees the request in their app, with any images you include, and gets a notification.": "Un supervisore collegato vede la richiesta nella sua app, con le immagini che includi, e riceve una notifica.",
+"After saving, choose who to send it to.": "Dopo il salvataggio, scegli a chi inviarla.",
+"Also send a link (optional)": "Invia anche un link (facoltativo)",
+"An independent scan needs no sign-off, but you can ask for one.": "Un esame indipendente non richiede convalida, ma puoi chiederla.",
+"Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish.": "Conferma o chiedi chiarimenti su ogni esame e, se vuoi, valuta qualità dell’immagine e accuratezza diagnostica.",
+"From your earlier scans": "Dai tuoi esami precedenti",
+"Images are encrypted before they leave this phone and only the supervisor you send them to can open them. They delete when your supervisor signs, when you cancel the request, or after 14 days.": "Le immagini vengono cifrate prima di lasciare questo telefono e solo il supervisore a cui le invii può aprirle. Vengono eliminate quando il supervisore firma, quando annulli la richiesta o dopo 14 giorni.",
+"Linked supervisor: signs in their app": "Supervisore collegato: firma nella sua app",
+"No images were attached to this request. If you need them, tap Ask for more information.": "A questa richiesta non sono allegate immagini. Se ti servono, tocca Chiedi altre informazioni.",
+"Only if your supervisor prefers to open it from an email or message. Anyone with the link can sign, so send it only to your supervisor.": "Solo se il supervisore preferisce aprirla da un’email o un messaggio. Chiunque abbia il link può firmare, quindi invialo solo al tuo supervisore.",
+"Opening {n}…": "Apertura di {n}…",
+"Request sent": "Richiesta inviata",
+"Save and request sign-off": "Salva e chiedi la convalida",
+"Save and send for sign-off": "Salva e invia per la convalida",
+"Save and send to {name}": "Salva e invia a {name}",
+"Save and sign now: supervisor is with me": "Salva e firma ora: il supervisore è con me",
+"Save as draft": "Salva come bozza",
+"Save to my logbook": "Salva nel mio registro",
+"Saved as a draft. Send it for sign-off from Scans when you are ready.": "Salvato come bozza. Invialo per la convalida da Esami quando sei pronto.",
+"Saved on this device. Send it for sign-off from Scans once it has synced.": "Salvato su questo dispositivo. Invialo per la convalida da Esami dopo la sincronizzazione.",
+"Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.": "Firma ora: passa il telefono al supervisore subito dopo il salvataggio. Bozza: salvata nel registro; inviala per la convalida più tardi da Esami.",
+"Someone else": "Qualcun altro",
+"The learner shared images by link only. Ask them to send you the link, or update their app and send again.": "Il discente ha condiviso le immagini solo tramite link. Chiedigli di inviarti il link, oppure di aggiornare l’app e inviare di nuovo.",
+"These images could not be opened. Ask the learner to send them again.": "Impossibile aprire queste immagini. Chiedi al discente di inviarle di nuovo.",
+"Type their name": "Scrivi il nome",
+"Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "Il supervisore la vede ora nella sua app, con {n}. Riceverai una notifica quando risponde.",
+"Your supervisor sees it in their app now. You get a notification when they reply.": "Il supervisore la vede ora nella sua app. Riceverai una notifica quando risponde.",
+"{name} sees it in their app, with the images you include, and gets a notification.": "{name} la vede nella sua app, con le immagini che includi, e riceve una notifica."
 }

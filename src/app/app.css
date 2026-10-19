@@ -651,6 +651,9 @@ html[data-theme="dark"] { --fs-head: rgba(127,196,204,.075); --rule: #1F3148; --
 .scanform .field > .check { padding: 2px 0; }
 .scanform .gallery { margin-bottom: 4px; }
 .scanform .savebar { position: sticky; bottom: calc(var(--tab) + var(--safe-b) + 8px); margin-top: 6px; }
+/* 1.0.21: two save choices (send or sign now, and draft): a solid bar so the form never shows through the second. */
+.scanform .savebar { background: var(--bg); padding: 8px 0 4px; border-radius: 14px 14px 0 0; gap: 6px; }
+.scanform .savebar #sv2 { min-height: 42px; padding-block: 8px; background: var(--bg); }
 .scanform .type-ok { margin: 0 0 14px; }
 /* A section holding a missing required answer shows it in its header too. */
 .scanform .fs:has(.field.invalid) { border-color: var(--red-line); }

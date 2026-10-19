@@ -85,7 +85,8 @@ if (!req.ok || !req.toDashboard) { console.log('REQUEST', JSON.stringify(req)); 
   const sel = await page.evaluate(() => { const s = document.querySelector('#tosup'); return { title: document.querySelector('.sheet h2').textContent, chosen: s ? s.options[s.selectedIndex].textContent : null }; });
   record('B2', 'The usual request sheet opens titled "Send back to Sam Supervisor", with Sam already chosen', /Send back to Sam Supervisor/.test(sel.title) && /Sam Supervisor/.test(sel.chosen || ''), JSON.stringify(sel));
   await page.click('#lf button.teal');
-  await page.waitForSelector('.sheet [data-copy]', { timeout: 15000 });
+  // 1.0.21: a dashboard request ends on 'Request sent' (the link is optional, folded away).
+  await page.waitForFunction(() => /Request sent/.test((document.querySelector('.sheet h2') || {}).textContent || ''), null, { timeout: 15000 });
   await sleep(500);
   const list = await call(learner, 'signoffs');
   const old = list.signoffs.find((s) => s.id === req.code), fresh = list.signoffs.find((s) => s.id !== req.code && s.status === 'pending');
