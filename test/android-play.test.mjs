@@ -34,3 +34,9 @@ test('patch-native keeps both after a Capacitor upgrade', () => {
   assert.match(p, /m = m\.replace\('\\n            android:screenOrientation="portrait"', ''\)/);
   assert.match(p, /minifyEnabled true/);
 });
+
+test('R8 keeps the plugin permission annotations (a plugin checkPermissions crashed without them)', () => {
+  const r = read('android/app/proguard-rules.pro');
+  assert.match(r, /-keepattributes [^\n]*RuntimeVisibleAnnotations/);
+  assert.ok(r.includes('-keep @interface com.getcapacitor.annotation.** { *; }'));
+});
