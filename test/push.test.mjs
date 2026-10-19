@@ -53,7 +53,7 @@ test('off by default: no device registered and nothing sent until switched on', 
   assert.equal(sent.length, n0, 'PUSH_NOTIFY is off');
 });
 
-test('a request reaches the supervisor\'s phone with names only and the learner\'s requests as the screen to open', async () => {
+test('a request reaches the supervisor\'s phone with names only and the learner page (as from Home) as the screen to open', async () => {
   const env = makeEnv(ON);
   const { learner, sup, linkId, lid } = await linked(env, 'b');
   assert.equal((await sup.call('/api/app/push/register', { token: 'tok-b:sup', platform: 'ios', version: '1.0.20' })).body.ok, true);
@@ -66,10 +66,10 @@ test('a request reaches the supervisor\'s phone with names only and the learner\
   assert.equal(m[0].token, 'tok-b:sup');
   assert.equal(m[0].notification.title, 'Sign-off request');
   assert.equal(m[0].notification.body, 'Sam Trainee sent you a scan to sign off.');
-  assert.equal(m[0].data.url, `/app/#/supervise/${lid}/requests`);
+  assert.equal(m[0].data.url, `/app/#/supervise/${lid}`);
   assert.doesNotMatch(JSON.stringify(m[0]), /Morison|free fluid|efast/i, 'nothing clinical');
   // The email button opens the same screen.
-  assert.match(mail.filter((x) => x.to && x.to[0].email_address.address === 'sup.b@x.co').pop().htmlbody, new RegExp(`/app/#/supervise/${lid}/requests`));
+  assert.match(mail.filter((x) => x.to && x.to[0].email_address.address === 'sup.b@x.co').pop().htmlbody, new RegExp(`/app/#/supervise/${lid}`));
 });
 
 test('sign-off outcomes reach the learner\'s phone even with sign-off emails off; a gone token is forgotten', async () => {

@@ -3290,9 +3290,10 @@
       }; });
     });
   }
-  function entryCard(e, decide) {
+  // media (1.0.21): the scan's images, shown under its title and before the ratings, so they are seen before rating.
+  function entryCard(e, decide, media) {
     var t = TYPES[e.type] || {};
-    return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T(t.label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (decide ? '<select data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">' + esc(T('Confirm')) + '</option><option value="query">' + esc(T('Query')) + '</option></select>' : '') + '</div>' + (decide ? F.ratingHtml(C, T, e.id) : '') + '</div>';
+    return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T(t.label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (decide ? '<select data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">' + esc(T('Confirm')) + '</option><option value="query">' + esc(T('Query')) + '</option></select>' : '') + '</div>' + (media || '') + (decide ? F.ratingHtml(C, T, e.id) : '') + '</div>';
   }
   function signoffFormHtml(pre) {
     return '<form id="pf">' + F.assessorHtml(T, pre) +
@@ -4184,7 +4185,7 @@
   function markOpened(kind, code) { api('/api/app/supervise/request/accept', { kind: kind, code: code }).catch(function () { /* older servers: nothing to mark */ }); }
   // 19 Oct 2026 (owner): a supervisor who cannot sign yet (no images, a detail missing) asks for more without signing or
   // ticking anything; the request goes back to the learner, who adds it and sends it back to them.
-  function declineButton(kind, code) { return '<div class="btns" style="margin:4px 0 14px"><button type="button" class="btn sm" data-more="' + kind + ':' + esc(code) + '">' + esc(T('Ask for more information')) + '</button><button type="button" class="btn ghost sm" data-decline="' + kind + ':' + esc(code) + '">' + esc(T('Decline this request')) + '</button></div>'; }
+  function declineButton(kind, code) { return '<p class="small muted" style="margin:14px 0 0">' + esc(T('Not ready to sign?')) + '</p><div class="btns" style="margin:4px 0 14px"><button type="button" class="btn ghost sm" data-more="' + kind + ':' + esc(code) + '">' + esc(T('Ask for more information')) + '</button><button type="button" class="btn ghost sm" data-decline="' + kind + ':' + esc(code) + '">' + esc(T('Decline this request')) + '</button></div>'; }
   // reopen: what Cancel goes back to (the request being reviewed), 1.0.21.
   function bindDecline(root, reopen) {
     var back = function (r2) { var c = $('[data-close]', r2); if (c && reopen) { c.removeAttribute('data-close'); c.onclick = function () { reopen(); }; } };
@@ -4218,7 +4219,7 @@
       var imgs = res.images || [], byEntry = {};
       imgs.forEach(function (im) { (byEntry[im.entry] = byEntry[im.entry] || []).push(im); });
       var imgNote = !imgs.length ? T('No images were attached to this request. If you need them, tap Ask for more information.') : res.imageKey ? '' : T('The learner shared images by link only. Ask them to send you the link, or update their app and send again.');
-      sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish.')) + '</p>' + (imgNote ? '<div class="warn small">' + esc(imgNote) + '</div>' : '') + declineButton('signoff', code) + res.entries.map(function (e) { return entryCard(e, true) + (res.imageKey && byEntry[e.id] ? '<div class="review-imgs" data-simgs="' + esc(e.id) + '"><p class="small muted">' + esc(T('Opening {n}…', { n: plural(byEntry[e.id].length, 'image') })) + '</p></div>' : ''); }).join('') + signoffFormHtml(myPre()), function (root) {
+      sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish.')) + '</p>' + (imgNote ? '<div class="warn small">' + esc(imgNote) + '</div>' : '') + res.entries.map(function (e) { return entryCard(e, true, res.imageKey && byEntry[e.id] ? '<div class="review-imgs" data-simgs="' + esc(e.id) + '"><p class="small muted">' + esc(T('Opening {n}…', { n: plural(byEntry[e.id].length, 'image') })) + '</p></div>' : ''); }).join('') + declineButton('signoff', code) + signoffFormHtml(myPre()), function (root) {
         bindDecline(root, function () { dashSignoff(code, learnerId); });
         if (res.imageKey) dashImages(root, res, byEntry);
         var f = $('#pf', root), pad = F.bindSig(root, T);
@@ -4232,7 +4233,7 @@
     });
   }
   function dashAssessSheet(title, intro, opts, send, learnerId) {
-    sheet('<h2>' + esc(title) + '</h2><p class="muted small">' + esc(intro) + '</p>' + (opts.pick || '') + '<form id="asf">' + F.assessmentHtml(C, T, Object.assign({ pre: myPre() }, opts)) + '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Record assessment')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {
+    sheet('<h2>' + esc(title) + '</h2><p class="muted small">' + esc(intro) + '</p>' + (opts.pick || '') + '<form id="asf">' + F.assessmentHtml(C, T, Object.assign({ pre: myPre() }, opts)) + (opts.after || '') + '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Record assessment')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {
       var f = $('#asf', root), pad = F.bindSig(root, T);
       if (opts.bind) opts.bind(root);
       f.addEventListener('submit', function (ev) {
@@ -4249,7 +4250,7 @@
   }
   function dashAssess(a, learnerId) {
     markOpened('assessment', a.code);
-    dashAssessSheet(kindLabel(a.kind), T('{name}: {module}.', { name: a.learner, module: a.pathwayLabel + ' ' + T(a.moduleLabel) }), { kind: a.kind, topics: a.topics, learnerReflection: (a.data || {}).learnerReflection, pick: declineButton('assessment', a.code), bind: function (root) { bindDecline(root, function () { dashAssess(a, learnerId); }); } },
+    dashAssessSheet(kindLabel(a.kind), T('{name}: {module}.', { name: a.learner, module: a.pathwayLabel + ' ' + T(a.moduleLabel) }), { kind: a.kind, topics: a.topics, learnerReflection: (a.data || {}).learnerReflection, after: declineButton('assessment', a.code), bind: function (root) { bindDecline(root, function () { dashAssess(a, learnerId); }); } },
       function (d) { d.code = a.code; return api('/api/app/supervise/assessment', d); }, learnerId);
   }
   function dashAssessNew(res, learnerId) {
@@ -5268,7 +5269,7 @@
       '<h2 class="sec">' + esc(T('Profile')) + '</h2><form id="mf" class="card"><div class="two"><div class="field"><label for="m1">' + esc(T('First name')) + '</label><input id="m1" name="firstName" type="text" value="' + esc(acc.firstName) + '"></div><div class="field"><label for="m2">' + esc(T('Last name')) + '</label><input id="m2" name="lastName" type="text" value="' + esc(acc.lastName) + '"></div></div><div class="field"><label for="m3">' + esc(T('Grade or role')) + '</label><input id="m3" name="grade" type="text" value="' + esc(p.grade || '') + '"></div>' + orgField('m4', T('Organisation'), acc.organisation, acc.organisationId) + '<div class="field"><label for="m5">' + esc(T('Professional registration number (shown on exports, optional)')) + '</label><input id="m5" name="registration" type="text" value="' + esc(p.registration || '') + '"></div><div class="field"><label class="check"><input type="checkbox" name="supervisor" value="1"' + (p.supervisor ? ' checked' : '') + '><span>' + esc(T('I supervise or assess other clinicians\' scanning.')) + '</span></label></div><button class="btn sm">' + esc(T('Save profile')) + '</button></form>' +
       '<h2 class="sec">' + esc(T('Help')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="/pocus-logbook/help/" target="_blank" rel="noopener">' + esc(T('How to use the logbook')) + '</a><a href="' + esc(suggestMail()) + '">' + esc(T('Have a suggestion? Tell us')) + '</a></div><p class="small muted" style="margin:8px 0 0">' + esc(T('Ideas for the app go straight to the Wavelength team.')) + '</p></div>' + // 1.0.18: website help page (in-app browser on phones)
       '<h2 class="sec">' + esc(T('Your data')) + '</h2><div class="card"><div style="display:grid;gap:12px"><a href="#/settings?sync=1">' + esc(T('Sync')) + '</a><a href="#/backup">' + esc(T('Back up and restore')) + '</a><a href="#/export">' + esc(T('Export your logbook')) + '</a><a href="#/evidence">' + esc(T('Verified summaries you have shared')) + '</a><a href="#/declaration">' + esc(T('Your responsibility for stored data')) + '</a><a href="/app-terms/">' + esc(T('Logbook terms of use')) + '</a><a href="/privacy/">' + esc(T('Privacy notice')) + '</a><a href="/verify/">' + esc(T('Verify a code')) + '</a></div></div>' +
-      '<div class="btns"><button class="btn ghost block" id="melo">' + esc(T('Log out')) + '</button></div>'));
+      '<div class="btns"><button class="btn block" id="melo">' + esc(T('Log out')) + '</button></div>'));
     $('#melo').onclick = askLogout;
     // 1.0.11: About Wavelength lives in Settings only (the gear, top right), not twice.
     if (editPw) $('#pf').scrollIntoView();
@@ -5353,7 +5354,7 @@
         '<p class="small muted" style="margin:8px 0 0">' + esc(T('The app also shows new sign-offs on your home screen and logbook.')) + '</p></div>' +
       lockCard() +
       '<h2 class="sec">' + esc(T('Account')) + '</h2><div class="card"><form id="cpw"><div class="field"><label for="c1">' + esc(T('Current password')) + '</label><input id="c1" name="current" type="password" autocomplete="current-password"></div>' + pwFields('c2', T('New password'), 'password') + '<button class="btn sm ghost">' + esc(T('Change password')) + '</button></form></div>' +
-      '<div class="btns"><button class="btn ghost block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="loa">' + esc(T('Log out of all other devices')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
+      '<div class="btns"><button class="btn block" id="lo">' + esc(T('Log out')) + '</button><button class="btn ghost block" id="loa">' + esc(T('Log out of all other devices')) + '</button><button class="btn ghost block" id="dl" style="color:var(--red)">' + esc(T('Delete my account')) + '</button></div>' +
       aboutFooter()));
     fillSyncPanel($('#syncpanel'));
     bindAbout();

@@ -2601,5 +2601,6 @@
 "I have checked every image and clip in this scan. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "我已检查此次扫查的每张图像和每个片段。其中没有患者姓名、编号、出生日期、医院名称或其他身份信息，与 {name} 分享符合我所在医院的信息治理政策。",
 "Sending to {name}…": "正在发送给 {name}…",
 "Tick the declaration about your images to send them, or choose Save as draft.": "勾选关于图像的声明后即可发送，或选择“保存为草稿”。",
-"Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "除非您发送签署，否则保留在这部手机上。保存前请裁剪并遮盖身份信息，也可添加标注。片段最长 10 秒，无声音。"
+"Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "除非您发送签署，否则保留在这部手机上。保存前请裁剪并遮盖身份信息，也可添加标注。片段最长 10 秒，无声音。",
+"Not ready to sign?": "还不能签署？"
 }

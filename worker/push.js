@@ -48,7 +48,7 @@ async function accessToken(env, now = Date.now()) {
 // The one line each notice shows on a phone. Names and counts only.
 export function pushText(kind, d) {
   const n = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
-  const sv = d.lid ? `/supervise/${Number(d.lid)}/requests` : '/supervise';
+  const sv = d.lid ? `/supervise/${Number(d.lid)}` : '/supervise'; // the learner's page, as from Home (owner, 20 Oct 2026)
   const T = {
     req_signoff: ['Sign-off request', `${d.learner} sent you ${d.count === 1 ? 'a scan' : n(d.count, 'scan')} to sign off.`, sv],
     req_assess: ['Assessment request', `${d.learner} asked you to complete an assessment.`, sv],

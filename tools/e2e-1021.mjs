@@ -101,7 +101,7 @@ let code = null;
   record('L6', 'The request waits in Sam\'s dashboard', so && so.supervisor_id === sup.id, so ? [so.id, so.supervisor_id === sup.id] : 'none');
   // Log out on Me.
   await go(page, '#/me'); await page.waitForSelector('#melo', { timeout: 10000 }).catch(() => {});
-  record('L7', 'Log out is on Me (as well as Settings)', !!(await page.$('#melo')) && (await page.$eval('#melo', (b) => b.textContent)) === 'Log out', 'button ' + !!(await page.$('#melo')));
+  record('L7', 'Log out is on Me (as well as Settings), as a solid dark button', !!(await page.$('#melo')) && (await page.$eval('#melo', (b) => b.textContent + '|' + b.className)) === 'Log out|btn block', 'button ' + !!(await page.$('#melo')));
   await ctx.close();
 }
 
@@ -117,6 +117,10 @@ let code = null;
   record('S1', 'The supervisor sees the photo in the app, marked as a review copy', !!seen && seen.w > 100 && seen.h > 100, seen || (await sheetText(page)).slice(0, 300));
   const noWarn = await page.evaluate(() => !/link only|No images were attached/.test(document.querySelector('.sheet').textContent));
   record('S2', 'No "link only" or "no images" warning when the photo is there', noWarn, '');
+  const order = await page.evaluate(() => { const sh = document.querySelector('.sheet'), all = [...sh.querySelectorAll('.card, canvas.review-img, [data-more], #pf')]; const i = (sel) => all.findIndex((x) => x.matches(sel)); return { card: i('.card'), img: i('canvas.review-img'), more: i('[data-more]'), form: i('#pf'), moreGhost: sh.querySelector('[data-more]').classList.contains('ghost') }; });
+  record('S2b', 'Ask for more information and Decline come after the scan and its photo, as plain outline buttons', order.card >= 0 && order.card < order.more && order.img < order.more && order.more < order.form && order.moreGhost, order);
+  const photoFirst = await page.evaluate(() => { const c = document.querySelector('.sheet .card'), img = c && c.querySelector('canvas.review-img'), rate = c && c.querySelector('.rate, [data-rate], fieldset, .seg'); return { inCard: !!img, before: !!(img && rate && (img.compareDocumentPosition(rate) & Node.DOCUMENT_POSITION_FOLLOWING)) }; });
+  record('S2c', 'The photo is inside the scan card, under its title and before Image quality', photoFirst.inCard && photoFirst.before, photoFirst);
   await shot(page, 'S-review-with-photo');
   await page.click('.sheet [data-more]');
   await page.waitForSelector('#mif');

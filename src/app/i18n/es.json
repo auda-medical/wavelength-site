@@ -2639,5 +2639,6 @@
 "I have checked every image and clip in this scan. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "He revisado cada imagen y clip de esta exploración. No queda ningún nombre, número, fecha de nacimiento, nombre de hospital ni otro identificador del paciente, y compartirlos con {name} cumple la política de gobernanza de la información de mi hospital.",
 "Sending to {name}…": "Enviando a {name}…",
 "Tick the declaration about your images to send them, or choose Save as draft.": "Marque la declaración sobre sus imágenes para enviarlas, o elija Guardar como borrador.",
-"Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "Se quedan en este teléfono salvo que las envíe para firma. Recorte y oculte los identificadores antes de guardar, y anote si lo desea. Clips de hasta 10 segundos, sin sonido."
+"Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "Se quedan en este teléfono salvo que las envíe para firma. Recorte y oculte los identificadores antes de guardar, y anote si lo desea. Clips de hasta 10 segundos, sin sonido.",
+"Not ready to sign?": "¿Aún no puede firmar?"
 }
