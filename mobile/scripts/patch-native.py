@@ -71,8 +71,9 @@ if 'android:fullBackupContent=' not in m:
     m = m.replace('android:allowBackup="false"', 'android:allowBackup="false"\n        android:fullBackupContent="false"', 1)
 if 'android:dataExtractionRules=' not in m:
     m = m.replace('android:fullBackupContent="false"', 'android:fullBackupContent="false"\n        android:dataExtractionRules="@xml/data_extraction_rules"', 1)
-if 'screenOrientation' not in m:
-    m = m.replace('android:launchMode="singleTask"', 'android:launchMode="singleTask"\n            android:screenOrientation="portrait"')
+# 1.0.18: no orientation lock in the manifest (Google Play large-screen guidance). MainActivity keeps phones in
+# portrait and lets tablets and unfolded foldables turn.
+m = m.replace('\n            android:screenOrientation="portrait"', '')
 if '<queries>' not in m:
     # Android 11+ package visibility: without this, "Take photo" and "Record clip" fall back to the file picker.
     m = m.replace('    <!-- Permissions -->', '''    <!-- Camera and video apps the logbook hands off to for "Take photo" and "Record clip" (no camera permission needed). -->
@@ -136,5 +137,8 @@ if 'WL_KEYSTORE' not in g:
     g = g.replace('            minifyEnabled false\n', '            minifyEnabled false\n            if (System.getenv("WL_KEYSTORE")) signingConfig signingConfigs.release\n', 1)
     g = re.sub(r'versionCode \d+', 'versionCode(Integer.parseInt(System.getenv("WL_VERSION_CODE") ?: "1"))', g)
     g = re.sub(r'versionName "[^"]*"', 'versionName(System.getenv("WL_VERSION_NAME") ?: "1.0.0")', g)
+# 1.0.18: R8 on for release builds (Google Play "DEX code optimisation").
+g = g.replace('            minifyEnabled false\n', '            minifyEnabled true\n', 1)
+g = g.replace("getDefaultProguardFile('proguard-android.txt')", "getDefaultProguardFile('proguard-android-optimize.txt')", 1)
 gradle.write_text(g)
 print('patched')

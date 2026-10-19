@@ -191,15 +191,51 @@
         }
         if (from < 2) db.createObjectStore('shares', { keyPath: 'code' }); // encrypted upload queue for sign-off links
       };
-      r.onsuccess = function () { ok(r.result); };
+      r.onsuccess = function () {
+        var db = r.result;
+        // The browser closed the connection itself (an iPhone can do this to an app kept asleep for days): the next
+        // use opens it again (tx), instead of every save and sync failing until the app is restarted.
+        db.onclose = function () { if (S.db === db) S.dbLost = true; };
+        ok(db);
+      };
       r.onerror = function () { no(r.error); };
     });
   }
-  function tx(store, mode, fn) {
+  function txOnce(store, mode, fn) {
     return new Promise(function (ok, no) {
       var t = S.db.transaction(store, mode), st = t.objectStore(store), out;
       var req = fn(st); if (req) req.onsuccess = function () { out = req.result; };
       t.oncomplete = function () { ok(out); }; t.onerror = function () { no(t.error); }; t.onabort = function () { no(t.error); };
+    });
+  }
+  // 1.0.19: the owner's iPhone, left open on Wavelength for days, failed every sync until the app was closed and
+  // opened again. WebKit can drop an app's IndexedDB connection while it sleeps ("Connection to Indexed Database
+  // server lost", or a connection that is closing), and nothing reopened it. Now a transaction that fails that way
+  // reopens the logbook on this phone once and runs again. The failed attempt wrote nothing, so running it again is
+  // safe. Any other error is passed on unchanged.
+  function dbLost(ex) {
+    var n = ex && ex.name, m = String((ex && ex.message) || '');
+    return n === 'InvalidStateError' || n === 'UnknownError' || /connection|closing|closed|lost/i.test(m);
+  }
+  var reopening = null;
+  function reopenDb() {
+    if (!reopening) {
+      var id = S.account.id, old = S.db;
+      try { if (old) old.close(); } catch (e) { /* already closed */ }
+      reopening = openDb(id).then(function (db) {
+        reopening = null;
+        if (!S.account || S.account.id !== id) { db.close(); throw new Error('signed out'); }
+        S.db = db; S.dbLost = false; S.dbReopened = (S.dbReopened || 0) + 1; S.dbReopenedNew = true;
+        return db;
+      }, function (e) { reopening = null; throw e; });
+    }
+    return reopening;
+  }
+  function tx(store, mode, fn) {
+    if (S.dbLost && S.account) return reopenDb().then(function () { return txOnce(store, mode, fn); });
+    return txOnce(store, mode, fn).catch(function (ex) {
+      if (!S.account || !S.db || !dbLost(ex)) throw ex;
+      return reopenDb().then(function () { return txOnce(store, mode, fn); });
     });
   }
   var put = function (store, v) { return tx(store, 'readwrite', function (s) { return s.put(v); }); };
@@ -371,7 +407,7 @@
     if (SY.paused) { SY.due = true; return; }
     SY.timer = setTimeout(function () { SY.timer = 0; sync(); }, NETR.retryDelay(SY.tries, Math.random(), SY.fail));
   }
-  function pauseRetries() { SY.paused = true; if (SY.timer) { clearTimeout(SY.timer); SY.timer = 0; SY.due = true; } }
+  function pauseRetries() { SY.paused = true; if (S.syncing) SY.slept = true; if (SY.timer) { clearTimeout(SY.timer); SY.timer = 0; SY.due = true; } }
   // Back in the app: read the network afresh, then follow the resume plan (netstate.js): retry at once only when the
   // last attempt is not recent, and start the back-off again only after a longer time away or a network change.
   function resumeSync(away) {
@@ -463,19 +499,25 @@
   }
   // The last 12 sync attempts on this device, for the details panel: time, result kind, how long it took and the kind
   // of network (Wi-Fi, mobile data, VPN). No entry content, server text, addresses or account details. Capped, so it
-  // never grows.
+  // never grows. 1.0.19: a failure also keeps why, as a code only: the server's HTTP status ("HTTP 403") or the name
+  // of the error ("UnknownError"), so a failure seen on a phone can be explained. An attempt the phone slept through
+  // keeps no duration (it would count the days the app was asleep).
   var LOG_MAX = 12;
   function attemptLog() { try { var a = JSON.parse(localStorage.getItem('wl-synclog') || '[]'); return Array.isArray(a) ? a.slice(-LOG_MAX) : []; } catch (e) { return []; } }
-  function logAttempt(ok, kind) {
+  function failWhy(ex) {
+    if (ex && ex.status) return 'HTTP ' + (parseInt(ex.status, 10) || 0);
+    return String((ex && ex.name) || '').replace(/[^A-Za-z]/g, '').slice(0, 30);
+  }
+  function logAttempt(ok, kind, why) {
     var d = deviceNet(), t = d.known ? (d.transports || []).filter(function (x) { return x !== 'vpn'; }) : [];
     var net = !d.known ? '' : !d.connected ? 'none' : (t[0] || (NETR.vpnOnly(d) ? 'none' : '')) + (d.vpn ? '+vpn' : '');
-    var a = attemptLog(); a.push({ at: Date.now(), ok: !!ok, kind: kind || '', ms: SY.lastTry ? Date.now() - SY.lastTry : 0, net: net });
+    var a = attemptLog(); a.push({ at: Date.now(), ok: !!ok, kind: kind || '', why: why || '', ms: SY.lastTry && !SY.slept ? Date.now() - SY.lastTry : 0, net: net, re: S.dbReopenedNew ? 1 : 0 }); S.dbReopenedNew = false;
     try { localStorage.setItem('wl-synclog', JSON.stringify(a.slice(-LOG_MAX))); } catch (e) { /* storage blocked */ }
   }
   function doSync(manual) {
     var dirty = S.entries.filter(function (e) { return e._dirty && (manual || !e._syncError); });
     var conflicts = 0, gen = SESSION;
-    SY.lastTry = Date.now();
+    SY.lastTry = Date.now(); SY.slept = false;
     var push = batches(dirty).reduce(function (p, group) { return p.then(function () { return pushBatch(group, gen).then(function (c) { conflicts += c; }); }); }, Promise.resolve());
     return push.then(function () { return pullAll(0, gen); }).then(function () {
       return api('/api/app/signoffs').then(function (r) { stale(gen); if (r.ok) return setPending(r.signoffs); });
@@ -496,7 +538,7 @@
       SY.ran = true;
       SY.fail = !S.account ? '' : NETR.classify(ex, deviceNet());
       SY.err = SY.fail ? { kind: SY.fail, at: Date.now(), status: (ex && ex.status) || 0, vpn: !!(S.net && S.net.vpn) } : null;
-      if (SY.fail) logAttempt(false, SY.fail);
+      if (SY.fail) logAttempt(false, SY.fail, failWhy(ex));
     }).then(function () {
       S.syncing = false; S.syncManual = false;
       if (!S.account || gen !== SESSION) return;
@@ -5058,6 +5100,9 @@
     var ex = NETR.explain(st, deviceNet());
     var help = ex && !(st === 'failed' && bad.length) ? '<div class="sync-help"><p>' + esc(T(ex.lead)) + '</p>' + (ex.steps.length > 1 ? '<b>' + esc(T('What to check')) + '</b><ul>' + ex.steps.map(function (x) { return '<li>' + esc(T(x)) + '</li>'; }).join('') + '</ul>' : '<p>' + esc(T(ex.steps[0])) + '</p>') + '</div>' : '';
     var log = attemptLog();
+    // 1.0.19: a sync while the learner reads redraws the panel; the lists they opened stay open.
+    var opened = {}; Array.prototype.forEach.call(el.querySelectorAll('details[data-d]'), function (d) { if (d.open) opened[d.getAttribute('data-d')] = 1; });
+    var op = function (k) { return ' data-d="' + k + '"' + (opened[k] ? ' open' : ''); };
     el.innerHTML = '<p class="sync-now"><span class="sync-pill static p-' + p.cls + '"><span class="sp-ic" aria-hidden="true">' + SI[p.icon] + '</span><span class="sp-tx">' + esc(T(p.label, { n: n })) + '</span></span><span role="status">' + esc(syncText(st) || T('Checking…')) + '</span></p>' +
       '<dl class="sync-facts"><dt>' + esc(T('Network on this device')) + '</dt><dd>' + esc(netWords()) + '</dd>' +
       '<dt>' + esc(T('Wavelength server')) + '</dt><dd>' + esc(serverWords(st)) + '</dd>' +
@@ -5070,8 +5115,8 @@
       '<div class="sync-retry">' + retryButton('btn sm', 'data-resync') + '</div>' +
       '<p class="small muted" style="margin:12px 0 0">' + esc(T('This status is for this device only. Another phone or computer shows its own, and a scan saved here reaches your other devices only after this device has synced it.')) + '</p>' +
       '<p class="small muted" style="margin:8px 0 0">' + esc(T('Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped. Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.')) + ' <a href="#/backup">' + esc(T('Back up and restore')) + '</a></p>' +
-      (log.length ? '<details class="small muted sync-log" style="margin-top:10px"><summary>' + esc(T('Recent sync attempts')) + '</summary><ul class="sync-diag">' + log.slice().reverse().map(function (a) { return '<li>' + esc(new Date(a.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'medium' })) + ': ' + esc(a.ok ? T('Synced') : T(NETR.pill(a.kind === 'timeout' ? 'unreachable' : a.kind).label, { n: '' })) + (a.ms ? ' (' + a.ms + ' ms)' : '') + (a.net ? ', ' + esc(a.net) : '') + '</li>'; }).join('') + '</ul></details>' : '') +
-      (starts.length ? '<details class="small muted" style="margin-top:10px"><summary>' + esc(T('Start-up details')) + '</summary><ul class="sync-diag">' + starts.slice().reverse().map(function (d) { return '<li>' + esc(new Date(d.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'short' })) + ': ' + esc(d.path || '?') + ', ' + esc(T('logbook in {ms} ms', { ms: d.ui || '?' })) + ', ' + esc(T('server {result}', { result: d.me || '?' })) + (d.meMs ? ' (' + d.meMs + ' ms)' : '') + '</li>'; }).join('') + '</ul></details>' : '');
+      (log.length ? '<details class="small muted sync-log"' + op('log') + ' style="margin-top:10px"><summary>' + esc(T('Recent sync attempts')) + '</summary><ul class="sync-diag">' + log.slice().reverse().map(function (a) { return '<li>' + esc(new Date(a.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'medium' })) + ': ' + esc(a.ok ? T('Synced') : T(NETR.pill(a.kind === 'timeout' ? 'unreachable' : a.kind).label, { n: '' })) + (a.ms ? ' (' + a.ms + ' ms)' : '') + (a.net ? ', ' + esc(a.net) : '') + (a.why ? ', ' + esc(a.why) : '') + (a.re ? ', ' + esc(T('logbook reopened')) : '') + '</li>'; }).join('') + '</ul></details>' : '') +
+      (starts.length ? '<details class="small muted"' + op('starts') + ' style="margin-top:10px"><summary>' + esc(T('Start-up details')) + '</summary><ul class="sync-diag">' + starts.slice().reverse().map(function (d) { return '<li>' + esc(new Date(d.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'short' })) + ': ' + esc(d.path || '?') + ', ' + esc(T('logbook in {ms} ms', { ms: d.ui || '?' })) + ', ' + esc(T('server {result}', { result: d.me || '?' })) + (d.meMs ? ' (' + d.meMs + ' ms)' : '') + '</li>'; }).join('') + '</ul></details>' : '');
     var b = $('[data-resync]', el);
     if (b) b.onclick = function () { if (!b.disabled) retryNow(); };
   }
