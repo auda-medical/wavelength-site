@@ -1,9 +1,9 @@
 {
   "_help": "Read by the Worker's Tuesday send. ready true and an unsent slug means it sends at 7:30am UK time on the first Tuesday on or after drafted, unless the draft is more than eight days old. Set ready false to hold an issue.",
-  "slug": "cardiac-tamponade-ultrasound",
-  "subject": "Tamponade: time the collapse",
-  "preheader": "A wall moving inward is not the sign. The phase is. Try the question.",
-  "campaignName": "Wavelength Pearl: Tamponade",
-  "drafted": "2026-10-13",
+  "slug": "fracture-ultrasound",
+  "subject": "Fracture ultrasound: follow the cortex",
+  "preheader": "The break is in the bright line at the top. Try the question.",
+  "campaignName": "Wavelength Pearl: Fracture",
+  "drafted": "2026-10-19",
   "ready": true
 }
