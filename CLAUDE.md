@@ -14,6 +14,7 @@ Claude is the sole builder of the Wavelength website and apps (owner's instructi
 ## How it works
 - Static site, no framework. `node build.js` builds `dist/` from `data/*.json` and `src/`.
 - Cloudflare Workers (static assets) builds every push to `main`: build `npm run build`, deploy `npx wrangler deploy` using `wrangler.jsonc`. Pushing to `main` publishes the live site.
+- `main` is always exactly the live site (owner's decision 19 Oct 2026, after a weekly Pearl commit built on a `main` that had fallen behind the live release). Before any change: `git fetch` and start from the latest `origin/main`; never push work based on an older `main`. Releases are tested on a branch, approved by the owner and preceded by a database backup before they reach `main`. The weekly Pearl issue is the one routine change pushed straight to `main`: only `src/email/pearl/*`, `data/newsletter-log.json` (and `worker/monitor/sources.json` if `node build.js` regenerates it), after the full test suite passes. Other branches get preview builds, which never change the live site. Deploy records and rollback points: `D:\Wavelength-HQ\03-WEBSITE-AND-APP\` on the owner's PC.
 - Domain: thewavelength.co.uk (and www), attached as custom domains in `wrangler.jsonc` routes and set in `data/site.json` (`domain`). workers.dev is off so only the real domain is indexed. Firas is bidding for wavelength.co.uk; if he wins, change `domain` there.
 
 ## Common changes
