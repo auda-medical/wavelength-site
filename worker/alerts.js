@@ -66,6 +66,12 @@ export async function requestReminders(env, now = Date.now()) {
 export async function assessmentSigned(env, ctx, { code, learnerId, supervisorName, kind }) {
   return notice(env, ctx, learnerId, 'as_signed', `done:as:${code}`, { supervisor: supervisorName || 'Your assessor', kind: kindLabel(kind) });
 }
+export async function moreInfoRequested(env, ctx, { what, code, learnerId, supervisorName }) {
+  return notice(env, ctx, learnerId, 'req_more', `more:${what}:${code}:${Date.now()}`, { supervisor: supervisorName || 'Your supervisor', what });
+}
+export async function requestResent(env, ctx, { what, code, learnerId, supervisorId, count }) {
+  return notice(env, ctx, supervisorId, 'req_resent', `resent:${what}:${code}:${supervisorId}`, { learner: await learnerName(env, learnerId), what, count: count || 1 });
+}
 export async function requestDeclined(env, ctx, { what, code, learnerId, supervisorName }) {
-  return notice(env, ctx, learnerId, 'req_declined', `declined:${what}:${code}:${Date.now()}`, { supervisor: supervisorName || 'Your supervisor', what: what === 'as' ? 'assessment' : 'sign-off request' });
+  return notice(env, ctx, learnerId, 'req_declined', `declined:${what}:${code}:${Date.now()}`, { supervisor: supervisorName || 'Your supervisor', what: what === 'as' ? 'assessment' : 'sign-off request', where: what === 'as' ? 'assess' : 'signoff' });
 }

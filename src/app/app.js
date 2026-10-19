@@ -3184,10 +3184,18 @@
         var n = s.entry_ids.length, conf = Object.values(s.decisions || {}).filter(function (x) { return x === 'confirmed'; }).length;
         var st = s.status === 'signed' ? '<span class="chip green">' + esc(T('Signed')) + '</span>' : s.status === 'pending' ? (s.expires_at < Date.now() ? '<span class="chip">' + esc(T('Expired')) + '</span>' : '<span class="chip amber">' + esc(T('Waiting')) + '</span>') : '<span class="chip">' + esc(T('Cancelled')) + '</span>';
         var how = s.method === 'in-person' ? T('In person') : s.method === 'dashboard' ? T('Dashboard') : s.supervisor_id ? T('Dashboard and link') : T('By link');
-        return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([plural(n, 'scan'), how, fmt(s.signed_at || s.created_at), s.supervisor_name || '', s.status === 'signed' ? T('{n} confirmed', { n: conf }) : ''].filter(Boolean).join(' · ')) + '</p></div>' + st + '</div>' + (s.status === 'signed' && s.signer ? '<p class="small muted" style="margin:6px 0 0">' + esc(signerText(s.signer)) + '</p>' : '') + (s.issuedInError ? '<div class="warn" style="margin-top:8px">' + esc(T('Marked as issued in error by Wavelength.')) + '</div>' : '') + (s.comment ? '<p class="small" style="margin:8px 0 0">“' + esc(s.comment) + '”</p>' : '') + (s.status === 'pending' && !s.returned && s.reviewState === 'under_review' ? '<p class="small" style="margin:8px 0 0">' + esc(T('Under review: your supervisor has opened this request.')) + '</p>' : '') + (s.status === 'pending' && s.returned ? '<p class="small" style="margin:8px 0 0">' + esc(returnedText(s.returned)) + '</p><div class="btns"><button class="btn teal sm" data-back="' + esc(s.id) + '">' + esc(T('Send on')) + '</button></div>' : '') + (s.status === 'pending' && s.expires_at > Date.now() && !s.returned ? '<div class="btns"><button class="btn ghost sm" data-cancel="' + esc(s.id) + '">' + esc(T('Cancel request')) + '</button></div>' : '') + '</div>';
+        return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([plural(n, 'scan'), how, fmt(s.signed_at || s.created_at), s.supervisor_name || '', s.status === 'signed' ? T('{n} confirmed', { n: conf }) : ''].filter(Boolean).join(' · ')) + '</p></div>' + st + '</div>' + (s.status === 'signed' && s.signer ? '<p class="small muted" style="margin:6px 0 0">' + esc(signerText(s.signer)) + '</p>' : '') + (s.issuedInError ? '<div class="warn" style="margin-top:8px">' + esc(T('Marked as issued in error by Wavelength.')) + '</div>' : '') + (s.comment ? '<p class="small" style="margin:8px 0 0">“' + esc(s.comment) + '”</p>' : '') + (s.status === 'pending' && !s.returned && s.reviewState === 'under_review' ? '<p class="small" style="margin:8px 0 0">' + esc(T('Under review: your supervisor has opened this request.')) + '</p>' : '') + (s.status === 'pending' && s.returned ? '<p class="small" style="margin:8px 0 0">' + esc(returnedText(s.returned)) + '</p>' + (s.returned.reason === 'more_info' && supervisorOf(s.returned.from) ? '<p class="hint" style="margin:4px 0 0">' + esc(T('Update the scan first if they asked for changes. You can include images when you send it back.')) + '</p><div class="btns"><button class="btn teal sm" data-resend="' + esc(s.id) + '">' + esc(T('Send back to {name}', { name: supervisorOf(s.returned.from).name || supervisorOf(s.returned.from).email })) + '</button><button class="btn ghost sm" data-back="' + esc(s.id) + '">' + esc(T('Send to someone else')) + '</button></div>' : '<div class="btns"><button class="btn teal sm" data-back="' + esc(s.id) + '">' + esc(T('Send on')) + '</button></div>') : '') + (s.status === 'pending' && s.expires_at > Date.now() && !s.returned ? '<div class="btns"><button class="btn ghost sm" data-cancel="' + esc(s.id) + '">' + esc(T('Cancel request')) + '</button></div>' : '') + '</div>';
       }).join('') : '<p class="muted small">' + esc(T('No sign-offs yet.')) + '</p>';
       $$('[data-cancel]', h).forEach(function (b) { b.onclick = function () { api('/api/app/signoff/cancel', { code: b.dataset.cancel }).then(function () { toast(T('Request cancelled.')); viewSignoff(route()); }); }; });
       $$('[data-back]', h).forEach(function (b) { b.onclick = function () { returnedSheet('signoff', b.dataset.back, T('This sign-off request')); }; });
+      $$('[data-resend]', h).forEach(function (b) { b.onclick = function () {
+        var so = list.find(function (x) { return x.id === b.dataset.resend; }); if (!so) return;
+        var sup = supervisorOf(so.returned.from), ids = so.entry_ids.filter(function (id) { return S.entries.some(function (e) { return e.id === id && !e.deleted; }); });
+        if (!ids.length) { toast(T('These scans are no longer in your logbook.')); return; }
+        if (S.entries.some(function (e) { return ids.indexOf(e.id) >= 0 && e._dirty; })) { toast(T('Your changes are still syncing. Try again in a moment.')); return; }
+        if (!navigator.onLine) { toast(T('Sign-off needs an internet connection.')); return; }
+        signByLink(ids, { replaces: so.id, sup: sup ? sup.id : null, name: sup ? (sup.name || sup.email) : '' });
+      }; });
     });
   }
   function entryCard(e, decide) {
@@ -3346,7 +3354,8 @@
       $('[data-cancelq]', root).onclick = function () { api('/api/app/signoff/cancel', { code: q.code }).then(function () { return del('shares', q.code); }).then(function () { closeSheet(); toast(T('Request cancelled.')); sync(); }); };
     });
   }
-  function signByLink(ids) {
+  function signByLink(ids, opts) {
+    opts = opts || {};
     var canShare = !!(S.me && S.me.imageShare && window.crypto && crypto.subtle);
     var clipsOk = !!(S.me && S.me.clipShare);
     var sups = activeSupervisors();
@@ -3357,10 +3366,10 @@
         '<div id="inclbox"><div class="gallery" style="margin-top:8px">' + sets.map(function (st) { return st.images.map(function (rec) { return '<button type="button" disabled><img alt="" src="' + imgUrl(rec, true) + '">' + (isClip(rec) ? '<span class="play">▶</span>' : '') + '</button>'; }).join(''); }).join('') + '</div>' +
         '<p class="hint">' + esc(T('Images are encrypted on this phone. Wavelength cannot open them. They delete when your supervisor signs, when you cancel the request, or after 14 days.')) + '</p>' +
         '<label class="check"><input type="checkbox" id="decl"><span>' + esc(T('I have checked every image above. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them follows my hospital\'s information governance policy.')) + '</span></label></div></div>' : '';
-      var supPart = sups.length ? '<div class="field"><label for="tosup">' + esc(T('Send to')) + '</label><select id="tosup"><option value="">' + esc(T('A link I send myself')) + '</option>' + sups.map(function (s) { return '<option value="' + s.id + '" data-uid="' + esc(s.id) + '">' + esc(T('{name}\'s dashboard (and a link)', { name: s.name || s.email })) + '</option>'; }).join('') + '</select><p class="hint">' + esc(T('A linked supervisor sees the request in their app. Images open only from the link, so send it too if you include images.')) + '</p></div>' : '';
+      var supPart = sups.length ? '<div class="field"><label for="tosup">' + esc(T('Send to')) + '</label><select id="tosup"><option value="">' + esc(T('A link I send myself')) + '</option>' + sups.map(function (s) { return '<option value="' + s.id + '" data-uid="' + esc(s.id) + '"' + (opts.sup && String(opts.sup) === String(s.id) ? ' selected' : '') + '>' + esc(T('{name}\'s dashboard (and a link)', { name: s.name || s.email })) + '</option>'; }).join('') + '</select><p class="hint">' + esc(T('A linked supervisor sees the request in their app. Images open only from the link, so send it too if you include images.')) + '</p></div>' : '';
       var pendingSups = ((S.links || {}).supervisors || []).length - sups.length;
       if (pendingSups > 0) supPart += '<p class="hint">' + esc(T('Supervisors who have not yet accepted, or whose verification is still pending, do not appear here.')) + ' ' + guideLink() + '</p>';
-      sheet('<h2>' + esc(T('Request sign-off')) + '</h2><p class="muted small">' + esc(T('Your supervisor sees the record of {scans}. The link works for 14 days. Anyone with the link sees what it holds, so send it only to your supervisor.', { scans: plural(ids.length, 'scan') })) + '</p><form id="lf">' + supPart + '<div class="field"><label for="ln2">' + esc(T('Supervisor name (optional)')) + '</label><input id="ln2" name="supervisorName" type="text"></div>' + imgPart + '<div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Create request')) + '</button></div></form>', function (root) {
+      sheet('<h2>' + esc(opts.replaces ? T('Send back to {name}', { name: opts.name || T('your supervisor') }) : T('Request sign-off')) + '</h2><p class="muted small">' + esc(T('Your supervisor sees the record of {scans}. The link works for 14 days. Anyone with the link sees what it holds, so send it only to your supervisor.', { scans: plural(ids.length, 'scan') })) + '</p><form id="lf">' + supPart + '<div class="field"><label for="ln2">' + esc(T('Supervisor name (optional)')) + '</label><input id="ln2" name="supervisorName" type="text"></div>' + imgPart + '<div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Create request')) + '</button></div></form>', function (root) {
         var incl = $('#incl', root);
         if (incl) incl.onchange = function () { $('#inclbox', root).hidden = !incl.checked; };
         $('#lf', root).addEventListener('submit', function (ev) {
@@ -3371,7 +3380,7 @@
           var code = null, supSel = $('#tosup', root), supId = supSel ? supSel.value : '';
           var ready = function (out) { closeSheet(); linkReady(out, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(ids.length, 'ultrasound scan'), link: out.link }), T('Ultrasound logbook sign-off')); viewSignoff(route()); };
           var supLink = supId ? sups.find(function (s) { return String(s.id) === supId; }) : null;
-          api('/api/app/signoff/request', { entryIds: ids, supervisorName: $('#ln2', root).value, supervisorId: supLink ? supLink.supervisorId || null : null, supervisorLink: supId || null }).then(function (res) {
+          api('/api/app/signoff/request', { entryIds: ids, supervisorName: $('#ln2', root).value, supervisorId: supLink ? supLink.supervisorId || null : null, supervisorLink: supId || null, replaces: opts.replaces || undefined }).then(function (res) {
             if (!res.ok) throw new Error(res.error);
             code = res.code;
             if (!withImages) return { link: res.link, images: 0, dash: res.toDashboard };
@@ -3410,12 +3419,13 @@
     var txt = function (k, label) { return d[k] ? '<h3 style="margin:12px 0 4px">' + esc(T(label)) + '</h3><p style="white-space:pre-wrap;margin:0">' + esc(d[k]) + '</p>' : ''; };
     sheet('<h2>' + esc(kindLabel(a.kind)) + '</h2><p class="muted small">' + esc((PATHS[a.pathway] || {}).name || '') + ' · ' + esc(m ? T(m.label) : '') + '</p>' +
       (a.status === 'signed' ? '<div class="ok"><b>' + esc(T((OUTCOME[a.outcome] || {}).label || '')) + '</b><br>' + esc(T('Assessed by {name}{role} on {date}. Code {code}.', { name: a.supervisor_name, role: a.supervisor_role ? ', ' + a.supervisor_role : '', date: fmt(a.assessed_on), code: a.id })) + '</div><div class="detail"><dl>' + (d.topic ? '<dt>' + esc(T('Focus')) + '</dt><dd>' + esc(T(d.topic)) + '</dd>' : '') + dom + '</dl></div>' + txt('strengths', 'What went well') + txt('development', 'What to develop') + txt('actions', 'Agreed actions') + (a.signature ? '<img alt="' + esc(T('Signature')) + '" src="' + a.signature + '" style="max-width:220px;background:#fff;border-radius:8px;margin-top:12px">'  + (a.signatureKind === 'typed' ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('Typed signature')) + '</p>' : '') : '') + '<div class="btns"><button class="btn ghost block" data-copyas>' + esc(T('Copy verification link')) + '</button></div>'
-        : a.returned ? '<p>' + esc(returnedText(a.returned)) + '</p><div class="btns"><button class="btn teal block" data-backas>' + esc(T('Send on')) + '</button></div>'
+        : a.returned ? '<p>' + esc(returnedText(a.returned)) + '</p><div class="btns">' + (a.returned.reason === 'more_info' && supervisorOf(a.returned.from) ? '<button class="btn teal block" data-resendas>' + esc(T('Send back to {name}', { name: supervisorOf(a.returned.from).name || supervisorOf(a.returned.from).email })) + '</button><button class="btn ghost block" data-backas>' + esc(T('Send to someone else')) + '</button>' : '<button class="btn teal block" data-backas>' + esc(T('Send on')) + '</button>') + '</div>'
         : '<p>' + esc(T('Waiting for your assessor.')) + '</p><div class="btns"><button class="btn ghost block" data-cancelas>' + esc(T('Cancel request')) + '</button></div>') +
       '<div class="btns"><button class="btn block" data-close>' + esc(T('Close')) + '</button></div>', function (root) {
       var c = $('[data-copyas]', root); if (c) c.onclick = function () { copy(NAT.origin + '/app/verify/?code=' + a.id); };
       asmNotes(a, root);
       var bk = $('[data-backas]', root); if (bk) bk.onclick = function () { returnedSheet('assessment', a.id, T('This assessment request')); };
+      var rs = $('[data-resendas]', root); if (rs) rs.onclick = function () { busy(rs, true); api('/api/app/assessment/resend', { code: a.id }).then(function (res) { busy(rs, false); if (!res.ok) { toast(res.error || T('Something went wrong.')); return; } closeSheet(); toast(T('Sent back to their dashboard.')); loadAssessments().then(function () { render(true); }); }).catch(function () { busy(rs, false); toast(T('Could not save. Check your connection.')); }); };
       var x = $('[data-cancelas]', root); if (x) x.onclick = function () { api('/api/app/assessment/cancel', { code: a.id }).then(function () { closeSheet(); toast(T('Request cancelled.')); loadAssessments().then(function () { render(true); }); }); };
     });
   }
@@ -3995,8 +4005,20 @@
   function myPre() { var a = S.account || {}; return { name: a.name, role: profile().grade || a.role || '', registration: profile().registration || '', noEmail: true }; }
   // Opening a request marks it "Under review" for the learner; Decline sends it back with a reason (worker/review.js).
   function markOpened(kind, code) { api('/api/app/supervise/request/accept', { kind: kind, code: code }).catch(function () { /* older servers: nothing to mark */ }); }
-  function declineButton(kind, code) { return '<p style="margin:4px 0 14px"><button type="button" class="btn ghost sm" data-decline="' + kind + ':' + esc(code) + '">' + esc(T('Decline this request')) + '</button></p>'; }
+  // 19 Oct 2026 (owner): a supervisor who cannot sign yet (no images, a detail missing) asks for more without signing or
+  // ticking anything; the request goes back to the learner, who adds it and sends it back to them.
+  function declineButton(kind, code) { return '<div class="btns" style="margin:4px 0 14px"><button type="button" class="btn sm" data-more="' + kind + ':' + esc(code) + '">' + esc(T('Ask for more information')) + '</button><button type="button" class="btn ghost sm" data-decline="' + kind + ':' + esc(code) + '">' + esc(T('Decline this request')) + '</button></div>'; }
   function bindDecline(root) {
+    $$('[data-more]', root).forEach(function (b) { b.onclick = function () {
+      var v = b.dataset.more.split(':');
+      sheet('<h2>' + esc(T('Ask for more information')) + '</h2><p class="muted small">' + esc(T('Nothing is signed. The request goes back to the learner with your note; they add what you need and send it back to you.')) + '</p><form id="mif"><div class="field"><label for="mir">' + esc(T('What do you need?')) + '</label><textarea id="mir" maxlength="500" rows="3" required placeholder="' + esc(T('For example: please add the images of each view.')) + '"></textarea></div><div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Send back for more information')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (r2) {
+        $('#mif', r2).addEventListener('submit', function (ev) {
+          ev.preventDefault(); var err = $('.err', r2); err.hidden = true; var bb = $('button.teal', r2); busy(bb, true);
+          api('/api/app/supervise/request/more', { kind: v[0], code: v[1], note: $('#mir', r2).value }).then(function (r3) { if (!r3.ok) throw new Error(r3.error); closeSheet(); toast(T('Sent back. The learner will add what you asked for and send it back to you.'), 4000); loadLinks(); S.sv = null; render(true); })
+            .catch(function (ex) { busy(bb, false); err.textContent = ex.message; err.hidden = false; });
+        });
+      });
+    }; });
     $$('[data-decline]', root).forEach(function (b) { b.onclick = function () {
       var v = b.dataset.decline.split(':');
       sheet('<h2>' + esc(T('Decline this request')) + '</h2><p class="muted small">' + esc(T('It goes back to the learner, who can send it to someone else. Nothing in their logbook changes.')) + '</p><form id="dcf"><div class="field"><label for="dcr">' + esc(T('Reason')) + '</label><textarea id="dcr" maxlength="500" rows="3" required></textarea></div><div class="err" hidden></div><div class="btns"><button class="btn teal block">' + esc(T('Decline')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (r2) {
@@ -4477,7 +4499,8 @@
   // ---------- Requests that came back (decision 3): reassign, send to a one-off assessor, or cancel ----------
   function approvedLinks() { return activeSupervisors().filter(function (s) { return s.state === 'active' || s.state === 'not_verified' || !s.state; }); }
   // Why a request came back: declined by the supervisor (with their reason) or the supervisor is no longer available.
-  function returnedText(r) { return r && r.reason === 'declined' ? (r.note ? T('Declined by the supervisor: {note}', { note: r.note }) : T('Declined by the supervisor.')) : T('Came back to you: the supervisor is no longer available.'); }
+  function supervisorOf(uid) { var s = ((S.links || {}).supervisors || []).find(function (x) { return x.supervisorId === uid; }); return s || null; }
+  function returnedText(r) { if (r && r.reason === 'more_info') { var who = supervisorOf(r.from); return T('{name} asked for more information: {note}', { name: who ? (who.name || who.email) : T('Your supervisor'), note: r.note || '' }); } return r && r.reason === 'declined' ? (r.note ? T('Declined by the supervisor: {note}', { note: r.note }) : T('Declined by the supervisor.')) : T('Came back to you: the supervisor is no longer available.'); }
   function returnedSheet(kind, code, label) {
     var sups = approvedLinks();
     var path = kind === 'assessment' ? '/api/app/assessment/' : '/api/app/signoff/';

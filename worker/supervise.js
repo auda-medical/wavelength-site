@@ -74,7 +74,7 @@ const publicRow = (r) => ({
   id: r.id, pathway: r.pathway, module: r.module, kind: r.kind, method: r.method, status: r.status, outcome: r.outcome, assessed_on: r.assessed_on,
   entry_ids: JSON.parse(r.entry_ids || '[]'), data: JSON.parse(r.data || '{}'), expires_at: r.expires_at, supervisor_name: r.supervisor_name,
   supervisor_role: r.supervisor_role, supervisor_reg: r.supervisor_reg, accreditation: r.accreditation, signature: r.signature, signatureKind: r.signature ? sigKind(JSON.parse(r.data || '{}')) : null, signed_at: r.signed_at, created_at: r.created_at,
-  supervisor_id: r.supervisor_id || null, returned: r.returned_at ? { at: r.returned_at, reason: r.returned_reason, ...(r.returned_reason === 'declined' && r.decline_reason ? { note: r.decline_reason } : {}) } : null, reviewState: reviewState(r), reviewLabel: REVIEW_STATES[reviewState(r)],
+  supervisor_id: r.supervisor_id || null, returned: r.returned_at ? { at: r.returned_at, reason: r.returned_reason, ...((r.returned_reason === 'declined' || r.returned_reason === 'more_info') && r.decline_reason ? { note: r.decline_reason } : {}), ...(r.returned_reason === 'more_info' && r.returned_from ? { from: r.returned_from } : {}) } : null, reviewState: reviewState(r), reviewLabel: REVIEW_STATES[reviewState(r)],
   amends: r.amends || null, superseded_by: r.superseded_by || null, amend_reason: r.amend_reason || null, error_note: r.error_note || null,
   signer: signerLabel(r.supervisor_snapshot),
 });
@@ -369,7 +369,7 @@ export async function supervisorLinks(env, l) {
     // not, and for which pathways, modules and roles. Only for a relationship the supervisor has accepted or claimed,
     // and only while it is the 'approved' stage, so a pending or ended link never shows approval detail.
     const verification = life && r.supervisor_id && stage === 'approved' ? await verificationOf(env, r.supervisor_id, 'learner', await standing(r.supervisor_id)) : null;
-    supervisors.push({ id: r.id, email: r.via === 'search' ? null : r.supervisor_email, status: r.status, state: st.state, stateLabel: st.label, stage, areas: st.areas || [], renewal: !!st.renewal, name: r.first_name ? fullName(r) : '', role: r.role || '', since: r.accepted_at || r.created_at, invitedAt: r.created_at, acceptedAt: r.accepted_at || null, via: r.via || 'email', pending: pendingFor[r.supervisor_id] || 0, verification });
+    supervisors.push({ id: r.id, supervisorId: r.supervisor_id || null, email: r.via === 'search' ? null : r.supervisor_email, status: r.status, state: st.state, stateLabel: st.label, stage, areas: st.areas || [], renewal: !!st.renewal, name: r.first_name ? fullName(r) : '', role: r.role || '', since: r.accepted_at || r.created_at, invitedAt: r.created_at, acceptedAt: r.accepted_at || null, via: r.via || 'email', pending: pendingFor[r.supervisor_id] || 0, verification });
   }
   const me = life ? await standing(l.id) : null;
   // 1.0.12: relationships that ended in the last 90 days, on both sides, so each person can see that (and when) a
@@ -604,6 +604,21 @@ export async function assessmentReassign(env, l, req, ctx) {
     auditStmt(env, { actorType: 'learner', actorId: l.id, action: 'request.reassign', subjectType: 'assessment', subjectId: a.id, meta: { link: link.id } }),
   ]);
   await AL.assessmentRequested(env, ctx, { code: a.id, learnerId: l.id, supervisorId: link.supervisor_id, kind: a.kind });
+  return json({ ok: true, code: a.id });
+}
+// POST assessment/resend { code } (19 Oct 2026): after the supervisor asked for more information, back to them.
+export async function assessmentResend(env, l, req, ctx) {
+  const d = await body(req);
+  const a = d && await env.DB.prepare("SELECT * FROM assessments WHERE id = ? AND learner_id = ? AND status = 'pending' AND returned_reason = 'more_info'").bind(clip(d.code, 20), l.id).first();
+  if (!a || !a.returned_from) return json({ ok: false, error: 'This request is no longer open.' }, 404);
+  const ln = await env.DB.prepare("SELECT id FROM supervisor_links WHERE supervisor_id = ? AND learner_id = ? AND status = 'active'").bind(a.returned_from, l.id).first();
+  const { link, error } = ln ? await eligibleLink(env, l.id, ln.id, { scopes: [`${a.pathway}:${a.module}`] }) : { link: null, error: 'You are no longer linked to this supervisor. Send it to someone else.' };
+  if (!link) return json({ ok: false, error: error || 'Choose a supervisor.' }, 400);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE assessments SET supervisor_id = ?, returned_at = NULL, returned_reason = NULL, returned_from = NULL, decline_reason = NULL, accepted_at = NULL, expires_at = MAX(expires_at, ?) WHERE id = ? AND status = 'pending'").bind(link.supervisor_id, Date.now() + 14 * 864e5, a.id),
+    auditStmt(env, { actorType: 'learner', actorId: l.id, action: 'request.resend', subjectType: 'assessment', subjectId: a.id, meta: { link: link.id } }),
+  ]);
+  await AL.requestResent(env, ctx, { what: 'as', code: a.id, learnerId: l.id, supervisorId: link.supervisor_id });
   return json({ ok: true, code: a.id });
 }
 export async function assessmentRelink(env, l, req) {

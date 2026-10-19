@@ -80,7 +80,7 @@ test('a declined request emails the learner without the reason; the setting stop
   assert.equal(got.length, 1);
   assert.match(got[0].subject, /could not take your sign-off request/);
   assert.doesNotMatch(got[0].htmlbody + got[0].textbody, /leave until December/, 'the reason stays in the app');
-  assert.match(got[0].htmlbody, /\/app\/#\/outstanding/);
+  assert.match(got[0].htmlbody, /\/app\/#\/signoff/, 'the learner\'s requests, not "Still to do"');
   // The supervisor turns sign-off emails off: the next request sends nothing to them, and still succeeds.
   await env.DB.prepare("UPDATE learners SET profile = json_set(COALESCE(profile, '{}'), '$.notifyEmail', json('false')) WHERE id = ?").bind(sid).run();
   const n1 = to('sup.c@x.co').length;

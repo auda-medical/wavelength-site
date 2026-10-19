@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* 学员为此模块设定了自己的目标，与课程大纲数值不同。",
 "12": "12",
@@ -2537,5 +2537,20 @@
 "Source monitoring is not set up yet.": "来源监测尚未设置。",
 "Help": "帮助",
 "How to use the logbook": "如何使用日志",
-"logbook reopened": "日志已重新打开"
+"logbook reopened": "日志已重新打开",
+"Ask for more information": "请求补充信息",
+"For example: please add the images of each view.": "例如：请添加每个切面的图像。",
+"Nothing is signed. The request goes back to the learner with your note; they add what you need and send it back to you.": "不会签署任何内容。请求会连同您的备注退回给学员；学员补充您需要的内容后再发回给您。",
+"Send back for more information": "退回以补充信息",
+"Send back to {name}": "发回给 {name}",
+"Send to someone else": "发送给其他人",
+"Sent back to their dashboard.": "已发回其工作台。",
+"Sent back. The learner will add what you asked for and send it back to you.": "已退回。学员会补充您要求的内容并发回给您。",
+"These scans are no longer in your logbook.": "这些扫查已不在您的日志中。",
+"Update the scan first if they asked for changes. You can include images when you send it back.": "如对方要求修改，请先更新扫查。发回时可以附上图像。",
+"What do you need?": "您需要什么？",
+"You are no longer linked to this supervisor. Send it to someone else.": "您已不再与这位督导关联。请发送给其他人。",
+"Your changes are still syncing. Try again in a moment.": "您的更改仍在同步中。请稍后再试。",
+"your supervisor": "您的督导",
+"{name} asked for more information: {note}": "{name} 请求补充信息：{note}"
 }

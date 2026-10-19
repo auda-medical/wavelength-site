@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* El residente fijó su propio objetivo para este módulo, distinto de la cifra del programa.",
 "12": "12",
@@ -2575,5 +2575,20 @@
 "Source monitoring is not set up yet.": "La supervisión de fuentes aún no está configurada.",
 "Help": "Ayuda",
 "How to use the logbook": "Cómo usar el cuaderno",
-"logbook reopened": "registro reabierto"
+"logbook reopened": "registro reabierto",
+"Ask for more information": "Pedir más información",
+"For example: please add the images of each view.": "Por ejemplo: añade las imágenes de cada plano.",
+"Nothing is signed. The request goes back to the learner with your note; they add what you need and send it back to you.": "No se firma nada. La solicitud vuelve al alumno con su nota; añade lo que necesita y se la reenvía.",
+"Send back for more information": "Devolver para más información",
+"Send back to {name}": "Reenviar a {name}",
+"Send to someone else": "Enviar a otra persona",
+"Sent back to their dashboard.": "Reenviado a su panel.",
+"Sent back. The learner will add what you asked for and send it back to you.": "Devuelto. El alumno añadirá lo que pidió y se lo reenviará.",
+"These scans are no longer in your logbook.": "Estas exploraciones ya no están en su registro.",
+"Update the scan first if they asked for changes. You can include images when you send it back.": "Actualice primero la exploración si pidieron cambios. Puede incluir imágenes al reenviarla.",
+"What do you need?": "¿Qué necesita?",
+"You are no longer linked to this supervisor. Send it to someone else.": "Ya no está vinculado a este supervisor. Envíela a otra persona.",
+"Your changes are still syncing. Try again in a moment.": "Sus cambios aún se están sincronizando. Inténtelo de nuevo en un momento.",
+"your supervisor": "su supervisor",
+"{name} asked for more information: {note}": "{name} pidió más información: {note}"
 }

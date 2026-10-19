@@ -237,7 +237,19 @@ export function render(kind, d) {
       subject: `${d.supervisor} could not take your ${d.what}`,
       heading: 'Request declined',
       paragraphs: [hi, `${d.supervisor} declined your ${d.what} in Wavelength and gave a reason.`, 'Open the app to read the reason, then send it to another supervisor or cancel it.', 'To stop these emails, untick the setting under Me, Settings, in the app.'],
-      button: { href: `${APP}/outstanding`, label: 'Open your requests' },
+      button: { href: `${APP}/${d.where || 'signoff'}`, label: 'Open your requests' },
+    }),
+    req_more: () => ({
+      subject: `${d.supervisor} needs more information`,
+      heading: 'More information requested',
+      paragraphs: [hi, `${d.supervisor} looked at your ${d.what === 'as' ? 'assessment request' : 'scans'} in Wavelength and asked for more before signing.`, 'Open the app to read what they need, add it, then send it back to them.', 'To stop these emails, untick the setting under Me, Settings, in the app.'],
+      button: { href: `${APP}/${d.what === 'as' ? 'assess' : 'signoff'}`, label: 'See what they asked' },
+    }),
+    req_resent: () => ({
+      subject: `${d.learner} sent back the ${d.what === 'as' ? 'assessment' : 'scans'} you asked about`,
+      heading: 'Sent back to you',
+      paragraphs: [hi, `${d.learner} added the information you asked for and sent the ${d.what === 'as' ? 'assessment request' : (d.count === 1 ? 'scan' : `${d.count} scans`)} back to you in Wavelength.`, 'Open your supervisor dashboard to review and sign.'],
+      button: { href: `${APP}/supervise`, label: 'Review and sign' },
     }),
   };
   const f = T[kind];

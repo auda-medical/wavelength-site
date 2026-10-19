@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Die lernende Person hat für dieses Modul ein eigenes Ziel gesetzt, das von der Curriculumvorgabe abweicht.",
 "12": "12",
@@ -2575,5 +2575,20 @@
 "Source monitoring is not set up yet.": "Die Quellenüberwachung ist noch nicht eingerichtet.",
 "Help": "Hilfe",
 "How to use the logbook": "So verwenden Sie das Logbuch",
-"logbook reopened": "Logbuch neu geöffnet"
+"logbook reopened": "Logbuch neu geöffnet",
+"Ask for more information": "Weitere Informationen anfordern",
+"For example: please add the images of each view.": "Zum Beispiel: Bitte fügen Sie die Bilder jeder Schnittebene hinzu.",
+"Nothing is signed. The request goes back to the learner with your note; they add what you need and send it back to you.": "Es wird nichts unterschrieben. Die Anfrage geht mit Ihrer Notiz an die lernende Person zurück; sie ergänzt, was Sie brauchen, und schickt sie Ihnen erneut.",
+"Send back for more information": "Zur Ergänzung zurückschicken",
+"Send back to {name}": "An {name} zurückschicken",
+"Send to someone else": "An jemand anderen senden",
+"Sent back to their dashboard.": "In das Dashboard zurückgeschickt.",
+"Sent back. The learner will add what you asked for and send it back to you.": "Zurückgeschickt. Die lernende Person ergänzt das Gewünschte und schickt es Ihnen erneut.",
+"These scans are no longer in your logbook.": "Diese Untersuchungen sind nicht mehr in Ihrem Logbuch.",
+"Update the scan first if they asked for changes. You can include images when you send it back.": "Aktualisieren Sie zuerst die Untersuchung, falls Änderungen gewünscht wurden. Beim Zurückschicken können Sie Bilder beifügen.",
+"What do you need?": "Was brauchen Sie?",
+"You are no longer linked to this supervisor. Send it to someone else.": "Sie sind nicht mehr mit dieser Supervisorin oder diesem Supervisor verbunden. Senden Sie es an jemand anderen.",
+"Your changes are still syncing. Try again in a moment.": "Ihre Änderungen werden noch synchronisiert. Versuchen Sie es gleich noch einmal.",
+"your supervisor": "Ihre Supervisorin oder Ihren Supervisor",
+"{name} asked for more information: {note}": "{name} hat weitere Informationen angefordert: {note}"
 }

@@ -45,7 +45,7 @@ import { normOrg } from './org-norm.js';
 import { handleSearch, searchOn } from './search.js';
 import { appEvent, activity, count, forgetLearner } from './metrics.js';
 import { actionsForSignoff } from './verification/pathways.js';
-import { acceptRequest, declineRequest, reviewState, REVIEW_STATES } from './review.js';
+import { acceptRequest, declineRequest, moreInfoRequest, reviewState, REVIEW_STATES } from './review.js';
 import * as AL from './alerts.js';
 
 import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady, sigKind, withSigKind, splitSigKind } from './app-util.js';
@@ -425,6 +425,9 @@ async function signoffRequest(env, l, req, ctx) {
   const d = await body(req);
   const entries = await entriesFor(env, l, d && d.entryIds);
   if (!entries.length) return json({ ok: false, error: 'Choose at least one saved entry.' }, 400);
+  // 19 Oct 2026: "Send back" after a supervisor asked for more information replaces that request.
+  const old = d && d.replaces ? await env.DB.prepare("SELECT id, returned_from FROM signoffs WHERE id = ? AND learner_id = ? AND status = 'pending' AND returned_reason = 'more_info'").bind(clip(d.replaces, 20), l.id).first() : null;
+  if (d && d.replaces && !old) return json({ ok: false, error: 'This request is no longer open.' }, 404);
   const t = token();
   const id = code('SO');
   // A dashboard request goes only to a linked supervisor approved, now, for every scan type in it.
@@ -432,8 +435,14 @@ async function signoffRequest(env, l, req, ctx) {
   if (d.supervisorLink && !link) return json({ ok: false, error }, 400);
   await env.DB.prepare('INSERT INTO signoffs (id, learner_id, method, token_hash, entry_ids, snapshot, expires_at, supervisor_name, supervisor_email, supervisor_id) VALUES (?,?,?,?,?,?,?,?,?,?)')
     .bind(id, l.id, 'remote', await sha256(t), JSON.stringify(entries.map((e) => e.id)), JSON.stringify(snapshotOf(entries)), Date.now() + 14 * 864e5, clip(d.supervisorName, 120), clip(d.supervisorEmail, 160).toLowerCase(), link ? link.supervisor_id : null).run();
-  // 19 Oct 2026: a request sent to a dashboard tells the supervisor at once (alerts.js).
-  if (link) await AL.signoffRequested(env, ctx, { code: id, learnerId: l.id, supervisorId: link.supervisor_id, count: entries.length });
+  if (old) {
+    const c = await env.DB.prepare("UPDATE signoffs SET status = 'cancelled', token_hash = NULL WHERE id = ? AND learner_id = ? AND status = 'pending'").bind(old.id, l.id).run();
+    if (c.meta && c.meta.changes) await deleteSharedImages(env, old.id);
+  }
+  // 19 Oct 2026: a request sent to a dashboard tells the supervisor at once (alerts.js); one sent back after a request
+  // for more information says so.
+  if (link && old && old.returned_from === link.supervisor_id) await AL.requestResent(env, ctx, { what: 'so', code: id, learnerId: l.id, supervisorId: link.supervisor_id, count: entries.length });
+  else if (link) await AL.signoffRequested(env, ctx, { code: id, learnerId: l.id, supervisorId: link.supervisor_id, count: entries.length });
   return json({ ok: true, code: id, link: `${new URL(req.url).origin}/app/sign/#${t}`, expires: 14, toDashboard: !!link });
 }
 
@@ -531,12 +540,12 @@ async function signoffInPerson(env, l, req) {
 
 async function signoffList(env, l) {
   const life = await lifecycleReady(env);
-  const { results = [] } = await env.DB.prepare(`SELECT id, method, status, created_at, expires_at, supervisor_name, supervisor_role, supervisor_reg, accreditation, basis, comment, decisions, ratings, signature, signed_at, entry_ids, supervisor_id${life ? ', returned_at, returned_reason, error_at, supervisor_snapshot' : ''}${(await reviewCols(env)) ? ', accepted_at, declined_at, decline_reason' : ''} FROM signoffs WHERE learner_id = ? ORDER BY created_at DESC LIMIT 300`).bind(l.id).all();
+  const { results = [] } = await env.DB.prepare(`SELECT id, method, status, created_at, expires_at, supervisor_name, supervisor_role, supervisor_reg, accreditation, basis, comment, decisions, ratings, signature, signed_at, entry_ids, supervisor_id${life ? ', returned_at, returned_reason, returned_from, error_at, supervisor_snapshot' : ''}${(await reviewCols(env)) ? ', accepted_at, declined_at, decline_reason' : ''} FROM signoffs WHERE learner_id = ? ORDER BY created_at DESC LIMIT 300`).bind(l.id).all();
   return json({ ok: true, signoffs: results.map((r) => {
-    const { supervisor_snapshot: snap, returned_at: ra, returned_reason: rr, error_at: ea, accepted_at: acc, declined_at: dec, decline_reason: why, ...rest } = r;
+    const { supervisor_snapshot: snap, returned_at: ra, returned_reason: rr, error_at: ea, accepted_at: acc, declined_at: dec, decline_reason: why, returned_from: rf, ...rest } = r;
     const state = reviewState(r);
     const p = life ? publicSnapshot(snap) : null;
-    return { ...rest, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ...splitSigKind(r.ratings), returned: ra ? { at: ra, reason: rr, ...(rr === 'declined' && why ? { note: why } : {}) } : null, reviewState: state, reviewLabel: REVIEW_STATES[state], acceptedAt: acc || null, issuedInError: !!ea, signer: p ? { kind: p.signer, label: p.label } : null };
+    return { ...rest, entry_ids: JSON.parse(r.entry_ids || '[]'), decisions: JSON.parse(r.decisions || '{}'), ...splitSigKind(r.ratings), returned: ra ? { at: ra, reason: rr, ...((rr === 'declined' || rr === 'more_info') && why ? { note: why } : {}), ...(rr === 'more_info' && r.returned_from ? { from: r.returned_from } : {}) } : null, reviewState: state, reviewLabel: REVIEW_STATES[state], acceptedAt: acc || null, issuedInError: !!ea, signer: p ? { kind: p.signer, label: p.label } : null };
   }) });
 }
 // Returned requests (decision 3): send to another approved supervisor, or to a one-off assessor with a fresh link.
@@ -713,6 +722,7 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'signoff/reassign') return signoffReassign(env, l, req, ctx);
     if (p === 'signoff/relink') return signoffRelink(env, l, req);
     if (p === 'assessment/reassign') return SV.assessmentReassign(env, l, req, ctx);
+    if (p === 'assessment/resend') return SV.assessmentResend(env, l, req, ctx);
     if (p === 'assessment/relink') return SV.assessmentRelink(env, l, req);
     if (p === 'supervise/assessment/amend') return SV.superviseAssessmentAmend(env, l, req);
     if (p === 'assessment/request') return SV.assessmentRequest(env, l, req, ctx);
@@ -730,6 +740,7 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'supervise/assessment/new') return SV.superviseAssessmentNew(env, l, req, ctx);
     if (p === 'supervise/request/accept') return acceptRequest(env, l, req);
     if (p === 'supervise/request/decline') return declineRequest(env, l, req, ctx);
+    if (p === 'supervise/request/more') return moreInfoRequest(env, l, req, ctx);
     const sv = await handleSupervisorApply(env, l, req, url, p, ctx);
     if (sv) return sv;
     const pro = await handleProfessional(env, l, req, url, p);

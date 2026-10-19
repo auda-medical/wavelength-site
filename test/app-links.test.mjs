@@ -24,3 +24,9 @@ test('iPhone Universal Links: the App Store app, and only the logbook address /a
   assert.deepEqual(d.appIDs, ['XXUSS4CKW8.uk.co.thewavelength.app']);
   assert.deepEqual(d.components.map((c) => c['/']), ['/app/'], 'the one-off signing pages stay in the browser');
 });
+
+test('the site sends /.well-known/ to the Worker (static pages would answer "not found" otherwise)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const w = JSON.parse(readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
+  assert.ok(w.assets.run_worker_first.includes('/.well-known/*'), 'Release L served these files only in tests: /.well-known/ was missing here');
+});
