@@ -76,10 +76,20 @@ if (!req.ok || !req.toDashboard) { console.log('REQUEST', JSON.stringify(req)); 
 // B: the learner sees who asked and what for, and sends it back to the same supervisor.
 {
   const { ctx, page } = await phone(learner);
+  // 1.0.25 (owner, 20 Oct): the trainee sees it without opening the Sign-off page: Home, Logbook, the scan.
+  await page.waitForSelector('[data-resendr]', { timeout: 15000 }).catch(() => {});
+  const home = await page.evaluate(() => { const b = document.querySelector('[data-resendr]'); const c = b && b.closest('.card'); return c ? c.textContent.replace(/\s+/g, ' ') : ''; });
+  record('R1', 'Home shows "Sent back to you" with the supervisor\'s note and Send back to that supervisor', /Sent back to you/.test(home) && /Please add the images of each view/.test(home) && /Send back to Sam Supervisor/.test(home), home.slice(0, 200));
+  await go(page, '#/log?s=waiting'); await sleep(800);
+  const row = await page.evaluate(() => { const r = [...document.querySelectorAll('a.entry')].find((x) => /Sent back to you/.test(x.textContent)); return r ? { red: r.classList.contains('s-red'), chip: (r.querySelector('.chip.red') || {}).textContent } : null; });
+  record('R2', 'In the logbook (Awaiting) the scan is red "Sent back to you", not amber like the others', !!row && row.red && row.chip === 'Sent back to you', row);
+  await go(page, '#/entry/' + 'e1020moreinfo' + learner.id + 'x0'); await sleep(800);
+  const ent = await page.evaluate(() => { const b = document.querySelector('.signbox'); return { text: b ? b.textContent : '', btn: (document.querySelector('[data-resendr]') || {}).textContent }; });
+  record('R3', 'The scan itself says who sent it back and why, with Send back to that supervisor', /Sent back to you/.test(ent.text) && /Please add the images of each view/.test(ent.text) && ent.btn === 'Send back to Sam Supervisor', ent);
   await go(page, '#/signoff');
   await page.waitForSelector('[data-resend]', { timeout: 15000 });
   const card = await page.evaluate(() => document.querySelector('[data-resend]').closest('.card').textContent.replace(/\s+/g, ' '));
-  record('B1', 'The learner sees who asked for more information and what for, with "Send back to" that supervisor', /Sam Supervisor asked for more information: Please add the images of each view\./.test(card) && /Send back to Sam Supervisor/.test(card) && /Send to someone else/.test(card), card.slice(0, 220));
+  record('B1', 'The learner sees who asked for more information and what for, with "Send back to" that supervisor', /Sam Supervisor asked for more information: Please add the images of each view\./.test(card) && /Sent back to you/.test(card) && /Send back to Sam Supervisor/.test(card) && /Send to someone else/.test(card), card.slice(0, 220));
   await page.click('[data-resend]');
   await page.waitForSelector('#lf');
   const sel = await page.evaluate(() => { const s = document.querySelector('#tosup'); return { title: document.querySelector('.sheet h2').textContent, chosen: s ? s.options[s.selectedIndex].textContent : null }; });

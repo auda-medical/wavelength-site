@@ -2726,5 +2726,12 @@
 "Fit": "Вписать",
 "Open full screen to zoom": "Открыть во весь экран для увеличения",
 "Pinch with two fingers to zoom in, then drag to move.": "Разведите два пальца, чтобы увеличить, затем перетащите, чтобы сдвинуть.",
-"Scroll over a photo to zoom in, then drag with the hand to move around.": "Прокрутите колесо над фото, чтобы увеличить, затем перетаскивайте рукой, чтобы перемещаться."
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "Прокрутите колесо над фото, чтобы увеличить, затем перетаскивайте рукой, чтобы перемещаться.",
+"Edit the scan or add images if needed, then send it back.": "При необходимости измените исследование или добавьте изображения, затем отправьте снова.",
+"Open assessments": "Открыть оценки",
+"Open the scan": "Открыть исследование",
+"See all": "Показать все",
+"Send it to another supervisor.": "Отправьте другому руководителю.",
+"Sent back to you": "Возвращено вам",
+"{n} requests need your attention.": "Запросов, требующих внимания: {n}."
 }

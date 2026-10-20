@@ -256,21 +256,44 @@
   // Sign-off status per scan: green signed, amber awaiting a live request, red needs action, none when the learner marks it as not needing sign-off.
   function setPending(list) {
     var m = {}, now = Date.now();
-    (list || []).forEach(function (s) { if (s.status === 'pending' && s.method !== 'in-person' && s.expires_at > now) (s.entry_ids || []).forEach(function (id) { m[id] = { code: s.id, name: s.supervisor_name || '', exp: s.expires_at }; }); });
+    (list || []).forEach(function (s) { if (s.status === 'pending' && s.method !== 'in-person' && s.expires_at > now) (s.entry_ids || []).forEach(function (id) { m[id] = { code: s.id, name: s.supervisor_name || '', exp: s.expires_at }; if (s.returned) m[id].returned = s.returned; }); });
     return setKv('pending', m);
   }
   function waiting(e) { var p = (S.kv.pending || {})[e.id]; return p && p.exp > Date.now() ? p : null; }
   function signState(e) {
     if (e.signoff && e.signoff.status === 'confirmed') return 'signed';
-    if (waiting(e)) return 'waiting';
+    var w = waiting(e); if (w) return w.returned ? 'returned' : 'waiting';
     if (e.noSignoff) return 'none';
     if (e.signoff && e.signoff.status === 'query') return 'query';
     if (e.signoffVoid) return 'void';
     return 'todo';
   }
-  var STATES = { signed: ['green', 'Signed off'], waiting: ['amber', 'Awaiting sign-off'], none: ['', ''], query: ['red', 'Queried'], void: ['red', 'Edited, re-sign'], todo: ['red', 'Not sent'] };
-  var TODO = ['todo', 'query', 'void'];
-  function stateMatch(e, f) { var s = signState(e); return !f || (f === 'todo' ? TODO.indexOf(s) >= 0 : f === 'unsigned' ? (s !== 'signed' && s !== 'none') : s === f); }
+  var STATES = { signed: ['green', 'Signed off'], waiting: ['amber', 'Awaiting sign-off'], none: ['', ''], query: ['red', 'Queried'], void: ['red', 'Edited, re-sign'], todo: ['red', 'Not sent'], returned: ['red', 'Sent back to you'] };
+  var TODO = ['todo', 'query', 'void', 'returned'];
+  // Awaiting also lists requests that came back (in red), so nothing sent disappears from it.
+  function stateMatch(e, f) { var s = signState(e); return !f || (f === 'todo' ? TODO.indexOf(s) >= 0 : f === 'unsigned' ? (s !== 'signed' && s !== 'none') : f === 'waiting' ? (s === 'waiting' || s === 'returned') : s === f); }
+  // Requests that came back to the trainee, one per request, with its scans still in the logbook.
+  function returnedList() {
+    var m = S.kv.pending || {}, by = {}, now = Date.now();
+    Object.keys(m).forEach(function (id) { var p = m[id]; if (!p || !p.returned || p.exp < now || !S.entries.some(function (e) { return e.id === id && !e.deleted; })) return; (by[p.code] = by[p.code] || { code: p.code, returned: p.returned, ids: [] }).ids.push(id); });
+    return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return String(b.returned.at || '').localeCompare(String(a.returned.at || '')); });
+  }
+  // Send a returned request on: back to the supervisor who asked for more, or (declined, unavailable) to someone else.
+  function resendReturned(code) {
+    var rq = returnedList().find(function (x) { return x.code === code; }); if (!rq) return;
+    if (S.entries.some(function (e) { return rq.ids.indexOf(e.id) >= 0 && e._dirty; })) { toast(T('Your changes are still syncing. Try again in a moment.')); return; }
+    if (!navigator.onLine) { toast(T('Sign-off needs an internet connection.')); return; }
+    var sup = rq.returned.reason === 'more_info' ? supervisorOf(rq.returned.from) : null;
+    if (sup) signByLink(rq.ids, { replaces: code, sup: sup.id, name: sup.name || sup.email }); else returnedSheet('signoff', code, T('This sign-off request'));
+  }
+  function returnedCard() {
+    var list = returnedList(), asb = (S.assessments || []).filter(function (a) { return a.status === 'pending' && a.returned && !(a.expires_at < Date.now()); });
+    if (!list.length && asb.length) return '<div class="card" style="border-color:var(--red-line);background:var(--red-bg)"><div class="row"><span style="color:var(--red)">' + I.star + '</span><div class="grow"><h3>' + esc(T('Sent back to you')) + '</h3><p class="small" style="margin:0">' + esc(returnedText(asb[0].returned)) + '</p>' + (asb.length > 1 ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('{n} requests need your attention.', { n: asb.length })) + '</p>' : '') + '</div></div><div class="btns"><a class="btn sm" href="#/assess">' + esc(T('Open assessments')) + '</a></div></div>';
+    if (!list.length) return '';
+    var rq = list[0], sup = rq.returned.reason === 'more_info' ? supervisorOf(rq.returned.from) : null;
+    return '<div class="card" style="border-color:var(--red-line);background:var(--red-bg)"><div class="row"><span style="color:var(--red)">' + I.pen + '</span><div class="grow"><h3>' + esc(T('Sent back to you')) + '</h3><p class="small" style="margin:0">' + esc(returnedText(rq.returned)) + '</p>' + (list.length + asb.length > 1 ? '<p class="small muted" style="margin:4px 0 0">' + esc(T('{n} requests need your attention.', { n: list.length + asb.length })) + '</p>' : '') + '</div></div><div class="btns"><a class="btn sm" href="#/entry/' + esc(rq.ids[0]) + '">' + esc(T('Open the scan')) + '</a>' + (sup ? '<button class="btn ghost sm" type="button" data-resendr="' + esc(rq.code) + '">' + esc(T('Send back to {name}', { name: sup.name || sup.email })) + '</button>' : '') + (list.length > 1 ? '<a class="btn ghost sm" href="#/log?s=waiting">' + esc(T('See all')) + '</a>' : '') + '</div></div>';
+  }
+  document.addEventListener('click', function (ev) { var b = ev.target.closest && ev.target.closest('[data-resendr]'); if (b) { ev.preventDefault(); resendReturned(b.dataset.resendr); } });
   // New sign-offs from supervisors (link or dashboard), shown until the learner opens the logbook or dismisses them.
   function news() { return S.kv.news || []; }
   function newsText(list) {
@@ -1273,7 +1296,7 @@
     var install = canInstall() ? '<div style="margin:0 0 12px">' + installButton() + '</div>' : '';
     var nw = news(), nq = nw.some(function (n) { return n.status === 'query'; });
     var newsCard = nw.length ? '<div class="card" style="border-color:var(--green-line);background:var(--green-bg)"><div class="row"><span style="color:var(--green)">' + I.pen + '</span><div class="grow"><h3>' + esc(T('New sign-off')) + '</h3><p class="small" style="margin:0">' + esc(newsText(nw)) + '</p></div></div><div class="btns"><a class="btn sm" href="#/log' + (nq ? '?s=todo' : '?s=signed') + '">' + esc(T('See scans')) + '</a><button class="btn ghost sm" type="button" id="nwx">' + esc(T('Dismiss')) + '</button></div></div>' : '';
-    var sup = newsCard + emailCard() + superviseCard();
+    var sup = returnedCard() + newsCard + emailCard() + superviseCard();
     var focusHtml = focusHtmlFor();
     var paths = myPaths().map(function (pid) {
       var ps = pathwayStats(pid);
@@ -3173,7 +3196,8 @@
     var signHtml = so ? '<div class="signbox ' + (so.status === 'confirmed' ? 'ok' : 'warn') + '"><b>' + esc(so.status === 'confirmed' ? T('Signed off') : T('Queried')) + '</b> · ' + esc(so.name) + (so.role ? ', ' + esc(so.role) : '') + (so.reg ? ' (' + esc(so.reg) + ')' : '') + ' · ' + esc(fmt(so.at)) + ' · ' + esc(so.method === 'in-person' ? T('in person') : so.method === 'dashboard' ? T('from their dashboard') : T('by link')) + (so.basis ? ' (' + esc(basis[so.basis]) + ')' : '') + (so.signatureKind === 'typed' ? ' · ' + esc(T('Typed signature')) : '') + '. ' + esc(T('Code {code}.', { code: so.code })) + (entrySigner(so) ? '<br><span class="small">' + esc(entrySigner(so)) + '</span>' : '') + rt + '</div>'
       : e.signoffVoid ? '<div class="warn">' + esc(T('Signed by {name}, then edited. Ask for sign-off again.', { name: e.signoffVoid.name })) + '</div>' : '';
     var wt = !(so && so.status === 'confirmed') && waiting(e), state = signState(e);
-    if (wt) signHtml = '<div class="signbox warn"><b>' + esc(T('Awaiting sign-off')) + '</b>' + (wt.name ? ' · ' + esc(wt.name) : '') + '. ' + esc(T('Request sent, valid until {date}.', { date: fmt(new Date(wt.exp).toISOString()) })) + '</div>' + (so ? '<p class="small muted" style="margin:8px 0 0">' + esc(so.status === 'query' ? T('Earlier: queried by {name}.', { name: so.name }) : T('Earlier: signed by {name}.', { name: so.name })) + '</p>' : '');
+    if (wt && wt.returned) { var rsup = wt.returned.reason === 'more_info' ? supervisorOf(wt.returned.from) : null; signHtml = '<div class="signbox" style="border-color:var(--red-line);background:var(--red-bg)"><b style="color:var(--red)">' + esc(T('Sent back to you')) + '</b> · ' + esc(returnedText(wt.returned)) + '</div><p class="hint" style="margin:8px 0 0">' + esc(rsup ? T('Edit the scan or add images if needed, then send it back.') : T('Send it to another supervisor.')) + '</p><div class="btns" style="margin-top:8px"><button class="btn teal sm" type="button" data-resendr="' + esc(wt.code) + '">' + esc(rsup ? T('Send back to {name}', { name: rsup.name || rsup.email }) : T('Send on')) + '</button></div>'; }
+    else if (wt) signHtml = '<div class="signbox warn"><b>' + esc(T('Awaiting sign-off')) + '</b>' + (wt.name ? ' · ' + esc(wt.name) : '') + '. ' + esc(T('Request sent, valid until {date}.', { date: fmt(new Date(wt.exp).toISOString()) })) + '</div>' + (so ? '<p class="small muted" style="margin:8px 0 0">' + esc(so.status === 'query' ? T('Earlier: queried by {name}.', { name: so.name }) : T('Earlier: signed by {name}.', { name: so.name })) + '</p>' : '');
     else if (state === 'none') signHtml = '<p class="muted small" style="margin:0">' + esc(T('No sign-off needed for this scan.')) + '</p>';
     else if (!signHtml) signHtml = '<div class="signbox" style="border-color:var(--red-line);background:var(--red-bg)"><b style="color:var(--red)">' + esc(T('Not sent')) + '</b> ' + esc(T('for sign-off yet.')) + '</div>';
     var canToggle = !(so && so.status === 'confirmed') && !wt;
@@ -3284,7 +3308,7 @@
       var list = (res.signoffs || []); if (res.ok) setPending(list);
       h.innerHTML = list.length ? list.map(function (s) {
         var n = s.entry_ids.length, conf = Object.values(s.decisions || {}).filter(function (x) { return x === 'confirmed'; }).length;
-        var st = s.status === 'signed' ? '<span class="chip green">' + esc(T('Signed')) + '</span>' : s.status === 'pending' ? (s.expires_at < Date.now() ? '<span class="chip">' + esc(T('Expired')) + '</span>' : '<span class="chip amber">' + esc(T('Waiting')) + '</span>') : '<span class="chip">' + esc(T('Cancelled')) + '</span>';
+        var st = s.status === 'signed' ? '<span class="chip green">' + esc(T('Signed')) + '</span>' : s.status === 'pending' ? (s.expires_at < Date.now() ? '<span class="chip">' + esc(T('Expired')) + '</span>' : s.returned ? '<span class="chip red">' + esc(T('Sent back to you')) + '</span>' : '<span class="chip amber">' + esc(T('Waiting')) + '</span>') : '<span class="chip">' + esc(T('Cancelled')) + '</span>';
         var how = s.method === 'in-person' ? T('In person') : s.method === 'dashboard' ? T('Dashboard') : s.supervisor_id ? T('Dashboard and link') : T('By link');
         return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([plural(n, 'scan'), how, fmt(s.signed_at || s.created_at), s.supervisor_name || '', s.status === 'signed' ? T('{n} confirmed', { n: conf }) : ''].filter(Boolean).join(' · ')) + '</p></div>' + st + '</div>' + (s.status === 'signed' && s.signer ? '<p class="small muted" style="margin:6px 0 0">' + esc(signerText(s.signer)) + '</p>' : '') + (s.issuedInError ? '<div class="warn" style="margin-top:8px">' + esc(T('Marked as issued in error by Wavelength.')) + '</div>' : '') + (s.comment ? '<p class="small" style="margin:8px 0 0">“' + esc(s.comment) + '”</p>' : '') + (s.status === 'pending' && !s.returned && s.reviewState === 'under_review' ? '<p class="small" style="margin:8px 0 0">' + esc(T('Under review: your supervisor has opened this request.')) + '</p>' : '') + (s.status === 'pending' && s.returned ? '<p class="small" style="margin:8px 0 0">' + esc(returnedText(s.returned)) + '</p>' + (s.returned.reason === 'more_info' && supervisorOf(s.returned.from) ? '<p class="hint" style="margin:4px 0 0">' + esc(T('Update the scan first if they asked for changes. You can include images when you send it back.')) + '</p><div class="btns"><button class="btn teal sm" data-resend="' + esc(s.id) + '">' + esc(T('Send back to {name}', { name: supervisorOf(s.returned.from).name || supervisorOf(s.returned.from).email })) + '</button><button class="btn ghost sm" data-back="' + esc(s.id) + '">' + esc(T('Send to someone else')) + '</button></div>' : '<div class="btns"><button class="btn teal sm" data-back="' + esc(s.id) + '">' + esc(T('Send on')) + '</button></div>') : '') + (s.status === 'pending' && s.expires_at > Date.now() && !s.returned ? '<div class="btns"><button class="btn ghost sm" data-cancel="' + esc(s.id) + '">' + esc(T('Cancel request')) + '</button></div>' : '') + '</div>';
       }).join('') : '<p class="muted small">' + esc(T('No sign-offs yet.')) + '</p>';
@@ -3561,8 +3585,9 @@
   function asmRow(a) {
     var m = (PATHS[a.pathway] || { modules: [] }).modules.find(function (x) { return x.id === a.module; });
     var oc = OUTCOME[a.outcome];
-    var cls = a.status !== 'signed' ? '' : a.outcome === 'competent' ? 'green' : a.outcome === 'feedback' ? 'teal' : 'amber';
-    return '<div class="entry asm" data-asm="' + esc(a.id) + '"><span class="thumb">' + I.star + '</span><div class="grow"><h3>' + esc((PATHS[a.pathway] || {}).label || '') + ' · ' + esc(m ? T(m.label) : a.module) + '</h3><p>' + esc(kindLabel(a.kind)) + ' · ' + esc(fmt(a.assessed_on || a.created_at)) + (a.supervisor_name ? ' · ' + esc(a.supervisor_name) : '') + '</p><div class="meta"><span class="chip ' + cls + '">' + esc(a.status === 'superseded' ? T('Amended') : a.status === 'signed' ? T(oc ? oc.label : a.outcome) : a.expires_at < Date.now() ? T('Expired') : T('Waiting')) + '</span></div></div></div>';
+    var back = a.status === 'pending' && a.returned;
+    var cls = back ? 'red' : a.status !== 'signed' ? '' : a.outcome === 'competent' ? 'green' : a.outcome === 'feedback' ? 'teal' : 'amber';
+    return '<div class="entry asm" data-asm="' + esc(a.id) + '"><span class="thumb">' + I.star + '</span><div class="grow"><h3>' + esc((PATHS[a.pathway] || {}).label || '') + ' · ' + esc(m ? T(m.label) : a.module) + '</h3><p>' + esc(kindLabel(a.kind)) + ' · ' + esc(fmt(a.assessed_on || a.created_at)) + (a.supervisor_name ? ' · ' + esc(a.supervisor_name) : '') + '</p><div class="meta"><span class="chip ' + cls + '">' + esc(back ? T('Sent back to you') : a.status === 'superseded' ? T('Amended') : a.status === 'signed' ? T(oc ? oc.label : a.outcome) : a.expires_at < Date.now() ? T('Expired') : T('Waiting')) + '</span></div></div></div>';
   }
   function asmDetail(a) {
     if (a.status === 'superseded') a = Object.assign({}, a, { status: 'signed' }); // shown in full, marked as amended

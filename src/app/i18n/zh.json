@@ -2612,5 +2612,12 @@
 "Fit": "适应屏幕",
 "Open full screen to zoom": "全屏打开以缩放",
 "Pinch with two fingers to zoom in, then drag to move.": "用两指张开放大，然后拖动以移动。",
-"Scroll over a photo to zoom in, then drag with the hand to move around.": "在照片上滚动即可放大，然后用手形光标拖动来移动。"
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "在照片上滚动即可放大，然后用手形光标拖动来移动。",
+"Edit the scan or add images if needed, then send it back.": "如有需要，编辑扫查或添加图像，然后重新发送。",
+"Open assessments": "打开评估",
+"Open the scan": "打开扫查",
+"See all": "查看全部",
+"Send it to another supervisor.": "发送给另一位督导老师。",
+"Sent back to you": "已退回给您",
+"{n} requests need your attention.": "有 {n} 个请求需要您处理。"
 }

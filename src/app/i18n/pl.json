@@ -2726,5 +2726,12 @@
 "Fit": "Dopasuj",
 "Open full screen to zoom": "Otwórz na pełnym ekranie, aby powiększyć",
 "Pinch with two fingers to zoom in, then drag to move.": "Rozsuń dwa palce, aby powiększyć, potem przeciągnij, aby przesunąć.",
-"Scroll over a photo to zoom in, then drag with the hand to move around.": "Przewiń nad zdjęciem, aby je powiększyć, a potem przeciągnij ręką, aby się poruszać."
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "Przewiń nad zdjęciem, aby je powiększyć, a potem przeciągnij ręką, aby się poruszać.",
+"Edit the scan or add images if needed, then send it back.": "W razie potrzeby edytuj badanie lub dodaj obrazy, a potem odeślij je.",
+"Open assessments": "Otwórz oceny",
+"Open the scan": "Otwórz badanie",
+"See all": "Zobacz wszystko",
+"Send it to another supervisor.": "Wyślij je do innego opiekuna.",
+"Sent back to you": "Odesłane do Ciebie",
+"{n} requests need your attention.": "Prośby wymagające Twojej uwagi: {n}."
 }

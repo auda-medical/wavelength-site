@@ -2802,5 +2802,12 @@
 "Fit": "ملاءمة",
 "Open full screen to zoom": "افتح بملء الشاشة للتكبير",
 "Pinch with two fingers to zoom in, then drag to move.": "باعد بإصبعين للتكبير، ثم اسحب للتحريك.",
-"Scroll over a photo to zoom in, then drag with the hand to move around.": "مرّر عجلة الفأرة فوق الصورة للتكبير، ثم اسحب باليد للتنقل."
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "مرّر عجلة الفأرة فوق الصورة للتكبير، ثم اسحب باليد للتنقل.",
+"Edit the scan or add images if needed, then send it back.": "عدّل الفحص أو أضف صورًا عند الحاجة، ثم أعد إرساله.",
+"Open assessments": "افتح التقييمات",
+"Open the scan": "افتح الفحص",
+"See all": "عرض الكل",
+"Send it to another supervisor.": "أرسله إلى مشرف آخر.",
+"Sent back to you": "أُعيد إليك",
+"{n} requests need your attention.": "{n} طلبات تحتاج إلى انتباهك."
 }
