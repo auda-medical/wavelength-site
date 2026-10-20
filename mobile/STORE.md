@@ -59,7 +59,7 @@ Evidence anyone can check. Every sign-off, assessment and verified summary carri
 
 Ready for your portfolio. Export PDF, Excel or CSV with a verified summary for your e-portfolio, college or appraisal.
 
-Your images stay with you. Photos and clips stay on your phone and in backups you save to your own cloud. They are left out of iCloud backups and Android phone-to-phone transfer. If you choose to share them with a supervisor for sign-off, they are encrypted on your phone before upload; Wavelength stores only the encrypted copy and never receives the key, and the copy is deleted after sign-off or when the link expires. Only the written record syncs, and it must never contain patient identifiers.
+Your images stay with you. Photos and clips stay on your phone and in backups you save to your own cloud. They are left out of iCloud backups and Android phone-to-phone transfer. If you choose to share them with a supervisor for sign-off, they are encrypted on your phone before upload, only that supervisor can open them, and they are deleted after sign-off or within 14 days. Only the written record syncs, and it must never contain patient identifiers.
 
 Works anywhere. Log scans with no signal, in the department or the basement, and Wavelength syncs when you are back online. Lock your logbook with your fingerprint or face.
 
