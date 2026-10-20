@@ -2657,5 +2657,14 @@
 "See all": "Vedi tutto",
 "Send it to another supervisor.": "Invialo a un altro supervisore.",
 "Sent back to you": "Rimandata a te",
-"{n} requests need your attention.": "{n} richieste richiedono la tua attenzione."
+"{n} requests need your attention.": "{n} richieste richiedono la tua attenzione.",
+"I have checked every image and clip I am exporting. No patient name, hospital number, date of birth, face or other image of a person, voice or any other identifier remains, and sharing this file follows my hospital's information governance policy.": "Ho controllato ogni immagine e clip che esporto. Non rimangono nome del paziente, numero ospedaliero, data di nascita, volto o altra immagine di una persona, voce o qualsiasi altro identificativo, e condividere questo file rispetta la politica di governance delle informazioni del mio ospedale.",
+"Images": "Immagini",
+"No images": "Nessuna immagine",
+"All images": "Tutte le immagini",
+"Tick the scans to export with their images:": "Spunta gli esami da esportare con le immagini:",
+"No scans in this range have images.": "Nessun esame in questo periodo ha immagini.",
+"PDF only. Images come from this phone; a clip shows its first frame.": "Solo PDF. Le immagini provengono da questo telefono; una clip mostra il primo fotogramma.",
+"Tick at least one scan for images, or choose No images.": "Spunta almeno un esame per le immagini, oppure scegli Nessuna immagine.",
+"Tick the declaration to export images, or choose No images.": "Spunta la dichiarazione per esportare le immagini, oppure scegli Nessuna immagine."
 }

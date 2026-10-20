@@ -108,6 +108,19 @@ let code = null;
   const so = list.signoffs.find((x) => x.status === 'pending');
   code = so && so.id;
   record('L6', 'The request waits in Sam\'s dashboard', so && so.supervisor_id === sup.id, so ? [so.id, so.supervisor_id === sup.id] : 'none');
+  // 1.0.25 (owner, 20 Oct): export with no images, all images or chosen scans; images need the declaration first.
+  await page.evaluate(() => { const c = document.querySelector('.sheet [data-close]'); if (c) c.click(); }); await sleep(600);
+  await go(page, '#/export'); await page.waitForSelector('#xf'); await sleep(400);
+  const modes = await page.evaluate(() => [...document.querySelectorAll('input[name=imgmode] + label')].map((x) => x.textContent));
+  await page.click('input[name=imgmode][value=pick] + label'); await sleep(300);
+  const pick = await page.evaluate(() => ({ list: [...document.querySelectorAll('input[name=imgpick]')].length, decl: !document.querySelector('#imgdeclf').hidden }));
+  await page.click('#xf button.teal'); await sleep(400);
+  const noTick = await page.evaluate(() => !!document.querySelector('#imgopt.invalid'));
+  await page.evaluate(() => { const i = document.querySelector('input[name=imgpick]'); i.checked = true; });
+  await page.click('#xf button.teal'); await sleep(400);
+  const noDecl = await page.evaluate(() => { const r = document.querySelector('#imgdecl').getBoundingClientRect(); return !!document.querySelector('#imgdeclf.invalid') && r.top > 0 && r.bottom < innerHeight; });
+  record('X1', 'Export offers No images / All images / Choose scans; choosing needs a ticked scan and the declaration, and stops at the declaration', modes.join('|') === 'No images|All images|Choose scans' && pick.list >= 1 && pick.decl && noTick && noDecl, { modes, pick, noTick, noDecl });
+  await shot(page, 'X-export-images');
   // Log out on Me.
   await go(page, '#/me'); await page.waitForSelector('#melo', { timeout: 10000 }).catch(() => {});
   record('L7', 'Log out is on Me (as well as Settings), as a solid dark button', !!(await page.$('#melo')) && (await page.$eval('#melo', (b) => b.textContent + '|' + b.className)) === 'Log out|btn block', 'button ' + !!(await page.$('#melo')));

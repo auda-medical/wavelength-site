@@ -4821,10 +4821,26 @@
       '<div class="field" id="evopt"><label class="check"><input type="checkbox" name="verified" value="1" checked><span>' + T('<b>Add a verified summary with a QR code.</b> Your supervisor, ARCP panel or accrediting body scans it to see your progress, sign-offs and assessments as Wavelength holds them. Needs internet.') + '</span></label></div>' +
       '<div class="field"><label class="check"><input type="checkbox" name="reflections" value="1" checked><span>' + esc(T('Include reflections')) + '</span></label></div>' +
       '<div class="field"><label class="check"><input type="checkbox" name="assessments" value="1" checked><span>' + esc(T('Include assessments')) + '</span></label></div>' +
-      '<div class="field" id="imgopt"><label class="check"><input type="checkbox" name="images" value="1"><span>' + esc(T('Include images from this phone (PDF only, clips show their first frame). Check every image is free of identifiers before you share the file.')) + '</span></label></div>' +
+      '<div class="field" id="imgopt" data-req="imgmode"><span class="lab" id="lab-img">' + esc(T('Images')) + '</span>' + seg('imgmode', [{ id: 'none', label: 'No images' }, { id: 'all', label: 'All images' }, { id: 'pick', label: 'Choose scans' }], 'none', '', 'lab-img') + '<p class="hint">' + esc(T('PDF only. Images come from this phone; a clip shows its first frame.')) + '</p><div id="imgpick" hidden></div></div>' +
+      '<div class="field" id="imgdeclf" data-req="imgdecl" hidden><label class="check"><input type="checkbox" id="imgdecl"><span>' + esc(T('I have checked every image and clip I am exporting. No patient name, hospital number, date of birth, face or other image of a person, voice or any other identifier remains, and sharing this file follows my hospital\'s information governance policy.')) + '</span></label></div>' +
       '<div class="err" hidden></div><button class="btn teal block">' + esc(T('Create export')) + '</button></form>'));
     var f = $('#xf');
-    var tog = function () { var v = formData(f).fmt; $('#imgopt').hidden = v !== 'pdf'; $('#evopt').hidden = v === 'csv'; };
+    // The scans in range that have images, for "Choose scans"; ticks are kept as the range changes.
+    var inRange = function (d) { return live().filter(function (e) { if (e.date < d.from || e.date > d.to) return false; if (d.status === 'signed' && !(e.signoff && e.signoff.status === 'confirmed')) return false; if (d.pathway && d.pathway !== 'general' && !PATHS[d.pathway].modules.some(function (m) { return m.types.indexOf(e.type) >= 0; })) return false; return true; }).sort(function (a, b2) { return a.date.localeCompare(b2.date); }); };
+    var picked = {};
+    var drawPick = function () {
+      var box = $('#imgpick'), d = formData(f); $$('input[name=imgpick]', box).forEach(function (i) { picked[i.value] = i.checked; });
+      var withImg = inRange(d).filter(function (e) { return (e.images || []).length; });
+      box.innerHTML = withImg.length ? '<p class="small" style="margin:8px 0 4px">' + esc(T('Tick the scans to export with their images:')) + '</p>' + withImg.map(function (e) { return '<label class="check" style="margin:4px 0"><input type="checkbox" name="imgpick" value="' + esc(e.id) + '"' + (picked[e.id] ? ' checked' : '') + '><span>' + esc(T((TYPES[e.type] || {}).label || e.type)) + ', ' + esc(fmt(e.date)) + ' · ' + esc(plural((e.images || []).length, 'image')) + '</span></label>'; }).join('') : '<p class="small muted" style="margin:8px 0 0">' + esc(T('No scans in this range have images.')) + '</p>';
+    };
+    var tog = function () {
+      var d = formData(f), v = d.fmt, mode = v === 'pdf' ? d.imgmode : 'none';
+      $('#imgopt').hidden = v !== 'pdf'; $('#evopt').hidden = v === 'csv';
+      $('#imgpick').hidden = mode !== 'pick'; if (mode === 'pick') drawPick();
+      $('#imgdeclf').hidden = mode === 'none' || !mode;
+    };
+    $$('input[name=imgmode]', f).forEach(function (i) { i.onchange = tog; });
+    ['from', 'to', 'pw', 'st'].forEach(function (id) { var el = $('#' + id); if (el) el.addEventListener('change', function () { if (formData(f).imgmode === 'pick') drawPick(); }); });
     var pickPath = function () { var x = DEST[$('#ds').value]; $('#pw').value = x && x.pathway && myPaths().indexOf(x.pathway) >= 0 && scansIn(x.pathway) ? x.pathway : ''; };
     $$('input[name=fmt]', f).forEach(function (i) { i.onchange = tog; });
     $('#ds').onchange = pickPath; pickPath();
@@ -4837,6 +4853,12 @@
         return true;
       }).sort(function (a, b2) { return a.date.localeCompare(b2.date); });
       if (!list.length) { err.textContent = T('No scans match those choices.'); err.hidden = false; return; }
+      var mode = d.fmt === 'pdf' ? d.imgmode || 'none' : 'none';
+      d.images = mode !== 'none';
+      d.imageIds = mode === 'pick' ? $$('input[name=imgpick]:checked', f).map(function (i) { return i.value; }) : null;
+      $$('.field.invalid', f).forEach(function (fl) { markField(fl, ''); });
+      if (mode === 'pick' && !d.imageIds.length) { markField($('#imgopt'), T('Tick at least one scan for images, or choose No images.')); scrollToField($('#imgopt'), true); return; }
+      if (d.images && !$('#imgdecl').checked) { markField($('#imgdeclf'), T('Tick the declaration to export images, or choose No images.')); scrollToField($('#imgdeclf'), true); $('#imgdecl').focus({ preventScroll: true }); return; }
       busy(b, true, d.verified && d.fmt !== 'csv' ? T('Creating your verified summary…') : T('Building your file…'));
       var evJob = d.verified && d.fmt !== 'csv' ? makeEvidence(d) : Promise.resolve(null);
       evJob.then(function (evd) {
@@ -5027,7 +5049,7 @@
         doc.autoTable({ startY: 28, head: [['Code', 'Date', 'Supervisor', 'Registration', 'Accreditation', 'Method', 'Scans', 'Signature', 'Verify']], body: sos.map(function (s) { return [s.id, (s.signed_at || '').slice(0, 10), s.supervisor_name + (s.supervisor_role ? '\n' + s.supervisor_role : ''), s.supervisor_reg || '', s.accreditation || '', (s.method === 'in-person' ? 'In person' : s.method === 'dashboard' ? 'Dashboard' : 'By link') + (s.basis ? '\n' + ({ witnessed: 'Witnessed', reviewed: 'Reviewed images', both: 'Witnessed and reviewed' })[s.basis] : ''), String(s.entry_ids.length), '', '']; }), styles: { fontSize: 8, cellPadding: 1.8, valign: 'middle', minCellHeight: 18 }, headStyles: { fillColor: navy }, columnStyles: { 7: { cellWidth: 30 }, 8: { cellWidth: 18 } },
           didDrawCell: function (h) { if (h.section === 'body' && h.column.index === 8) { try { doc.addImage(qrs[h.row.index], 'PNG', h.cell.x + 1.5, h.cell.y + 1.5, 15, 15); } catch (e) { /* skip */ } } if (h.section === 'body' && h.column.index === 7) { var s = sos[h.row.index]; if (s && s.signature) { try { doc.addImage(s.signature, 'PNG', h.cell.x + 1, h.cell.y + 1, 28, Math.min(h.cell.height - 2, 12)); } catch (e) { /* skip */ } if (s.signatureKind === 'typed') { doc.setFontSize(6.5); doc.setTextColor(91, 104, 120); doc.text('Typed signature', h.cell.x + 1, h.cell.y + h.cell.height - 1.5); } } } } });
       }
-      var withImg = d.images ? list.filter(function (e) { return (e.images || []).length; }) : [];
+      var withImg = d.images ? list.filter(function (e) { return (e.images || []).length && (!d.imageIds || d.imageIds.indexOf(e.id) >= 0); }) : [];
       var addImages = withImg.reduce(function (p, e) {
         return p.then(function () { return imagesFor(e.id); }).then(function (recs) {
           if (!recs.length) return;

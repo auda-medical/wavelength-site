@@ -2619,5 +2619,14 @@
 "See all": "查看全部",
 "Send it to another supervisor.": "发送给另一位督导老师。",
 "Sent back to you": "已退回给您",
-"{n} requests need your attention.": "有 {n} 个请求需要您处理。"
+"{n} requests need your attention.": "有 {n} 个请求需要您处理。",
+"I have checked every image and clip I am exporting. No patient name, hospital number, date of birth, face or other image of a person, voice or any other identifier remains, and sharing this file follows my hospital's information governance policy.": "我已检查要导出的每张图像和每个片段。其中没有患者姓名、医院编号、出生日期、人脸或其他人像、声音或任何其他身份信息，分享此文件符合我所在医院的信息治理政策。",
+"Images": "图像",
+"No images": "不含图像",
+"All images": "全部图像",
+"Tick the scans to export with their images:": "勾选要连同图像一起导出的扫查：",
+"No scans in this range have images.": "此时间段内的扫查都没有图像。",
+"PDF only. Images come from this phone; a clip shows its first frame.": "仅限 PDF。图像来自这部手机；片段显示其第一帧。",
+"Tick at least one scan for images, or choose No images.": "请至少勾选一个要包含图像的扫查，或选择“不含图像”。",
+"Tick the declaration to export images, or choose No images.": "勾选声明后即可导出图像，或选择“不含图像”。"
 }
