@@ -76,7 +76,7 @@ Data used to track you: none. No third-party advertising or analytics SDKs.
 Data linked to you, all for app functionality only, none used for tracking, all deletable in the app (Me > Settings > Account > Delete account):
 - Contact info: name, email address (learners and supervisors).
 - User content, other user content: the written logbook entries, sign-offs and assessments, and supervisor verification evidence (evidence documents and the supervisor's written explanation).
-- User content, photos or videos: images and clips a learner chooses to share with a supervisor in a sign-off link. Optional. Encrypted on your phone before upload; Wavelength stores only the encrypted copy and never receives the key. Deleted after sign-off, on cancel, or when the link expires (14 days).
+- User content, photos or videos: images and clips a learner chooses to share with a supervisor for sign-off. Optional. Encrypted on your phone before upload. For a link the learner sends, Wavelength never receives the key; for a request sent to a linked supervisor's dashboard (from 1.0.21), Wavelength also holds the key so that supervisor can open them in the app. Deleted after sign-off, on cancel, or after 14 days.
 - Identifiers: user ID.
 - Other data: professional registration number (supervisor verification).
 
@@ -91,7 +91,7 @@ Device backups: images and clips are excluded from iCloud and iTunes backups (th
 - Data collected, all for app functionality and account management, not shared with third parties, not used for advertising or tracking:
   - Personal info: name, email address; other info: role and organisation (optional), professional registration number and supervisor verification evidence (evidence documents and written explanation).
   - App activity: other user-generated content (written logbook entries, sign-offs and assessments).
-  - Photos and videos: photos, videos. Optional: only images and clips a learner chooses to share with a supervisor in a sign-off link. Encrypted on your phone before upload; Wavelength stores only the encrypted copy and never receives the key. Deleted after sign-off, on cancel, or when the link expires (14 days).
+  - Photos and videos: photos, videos. Optional: only images and clips a learner chooses to share with a supervisor in a sign-off link. Encrypted on your phone before upload. For a link the learner sends, Wavelength never receives the key; for a request sent to a linked supervisor's dashboard (from 1.0.21), Wavelength also holds the key so that supervisor can open them in the app. Deleted after sign-off, on cancel, or after 14 days.
 - Photos and videos are declared as collected (owner's decision, October 2026, replacing the earlier "not collected" answer). The supervisor's page that decrypts them is served by Wavelength, so the strict end-to-end exemption does not clearly apply. Images and clips otherwise stay on the phone and never sync. The privacy notice explains the encrypted sharing. Apple App Privacy: same answer.
 - Device or other IDs (from 1.0.20): the phone-notification token, collected only when the person turns phone notifications on; app functionality; not shared; deleted when they turn notifications off, log out on that phone or delete the account. Delivered through Google Firebase Cloud Messaging and Apple (processors). Apple App Privacy: Identifiers > Device ID, App Functionality, linked to the user, not tracking (DPIA Amendment 4, signed 19 October 2026).
 - Data encrypted in transit: yes.
