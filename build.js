@@ -180,7 +180,7 @@ const NAV = [
   ] }] : []),
   { href: '/pocus-logbook/', label: 'App', match: ['/app/', '/pocus-logbook/'], children: [
     { href: '/pocus-logbook/', label: 'POCUS logbook and portfolio', short: 'Logbook', text: 'Your portfolio, tailored to your accrediting body.' },
-    { href: '/app/get/', label: 'Download the app', short: 'Download', text: 'Free for iPhone, Android and the browser.' },
+    { href: '/app/get/', label: 'Wavelength app', short: 'App', text: 'Open it in your browser, get it on Google Play, or add it to your home screen.' },
     { href: '/pocus-logbook/help/', label: 'Logbook help', short: 'Help', text: 'How to use the app, one task at a time.' },
   ] },
   { href: '/faculty/', label: 'Faculty' },
@@ -1771,6 +1771,9 @@ const APP_LD = {
   ],
 };
 
+// Store links (owner, 20 Oct 2026). Google Play published 1.0.25 on 20 Oct. Put the App Store address in appStore the day
+// Apple publishes the iPhone app (https://apps.apple.com/app/id6822088185); until then the page says it is coming soon.
+const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: '' };
 // Wavelength app landing page (/app/get/). The app itself is static in src/app/.
 {
   const f = (icon, t, d) => `<div class="pillar reveal"><div class="num">${icon}</div><h3>${t}</h3><p>${d}</p></div>`;
@@ -1783,7 +1786,7 @@ const APP_LD = {
     { q: 'Can I edit images in the app?', a: 'Yes. The built-in editor crops, rotates, trims the patient banner from the top of the screen and blacks out any name, number, date or label, with undo. You do not need your phone\'s photo editor. Saving re-encodes the image, which removes hidden location and device data.' },
     { q: 'How fast is sign-off?', a: 'Immediate in person: your supervisor signs on your phone after the scan. By link, they open it on their own phone, confirm or query each scan and sign with a finger, and the sign-off appears in your logbook straight away. Include your images and clips in the link and your supervisor reviews them on their own phone before signing. They are encrypted on your phone, only your supervisor can open them, and they delete when your supervisor signs.' },
     { q: 'How does someone check a sign-off is genuine?', a: 'Each sign-off has a code (SO-XXXX-XXXX) and QR code, printed on your case PDFs and in the sign-off register of every export. Scanning it, or entering the code at thewavelength.co.uk/verify, shows the learner, the supervisor, the date and how they signed. The check shows the record as it was signed, so an edited PDF does not match it, and changing a signed scan in the app voids its sign-off.' },
-    { q: 'Is it in the App Store?', a: 'Not yet. You install it from this website in two taps and it works like any app, including offline. App Store and Google Play versions follow.' },
+    { q: 'Is it on Google Play and the App Store?', a: STORES.appStore ? 'Yes. Get it on Google Play for Android or on the App Store for iPhone and iPad. You can also open it in your browser, or add it to your home screen from there, and it works like any app, including offline.' : 'Android: yes, on Google Play. iPhone: coming soon to the App Store. Until then, open it in Safari and add it to your home screen in two taps; it works like any app, including offline.' },
     { q: 'What about my Academy certificates?', a: 'Log in with the same email and your Wavelength Academy certificates appear in the app, ready to share or verify.' },
   ];
   let html = layout({
@@ -1796,10 +1799,12 @@ const APP_LD = {
   <div>
     <p class="eyebrow rise">The Wavelength app</p>
     <h1 class="split-words">Your logbook. <em>In your pocket.</em></h1>
-    <p class="lede rise">Log a scan in seconds from a photo you take or an image you upload. Your supervisor signs it off on the spot or from a secure link, and anyone checking your portfolio confirms it is genuine by scanning a QR code. Free, and your photos never leave your phone.</p>
-    <div class="hero-ctas rise app-ctas">
-      <button class="app-dl" type="button" data-app-install><span class="app-dl-ico">${mark({ size: 30, ring: '#7FC4CC' })}</span><span><small>Free for iPhone and Android</small><b>Download the app</b></span></button>
-      <a class="btn btn-ghost light" href="/app/">Open in your browser</a>
+    <p class="lede rise">Log a scan in seconds from a photo you take or an image you upload. Your supervisor signs it off on the spot or from a secure link, and anyone checking your portfolio confirms it is genuine by scanning a QR code. Free, and your photos stay on your phone unless you send them for sign-off.</p>
+    <div class="app-stores rise">
+      <a class="app-dl" href="/app/" data-m="app-get-browser"><span class="app-dl-ico">${mark({ size: 30, ring: '#7FC4CC' })}</span><span><small>No download needed</small><b>Open in your browser</b></span></a>
+      <a class="app-dl" href="${STORES.play}" target="_blank" rel="noopener" data-m="app-get-play"><span class="app-dl-ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5v17l14-8.5z" fill="#7FC4CC"/></svg></span><span><small>Android</small><b>Get it on Google Play</b></span></a>
+      ${STORES.appStore ? `<a class="app-dl" href="${STORES.appStore}" target="_blank" rel="noopener" data-m="app-get-appstore"><span class="app-dl-ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="#7FC4CC" stroke-width="1.8"/><circle cx="12" cy="18" r="1.1" fill="#7FC4CC"/></svg></span><span><small>iPhone and iPad</small><b>Download on the App Store</b></span></a>` : `<span class="app-dl is-soon" aria-disabled="true"><span class="app-dl-ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="#7FC4CC" stroke-width="1.8"/><circle cx="12" cy="18" r="1.1" fill="#7FC4CC"/></svg></span><span><small>iPhone and iPad</small><b>App Store: coming soon</b></span></span>`}
+      <button class="app-dl" type="button" data-app-install data-m="app-get-home"><span class="app-dl-ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" fill="none" stroke="#7FC4CC" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="#7FC4CC" stroke-width="1.8" stroke-linecap="round"/></svg></span><span><small>Any phone, no store needed</small><b>Add to your home screen</b></span></button>
     </div>
     <div class="app-ios rise" data-app-ios hidden><b>On iPhone:</b> tap Share in Safari, then <b>Add to Home Screen</b>. Wavelength then opens full screen like any app.</div>
   </div>
@@ -1824,7 +1829,7 @@ const APP_LD = {
   <div class="pillars app-pillars">
     ${f('Targets', 'Every pathway, one scan', 'Choose RCEM, FAMUS, FUSIC or your own targets. A lung scan counts towards FAMUS thoracic and FUSIC lung at once, with pathology quotas, supervised counts and training windows tracked for you.')}
     ${f('Colour', 'See what is left', 'Red, amber, green. Each module shows exactly how many scans, supervised scans, reflections and pathologies you still need.')}
-    ${f('Privacy', 'Photos stay on your phone', 'Take a photo or upload one, then crop, rotate and black out identifiers in the built-in editor. Hidden photo data is stripped when you save. Images are never readable by Wavelength.')}
+    ${f('Privacy', 'Photos stay on your phone', 'Take a photo or upload one, then crop, rotate and black out identifiers in the built-in editor. Hidden photo data is stripped when you save. Images you send for sign-off are encrypted, and only your supervisor can open them.')}
     ${f('Sign-off', 'Signed in seconds', 'Hand your phone to your supervisor to sign with a finger, or send a secure link. Each sign-off gets a code anyone can verify.')}
     ${f('Export', 'Portfolio-ready', 'PDF with a summary of training, scan log, reflections and sign-off register, each sign-off with its own QR code. Excel and CSV too.')}
     ${f('Backup', 'Your cloud, your copy', 'One tap saves your photos to iCloud Drive, Google Drive or OneDrive. Restore on a new phone in seconds.')}
@@ -1846,7 +1851,7 @@ const APP_LD = {
   <div><p class="eyebrow reveal">Good to know</p><h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,64px);margin-top:20px">Questions.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:20px">Read the <a class="text-link" href="/app-terms/">logbook terms of use</a> and <a class="text-link" href="/privacy/">privacy notice</a>. Questions about pathways, e-portfolios and verified summaries are answered on the <a class="text-link" href="/pocus-logbook/#faq">POCUS logbook page</a>.</p></div>
   ${faqHtml(appFaqs)}
 </div></section>
-${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open it on your phone and add it to your home screen.')}`,
+${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Get it on Google Play, open it in your browser, or add it to your home screen.')}`,
   });
   html = html.replace('<link rel="manifest" href="/site.webmanifest">', '<link rel="manifest" href="/app/manifest.webmanifest">')
     .replace('</body>', `${APP_INSTALL_JS}\n</body>`);
@@ -2023,7 +2028,7 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Open
     ]],
   ];
   const H = [
-    ['start', 'Getting started', `<ol><li>Install Wavelength from the App Store or Google Play, or open it in your browser: see <a class="text-link" href="/app/get/">Download the app</a>.</li><li>Create your account with your name, email and a password, and confirm your email address from the message we send.</li><li>Choose your pathways, for example RCEM, FAMUS or FUSIC. <b>Progress</b> then shows your scans against each pathway's targets.</li></ol>`],
+    ['start', 'Getting started', `<ol><li>Install Wavelength from the App Store or Google Play, or open it in your browser: see <a class="text-link" href="/app/get/">Wavelength app</a>.</li><li>Create your account with your name, email and a password, and confirm your email address from the message we send.</li><li>Choose your pathways, for example RCEM, FAMUS or FUSIC. <b>Progress</b> then shows your scans against each pathway's targets.</li></ol>`],
     ['log', 'Log a scan', `<ol><li>Tap the round <b>+ Log</b> button in the middle of the bottom bar.</li><li>Choose the application and check the date.</li><li>Record what you found, your image quality and your interpretation. Add the confirmation and the impact on management if you know them.</li><li>Choose the <b>Level of supervision</b> and, if you like, your supervisor.</li><li>Add a reflection if you want it to count as a reflective note.</li><li>Tap <b>Save scan</b>.</li></ol><p>Log on the day of the scan. If Wavelength closes before you save, Home shows <b>Kept on this phone</b>: tap <b>Review</b> to carry on where you left off. Nothing is added to your logbook until you save it.</p>`],
     ['media', 'Photos and clips', `<p>In a scan, under <b>Images and clips</b>, tap <b>Take photo</b>, <b>Choose</b> or <b>Clip</b> (up to 10 seconds, with sound removed). The editor then has three modes:</p><ul><li><b>Adjust</b>: crop, trim, rotate and flip.</li><li><b>Redact</b>: cover identifiers with a solid block. Blurring is not offered, because it can leave text readable.</li><li><b>Annotate</b>: labels, your own text, arrows, boxes, circles, dots and pictograms. <b>Size</b> and <b>Rotation</b> change the selected one; <b>Straight</b> is in the middle of Rotation.</li></ul><p>Before you save, confirm that you removed or covered every patient identifier (in every frame of a clip). Photos and clips taken with the camera from Wavelength go straight into the app's own storage, not your phone's gallery.</p>`],
     ['sync', 'What syncs, and what stays on your phone', `<ul><li><b>Your written logbook entries sync</b> to your Wavelength account, so they appear on every phone, tablet or browser where you log in.</li><li><b>Photos and clips never leave your phone.</b> They are not uploaded to Wavelength, so they do not appear on another device. The only exception is a sign-off request you choose to send with images: they are encrypted on your phone, only your supervisor can open them, and they are deleted when your supervisor signs, you cancel, or after 14 days.</li><li>The sync label at the top of the app shows this device's status. Tap it for details and <b>Retry sync</b>. Offline, everything keeps working and syncs when you are back online.</li></ul>`],
