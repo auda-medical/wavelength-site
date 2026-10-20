@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { makeEnv, ctx, ORIGIN } from './helpers/env.mjs';
-import { verifiedAccount } from './helpers/verify.mjs';
+import { verifiedAccount, idOf } from './helpers/verify.mjs';
 import { handleApp } from '../worker/app.js';
 
 globalThis.fetch = async () => new Response('{}');
@@ -106,4 +106,24 @@ test('privacy notice says plainly that Wavelength holds the key for dashboard re
   const b = readFileSync(new URL('../build.js', import.meta.url), 'utf8');
   assert.match(b, /In a request sent to a linked supervisor's dashboard, we also hold the key/);
   assert.doesNotMatch(b, /We never see your scan photos/);
+});
+
+test('1.0.26: on the learner page, a scan waiting for this supervisor says so and the Waiting for you filter lists it', async () => {
+  const env = makeEnv();
+  const t = await linked(env, 'w');
+  const lid = await idOf(env, 'learner.w@x.co');
+  const { code } = await sendWithImage(env, t, { tag: 'w' });
+  const page = await t.sup.call('/api/app/supervise/learner?id=' + lid);
+  assert.equal(page.status, 200, JSON.stringify(page.body));
+  assert.equal(page.body.recent.find((e) => e.id === 'scanw000001').waiting, code);
+  const all = await t.sup.call('/api/app/supervise/learner/scans?id=' + lid + '&filter=all');
+  assert.equal(all.body.entries.find((e) => e.id === 'scanw000001').waiting, code);
+  const waiting = await t.sup.call('/api/app/supervise/learner/scans?id=' + lid + '&filter=waiting');
+  assert.deepEqual(waiting.body.entries.map((e) => e.id), ['scanw000001']);
+  const sig = 'data:image/png;base64,' + Buffer.from('sig').toString('base64');
+  await t.sup.call('/api/app/supervise/signoff', { code, name: 'Dr Sup', role: 'Consultant', basis: 'reviewed', confirm: true, signature: sig, decisions: { scanw000001: 'confirmed' } });
+  const after = await t.sup.call('/api/app/supervise/learner/scans?id=' + lid + '&filter=waiting');
+  assert.equal(after.body.entries.length, 0, 'nothing waits after signing');
+  const app = readFileSync(new URL('../src/app/app.js', import.meta.url), 'utf8');
+  assert.match(app, /'Waiting for your sign-off'/);
 });

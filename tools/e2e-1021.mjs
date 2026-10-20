@@ -130,6 +130,11 @@ let code = null;
 // S: the supervisor opens the request in the app and sees the photo.
 {
   const { ctx, page } = await phone(sup);
+  // 1.0.26 (owner, 20 Oct): the learner's scans show which one waits for this supervisor, with Review and sign.
+  await go(page, '#/supervise/' + learner.id + '/scans?f=waiting');
+  await page.waitForSelector('.chip.amber', { timeout: 15000 }).catch(() => {});
+  const wt = await page.evaluate(() => ({ chip: (document.querySelector('.chip.amber') || {}).textContent, btn: !!document.querySelector('[data-sv-so]'), tab: (document.querySelector('input[name=svf]:checked + label') || {}).textContent, hash: location.hash, text: document.querySelector('main, #app, body').innerText.slice(0, 300) }));
+  record('W1', 'Waiting for you lists the scan, marked Waiting for your sign-off, with Review and sign', wt.chip === 'Waiting for your sign-off' && wt.btn && wt.tab === 'Waiting for you', wt);
   await go(page, '#/supervise/' + learner.id + '/requests');
   await page.waitForSelector('[data-sv-so]', { timeout: 15000 });
   await page.click('[data-sv-so]');

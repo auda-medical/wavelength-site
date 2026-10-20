@@ -4082,7 +4082,7 @@
   // 1.0.12: one supervised learner. Every summary tile opens exactly the records it counts, for this learner only
   // (#/supervise/<id>/scans?f=, /assessments, /requests), fetched from the server each time: other people's records
   // are never kept on this device, so offline the dashboard says so rather than showing old copies.
-  var SVF = { all: 'All scans', supervised: 'Supervised scans', signed: 'Signed-off scans', unsigned: 'Not signed off' };
+  var SVF = { all: 'All scans', supervised: 'Supervised scans', signed: 'Signed-off scans', unsigned: 'Not signed off', waiting: 'Waiting for you' };
   function svFetch(id) {
     // A short cache for moving between a learner's tiles, tied to this login: never shown to another account.
     var me = S.account && S.account.id;
@@ -4131,7 +4131,7 @@
       revealIn(true);
     }).catch(function (ex) { svFail(T('Learner'), 'supervise', ex); });
   }
-  function svScanCard(e) { return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T((TYPES[e.type] || {}).label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + (e.images ? ' · ' + esc(plural(e.images, 'image')) : '') + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (e.signoff && e.signoff.status === 'confirmed' ? '<span class="chip green">' + esc(T('Signed off')) + ratingDots(e.signoff.rating) + '</span>' : '<span class="chip">' + esc(T('Not signed')) + '</span>') + '</div></div>'; }
+  function svScanCard(e) { return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T((TYPES[e.type] || {}).label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + (e.images ? ' · ' + esc(plural(e.images, 'image')) : '') + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (e.signoff && e.signoff.status === 'confirmed' ? '<span class="chip green">' + esc(T('Signed off')) + ratingDots(e.signoff.rating) + '</span>' : e.waiting ? '<span class="chip amber">' + esc(T('Waiting for your sign-off')) + '</span>' : '<span class="chip">' + esc(T('Not signed')) + '</span>') + '</div>' + (e.waiting && !(e.signoff && e.signoff.status === 'confirmed') ? '<div class="btns" style="margin-top:8px"><button class="btn teal sm" type="button" data-sv-so="' + esc(e.waiting) + '">' + esc(T('Review and sign')) + '</button></div>' : '') + '</div>'; }
   // The records behind a tile: filter in words, a way to clear it, and back to this learner.
   function viewSupervisedScans(id, r) {
     var f = SVF[r.q.get('f')] ? r.q.get('f') : 'all', type = r.q.get('type') || '', mod = r.q.get('module') || '', back = 'supervise/' + id;
@@ -4144,12 +4144,13 @@
       name = res.learner.name; shown = shown.concat(res.entries); total = res.total;
       var bits = [T(SVF[f])]; if (res.module) bits.push(T(res.module.label)); if (type) bits.push(T((TYPES[type] || {}).short || type));
       var filtered = f !== 'all' || type || mod;
-      var seg = '<div class="seg" style="margin:0 0 10px" role="radiogroup" aria-label="' + esc(T('Show')) + '">' + ['all', 'supervised', 'signed', 'unsigned'].map(function (k) { return '<input type="radio" name="svf" id="svf' + k + '" value="' + k + '"' + (k === f ? ' checked' : '') + '><label for="svf' + k + '">' + esc(T(SVF[k])) + '</label>'; }).join('') + '</div>';
+      var seg = '<div class="seg" style="margin:0 0 10px" role="radiogroup" aria-label="' + esc(T('Show')) + '">' + ['all', 'supervised', 'signed', 'unsigned', 'waiting'].map(function (k) { return '<input type="radio" name="svf" id="svf' + k + '" value="' + k + '"' + (k === f ? ' checked' : '') + '><label for="svf' + k + '">' + esc(T(SVF[k])) + '</label>'; }).join('') + '</div>';
       mount(shell({ title: name, back: back },
         '<div class="active-f" role="status"><span class="muted small">' + esc(T('{name}: {n} shown', { name: name, n: plural(total, 'scan') })) + '</span>' + bits.map(function (b) { return '<span class="chip teal">' + esc(b) + '</span>'; }).join('') + (filtered ? '<a class="link small" href="#/supervise/' + esc(id) + '/scans?f=all">' + esc(T('Clear filters')) + '</a>' : '') + '</div>' + seg +
         (shown.length ? shown.map(svScanCard).join('') + (res.more ? '<div class="btns"><button class="btn ghost block" data-more>' + esc(T('Show more')) + '</button></div>' : '') :
           '<div class="empty">' + I.book.replace('width="24" height="24"', 'width="48" height="48"') + '<p>' + esc(f === 'signed' ? T('{name} has no signed-off scans yet.', { name: name }) : f === 'supervised' ? T('{name} has no supervised scans logged yet.', { name: name }) : filtered ? T('No scans match.') : T('{name} has not logged any scans yet, or they have not synced.', { name: name })) + '</p>' + (filtered ? '<a class="btn ghost" href="#/supervise/' + esc(id) + '/scans?f=all">' + esc(T('Clear filters')) + '</a> ' : '') + '</div>') +
         '<div class="btns"><a class="btn ghost block" href="#/' + back + '">' + esc(T('Back to {name}', { name: name })) + '</a></div>'));
+      $$('[data-sv-so]').forEach(function (b) { b.onclick = function () { dashSignoff(b.dataset.svSo, id); }; });
       $$('input[name=svf]').forEach(function (i) { i.onchange = function () { location.hash = '#/supervise/' + id + '/scans?f=' + i.value + (mod ? '&module=' + encodeURIComponent(mod) : '') + (type ? '&type=' + encodeURIComponent(type) : ''); }; });
       var mo = $('[data-more]'); if (mo) mo.onclick = function () { busy(mo, true); api(q + '&offset=' + shown.length).then(function (r2) { if (!r2.ok) throw new Error(r2.error); draw(r2); }).catch(function (ex) { busy(mo, false); toast(netFail(ex) ? T('Could not load. Check your connection.') : ex.message); }); };
     };

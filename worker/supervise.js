@@ -417,6 +417,8 @@ export async function superviseLearner(env, l, url) {
   const done = await env.DB.prepare("SELECT * FROM assessments WHERE learner_id = ? AND status = 'signed' ORDER BY assessed_on DESC LIMIT 50").bind(t.id).all();
   const link = await env.DB.prepare("SELECT id, accepted_at FROM supervisor_links WHERE supervisor_id = ? AND learner_id = ? AND status = 'active'").bind(l.id, t.id).first();
   // 1.0.12: the dashboard tiles. Each count uses the same rule as the list it opens (scanFilter), so the numbers match.
+  const waitMap = {}; for (const r of so.results || []) for (const id of JSON.parse(r.entry_ids || '[]')) waitMap[id] = r.id;
+  for (const r of recent) if (waitMap[r.id]) r.waiting = waitMap[r.id];
   const counts = { scans: entries.length, supervised: entries.filter(scanFilter('supervised')).length, signed: entries.filter(scanFilter('signed')).length, assessments: asm.length, requests: (so.results || []).length + (as.results || []).length };
   return json({
     ok: true, learner: { id: t.id, name: fullName(t), role: prof.grade || t.role || '', organisation: t.organisation || '', pathways },
@@ -437,7 +439,14 @@ export function scanFilter(f) {
   if (f === 'unsigned') return (e) => !(e.signoff && e.signoff.status === 'confirmed');
   return () => true;
 }
-const FILTERS = ['all', 'supervised', 'signed', 'unsigned'];
+const FILTERS = ['all', 'supervised', 'signed', 'unsigned', 'waiting'];
+// 1.0.26: entry id -> request code, for this learner's scans in requests waiting for this supervisor (not sent back).
+async function waitingFor(env, learnerId, supervisorId) {
+  const { results = [] } = await env.DB.prepare("SELECT id, entry_ids FROM signoffs WHERE learner_id = ? AND supervisor_id = ? AND status = 'pending' AND expires_at > ?").bind(learnerId, supervisorId, Date.now()).all();
+  const m = {};
+  for (const s of results) for (const id of JSON.parse(s.entry_ids || '[]')) m[id] = s.id;
+  return m;
+}
 const P = globalThis.WLProgress.create(LOGBOOK);
 const scanRow = (e) => ({ id: e.id, type: e.type, date: e.date, setting: e.setting, indication: e.indication, findings: e.findings, overall: e.overall, quality: e.quality, interpretation: e.interpretation, supervision: e.supervision, supervisor: e.supervisor, signoff: e.signoff ? { status: e.signoff.status, name: e.signoff.name, at: e.signoff.at, code: e.signoff.code, rating: e.signoff.rating } : null, images: (e.images || []).length });
 export async function superviseLearnerScans(env, l, url) {
@@ -460,8 +469,9 @@ export async function superviseLearnerScans(env, l, url) {
     if (mod) { const st = P.moduleStats(mod, entries, prof.targets, []); const ids = new Set(st.list.map((e) => e.id)); entries = entries.filter((e) => ids.has(e.id)); module = { pathway: pid, id: mid, label: mod.label }; }
     else entries = [];
   }
-  entries = entries.filter(scanFilter(filter)).filter((e) => (!type || e.type === type) && (!month || String(e.date || '').slice(0, 7) === month));
-  return json({ ok: true, learner: { id: t.id, name: fullName(t) }, filter, type: type || null, month: month || null, module, total: entries.length, offset, entries: entries.slice(offset, offset + 50).map(scanRow), more: offset + 50 < entries.length });
+  const wait = await waitingFor(env, t.id, l.id);
+  entries = entries.filter(filter === 'waiting' ? (e) => !!wait[e.id] : scanFilter(filter)).filter((e) => (!type || e.type === type) && (!month || String(e.date || '').slice(0, 7) === month));
+  return json({ ok: true, learner: { id: t.id, name: fullName(t) }, filter, type: type || null, month: month || null, module, total: entries.length, offset, entries: entries.slice(offset, offset + 50).map((e) => (wait[e.id] ? { ...scanRow(e), waiting: wait[e.id] } : scanRow(e))), more: offset + 50 < entries.length });
 }
 // Sign-off from the dashboard, for requests the learner addressed to this supervisor.
 export async function superviseSignoffView(env, l, url) {
