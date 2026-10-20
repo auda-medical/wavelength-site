@@ -657,6 +657,12 @@ label.quiz-opt:has(input:focus-visible){outline:2px solid var(--teal);outline-of
 .app-dl.is-soon{opacity:.6;cursor:default}
 .app-dl.is-soon:hover{transform:none;box-shadow:none}
 @media (max-width:620px){.app-stores{grid-template-columns:1fr}}
+.store-badges{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:18px}
+.store-badge{display:inline-block;line-height:0;border-radius:10px;transition:transform .2s}
+.store-badge:hover{transform:translateY(-2px)}
+.store-badge.play img{height:78px;width:auto}
+.store-badge.apple img{height:52px;width:auto}
+.store-soon{color:#B9C4D0;font-size:14px}
 .app-dl{display:inline-flex;align-items:center;gap:14px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:16px;padding:11px 22px 11px 12px;cursor:pointer;text-align:left;font:inherit;transition:transform .2s,box-shadow .2s}
 .app-dl:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(0,0,0,.35)}
 .app-dl-ico{width:46px;height:46px;border-radius:12px;background:var(--deep,#0A1526);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(127,196,204,.35);color:#F7F5F0}
