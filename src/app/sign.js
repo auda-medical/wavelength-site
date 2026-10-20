@@ -118,10 +118,10 @@
               var w = g.measureText(stamp).width; g.fillStyle = 'rgba(15,30,51,.7)'; g.fillRect(0, cv.height - fs * 1.8, w + fs, fs * 1.8); g.fillStyle = '#fff'; g.fillText(stamp, fs / 2, cv.height - fs * 0.4);
               g.save(); g.globalAlpha = 0.14; g.translate(cv.width / 2, cv.height / 2); g.rotate(-Math.PI / 7); g.font = '600 ' + fs * 2 + 'px DM Sans, system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#fff'; g.fillText(T('REVIEW COPY'), 0, 0); g.restore();
               cv.oncontextmenu = function (ev) { ev.preventDefault(); };
-              return cv;
+              return window.WLZoom ? WLZoom.bind(cv) : cv; // 1.0.24: pinch (phone) or scroll (computer) to zoom, drag to move
             });
           });
-        })).then(function (els) { box.innerHTML = ''; els.forEach(function (c) { box.appendChild(c); }); })
+        })).then(function (els) { box.innerHTML = ''; if (window.WLZoom && els.some(function (c) { return c.className === 'zoombox'; })) { var zh = document.createElement('p'); zh.className = 'small muted'; zh.textContent = WLZoom.hint(T); box.appendChild(zh); } els.forEach(function (c) { box.appendChild(c); }); })
           .catch(function () { box.innerHTML = '<p class="small err">' + esc(T('These images could not be opened. The link may be incomplete. Ask the learner to send it again.')) + '</p>'; });
       });
     }).catch(function () { root.querySelectorAll('[data-imgs]').forEach(function (b) { b.innerHTML = '<p class="small err">' + esc(T('These images could not be opened. The link may be incomplete.')) + '</p>'; }); });

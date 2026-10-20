@@ -2602,5 +2602,15 @@
 "Sending to {name}…": "正在发送给 {name}…",
 "Tick the declaration about your images to send them, or choose Save as draft.": "勾选关于图像的声明后即可发送，或选择“保存为草稿”。",
 "Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "除非您发送签署，否则保留在这部手机上。保存前请裁剪并遮盖身份信息，也可添加标注。片段最长 10 秒，无声音。",
-"Not ready to sign?": "还不能签署？"
+"Not ready to sign?": "还不能签署？",
+"How were you supervised?": "您是如何接受督导的？",
+"Only if you added images or clips: I have checked every one. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "仅在您添加了图像或片段时：我已检查全部。其中没有患者姓名、编号、出生日期、医院名称或其他身份信息，与 {name} 分享符合我所在医院的信息治理政策。",
+"Optional. Tap a selected name again to clear it.": "可选。再次点按已选的姓名即可清除。",
+"Tap an image to open it full screen and zoom.": "点按图像可全屏打开并缩放。",
+"Zoomed image": "放大的图像",
+"Pinch, scroll or double-tap to zoom. Drag to move.": "双指缩放、滚动或双击即可缩放。拖动可移动。",
+"Fit": "适应屏幕",
+"Open full screen to zoom": "全屏打开以缩放",
+"Pinch with two fingers to zoom in, then drag to move.": "用两指张开放大，然后拖动以移动。",
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "在照片上滚动即可放大，然后用手形光标拖动来移动。"
 }

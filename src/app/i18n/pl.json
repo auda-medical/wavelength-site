@@ -2716,5 +2716,15 @@
 "Sending to {name}…": "Wysyłanie do: {name}…",
 "Tick the declaration about your images to send them, or choose Save as draft.": "Zaznacz oświadczenie o obrazach, aby je wysłać, albo wybierz Zapisz jako szkic.",
 "Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "Zostają na tym telefonie, chyba że wyślesz je do podpisu. Przed zapisaniem przytnij i zamaskuj identyfikatory, a jeśli chcesz, dodaj adnotacje. Klipy do 10 sekund, bez dźwięku.",
-"Not ready to sign?": "Nie możesz jeszcze podpisać?"
+"Not ready to sign?": "Nie możesz jeszcze podpisać?",
+"How were you supervised?": "Jak wyglądał nadzór?",
+"Only if you added images or clips: I have checked every one. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "Tylko jeśli dodano obrazy lub klipy: sprawdziłem wszystkie. Nie pozostało imię i nazwisko, numer, data urodzenia pacjenta, nazwa szpitala ani inny identyfikator, a udostępnienie ich osobie {name} jest zgodne z polityką zarządzania informacją mojego szpitala.",
+"Optional. Tap a selected name again to clear it.": "Opcjonalnie. Dotknij ponownie wybranego nazwiska, aby je wyczyścić.",
+"Tap an image to open it full screen and zoom.": "Dotknij obrazu, aby otworzyć go na pełnym ekranie i powiększyć.",
+"Zoomed image": "Powiększony obraz",
+"Pinch, scroll or double-tap to zoom. Drag to move.": "Uszczypnij, przewiń lub dotknij dwukrotnie, aby powiększyć. Przeciągnij, aby przesunąć.",
+"Fit": "Dopasuj",
+"Open full screen to zoom": "Otwórz na pełnym ekranie, aby powiększyć",
+"Pinch with two fingers to zoom in, then drag to move.": "Rozsuń dwa palce, aby powiększyć, potem przeciągnij, aby przesunąć.",
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "Przewiń nad zdjęciem, aby je powiększyć, a potem przeciągnij ręką, aby się poruszać."
 }

@@ -2792,5 +2792,15 @@
 "Sending to {name}…": "جارٍ الإرسال إلى {name}…",
 "Tick the declaration about your images to send them, or choose Save as draft.": "ضع علامة على الإقرار الخاص بصورك لإرسالها، أو اختر احفظ كمسودة.",
 "Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "تبقى على هذا الهاتف ما لم ترسلها للتوقيع. قصّ المعرّفات وأخفها قبل الحفظ، وأضف تعليقات إن شئت. مقاطع حتى 10 ثوانٍ، بلا صوت.",
-"Not ready to sign?": "لست مستعدًا للتوقيع بعد؟"
+"Not ready to sign?": "لست مستعدًا للتوقيع بعد؟",
+"How were you supervised?": "كيف تمّ الإشراف عليك؟",
+"Only if you added images or clips: I have checked every one. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "فقط إذا أضفت صورًا أو مقاطع: لقد راجعتها جميعًا. لا يبقى أي اسم أو رقم أو تاريخ ميلاد للمريض أو اسم مستشفى أو أي معرّف آخر، ومشاركتها مع {name} تتوافق مع سياسة حوكمة المعلومات في مستشفاي.",
+"Optional. Tap a selected name again to clear it.": "اختياري. اضغط على الاسم المحدد مرة أخرى لإلغائه.",
+"Tap an image to open it full screen and zoom.": "اضغط على صورة لفتحها بملء الشاشة وتكبيرها.",
+"Zoomed image": "صورة مكبّرة",
+"Pinch, scroll or double-tap to zoom. Drag to move.": "قرّب بإصبعين أو بالتمرير أو بالنقر مرتين. اسحب للتحريك.",
+"Fit": "ملاءمة",
+"Open full screen to zoom": "افتح بملء الشاشة للتكبير",
+"Pinch with two fingers to zoom in, then drag to move.": "باعد بإصبعين للتكبير، ثم اسحب للتحريك.",
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "مرّر عجلة الفأرة فوق الصورة للتكبير، ثم اسحب باليد للتنقل."
 }

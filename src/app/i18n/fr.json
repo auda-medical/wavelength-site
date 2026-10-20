@@ -2640,5 +2640,15 @@
 "Sending to {name}…": "Envoi à {name}…",
 "Tick the declaration about your images to send them, or choose Save as draft.": "Cochez la déclaration sur vos images pour les envoyer, ou choisissez Enregistrer comme brouillon.",
 "Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "Restent sur ce téléphone, sauf si vous les envoyez pour validation. Recadrez et occultez les identifiants avant d'enregistrer, et annotez si vous le souhaitez. Clips de 10 secondes au plus, sans son.",
-"Not ready to sign?": "Pas encore prêt à signer ?"
+"Not ready to sign?": "Pas encore prêt à signer ?",
+"How were you supervised?": "Comment avez-vous été supervisé ?",
+"Only if you added images or clips: I have checked every one. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "Seulement si vous avez ajouté des images ou des clips : je les ai tous vérifiés. Il ne reste aucun nom, numéro, date de naissance, nom d’hôpital ni autre identifiant de patient, et leur partage avec {name} respecte la politique de gouvernance de l’information de mon hôpital.",
+"Optional. Tap a selected name again to clear it.": "Facultatif. Touchez à nouveau un nom sélectionné pour l’effacer.",
+"Tap an image to open it full screen and zoom.": "Touchez une image pour l’ouvrir en plein écran et zoomer.",
+"Zoomed image": "Image agrandie",
+"Pinch, scroll or double-tap to zoom. Drag to move.": "Pincez, faites défiler ou touchez deux fois pour zoomer. Faites glisser pour déplacer.",
+"Fit": "Ajuster",
+"Open full screen to zoom": "Ouvrir en plein écran pour zoomer",
+"Pinch with two fingers to zoom in, then drag to move.": "Pincez avec deux doigts pour zoomer, puis faites glisser pour déplacer.",
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "Faites défiler sur une photo pour zoomer, puis faites-la glisser avec la main pour vous déplacer."
 }

@@ -75,7 +75,16 @@ let code = null;
   await page.click('label[for=supervision0]'); await sleep(200);
   const direct = await page.evaluate(() => [document.querySelector('#sv1').textContent, document.querySelector('#sv2').textContent]);
   record('L3', 'Directly supervised offers "Save and sign now: supervisor is with me" or "Save as draft"', direct[0] === 'Save and sign now: supervisor is with me' && direct[1] === 'Save as draft', direct);
-  await page.click('label[for=supervision1]'); await sleep(200);
+  // 1.0.24 (owner, 20 Oct): two separate questions; a chosen supervisor can be cleared; independent goes in one step.
+  const secs = await page.evaluate(() => ({ lvl: (document.querySelector('#fsh-supervision') || {}).textContent, sup: (document.querySelector('#fsh-supmentor') || {}).textContent, apart: !!document.querySelector('#fs-supervision') && !!document.querySelector('#fs-supmentor') && document.querySelector('#fs-supervision') !== document.querySelector('#fs-supmentor') }));
+  record('F1', 'Level of supervision and Supervisor or mentor are two separate numbered questions', secs.lvl === 'Level of supervision' && secs.sup === 'Supervisor or mentor' && secs.apart, secs);
+  await page.click('label[for=sp0]'); await sleep(300);
+  const cleared = await page.evaluate(() => ({ any: !!document.querySelector('input[name=suppick]:checked'), name: document.querySelector('#supv').value }));
+  record('F2', 'Tapping the chosen supervisor again clears it (the choice is optional)', !cleared.any && cleared.name === '', cleared);
+  await page.click('label[for=supervision2]'); await sleep(200); // Independent
+  await page.click('label[for=sp0]'); await sleep(300);
+  const indep = await page.evaluate(() => ({ b1: document.querySelector('#sv1').textContent, b2: document.querySelector('#sv2').hidden ? null : document.querySelector('#sv2').textContent, decl: !document.querySelector('#senddeclf').hidden }));
+  record('F3', 'Independent + Sam: "Save and send to Sam Supervisor" with the image declaration ready at the bottom', indep.b1 === 'Save and send to Sam Supervisor' && indep.b2 === 'Save as draft' && indep.decl, indep);
   await shot(page, 'L-form-supervision');
   // The photo.
   await page.setInputFiles('#pick', img); await page.waitForSelector('.editor canvas', { timeout: 15000 }); await sleep(600);
@@ -84,8 +93,8 @@ let code = null;
   // 1.0.21 (owner, 20 Oct): one step. The image declaration is on the form; without it, Save and send stops and says so.
   const decl = await page.evaluate(() => { const b = document.querySelector('#senddeclf'); return { shown: b && !b.hidden, text: b ? b.textContent : '' }; });
   await page.click('#sv1'); await sleep(600);
-  const blocked = await page.evaluate(() => ({ hash: location.hash, invalid: !!document.querySelector('#senddeclf.invalid'), sheet: !!document.querySelector('.sheet') }));
-  record('L4', 'With a photo, the declaration is on the form; Save and send without the tick stays on the form and says why', decl.shown && /sharing them with Sam Supervisor/.test(decl.text) && blocked.invalid && !blocked.sheet && blocked.hash.indexOf('#/new') === 0, { decl: decl.shown, blocked });
+  const blocked = await page.evaluate(() => { const r = document.querySelector('#senddecl').getBoundingClientRect(); return { hash: location.hash, invalid: !!document.querySelector('#senddeclf.invalid'), sheet: !!document.querySelector('.sheet'), inView: r.top > 0 && r.bottom < innerHeight }; });
+  record('L4', 'With a photo, the declaration is on the form; Save and send without the tick stays on the form and says why', decl.shown && /sharing them with Sam Supervisor/.test(decl.text) && blocked.invalid && blocked.inView && !blocked.sheet && blocked.hash.indexOf('#/new') === 0, { decl: decl.shown, blocked });
   await shot(page, 'L-form-declaration');
   await page.evaluate(() => { const d = document.querySelector('#senddecl'); d.checked = true; d.dispatchEvent(new Event('change', { bubbles: true })); });
   await page.click('#sv1');
@@ -121,6 +130,18 @@ let code = null;
   record('S2b', 'Ask for more information and Decline come after the scan and its photo, as plain outline buttons', order.card >= 0 && order.card < order.more && order.img < order.more && order.more < order.form && order.moreGhost, order);
   const photoFirst = await page.evaluate(() => { const c = document.querySelector('.sheet .card'), img = c && c.querySelector('canvas.review-img'), rate = c && c.querySelector('.rate, [data-rate], fieldset, .seg'); return { inCard: !!img, before: !!(img && rate && (img.compareDocumentPosition(rate) & Node.DOCUMENT_POSITION_FOLLOWING)) }; });
   record('S2c', 'The photo is inside the scan card, under its title and before Image quality', photoFirst.inCard && photoFirst.before, photoFirst);
+  // 1.0.24 (owner): zoom in place. Computer: scroll over the photo to zoom, drag with the hand to move.
+  const hintTx = await page.evaluate(() => { const box = document.querySelector('.sheet .zoombox'); const p = box && box.closest('.card').querySelector('.review-imgs').previousElementSibling; return p ? p.textContent : ''; });
+  const zb = await page.$eval('.sheet .zoombox', (el) => { el.scrollIntoView({ block: 'center' }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  await sleep(300);
+  const zb2 = await page.$eval('.sheet .zoombox', (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  await page.mouse.move(zb2.x, zb2.y); await page.mouse.wheel(0, -400); await sleep(250);
+  const z1 = await page.$eval('.sheet .zoombox', (el) => ({ zoom: Number(el.dataset.zoom), t: el.firstChild.style.transform, cls: el.className }));
+  await page.mouse.down(); await page.mouse.move(zb2.x - 60, zb2.y - 40, { steps: 5 }); await page.mouse.up(); await sleep(150);
+  const z2 = await page.$eval('.sheet .zoombox', (el) => el.firstChild.style.transform);
+  const noScreen = await page.evaluate(() => !document.querySelector('.wlz') && !document.querySelector('.sheet [data-z]'));
+  await shot(page, 'S-zoomed');
+  record('Z1', 'Note above the photo; scrolling over it zooms in place, dragging moves it; no extra screen or buttons', /^(Scroll over a photo to zoom in, then drag with the hand to move around|Pinch with two fingers to zoom in, then drag to move).$/.test(hintTx) && z1.zoom > 1.5 && /scale/.test(z1.t) && /zoomed/.test(z1.cls) && z2 !== z1.t && noScreen, { hint: hintTx.slice(0, 60), zoom: z1.zoom, moved: z2 !== z1.t, noScreen });
   await shot(page, 'S-review-with-photo');
   await page.click('.sheet [data-more]');
   await page.waitForSelector('#mif');

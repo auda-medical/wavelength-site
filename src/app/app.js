@@ -1801,7 +1801,7 @@
     picks = picks.slice(0, 8);
     var pickedAt = picks.findIndex(function (p) { return p.name === (e.supervisor || ''); });
     var supField = !picks.length ? '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"></div>'
-      : '<div class="field"><span class="lab" id="lab-supv">' + esc(T('Supervisor or mentor')) + '</span><div class="seg col sup" role="radiogroup" aria-labelledby="lab-supv">' + picks.map(function (p, i) { return '<input type="radio" name="suppick" id="sp' + i + '" value="' + i + '"' + (pickedAt === i ? ' checked' : '') + '><label for="sp' + i + '"><b>' + esc(p.name) + '</b><span>' + esc(p.link ? T('Linked supervisor: signs in their app') : T('From your earlier scans')) + '</span></label>'; }).join('') +
+      : '<div class="field"><p class="hint" id="lab-supv" style="margin:0 0 8px">' + esc(T('Optional. Tap a selected name again to clear it.')) + '</p><div class="seg col sup" role="radiogroup" aria-labelledby="fsh-supmentor lab-supv">' + picks.map(function (p, i) { return '<input type="radio" name="suppick" id="sp' + i + '" value="' + i + '"' + (pickedAt === i ? ' checked' : '') + '><label for="sp' + i + '"><b>' + esc(p.name) + '</b><span>' + esc(p.link ? T('Linked supervisor: signs in their app') : T('From your earlier scans')) + '</span></label>'; }).join('') +
         '<input type="radio" name="suppick" id="spx" value="other"' + (pickedAt < 0 && e.supervisor ? ' checked' : '') + '><label for="spx"><b>' + esc(T('Someone else')) + '</b><span>' + esc(T('Type their name')) + '</span></label></div>' +
         '<input id="supv" name="supervisor" type="text" aria-labelledby="lab-supv" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '" style="margin-top:8px"' + (pickedAt < 0 && e.supervisor ? '' : ' hidden') + '></div>';
     // 1.0.11: the form in clearly marked sections (presentation only: every field, value and name is unchanged).
@@ -1830,10 +1830,10 @@
         '<div class="two"><div class="field"><label for="conf">' + esc(T('Confirmed by')) + '</label><select id="conf" name="confirmation"><option value="">' + esc(T('Not yet')) + '</option>' + C.confirmation.map(function (s) { return '<option value="' + esc(s) + '"' + (e.confirmation === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
         '<div class="field"><label for="conc">' + esc(T('Agreement')) + '</label><select id="conc" name="concordant"><option value="">' + esc(T('Not applicable')) + '</option>' + ['Agreed', 'Partly agreed', 'Disagreed'].map(function (s) { return '<option value="' + s + '"' + (e.concordant === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
         '<div class="field"><label for="impact">' + esc(T('Impact on management')) + '</label><input id="impact" name="impact" type="text" placeholder="' + esc(T('For example, changed fluid plan, avoided CT')) + '" value="' + esc(e.impact || '') + '"></div>') +
-      section('supervision', T('Supervision'),
-        '<div class="field" data-req="supervision"><span class="lab" id="lab-supervision">' + esc(T('Level of supervision')) + req + '</span>' + supOpts + '</div>' +
+      section('supervision', T('Level of supervision'),
+        '<div class="field" data-req="supervision"><span class="lab" id="lab-supervision">' + esc(T('How were you supervised?')) + req + '</span>' + supOpts + '</div>') +
+      section('supmentor', T('Supervisor or mentor'),
         supField +
-        '<div class="field" id="senddeclf" hidden><label class="check"><input type="checkbox" id="senddecl"><span id="senddecltx"></span></label></div>' +
         '<div class="field"><label class="check"><input type="checkbox" name="noSignoff" value="1"' + (e.noSignoff ? ' checked' : '') + '><span>' + esc(T('No sign-off needed for this scan')) + '</span></label></div>') +
       section('media', T('Images and clips'),
         '<div class="field"><p class="hint" id="media-hint">' + esc(T('Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.')) + '</p><div class="gallery" id="gal"></div>' +
@@ -1841,6 +1841,7 @@
       section('reflection', T('Reflection'),
         '<div class="field"><label for="refl">' + esc(T('Your reflection')) + '</label><p class="hint">' + esc(T('What you learned and what you will do differently. Counts as a reflective note.')) + '</p><textarea id="refl" name="reflection">' + esc(e.reflection || '') + '</textarea></div>') +
       '<div id="counts"></div>' +
+      (editing ? '' : '<div class="field" id="senddeclf" data-req="senddecl" hidden><label class="check"><input type="checkbox" id="senddecl"><span id="senddecltx"></span></label></div>') +
       '<div class="err" hidden></div><div class="btns savebar"><button class="btn teal block" type="submit" data-after="" id="sv1">' + esc(editing ? T('Save changes') : T('Save scan')) + '</button>' + (editing ? '' : '<button class="btn ghost block" type="submit" data-after="draft" id="sv2" hidden>' + esc(T('Save as draft')) + '</button>') + '</div>' + (editing ? '' : '<p class="hint" id="savehint" aria-live="polite"></p>') +
       '</div></form>';
     mount(shell({ title: editing ? T('Edit scan') : copyFrom ? T('Another scan') : T('Log a scan'), back: editing ? 'entry/' + editing.id : '', tab: 'new' }, body));
@@ -1848,8 +1849,16 @@
     // 1.0.21: the supervisor cards fill the name; the save buttons follow the level of supervision.
     var afterAct = '';
     var pickedSup = function () { var c = form.querySelector('input[name=suppick]:checked'); return c && c.value !== 'other' ? picks[Number(c.value)] : null; };
+    form.addEventListener('click', function (ev) {
+      var lab = ev.target.closest && ev.target.closest('label[for^="sp"]'), inp = lab && form.querySelector('#' + lab.htmlFor);
+      if (!inp || inp.name !== 'suppick' || !inp.checked) return;
+      ev.preventDefault(); inp.checked = false;
+      var box = $('#supv', form); if (box) { box.value = ''; box.hidden = true; }
+      syncSave(); form.dispatchEvent(new Event('input', { bubbles: true }));
+    });
     var syncSup = function () {
-      var c = form.querySelector('input[name=suppick]:checked'), box = $('#supv', form); if (!c || !box) return;
+      var c = form.querySelector('input[name=suppick]:checked'), box = $('#supv', form); if (!box) return;
+      if (!c) { if (form.querySelector('input[name=suppick]')) { box.hidden = true; if (picks.some(function (p) { return p.name === box.value; })) box.value = ''; } return; }
       if (c.value === 'other') { box.hidden = false; if (picks.some(function (p) { return p.name === box.value; })) box.value = ''; }
       else { box.hidden = true; box.value = picks[Number(c.value)].name; }
     };
@@ -1857,11 +1866,12 @@
       var b1 = $('#sv1', form), b2 = $('#sv2', form), hint = $('#savehint', form); if (!b2) return;
       var lvl = (form.querySelector('input[name=supervision]:checked') || {}).value || '', none = !!(form.querySelector('input[name=noSignoff]') || {}).checked, ps = pickedSup();
       var set = function (t1, a1, t2, a2, h) { b1.textContent = t1; b1.dataset.after = a1; b2.hidden = !t2; if (t2) { b2.textContent = t2; b2.dataset.after = a2; } hint.textContent = h || ''; };
-      var dbox = $('#senddeclf', form), direct = lvl === 'mentored' && !none && ps && ps.link && count() > 0;
-      if (dbox) { dbox.hidden = !direct; if (direct) $('#senddecltx', form).textContent = T('I have checked every image and clip in this scan. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital\'s information governance policy.', { name: ps.name }); }
+      var dbox = $('#senddeclf', form), direct = (lvl === 'mentored' || lvl === 'independent') && !none && ps && ps.link;
+      if (dbox) { dbox.hidden = !direct; if (direct) $('#senddecltx', form).textContent = T('Only if you added images or clips: I have checked every one. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital\'s information governance policy.', { name: ps.name }); }
       if (!lvl) set(T('Save scan'), '', '', '', '');
       else if (none) set(T('Save to my logbook'), '', '', '', T('No sign-off needed for this scan.'));
       else if (lvl === 'direct') set(T('Save and sign now: supervisor is with me'), 'person', T('Save as draft'), 'draft', T('Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.'));
+      else if (direct) set(T('Save and send to {name}', { name: ps.name }), 'send', T('Save as draft'), 'draft', T('{name} sees it in their app, with the images you include, and gets a notification.', { name: ps.name }));
       else if (lvl === 'mentored') set(ps && ps.link ? T('Save and send to {name}', { name: ps.name }) : T('Save and send for sign-off'), 'send', T('Save as draft'), 'draft', ps && ps.link ? T('{name} sees it in their app, with the images you include, and gets a notification.', { name: ps.name }) : T('After saving, choose who to send it to.'));
       else set(T('Save to my logbook'), '', T('Save and request sign-off'), 'send', T('An independent scan needs no sign-off, but you can ask for one.'));
     };
@@ -2190,7 +2200,7 @@
       if (missing.length) {
         missing.forEach(function (x) { markField($('[data-req="' + x[0] + '"]', form), x[1]); });
         var first = $('[data-req="' + missing[0][0] + '"]', form);
-        scrollToField(first, true);
+        scrollToField(first.closest('section.fs') || first, true); // 1.0.24: the top of the question, its title in view
         first.focus({ preventScroll: true });
         NAT.haptic('warning');
         return;
@@ -2200,7 +2210,7 @@
       var psNow = editing ? null : pickedSup();
       if (!editing && afterAct === 'send' && psNow && psNow.link && count() > 0 && !$('#senddecl', form).checked) {
         markField($('#senddeclf', form), T('Tick the declaration about your images to send them, or choose Save as draft.'));
-        scrollToField($('#senddeclf', form), true); NAT.haptic('warning');
+        scrollToField($('#senddeclf', form), true); $('#senddecl', form).focus({ preventScroll: true }); NAT.haptic('warning');
         return;
       }
       var hits = guard(out);
@@ -4173,7 +4183,7 @@
               var w = g.measureText(stamp).width; g.fillStyle = 'rgba(15,30,51,.7)'; g.fillRect(0, cv.height - fs * 1.8, w + fs, fs * 1.8); g.fillStyle = '#fff'; g.fillText(stamp, fs / 2, cv.height - fs * 0.4);
               g.save(); g.globalAlpha = 0.14; g.translate(cv.width / 2, cv.height / 2); g.rotate(-Math.PI / 7); g.font = '600 ' + fs * 2 + 'px DM Sans, system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#fff'; g.fillText(T('REVIEW COPY'), 0, 0); g.restore();
               cv.oncontextmenu = function (ev) { ev.preventDefault(); };
-              return cv;
+              return window.WLZoom ? WLZoom.bind(cv) : cv; // 1.0.24: pinch (phone) or scroll (computer) to zoom, drag to move
             });
           });
         })).then(function (els) { box.innerHTML = ''; els.forEach(function (c) { box.appendChild(c); }); }).catch(function () { fail(box); });
@@ -4219,7 +4229,7 @@
       var imgs = res.images || [], byEntry = {};
       imgs.forEach(function (im) { (byEntry[im.entry] = byEntry[im.entry] || []).push(im); });
       var imgNote = !imgs.length ? T('No images were attached to this request. If you need them, tap Ask for more information.') : res.imageKey ? '' : T('The learner shared images by link only. Ask them to send you the link, or update their app and send again.');
-      sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish.')) + '</p>' + (imgNote ? '<div class="warn small">' + esc(imgNote) + '</div>' : '') + res.entries.map(function (e) { return entryCard(e, true, res.imageKey && byEntry[e.id] ? '<div class="review-imgs" data-simgs="' + esc(e.id) + '"><p class="small muted">' + esc(T('Opening {n}…', { n: plural(byEntry[e.id].length, 'image') })) + '</p></div>' : ''); }).join('') + declineButton('signoff', code) + signoffFormHtml(myPre()), function (root) {
+      sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish.')) + '</p>' + (imgNote ? '<div class="warn small">' + esc(imgNote) + '</div>' : '') + res.entries.map(function (e) { return entryCard(e, true, res.imageKey && byEntry[e.id] ? (window.WLZoom ? '<p class="small muted" style="margin:8px 0 0">' + esc(WLZoom.hint(T)) + '</p>' : '') + '<div class="review-imgs" data-simgs="' + esc(e.id) + '" style="margin-top:6px"><p class="small muted">' + esc(T('Opening {n}…', { n: plural(byEntry[e.id].length, 'image') })) + '</p></div>' : ''); }).join('') + declineButton('signoff', code) + signoffFormHtml(myPre()), function (root) {
         bindDecline(root, function () { dashSignoff(code, learnerId); });
         if (res.imageKey) dashImages(root, res, byEntry);
         var f = $('#pf', root), pad = F.bindSig(root, T);

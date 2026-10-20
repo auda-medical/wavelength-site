@@ -2640,5 +2640,15 @@
 "Sending to {name}…": "Invio a {name}…",
 "Tick the declaration about your images to send them, or choose Save as draft.": "Spunta la dichiarazione sulle immagini per inviarle, oppure scegli Salva come bozza.",
 "Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "Restano su questo telefono, salvo che tu le invii per la convalida. Ritaglia e oscura gli identificativi prima di salvare e, se vuoi, annota. Clip fino a 10 secondi, senza audio.",
-"Not ready to sign?": "Non sei pronto a firmare?"
+"Not ready to sign?": "Non sei pronto a firmare?",
+"How were you supervised?": "Come sei stato supervisionato?",
+"Only if you added images or clips: I have checked every one. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "Solo se hai aggiunto immagini o clip: le ho controllate tutte. Non rimangono nome, numero, data di nascita del paziente, nome dell’ospedale o altri identificativi, e condividerle con {name} rispetta la politica di governance delle informazioni del mio ospedale.",
+"Optional. Tap a selected name again to clear it.": "Facoltativo. Tocca di nuovo un nome selezionato per toglierlo.",
+"Tap an image to open it full screen and zoom.": "Tocca un’immagine per aprirla a schermo intero e ingrandirla.",
+"Zoomed image": "Immagine ingrandita",
+"Pinch, scroll or double-tap to zoom. Drag to move.": "Pizzica, scorri o tocca due volte per ingrandire. Trascina per spostare.",
+"Fit": "Adatta",
+"Open full screen to zoom": "Apri a schermo intero per ingrandire",
+"Pinch with two fingers to zoom in, then drag to move.": "Pizzica con due dita per ingrandire, poi trascina per spostare.",
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "Scorri sopra una foto per ingrandirla, poi trascinala con la mano per spostarti."
 }

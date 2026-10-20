@@ -2640,5 +2640,15 @@
 "Sending to {name}…": "Wird an {name} gesendet…",
 "Tick the declaration about your images to send them, or choose Save as draft.": "Haken Sie die Erklärung zu Ihren Bildern an, um sie zu senden, oder wählen Sie Als Entwurf speichern.",
 "Kept on this phone unless you send them for sign-off. Crop and redact identifiers before you save, and annotate if you wish. Clips up to 10 seconds, without sound.": "Bleiben auf diesem Telefon, außer Sie senden sie zur Bestätigung. Schneiden Sie Kennungen vor dem Speichern zu und schwärzen Sie sie; Anmerkungen nach Wunsch. Clips bis 10 Sekunden, ohne Ton.",
-"Not ready to sign?": "Noch nicht bereit zu unterschreiben?"
+"Not ready to sign?": "Noch nicht bereit zu unterschreiben?",
+"How were you supervised?": "Wie wurden Sie supervidiert?",
+"Only if you added images or clips: I have checked every one. No patient name, number, date of birth, hospital name or other identifier remains, and sharing them with {name} follows my hospital's information governance policy.": "Nur wenn Sie Bilder oder Clips hinzugefügt haben: Ich habe alle geprüft. Es sind kein Patientenname, keine Nummer, kein Geburtsdatum, kein Krankenhausname und keine andere Kennung mehr vorhanden, und das Teilen mit {name} entspricht der Informations-Governance-Richtlinie meines Krankenhauses.",
+"Optional. Tap a selected name again to clear it.": "Optional. Tippen Sie erneut auf einen ausgewählten Namen, um ihn zu entfernen.",
+"Tap an image to open it full screen and zoom.": "Tippen Sie auf ein Bild, um es im Vollbild zu öffnen und zu vergrößern.",
+"Zoomed image": "Vergrößertes Bild",
+"Pinch, scroll or double-tap to zoom. Drag to move.": "Zum Zoomen zwei Finger spreizen, scrollen oder doppelt tippen. Zum Verschieben ziehen.",
+"Fit": "Einpassen",
+"Open full screen to zoom": "Im Vollbild öffnen, um zu zoomen",
+"Pinch with two fingers to zoom in, then drag to move.": "Mit zwei Fingern spreizen zum Vergrößern, dann ziehen zum Verschieben.",
+"Scroll over a photo to zoom in, then drag with the hand to move around.": "Scrollen Sie über einem Foto, um es zu vergrößern, und ziehen Sie es dann mit der Hand, um sich zu bewegen."
 }
