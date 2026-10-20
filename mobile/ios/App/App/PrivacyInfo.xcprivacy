@@ -71,6 +71,20 @@
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
 			</array>
 		</dict>
+		<!-- Notification device token (from 1.0.20): only when the person turns phone notifications on; deleted when they
+		     turn them off, sign out on that phone or delete the account. Delivered through Firebase and Apple (processors). -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeDeviceID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
 		<!-- Images and clips the learner chooses to share in a sign-off link: optional, encrypted on the phone before
 		     upload, deleted after sign-off or when the link expires. -->
 		<dict>

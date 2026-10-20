@@ -3,7 +3,7 @@
 // With a Workers rate-limiting binding (env.RATE_LIMIT, or a named one such as env.RATE_LIMIT_SEARCH), the binding's
 // own limit applies: `await binding.limit({ key })` answers { success }. A binding has one fixed limit and period,
 // set in wrangler.jsonc, so the `limit` passed here is used only by the fallback. Adding a binding is a wrangler.jsonc
-// change that needs the owner's approval; none is configured yet.
+// change that needs the owner's approval; configured in wrangler.jsonc from 20 Oct 2026 (RATE_LIMIT_AUTH, RATE_LIMIT_SEARCH).
 // Without a binding: a fixed-window counter in D1 (rate_counters, migration 0013). Before 0013 is applied, or if D1
 // fails, the request is allowed: a rate limit must never lock everyone out.
 // IP addresses are never stored: the key is a short SHA-256 of the address.
