@@ -379,6 +379,352 @@
   "/zh/app/",
   "/zh/contact/"
  ],
+ "pearls": [
+  {
+   "slug": "abdominal-wall-hernia-ultrasound",
+   "title": "Abdominal wall hernia: stand them up and make it cough"
+  },
+  {
+   "slug": "abscess-ultrasound",
+   "title": "Abscess: make it swirl"
+  },
+  {
+   "slug": "absent-lung-sliding-pneumothorax",
+   "title": "Lung: absent sliding is not enough"
+  },
+  {
+   "slug": "achilles-tendon-rupture-ultrasound",
+   "title": "Achilles rupture: scan long, squeeze the calf"
+  },
+  {
+   "slug": "ankle-effusion-ultrasound",
+   "title": "Ankle effusion: open the anterior recess"
+  },
+  {
+   "slug": "appendicitis-ultrasound",
+   "title": "Appendix ultrasound: a positive scan helps"
+  },
+  {
+   "slug": "b-lines-lung-ultrasound",
+   "title": "B-lines: map the pattern"
+  },
+  {
+   "slug": "bakers-cyst-ultrasound",
+   "title": "Calf swelling: look behind the knee"
+  },
+  {
+   "slug": "bladder-clot-ultrasound",
+   "title": "Bladder filling defect: move it, then add colour"
+  },
+  {
+   "slug": "bladder-volume-ultrasound",
+   "title": "Urinary retention: measure the bladder, then look upstream"
+  },
+  {
+   "slug": "cardiac-tamponade-ultrasound",
+   "title": "Tamponade: time the collapse"
+  },
+  {
+   "slug": "central-line-ultrasound-guidewire-check",
+   "title": "Central line: see the wire before you dilate"
+  },
+  {
+   "slug": "colour-doppler-aliasing",
+   "title": "Colour aliasing: change the scale first"
+  },
+  {
+   "slug": "common-bile-duct-ultrasound",
+   "title": "Common bile duct: find the parallel channel"
+  },
+  {
+   "slug": "cricothyroid-membrane-ultrasound",
+   "title": "Cricothyroid membrane: find it before the emergency"
+  },
+  {
+   "slug": "diaphragm-ultrasound",
+   "title": "Diaphragm ultrasound: watch the sniff"
+  },
+  {
+   "slug": "difficult-iv-access-vein-distension",
+   "title": "Distension tricks: make the vein come to you"
+  },
+  {
+   "slug": "distal-biceps-rupture-ultrasound",
+   "title": "Distal biceps rupture: follow the tendon to the tuberosity"
+  },
+  {
+   "slug": "dvt-ultrasound",
+   "title": "DVT: compress, don't admire"
+  },
+  {
+   "slug": "ectopic-pregnancy-ultrasound",
+   "title": "Ectopic pregnancy: empty uterus? Find the adnexa"
+  },
+  {
+   "slug": "efast-pelvic-view",
+   "title": "eFAST pelvis: sweep behind the bladder"
+  },
+  {
+   "slug": "efast-right-upper-quadrant",
+   "title": "eFAST: look at the liver tip first"
+  },
+  {
+   "slug": "elbow-effusion-ultrasound",
+   "title": "Elbow effusion: lift the fat pad"
+  },
+  {
+   "slug": "epss-ultrasound",
+   "title": "EPSS: when the mitral valve misses the septum"
+  },
+  {
+   "slug": "erector-spinae-plane-block",
+   "title": "Erector spinae plane block: bone, muscle, then flood the plane"
+  },
+  {
+   "slug": "fascia-iliaca-block-infra-inguinal",
+   "title": "Fascia iliaca block, infra-inguinal: find the fascia, then flood the plane"
+  },
+  {
+   "slug": "fascia-iliaca-block-supra-inguinal",
+   "title": "Fascia iliaca block, supra-inguinal: go above the ligament for better spread"
+  },
+  {
+   "slug": "femoral-nerve-block",
+   "title": "Femoral nerve block: artery first, nerve next, then wrap it"
+  },
+  {
+   "slug": "foreign-body-ultrasound",
+   "title": "Foreign body: bright, then read the shadow"
+  },
+  {
+   "slug": "fracture-ultrasound",
+   "title": "Fracture ultrasound: follow the cortex"
+  },
+  {
+   "slug": "gallbladder-ultrasound",
+   "title": "Gallbladder: follow the main lobar fissure"
+  },
+  {
+   "slug": "gallbladder-wall-thickening-ultrasound",
+   "title": "Gallbladder wall: thick does not equal cholecystitis"
+  },
+  {
+   "slug": "gastric-pocus",
+   "title": "Gastric POCUS: empty, fluid or solid?"
+  },
+  {
+   "slug": "greater-occipital-nerve-block",
+   "title": "Occipital nerve block: follow the artery, then find the nerve"
+  },
+  {
+   "slug": "haemorrhagic-ovarian-cyst-ultrasound",
+   "title": "Haemorrhagic cyst: fishnet, not flesh"
+  },
+  {
+   "slug": "hip-effusion-ultrasound",
+   "title": "Hip effusion: compare the capsule distance"
+  },
+  {
+   "slug": "hydronephrosis-ultrasound",
+   "title": "Hydronephrosis: black that branches"
+  },
+  {
+   "slug": "intussusception-ultrasound",
+   "title": "Intussusception: target, then sandwich"
+  },
+  {
+   "slug": "ivc-ultrasound-fluid-status",
+   "title": "IVC: a big vein is not a fluid order"
+  },
+  {
+   "slug": "knee-effusion-ultrasound",
+   "title": "Hot knee: find the suprapatellar recess"
+  },
+  {
+   "slug": "lung-consolidation-ultrasound",
+   "title": "Consolidation: watch the air bronchograms move"
+  },
+  {
+   "slug": "lvot-vti-ultrasound",
+   "title": "LVOT VTI: trend the same window"
+  },
+  {
+   "slug": "median-nerve-block",
+   "title": "Median nerve block: find the fascicles, then build a soft halo"
+  },
+  {
+   "slug": "mirror-image-artefact-ultrasound",
+   "title": "Mirror artefact: read the diaphragm"
+  },
+  {
+   "slug": "necrotising-fasciitis-ultrasound",
+   "title": "Necrotising fasciitis: look below the cobblestones"
+  },
+  {
+   "slug": "ocular-ultrasound",
+   "title": "Ocular ultrasound: make the eye move"
+  },
+  {
+   "slug": "olecranon-bursitis-ultrasound",
+   "title": "Olecranon bursa: keep the fluid in the right layer"
+  },
+  {
+   "slug": "ovarian-torsion-ultrasound",
+   "title": "Ovarian torsion: follow the pedicle"
+  },
+  {
+   "slug": "patellar-tendon-rupture-ultrasound",
+   "title": "Patellar tendon rupture: follow it to the tibial tubercle"
+  },
+  {
+   "slug": "peng-block",
+   "title": "PENG block: find the ramus, then lift the tendon"
+  },
+  {
+   "slug": "pericardial-vs-pleural-effusion",
+   "title": "Pericardial or pleural? Find the descending aorta"
+  },
+  {
+   "slug": "peritonsillar-abscess-ultrasound",
+   "title": "Peritonsillar abscess: scan from the neck"
+  },
+  {
+   "slug": "pleural-effusion-ultrasound",
+   "title": "Pleural effusion: find the spine above the diaphragm"
+  },
+  {
+   "slug": "pneumoperitoneum-ultrasound",
+   "title": "Pneumoperitoneum: inspect the stripe"
+  },
+  {
+   "slug": "portal-vein-pulsatility",
+   "title": "Portal vein pulsatility: a congestion clue"
+  },
+  {
+   "slug": "pseudoaneurysm-ultrasound",
+   "title": "Pseudoaneurysm: find the neck"
+  },
+  {
+   "slug": "pyonephrosis-ultrasound",
+   "title": "Pyonephrosis: hydronephrosis with dirty echoes"
+  },
+  {
+   "slug": "quadriceps-tendon-rupture-ultrasound",
+   "title": "Quadriceps tendon: follow it to the patella"
+  },
+  {
+   "slug": "radial-nerve-block",
+   "title": "Radial nerve block: stay lateral, follow the nerve beside the artery"
+  },
+  {
+   "slug": "rectus-sheath-block",
+   "title": "Rectus sheath block: behind the muscle, in front of the sheath"
+  },
+  {
+   "slug": "renal-colic-ultrasound-ureteric-jets",
+   "title": "Renal colic: listen with colour"
+  },
+  {
+   "slug": "renal-stone-twinkle-artefact",
+   "title": "Renal stone twinkle: a clue, not a diagnosis"
+  },
+  {
+   "slug": "rv-strain-ultrasound",
+   "title": "RV strain: three clues beat one ratio"
+  },
+  {
+   "slug": "serratus-anterior-plane-block",
+   "title": "Serratus plane block: see the rib, see the pleura, then open the plane"
+  },
+  {
+   "slug": "shac-block",
+   "title": "SHAC block: block the capsule, not the neck"
+  },
+  {
+   "slug": "shoulder-dislocation-ultrasound",
+   "title": "Shoulder: one posterior view, before and after reduction"
+  },
+  {
+   "slug": "shoulder-effusion-ultrasound",
+   "title": "Shoulder effusion: start in the posterior recess"
+  },
+  {
+   "slug": "small-bowel-obstruction-ultrasound",
+   "title": "Small bowel obstruction: follow the to-and-fro"
+  },
+  {
+   "slug": "superior-trunk-block",
+   "title": "Shoulder reduction: low-volume superior trunk block"
+  },
+  {
+   "slug": "tendon-tear-vs-anisotropy",
+   "title": "Tendon tear or anisotropy? Heel-toe before you call it"
+  },
+  {
+   "slug": "tennis-leg-ultrasound",
+   "title": "Tennis leg: look between gastrocnemius and soleus"
+  },
+  {
+   "slug": "testicular-torsion-ultrasound",
+   "title": "Testicular torsion: follow the cord"
+  },
+  {
+   "slug": "tubo-ovarian-abscess-ultrasound",
+   "title": "Tubo-ovarian abscess: think complex, thick and tender"
+  },
+  {
+   "slug": "ulnar-nerve-block",
+   "title": "Ulnar nerve block: find the artery first, then block its neighbour"
+  },
+  {
+   "slug": "ultrasound-confirm-intubation",
+   "title": "Intubation check: spot the double tract"
+  },
+  {
+   "slug": "ultrasound-guided-digital-nerve-block",
+   "title": "Digital nerve block: block the base, one deposit on each side"
+  },
+  {
+   "slug": "ultrasound-guided-iv-centre-the-vein",
+   "title": "Peripheral access: centre the dot"
+  },
+  {
+   "slug": "ultrasound-guided-iv-choose-the-vein",
+   "title": "Choose the vein: pick the straight run"
+  },
+  {
+   "slug": "ultrasound-guided-iv-posterior-wall-puncture",
+   "title": "Posterior wall puncture: stop at the near wall"
+  },
+  {
+   "slug": "ultrasound-guided-iv-probe-pressure",
+   "title": "Light hand: do not collapse the vein"
+  },
+  {
+   "slug": "ultrasound-guided-iv-threading-failure",
+   "title": "Threading failure: rescue in long axis"
+  },
+  {
+   "slug": "ultrasound-guided-radial-arterial-line",
+   "title": "Radial arterial line: trace the pulsation"
+  },
+  {
+   "slug": "ultrasound-iv-flush-test",
+   "title": "Flush test: saline swirl confirms the line"
+  },
+  {
+   "slug": "ultrasound-jvp",
+   "title": "Ultrasound JVP: find the collapse point"
+  },
+  {
+   "slug": "ultrasound-knobology",
+   "title": "Five checks before every scan"
+  },
+  {
+   "slug": "vein-or-artery-ultrasound-compression",
+   "title": "Vein or artery: compress first"
+  }
+ ],
  "courses": [
   {
    "slug": "core-emergency-ultrasound",

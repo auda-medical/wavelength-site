@@ -123,7 +123,7 @@ test('simulated 05:15 daily cron: one job run, nothing else changes, and a secon
       assert.deepEqual(counts, {
         expiry: { expired: 0, people: 0 }, reminders: counts.reminders, lapses: { started: 0, cleared: 0, escalated: 0 },
         purge: { purged: 0 }, drafts: { deleted: 0 }, recheck: { checked: 0 }, stuck: { unknown: 0 }, 'request-reminders': { queued: 0 }, email: counts.email,
-        retention: { events: 0, audit: 0, outbox: 0, jobs: 0 },
+        retention: { events: 0, audit: 0, outbox: 0, jobs: 0 }, 'weekly-summary': { skipped: 'email off' },
       });
       assert.equal(counts.reminders.queued, 0);
       for (const v of Object.values(counts.email || {})) if (typeof v === 'number') assert.equal(v, 0, 'no email delivered');

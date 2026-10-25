@@ -210,6 +210,8 @@
       done++; if (ok) right++;
       update();
       if (done === total && score) setTimeout(function () { score.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 500);
+      // A finished test is counted (page and whether all answers were right, never the answers) by the measurement below.
+      if (done === total) { try { document.dispatchEvent(new CustomEvent('wl:test-done', { detail: { full: right === total } })); } catch (e) { /* old browser */ } }
     }
     quizzes.forEach(function (quiz) {
       quiz.addEventListener('click', function (e) { var btn = e.target.closest('.quiz-opt'); if (btn) answer(quiz, btn); });
@@ -308,6 +310,16 @@
     var progress = form.querySelector('[data-progress]'), bar = form.querySelector('[data-bar]');
     var err = form.querySelector('[data-ac-error]'), result = document.querySelector('[data-ac-result]');
     var anchor = form.querySelector('.ac-submit');
+    // A name the certificate cannot print (other than English letters): the server asks for it in English letters,
+    // shown above the submit button; the next submit sends it with the answers.
+    var nameBox = null;
+    function askName(res) {
+      var typed = nameBox ? nameBox.querySelector('input').value : '';
+      if (!nameBox) { nameBox = document.createElement('div'); nameBox.className = 'ac-panel'; nameBox.setAttribute('data-ac-namebox', ''); anchor.parentNode.insertBefore(nameBox, anchor); }
+      nameBox.innerHTML = '<h3>Your name for the certificate</h3><p class="form-error">' + acEsc(res.error) + '</p><label>Name on your certificate<input data-ac-certname maxlength="160" autocomplete="name" value="' + acEsc(typed || (res.prefill ? res.prefill + ' ' : '')) + '"></label><p class="form-note">Then press Submit my answers again. Your answers are kept.</p>';
+      nameBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      var input = nameBox.querySelector('input'); input.focus();
+    }
     for (var i = qs.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = qs[i]; qs[i] = qs[j]; qs[j] = t; }
     qs.forEach(function (q, n) { form.insertBefore(q, err); q.querySelector('[data-qn]').textContent = n + 1; });
     function count() {
@@ -329,9 +341,13 @@
       if (missing.length) { err.textContent = 'Answer every question before you submit. ' + missing.length + ' to go.'; err.hidden = false; missing[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
       err.hidden = true;
       var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Marking…';
-      acPost('/api/academy/submit', { module: mod, answers: answers }).then(function (res) {
+      var payload = { module: mod, answers: answers };
+      if (nameBox) payload.cert_name = nameBox.querySelector('input').value;
+      acPost('/api/academy/submit', payload).then(function (res) {
         btn.disabled = false; btn.innerHTML = 'Submit my answers ' + acArrow;
         if (res._status === 401) { location.href = '/elearning/' + mod + '/?register=1#register'; return; }
+        if (res.needName) { askName(res); return; }
+        if (nameBox) { nameBox.remove(); nameBox = null; }
         if (!res.ok) throw new Error(res.error || 'We could not mark your answers. Please try again.');
         form.classList.add('is-marked'); anchor.hidden = true;
         qs.forEach(function (q) {
@@ -531,6 +547,7 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') docu
       if (camp && href.indexOf('client_reference_id=') < 0) a.setAttribute('href', href + (href.indexOf('?') < 0 ? '?' : '&') + 'client_reference_id=wl-' + camp);
     }
   }, true);
+  document.addEventListener('wl:test-done', function (e) { send({ t: 'ev', n: 'quiz', l: e.detail && e.detail.full ? 'full' : '', p: location.pathname }); });
   var started = false;
   document.querySelectorAll('form[data-m-form]').forEach(function (f) {
     if (camp) { var h = f.querySelector('input[name="campaign"]'); if (h) h.value = camp; }

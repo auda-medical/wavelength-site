@@ -1,6 +1,6 @@
 // Business measurement (docs/commercial-2026/02-analytics-architecture.md). Aggregate counters in D1 metric_daily and
 // app activity days in analytics_learner_days (migration 0014).
-//   POST /api/m        the website's cookieless beacon (src/assets/main.js): page views, visits, CTA clicks
+//   POST /api/m        the website's cookieless beacon (src/assets/main.js): page views, visits, CTA clicks, finished tests
 //   appEvent()         called by worker/app.js after each /api/app/* response: features, failures, server errors
 //   activity()         one row per app account per UTC day it is used (retention, DAU/WAU/MAU)
 //   count()            server-side conversions (enquiries, sign-ups)
@@ -161,6 +161,8 @@ export function beaconRows(d, { country = 'XX', ua = '', ownHost = 'thewavelengt
     if (name === 'book') return [['ev.book', path]];
     if (name === 'cta') return [['ev.cta', label(d.l, 40) || '(none)']];
     if (name === 'enquiry_start') return [['ev.enquiry_start', label(d.l, 20) || 'training']];
+    // 25 Oct 2026: a finished Pearl test (src/assets/main.js), by page; ev.quiz_full when every answer was right.
+    if (name === 'quiz') return label(d.l, 10) === 'full' ? [['ev.quiz', path], ['ev.quiz_full', path]] : [['ev.quiz', path]];
     return [];
   }
   if (d.t !== 'pv') return [];

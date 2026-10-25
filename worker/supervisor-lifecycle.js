@@ -9,6 +9,7 @@
 // Nothing here runs before migration 0012 (lifecycleReady): every function falls back to today's behaviour.
 import LOGBOOK from '../data/logbook.json';
 import { requestReminders } from './alerts.js';
+import { weeklySummary } from './weekly-summary.js';
 import { lifecycleReady, fullName, SITE } from './app-util.js';
 import { currentStatus, scopeLabel, logEvent, PURGE_EVIDENCE_DAYS, recheckDue } from './professional.js';
 import { queueStmt, deliver, deliverLater } from './notify.js';
@@ -258,6 +259,8 @@ export async function dailyLifecycle(env) {
   await step('request-reminders', () => requestReminders(env));
   await step('email', () => deliver(env, null, 100));
   await step('retention', () => retention(env));
+  // 25 Oct 2026: the owner's weekly summary email, Mondays (worker/weekly-summary.js).
+  await step('weekly-summary', () => weeklySummary(env));
   const failed = Object.values(counts).some((c) => c && c.error);
   if (runId) await env.DB.prepare('UPDATE job_runs SET finished_at = ?, outcome = ?, counts = ?, error = ? WHERE id = ?').bind(nowIso(), failed ? 'error' : 'ok', JSON.stringify(counts).slice(0, 4000), failed ? Object.entries(counts).filter(([, c]) => c && c.error).map(([k, c]) => `${k}: ${c.error}`).join('; ').slice(0, 1000) : null, runId).run();
   return counts;

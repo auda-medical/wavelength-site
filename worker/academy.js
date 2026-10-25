@@ -13,7 +13,7 @@ import { bearer } from './native.js';
 import DATA from './academy-data.json';
 import TEMPLATE from './cert-template.bin';
 import TEMPLATE_META from './cert-template.json';
-import { stampCertificate } from './cert.js';
+import { stampCertificate, unprintable } from './cert.js';
 import { emailVerifyOn, issueToken, sendTokenEmail, sendVerification, newNonce } from './email-verify.js';
 
 const COOKIE = 'wl_learn';
@@ -27,6 +27,9 @@ const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(dat
 const redirect = (to, extra = {}) => new Response(null, { status: 303, headers: { Location: to, ...HEAD, ...extra } });
 const withHead = (res, extra = {}) => { const r = new Response(res.body, res); for (const [k, v] of Object.entries({ ...HEAD, ...extra })) r.headers.set(k, v); return r; };
 const fullName = (l) => [l.title, l.first_name, l.last_name].filter(Boolean).join(' ');
+// 25 Oct 2026: the certificate fonts print Latin letters only, so a name in Arabic, Cyrillic or Chinese letters came
+// out blank (WL-VAC-WHUD-L255 showed only "Ms"). The Academy asks for the name in English letters instead.
+const NAME_LETTERS = (bad) => `Write your name in English letters (A to Z), as you want it on your certificate. The certificate cannot print ${bad.slice(0, 6).join(' ')}.`;
 const fmtDate = (iso) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 // ---------- Login cookie, signed with its own secret in the settings table ----------
@@ -161,14 +164,15 @@ export async function sendMail(env, msg) {
 }
 // 'sent' (the provider accepted it), 'refused' (the provider answered with an error: safe to retry), 'unknown' (no
 // answer, for example a timeout: it may or may not have gone, so it is not retried automatically), 'off' (no token).
-export async function sendMailResult(env, { to, toName, subject, heading, paragraphs = [], button, text, fromName, replyTo }) {
+// extraHtml: trusted HTML the caller built and escaped (the weekly summary's tables), placed after the paragraphs.
+export async function sendMailResult(env, { to, toName, subject, heading, paragraphs = [], button, text, fromName, replyTo, extraHtml = '' }) {
   if (!env.ZEPTOMAIL_TOKEN) return 'off';
   const p = 'margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#33404F;';
   const btn = button ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 8px 0;"><tr><td align="center" bgcolor="#0F1E33" style="background:#0F1E33;border-radius:999px;"><a href="${esc(button.href)}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#F7F5F0;text-decoration:none;">${esc(button.label)}</a></td></tr></table>` : '';
   const html = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(subject)}</title></head><body style="margin:0;padding:0;background:#EDEAE3;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EDEAE3"><tr><td align="center" style="padding:32px 12px;"><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;">
 <tr><td align="center" bgcolor="#0F1E33" style="background:#0F1E33;padding:34px 24px;border-radius:14px 14px 0 0;"><img src="${SITE}/assets/email/logo-header.png" width="300" height="56" alt="Wavelength" style="display:block;border:0;width:300px;height:56px;"></td></tr>
 <tr><td height="4" bgcolor="#2A7F8A" style="background:#2A7F8A;height:4px;line-height:4px;font-size:0;">&nbsp;</td></tr>
-<tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;padding:44px 48px 36px 48px;font-family:Arial,Helvetica,sans-serif;border-radius:0 0 14px 14px;"><h1 style="margin:0 0 22px 0;font-family:Georgia,serif;font-weight:normal;font-size:30px;color:#0F1E33;">${esc(heading)}</h1>${paragraphs.map((x) => `<p style="${p}">${esc(x)}</p>`).join('')}${btn}<p style="margin:24px 0 0 0;font-size:11px;line-height:1.6;color:#8796A8;">Wavelength is a trading name of Auda Medical Ltd, company number 08487817.</p></td></tr></table></td></tr></table></body></html>`;
+<tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;padding:44px 48px 36px 48px;font-family:Arial,Helvetica,sans-serif;border-radius:0 0 14px 14px;"><h1 style="margin:0 0 22px 0;font-family:Georgia,serif;font-weight:normal;font-size:30px;color:#0F1E33;">${esc(heading)}</h1>${paragraphs.map((x) => `<p style="${p}">${esc(x)}</p>`).join('')}${extraHtml}${btn}<p style="margin:24px 0 0 0;font-size:11px;line-height:1.6;color:#8796A8;">Wavelength is a trading name of Auda Medical Ltd, company number 08487817.</p></td></tr></table></td></tr></table></body></html>`;
   const tok = env.ZEPTOMAIL_TOKEN.replace(/^Zoho-enczapikey\s+/i, '');
   try {
     const res = await fetch(env.ZEPTOMAIL_API || 'https://cpaas.zoho.eu/v1.1/email', {
@@ -199,6 +203,8 @@ async function register(env, req, ctx) {
   const p = { title: TITLES.includes(clip(d.title, 10)) ? clip(d.title, 10) : '', first: clip(d.first_name, 80), last: clip(d.last_name, 80), email: clip(d.email, 160).toLowerCase(), role: clip(d.role, 80), org: clip(d.organisation, 160), news: d.newsletter ? 1 : 0 };
   if (!mod) return fail('That module was not found.');
   if (!p.first || !p.last) return fail('Enter your first and last name.');
+  const bad = unprintable(TEMPLATE_META, 'name', [p.title, p.first, p.last].join(' '));
+  if (bad.length) return fail(NAME_LETTERS(bad));
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) return fail('Enter a valid email address.');
   if (!d.privacy) return fail('Tick the privacy box to register.');
   if (env.NEWSLETTER_REQUIRED === 'true' && !p.news) return fail('Academy registration includes the Wavelength newsletter. Tick the newsletter box to continue.');
@@ -260,6 +266,19 @@ async function submit(env, req, ctx) {
   const right = mod.questions.filter((q) => answers[q.id] === q.correct).length;
   const score = Math.round((100 * right) / total);
   const passed = score >= mod.passMark;
+  // A pass that issues a certificate needs a name the certificate can print. An app account (or an Academy account
+  // registered before 25 Oct 2026) may have a name in other letters: ask for it in English letters (cert_name) before
+  // the attempt is recorded, so the resubmission is the one attempt. The account's own name is not changed.
+  let cert = passed ? await env.DB.prepare('SELECT * FROM certificates WHERE learner_id = ? AND module = ?').bind(l.id, mod.slug).first() : null;
+  let certName = fullName(l);
+  if (passed && !cert) {
+    const typed = clip(d.cert_name, 160);
+    if (typed) certName = typed;
+    const bad = unprintable(TEMPLATE_META, 'name', certName);
+    if (bad.length || !/[A-Za-z]/.test(certName)) {
+      return json({ ok: false, needName: true, error: bad.length ? NAME_LETTERS(bad) : 'Write your name in English letters (A to Z), as you want it on your certificate.', prefill: typed ? '' : (l.title || '') }, 422);
+    }
+  }
   await env.DB.prepare('INSERT INTO attempts (learner_id, module, score, right_count, total, passed, answers) VALUES (?,?,?,?,?,?,?)')
     .bind(l.id, mod.slug, score, right, total, passed ? 1 : 0, JSON.stringify(Object.fromEntries(mod.questions.map((q) => [q.id, answers[q.id]])))).run();
   await env.DB.prepare("UPDATE learners SET last_seen = datetime('now') WHERE id = ?").bind(l.id).run();
@@ -270,13 +289,12 @@ async function submit(env, req, ctx) {
   }));
   const out = { ok: true, passed, score, right, total, passMark: mod.passMark, results };
   if (passed) {
-    let cert = await env.DB.prepare('SELECT * FROM certificates WHERE learner_id = ? AND module = ?').bind(l.id, mod.slug).first();
     if (!cert) {
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
       for (let i = 0; i < 5 && !cert; i++) {
         const code = newCode(mod);
         const r = await env.DB.prepare('INSERT OR IGNORE INTO certificates (code, learner_id, module, module_title, name, score, cpd_hours, issued_on) VALUES (?,?,?,?,?,?,?,?)')
-          .bind(code, l.id, mod.slug, mod.title, fullName(l), score, mod.cpdHours, today).run();
+          .bind(code, l.id, mod.slug, mod.title, certName, score, mod.cpdHours, today).run();
         if (r.meta && r.meta.changes) cert = await env.DB.prepare('SELECT * FROM certificates WHERE code = ?').bind(code).first();
         else cert = await env.DB.prepare('SELECT * FROM certificates WHERE learner_id = ? AND module = ?').bind(l.id, mod.slug).first();
       }

@@ -4,16 +4,26 @@
 
 const ascii = (s) => new TextEncoder().encode(s);
 
+// The glyph for one character, falling back to the plain letter for characters outside the embedded fonts (ł to l).
+function glyph(map, ch) {
+  const e = map[ch.codePointAt(0)];
+  if (e) return e;
+  const plain = ch.normalize('NFD').replace(/[̀-ͯ]/g, '').replace('ł', 'l').replace('Ł', 'L');
+  return map[plain.codePointAt(0)];
+}
+
+// Characters of text that the slot's font cannot print (they would be left out of the certificate), e.g. Arabic,
+// Cyrillic or Chinese letters. The Academy asks for the name in English letters instead (worker/academy.js).
+export function unprintable(meta, slot, text) {
+  const map = meta.fonts[meta.slots[slot].font].map;
+  return [...new Set([...String(text || '')].filter((ch) => !glyph(map, ch)))];
+}
+
 function encode(meta, fontKey, text) {
   const map = meta.fonts[fontKey].map;
   let hexs = '', width = 0;
   for (const ch of String(text)) {
-    let e = map[ch.codePointAt(0)];
-    if (!e) {
-      // Fall back to the plain letter for characters outside the embedded fonts (ł to l).
-      const plain = ch.normalize('NFD').replace(/[̀-ͯ]/g, '').replace('ł', 'l').replace('Ł', 'L');
-      e = map[plain.codePointAt(0)];
-    }
+    const e = glyph(map, ch);
     if (!e) continue;
     hexs += e[0];
     width += e[1];
