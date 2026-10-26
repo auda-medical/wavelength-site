@@ -97,3 +97,11 @@ title: Final assessment
 - Diagnose a stone
 - Repeat the scan in a year
 : Organised clot moves little and some tumours show little flow. Visible haematuria with a fixed mass needs urology assessment.
+
+?? In suspected cauda equina syndrome, what does a normal post-void residual mean?
+@ 04-retention
++ It does not exclude the syndrome, so the clinical picture decides on urgent MRI
+- It excludes cauda equina syndrome
+- The bladder scanner is faulty
+- The patient needs a catheter
+: Early, incomplete cauda equina syndrome often has normal bladder function. A large residual raises concern; a normal one does not reassure.

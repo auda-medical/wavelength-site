@@ -186,10 +186,14 @@
   "/learn/absent-lung-sliding-pneumothorax/test/",
   "/learn/achilles-tendon-rupture-ultrasound/",
   "/learn/achilles-tendon-rupture-ultrasound/test/",
+  "/learn/achilles-xanthoma-ultrasound/",
+  "/learn/achilles-xanthoma-ultrasound/test/",
   "/learn/ankle-effusion-ultrasound/",
   "/learn/ankle-effusion-ultrasound/test/",
   "/learn/appendicitis-ultrasound/",
   "/learn/appendicitis-ultrasound/test/",
+  "/learn/appendix-testis-torsion-ultrasound/",
+  "/learn/appendix-testis-torsion-ultrasound/test/",
   "/learn/b-lines-lung-ultrasound/",
   "/learn/b-lines-lung-ultrasound/test/",
   "/learn/bakers-cyst-ultrasound/",
@@ -201,6 +205,8 @@
   "/learn/cardiac-tamponade-ultrasound/",
   "/learn/cardiac-tamponade-ultrasound/test/",
   "/learn/cardiac-vascular-ultrasound/",
+  "/learn/cauda-equina-bladder-ultrasound/",
+  "/learn/cauda-equina-bladder-ultrasound/test/",
   "/learn/central-line-ultrasound-guidewire-check/",
   "/learn/central-line-ultrasound-guidewire-check/test/",
   "/learn/colour-doppler-aliasing/",
@@ -255,6 +261,8 @@
   "/learn/hydronephrosis-ultrasound/test/",
   "/learn/intussusception-ultrasound/",
   "/learn/intussusception-ultrasound/test/",
+  "/learn/ivc-thrombus-ultrasound/",
+  "/learn/ivc-thrombus-ultrasound/test/",
   "/learn/ivc-ultrasound-fluid-status/",
   "/learn/ivc-ultrasound-fluid-status/test/",
   "/learn/knee-effusion-ultrasound/",
@@ -291,8 +299,14 @@
   "/learn/pneumoperitoneum-ultrasound/test/",
   "/learn/portal-vein-pulsatility/",
   "/learn/portal-vein-pulsatility/test/",
+  "/learn/portal-venous-gas-pneumobilia-ultrasound/",
+  "/learn/portal-venous-gas-pneumobilia-ultrasound/test/",
   "/learn/pseudoaneurysm-ultrasound/",
   "/learn/pseudoaneurysm-ultrasound/test/",
+  "/learn/pyelonephritis-ultrasound/",
+  "/learn/pyelonephritis-ultrasound/test/",
+  "/learn/pyloric-stenosis-ultrasound/",
+  "/learn/pyloric-stenosis-ultrasound/test/",
   "/learn/pyonephrosis-ultrasound/",
   "/learn/pyonephrosis-ultrasound/test/",
   "/learn/quadriceps-tendon-rupture-ultrasound/",
@@ -397,12 +411,20 @@
    "title": "Achilles rupture: scan long, squeeze the calf"
   },
   {
+   "slug": "achilles-xanthoma-ultrasound",
+   "title": "Achilles lump: xanthoma or tear?"
+  },
+  {
    "slug": "ankle-effusion-ultrasound",
    "title": "Ankle effusion: open the anterior recess"
   },
   {
    "slug": "appendicitis-ultrasound",
    "title": "Appendix ultrasound: a positive scan helps"
+  },
+  {
+   "slug": "appendix-testis-torsion-ultrasound",
+   "title": "Appendix testis torsion: find the tender nub"
   },
   {
    "slug": "b-lines-lung-ultrasound",
@@ -423,6 +445,10 @@
   {
    "slug": "cardiac-tamponade-ultrasound",
    "title": "Tamponade: time the collapse"
+  },
+  {
+   "slug": "cauda-equina-bladder-ultrasound",
+   "title": "Cauda equina: measure the residual"
   },
   {
    "slug": "central-line-ultrasound-guidewire-check",
@@ -533,6 +559,10 @@
    "title": "Intussusception: target, then sandwich"
   },
   {
+   "slug": "ivc-thrombus-ultrasound",
+   "title": "IVC clot: not every big IVC is congestion"
+  },
+  {
    "slug": "ivc-ultrasound-fluid-status",
    "title": "IVC: a big vein is not a fluid order"
   },
@@ -601,8 +631,20 @@
    "title": "Portal vein pulsatility: a congestion clue"
   },
   {
+   "slug": "portal-venous-gas-pneumobilia-ultrasound",
+   "title": "Liver air: portal venous gas or pneumobilia?"
+  },
+  {
    "slug": "pseudoaneurysm-ultrasound",
    "title": "Pseudoaneurysm: find the neck"
+  },
+  {
+   "slug": "pyelonephritis-ultrasound",
+   "title": "Pyelonephritis: a normal scan can be normal"
+  },
+  {
+   "slug": "pyloric-stenosis-ultrasound",
+   "title": "Pyloric stenosis: measure, then watch"
   },
   {
    "slug": "pyonephrosis-ultrasound",

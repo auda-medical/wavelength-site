@@ -9,6 +9,7 @@ import { makeEnv, client } from './helpers/env.mjs';
 import { verifiedAccount, signup, SIG } from './helpers/verify.mjs';
 import { handleApp } from '../worker/app.js';
 import { dailyLifecycle } from '../worker/supervisor-lifecycle.js';
+import { weeklySummary } from '../worker/weekly-summary.js';
 import LOGBOOK from '../data/logbook.json' with { type: 'json' };
 
 const sent = [];
@@ -140,7 +141,10 @@ test('Step 3b rehearsal: what the two linked learners and their supervisor see b
   assert.ok(appMails.every((x) => /application/i.test(x)), 'only the application emails: ' + JSON.stringify(appMails));
 
   // The daily job with enforcement on: it records its run and changes nothing else. No links end, nothing is
-  // returned, nobody is emailed.
+  // returned, nobody is emailed. This week's owner summary (Monday to Wednesday) is sent first, so the job's
+  // weekly-summary step finds it already sent on any day the test runs.
+  await weeklySummary(env);
+  await settle();
   const beforeJob = dump(env); delete beforeJob.job_runs;
   const mailsBeforeJob = sent.length;
   await dailyLifecycle(env);

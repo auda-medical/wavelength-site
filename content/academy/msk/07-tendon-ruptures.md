@@ -1,6 +1,6 @@
 ---
 title: "Tendon ruptures: the Achilles, the distal biceps and the quadriceps"
-minutes: 16
+minutes: 17
 ---
 
 Three tendon ruptures are often missed at first presentation, because patients keep some movement: the Achilles, the distal biceps at the elbow, and the quadriceps above the knee. In all three, the scan follows the tendon all the way to its insertion and adds movement when a still image is unclear.
@@ -22,6 +22,7 @@ Patients describe a kick or a blow to the back of the heel, often during a sprin
 - **Normal:** a continuous, bright, fibrillar band which slides as one when you squeeze the calf.
 - **Complete rupture:** a gap filled with dark fluid or mixed haematoma, most often a few centimetres above the insertion, with frayed ends. Fat from behind the tendon can bulge into the gap. Movement does not pass across the gap.
 - **Partial tear or tendinopathy:** a thick, dark tendon with some continuous fibres. Movement passes through.
+- **Xanthoma:** smooth thickening with a speckled texture and continuous fibres, often painless and on both sides. It suggests familial hypercholesterolaemia: check lipids. See the Wavelength Pearl [Achilles lump: xanthoma or tear?](/learn/achilles-xanthoma-ultrasound/)
 
 > **Pitfall** The thin plantaris tendon often survives an Achilles rupture and runs along the medial side. Do not count it as intact Achilles fibres.
 

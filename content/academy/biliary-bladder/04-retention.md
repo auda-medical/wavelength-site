@@ -1,6 +1,6 @@
 ---
 title: "The full bladder: measure, then look upstream"
-minutes: 10
+minutes: 13
 ---
 
 A bedside bladder scan confirms retention in minutes, avoids unnecessary catheters, and checks that a catheter is working.
@@ -17,6 +17,17 @@ The formula treats the bladder as an ellipsoid and gives an estimate. Record the
 ## Look upstream
 
 Scan both kidneys. Bilateral hydronephrosis with a large bladder suggests longstanding or high-pressure obstruction. Check the creatinine, and expect a diuresis after catheterisation.
+
+## The post-void residual in suspected cauda equina syndrome
+
+Ask the patient to pass urine, then scan within about 10 minutes. The volume left behind is the post-void residual. A large residual, especially one the patient cannot feel, supports retention and raises concern; many UK pathways treat more than about 200 mL as significant. No threshold rules the syndrome in or out. Early, incomplete cauda equina syndrome often has normal bladder function, and that is when surgery helps most. If the history or examination suggests it, arrange urgent MRI through your local pathway whatever the residual. The Wavelength Pearl [Cauda equina: measure the residual](/learn/cauda-equina-bladder-ultrasound/) shows each step.
+
+?? A 45-year-old with back pain reports new difficulty passing urine and some numbness when wiping. The post-void residual is 60 mL. What do you do?
++ Arrange urgent MRI through the cauda equina pathway: a normal residual does not exclude the syndrome
+- Exclude cauda equina syndrome and discharge
+- Repeat the bladder scan next week
+- Insert a catheter and stop there
+: Saddle symptoms and new bladder symptoms need urgent imaging. Early syndrome often has normal bladder function.
 
 ## The catheterised patient
 

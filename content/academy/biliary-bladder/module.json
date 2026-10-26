@@ -6,7 +6,7 @@
   "category": "Abdomen",
   "summary": "Four questions that come after you find the organ: is this thick gallbladder wall cholecystitis, is the bile duct dilated, is the bladder truly full and has it affected the kidneys, and is the material in the bladder clot or a lesion? Learn to measure correctly, use colour Doppler to separate duct from vessel, estimate bladder volume, and read each finding in context.",
   "cpdHours": 1,
-  "minutes": 60,
+  "minutes": 63,
   "passMark": 80,
   "draft": false,
   "pearl": "/learn/common-bile-duct-ultrasound/",
@@ -20,7 +20,7 @@
     "Measure the gallbladder wall correctly and list the causes of wall thickening outside the gallbladder",
     "Recognise the pattern of acute calculous cholecystitis",
     "Identify the common bile duct with colour Doppler, measure it, and interpret it for age and cholecystectomy",
-    "Estimate bladder volume, check the kidneys and troubleshoot a catheter",
+    "Estimate bladder volume and the post-void residual, check the kidneys and troubleshoot a catheter",
     "Separate bladder clot from a wall lesion using movement and colour Doppler, and refer appropriately"
   ],
   "lessons": ["01-context", "02-gallbladder-wall", "03-bile-duct", "04-retention", "05-bladder-contents", "06-cases"],

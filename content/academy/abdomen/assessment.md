@@ -129,3 +129,11 @@ title: Final assessment
 - Medical expulsive therapy and discharge
 - A urology clinic appointment within two weeks
 : Debris layering in a dilated system in a septic patient suggests pyonephrosis. The kidney needs drainage by nephrostomy or ureteric stent, as well as antibiotics.
+
+?? Bright gas echoes are seen in the liver. Which pattern suggests portal venous gas rather than pneumobilia?
+@ 05-bowel
++ Gas reaching the periphery of the liver, near the capsule
+- Gas only along the central ducts near the hilum
+- Gas that never moves
+- Gas only in the gallbladder lumen
+: Portal flow carries gas to the edge of the liver. Bile drains to the hilum, so biliary gas stays central.

@@ -1,6 +1,6 @@
 ---
 title: "The kidneys and ureteric jets"
-minutes: 17
+minutes: 19
 ---
 
 In suspected renal colic, ultrasound looks for hydronephrosis, checks the bladder for ureteric jets, and rules out alternatives. In the STONE trial, starting with point-of-care ultrasound rather than CT reduced radiation exposure, with no increase in high-risk missed diagnoses.
@@ -43,6 +43,12 @@ A jet on one side and none on the painful side, with hydronephrosis on that side
 With colour Doppler on, a stone can show a rapidly flickering red and blue tail behind it, even though nothing is moving: twinkle artefact. It can make a small stone easier to find. On its own it is not enough. Calcified vessels, other calcification and strong interfaces twinkle too, and in CT comparison studies many twinkling spots were not stones.
 
 The convincing combination is a bright focus, a clean shadow and a twinkle anchored to it, in a place a stone can sit. No twinkle does not exclude a stone. The Wavelength Pearl [Renal stone twinkle: a clue, not a diagnosis](/learn/renal-stone-twinkle-artefact/) shows each step.
+
+## Pyelonephritis: a normal kidney can be infected
+
+Most kidneys with pyelonephritis look normal on ultrasound, so the scan cannot make or exclude the diagnosis. Its job is to find the complications which change management: hydronephrosis, which with fever means an obstructed, infected kidney; a focal abscess; bright gas with dirty shadowing, emphysematous pyelonephritis, mostly in people with diabetes; and retention in the bladder. Arrange formal imaging, usually CT, for these findings, for sepsis, or when the patient has not improved after about 72 hours of treatment. The Wavelength Pearl [Pyelonephritis: a normal scan can be normal](/learn/pyelonephritis-ultrasound/) shows each step.
+
+> **Pitfall** A normal scan does not rule out pyelonephritis. Treat the patient, not the image.
 
 ## Pyonephrosis: the infected, obstructed kidney
 

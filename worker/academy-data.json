@@ -199,6 +199,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q17",
+     "correct": "c",
+     "why": "Portal flow carries gas to the edge of the liver. Bile drains to the hilum, so biliary gas stays central.",
+     "review": "05-bowel",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -573,6 +585,18 @@
      "correct": "d",
      "why": "Organised clot moves little and some tumours show little flow. Visible haematuria with a fixed mass needs urology assessment.",
      "review": "05-bladder-contents",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "b",
+     "why": "Early, incomplete cauda equina syndrome often has normal bladder function. A large residual raises concern; a normal one does not reassure.",
+     "review": "04-retention",
      "options": [
       "a",
       "b",

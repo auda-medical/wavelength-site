@@ -21,7 +21,7 @@ Testicular torsion twists the spermatic cord and cuts off the blood supply. The 
 
 ## Torsion of a testicular appendage
 
-A small round structure at the upper pole, often with no flow and a bright rim, in a testis with normal flow. Common in boys aged 7 to 12. A "blue dot" may show through the skin.
+A small round structure at the upper pole, often with no flow and a bright rim, in a testis with normal flow. Common in boys aged 7 to 12. A "blue dot" may show through the skin. Reactive fluid and a thick scrotal wall can make it look dramatic, so still follow the cord. The Wavelength Pearl [Appendix testis torsion: find the tender nub](/learn/appendix-testis-torsion-ultrasound/) shows each step.
 
 > **The aha** If you suspect torsion, follow the cord, not just the colour box.
 

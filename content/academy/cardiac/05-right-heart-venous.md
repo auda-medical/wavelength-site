@@ -1,6 +1,6 @@
 ---
 title: "The right heart, the IVC and the ultrasound JVP"
-minutes: 18
+minutes: 19
 ---
 
 The right side of the heart and the large veins tell you about pulmonary embolism, fluid status and venous congestion. No single sign answers the question. Put them together.
@@ -41,6 +41,8 @@ The IVC adds context. It does not write the fluid prescription. Read it with the
 - **Plethoric IVC with a dilated RV:** right heart strain.
 - **Plethoric IVC with bilateral B-lines:** raised filling pressures and lung water. More fluid risks harm.
 - **Small, collapsing IVC with a vigorous LV and clear lungs:** fits hypovolaemia or vasodilatation. Give fluid in measured boluses and reassess after each one.
+
+Before you read the size, look inside the vein. Thrombus extending from the leg or pelvic veins, or around a femoral line, and tumour from the kidney or liver also make the IVC wide and still. Fresh clot can be almost black, so add colour. A mobile clot reaching the right atrium is an emergency. The Wavelength Pearl [IVC clot: not every big IVC is congestion](/learn/ivc-thrombus-ultrasound/) shows the pattern.
 
 ## The ultrasound JVP: find the collapse point
 

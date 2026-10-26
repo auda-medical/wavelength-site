@@ -1,6 +1,6 @@
 ---
 title: "Small bowel obstruction"
-minutes: 12
+minutes: 15
 ---
 
 Obstructed small bowel fills with fluid, and fluid carries ultrasound well. The dilated loops show clearly, often before an X-ray shows the classic pattern.
@@ -49,6 +49,19 @@ A normal scan does not exclude a perforation, and free air is expected after rec
 - Repeat the scan tomorrow
 - Start oral antacids and reassess in a week
 : An enhanced peritoneal stripe with reverberation suggests free air. With this history and examination, perforation is likely. Ultrasound speeds up the escalation; CT and the surgeons decide the rest.
+
+## Gas in the liver: portal or biliary
+
+Bright echoes in the liver, sometimes with ring-down behind them, are gas. Where they lie tells you which kind. Portal blood flows into the liver and out to its edges, so **portal venous gas** reaches the periphery, within a couple of centimetres of the capsule, and moves with the flow; pulsed-wave Doppler on the portal vein shows sharp spikes. Bile drains back towards the hilum, so **pneumobilia** stays central, along the larger ducts.
+
+Pneumobilia is usually expected after a sphincterotomy, a biliary stent or a surgical join between the bile duct and the bowel. Portal venous gas in an unwell patient with abdominal pain can signal ischaemic bowel and needs urgent CT and surgical review. The Wavelength Pearl [Liver air: portal venous gas or pneumobilia?](/learn/portal-venous-gas-pneumobilia-ultrasound/) shows both patterns.
+
+?? An 80-year-old with atrial fibrillation has severe abdominal pain, a soft abdomen and a lactate of 6. Bright echoes reach the edge of the liver and spikes appear on the portal vein Doppler trace. What do you do?
++ Treat it as possible bowel ischaemia: urgent CT and surgical review
+- Reassure: it is pneumobilia after an old ERCP
+- Repeat the scan tomorrow
+- Start an ERCP
+: Peripheral gas with Doppler spikes is portal venous gas. With this history, mesenteric ischaemia is likely until proven otherwise.
 
 ## Ileus or obstruction
 
