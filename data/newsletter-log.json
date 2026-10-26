@@ -17,9 +17,16 @@
     },
     {
       "slug": "fracture-ultrasound",
-      "status": "drafted",
+      "status": "sent",
       "drafted": "2026-10-20",
-      "note": "Queued for Tue 20 Oct 2026 (data/pearl-issues.json)."
+      "note": "Queued for Tue 20 Oct 2026 (data/pearl-issues.json).",
+      "sent": "2026-10-20"
+    },
+    {
+      "slug": "b-lines-lung-ultrasound",
+      "status": "drafted",
+      "drafted": "2026-10-26",
+      "note": "Queued for Tue 27 Oct 2026 (data/pearl-issues.json)."
     }
   ],
   "queue": "data/pearl-issues.json"
