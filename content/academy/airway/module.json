@@ -6,7 +6,7 @@
   "category": "Airway",
   "summary": "Five quick scans around intubation and ventilation: is the stomach full, where is the cricothyroid membrane if rescue is needed, is the tube in the trachea, are both lungs ventilated, and is the diaphragm working? Learn what each scan answers, and what it cannot.",
   "cpdHours": 1,
-  "minutes": 68,
+  "minutes": 70,
   "passMark": 80,
   "draft": false,
   "pearl": "/learn/ultrasound-confirm-intubation/",

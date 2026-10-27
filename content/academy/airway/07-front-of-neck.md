@@ -1,6 +1,6 @@
 ---
 title: "Front of neck: find the cricothyroid membrane"
-minutes: 8
+minutes: 10
 ---
 
 Every difficult airway plan ends with front-of-neck access through the cricothyroid membrane. In a slim neck you can feel it. In obesity, neck swelling, previous surgery or radiotherapy, palpation often misses it, and ultrasound finds it much more often. The time to find it is during preparation, while the patient is oxygenating.
@@ -24,6 +24,10 @@ Every difficult airway plan ends with front-of-neck access through the cricothyr
 > **The aha** Ultrasound belongs before the emergency, not between failed oxygenation and rescue.
 
 > **Pitfall** A neat image is not a usable skin mark. Mark the skin with the neck positioned for the procedure, and tell the team the mark may need checking if the patient is moved.
+
+## The epiglottis
+
+The same window, one level higher. With the probe transverse between the hyoid bone and the thyroid cartilage, the epiglottis is a thin, curved dark band deep to the bright pre-epiglottic fat. In epiglottitis it becomes thick, rounded and darker. In a calm, stable adult this can support the diagnosis; a normal scan does not exclude it. Never scan a patient with stridor, drooling or distress: the airway plan and ENT come first. The Wavelength Pearl [Epiglottis: find the swollen leaf](/learn/epiglottitis-ultrasound/) shows each step.
 
 ## Where it fits
 

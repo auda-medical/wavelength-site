@@ -239,6 +239,8 @@
   "/learn/efast-right-upper-quadrant/test/",
   "/learn/elbow-effusion-ultrasound/",
   "/learn/elbow-effusion-ultrasound/test/",
+  "/learn/epiglottitis-ultrasound/",
+  "/learn/epiglottitis-ultrasound/test/",
   "/learn/epss-ultrasound/",
   "/learn/epss-ultrasound/test/",
   "/learn/erector-spinae-plane-block/",
@@ -549,6 +551,10 @@
   {
    "slug": "elbow-effusion-ultrasound",
    "title": "Elbow effusion: lift the fat pad"
+  },
+  {
+   "slug": "epiglottitis-ultrasound",
+   "title": "Epiglottis: find the swollen leaf"
   },
   {
    "slug": "epss-ultrasound",
