@@ -1,6 +1,6 @@
 ---
 title: "Torsion or epididymo-orchitis: follow the cord"
-minutes: 16
+minutes: 17
 ---
 
 Testicular torsion twists the spermatic cord and cuts off the blood supply. The chance of saving the testis falls with every hour. Torsion is a clinical diagnosis. A strong suspicion goes straight to urology, without waiting for a scan.
@@ -30,6 +30,10 @@ A small round structure at the upper pole, often with no flow and a bright rim, 
 ## Fluid around the testis
 
 A simple hydrocele is black fluid around the testis. Debris, strands or septations suggest a pyocele with infection, or a haematocele after trauma. The fluid is a window, not the diagnosis: look at the testis inside it. After trauma, a broken testicular outline or a disorganised testis suggests rupture, which needs urgent urology review. A new hydrocele in a young man can hide a tumour. A small reactive hydrocele often accompanies torsion and infection. The Wavelength Pearl [Scrotal fluid: clear or complex?](/learn/hydrocele-scrotal-fluid-ultrasound/) shows the patterns.
+
+## Varicocele
+
+A cluster of dilated veins above the testis, usually on the left, which enlarge and fill with reversed colour flow when the patient bears down or stands. Veins over about 3 mm support it. Most are routine referrals. A new right-sided varicocele, or one that does not empty lying down, can come from a mass pressing on the veins higher up: image the abdomen and kidneys. The Wavelength Pearl [Varicocele: veins that wake up with Valsalva](/learn/varicocele-ultrasound/) shows each step.
 
 ## Who goes straight to urology
 

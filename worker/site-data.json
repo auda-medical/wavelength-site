@@ -396,6 +396,12 @@
   "/learn/ultrasound-jvp/test/",
   "/learn/ultrasound-knobology/",
   "/learn/ultrasound-knobology/test/",
+  "/learn/ultrasound-probe-movements-sweep-fan/",
+  "/learn/ultrasound-probe-movements-sweep-fan/test/",
+  "/learn/ultrasound-two-planes/",
+  "/learn/ultrasound-two-planes/test/",
+  "/learn/varicocele-ultrasound/",
+  "/learn/varicocele-ultrasound/test/",
   "/learn/vein-or-artery-ultrasound-compression/",
   "/learn/vein-or-artery-ultrasound-compression/test/",
   "/learn/wrist-effusion-ultrasound/",
@@ -847,6 +853,18 @@
   {
    "slug": "ultrasound-knobology",
    "title": "Five checks before every scan"
+  },
+  {
+   "slug": "ultrasound-probe-movements-sweep-fan",
+   "title": "Sweep, fan, slide: do not trust the still image"
+  },
+  {
+   "slug": "ultrasound-two-planes",
+   "title": "Two planes: long and short or it did not happen"
+  },
+  {
+   "slug": "varicocele-ultrasound",
+   "title": "Varicocele: veins that wake up with Valsalva"
   },
   {
    "slug": "vein-or-artery-ultrasound-compression",
