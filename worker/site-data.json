@@ -221,6 +221,8 @@
   "/learn/common-bile-duct-ultrasound/test/",
   "/learn/cricothyroid-membrane-ultrasound/",
   "/learn/cricothyroid-membrane-ultrasound/test/",
+  "/learn/dental-abscess-ultrasound/",
+  "/learn/dental-abscess-ultrasound/test/",
   "/learn/diaphragm-ultrasound/",
   "/learn/diaphragm-ultrasound/test/",
   "/learn/difficult-iv-access-vein-distension/",
@@ -283,6 +285,8 @@
   "/learn/ivc-ultrasound-fluid-status/test/",
   "/learn/knee-effusion-ultrasound/",
   "/learn/knee-effusion-ultrasound/test/",
+  "/learn/lens-dislocation-ultrasound/",
+  "/learn/lens-dislocation-ultrasound/test/",
   "/learn/lung-consolidation-ultrasound/",
   "/learn/lung-consolidation-ultrasound/test/",
   "/learn/lung-ultrasound/",
@@ -293,6 +297,8 @@
   "/learn/mirror-image-artefact-ultrasound/",
   "/learn/mirror-image-artefact-ultrasound/test/",
   "/learn/msk-soft-tissue-ultrasound/",
+  "/learn/nasogastric-tube-ultrasound/",
+  "/learn/nasogastric-tube-ultrasound/test/",
   "/learn/neck-lump-node-or-abscess-ultrasound/",
   "/learn/neck-lump-node-or-abscess-ultrasound/test/",
   "/learn/necrotising-fasciitis-ultrasound/",
@@ -337,6 +343,8 @@
   "/learn/pyelonephritis-ultrasound/test/",
   "/learn/pyloric-stenosis-ultrasound/",
   "/learn/pyloric-stenosis-ultrasound/test/",
+  "/learn/pyomyositis-ultrasound/",
+  "/learn/pyomyositis-ultrasound/test/",
   "/learn/pyonephrosis-ultrasound/",
   "/learn/pyonephrosis-ultrasound/test/",
   "/learn/quadriceps-tendon-rupture-ultrasound/",
@@ -367,6 +375,8 @@
   "/learn/shoulder-effusion-ultrasound/test/",
   "/learn/small-bowel-obstruction-ultrasound/",
   "/learn/small-bowel-obstruction-ultrasound/test/",
+  "/learn/sternoclavicular-joint-effusion-ultrasound/",
+  "/learn/sternoclavicular-joint-effusion-ultrasound/test/",
   "/learn/superior-trunk-block/",
   "/learn/superior-trunk-block/test/",
   "/learn/suprapubic-catheter-ultrasound/",
@@ -525,6 +535,10 @@
    "title": "Cricothyroid membrane: find it before the emergency"
   },
   {
+   "slug": "dental-abscess-ultrasound",
+   "title": "Dental swelling: find the vestibular pocket"
+  },
+  {
    "slug": "diaphragm-ultrasound",
    "title": "Diaphragm ultrasound: watch the sniff"
   },
@@ -649,6 +663,10 @@
    "title": "Hot knee: find the suprapatellar recess"
   },
   {
+   "slug": "lens-dislocation-ultrasound",
+   "title": "Eye trauma: has the lens moved?"
+  },
+  {
    "slug": "lung-consolidation-ultrasound",
    "title": "Consolidation: watch the air bronchograms move"
   },
@@ -663,6 +681,10 @@
   {
    "slug": "mirror-image-artefact-ultrasound",
    "title": "Mirror artefact: read the diaphragm"
+  },
+  {
+   "slug": "nasogastric-tube-ultrasound",
+   "title": "NG tube: ultrasound is a scout, not clearance"
   },
   {
    "slug": "neck-lump-node-or-abscess-ultrasound",
@@ -753,6 +775,10 @@
    "title": "Pyloric stenosis: measure, then watch"
   },
   {
+   "slug": "pyomyositis-ultrasound",
+   "title": "Pyomyositis: look below the fascia"
+  },
+  {
    "slug": "pyonephrosis-ultrasound",
    "title": "Pyonephrosis: hydronephrosis with dirty echoes"
   },
@@ -811,6 +837,10 @@
   {
    "slug": "small-bowel-obstruction-ultrasound",
    "title": "Small bowel obstruction: follow the to-and-fro"
+  },
+  {
+   "slug": "sternoclavicular-joint-effusion-ultrasound",
+   "title": "Sternoclavicular joint: look for capsular lift"
   },
   {
    "slug": "superior-trunk-block",

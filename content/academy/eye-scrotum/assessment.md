@@ -113,3 +113,11 @@ title: Final assessment
 - 10 mm behind the globe, inner edge to inner edge
 - Across the lens
 : The sheath is measured 3 mm behind the globe, and readings from both planes and both eyes are averaged.
+
+?? After a punch to the eye, the globe is intact. Through the closed lid, the space behind the iris is empty and an oval with bright edges lies on the posterior wall. What is it?
+@ 03-eye-findings
++ A posteriorly dislocated lens
+- A retinal detachment
+- A vitreous haemorrhage
+- A normal optic disc
+: The lens is missing from behind the iris and lies in the vitreous. Refer urgently to ophthalmology.

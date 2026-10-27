@@ -1,6 +1,6 @@
 ---
 title: "The eye: make it move"
-minutes: 14
+minutes: 16
 ---
 
 Three conditions cause sudden floaters or visual loss and show on ultrasound. The way each one moves tells them apart.
@@ -37,5 +37,5 @@ Behind the globe, the optic nerve runs back as a dark band inside its sheath. Ra
 
 ## Other findings
 
-- **Lens dislocation:** the lens lies out of place, often in the vitreous, after trauma.
+- **Lens dislocation:** after blunt trauma, find the lens first. It normally sits just behind the iris as an oval with bright edges. Dislocated, it lies in the vitreous, often on the posterior wall, and is missing from its place. Forward dislocation into the anterior chamber can raise the eye pressure. Do not scan if globe rupture is possible. The Wavelength Pearl [Eye trauma: has the lens moved?](/learn/lens-dislocation-ultrasound/) shows each step.
 - **Retrobulbar haematoma:** a dark collection behind the globe after trauma, with proptosis and a tense orbit. Lateral canthotomy is the treatment when vision is threatened. Do not delay it for imaging.

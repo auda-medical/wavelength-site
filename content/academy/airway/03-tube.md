@@ -1,6 +1,6 @@
 ---
 title: "The tube: one tract or two"
-minutes: 12
+minutes: 14
 ---
 
 Unrecognised oesophageal intubation is a preventable cause of death. The 2022 consensus guideline from the Project for Universal Management of Airways sets the standard: sustained waveform capnography, and if there is no trace, the tube is in the wrong place until proven otherwise.
@@ -31,3 +31,7 @@ Chou and colleagues described this tracheal rapid ultrasound examination during 
 > **The aha** One tract good. Two tracts stop.
 
 > **Pitfall** Scanning off the midline, or pressing hard, distorts the view. Neck ultrasound shows whether the tube is in the trachea, not how deep it sits. Ultrasound adds to capnography. It does not replace it.
+
+## The nasogastric tube
+
+The same window shows a nasogastric tube in the oesophagus: a bright echo with a shadow in transverse, two bright parallel lines in long axis. That helps when insertion is difficult. It is a scout, not clearance: in UK practice, position is confirmed by an aspirate pH of 1 to 5.5 or a chest X-ray read by a competent person before anything goes down the tube. A tube that cannot be seen proves nothing, and one that can be seen may still be coiled. The Wavelength Pearl [NG tube: ultrasound is a scout, not clearance](/learn/nasogastric-tube-ultrasound/) shows each step.

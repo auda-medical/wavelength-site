@@ -177,3 +177,11 @@ title: Final assessment
 - Reassure: the fragment is a normal ossification centre
 - Sling and review in six weeks
 : A gap at the insertion with an avulsion flake suggests a complete rupture. Early repair gives the best results.
+
+?? A man who injects drugs has a hot, swollen sternoclavicular joint and a fever. An anechoic pocket lifts the capsule over the joint. What next?
+@ 08-effusions
++ Blood cultures, treat as possible septic arthritis and arrange CT or MRI and orthopaedic review
+- Aspirate blind at the bedside
+- Reassure: an effusion means osteoarthritis
+- Discharge with anti-inflammatories
+: The effusion fits septic arthritis but does not prove it. Deep spread is invisible to ultrasound, and the vessels and pleura lie just behind the joint.

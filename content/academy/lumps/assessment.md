@@ -169,3 +169,11 @@ title: Final assessment
 - Oral antibiotics and review in a week
 - Reassure: it is cellulitis
 : Flexor tenosynovitis needs urgent hand surgery review; many patients need washout.
+
+?? A woman with diabetes has three days of deep thigh pain and fever. The skin looks normal. Under the fascia, the muscle has lost its striations and holds a complex pocket with flow in its rim. What is the likeliest diagnosis?
+@ 03-cellulitis-abscess
++ Pyomyositis
+- Simple cellulitis
+- A muscle strain
+- A lymph node
+: A pocket inside the muscle, below the fascia, is pyomyositis until proven otherwise. Take cultures, image the extent and ask for surgical review.

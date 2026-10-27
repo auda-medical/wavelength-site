@@ -1283,6 +1283,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q15",
+     "correct": "a",
+     "why": "The lens is missing from behind the iris and lies in the vitreous. Refer urgently to ophthalmology.",
+     "review": "03-eye-findings",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -1979,6 +1991,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q22",
+     "correct": "d",
+     "why": "A pocket inside the muscle, below the fascia, is pyomyositis until proven otherwise. Take cultures, image the extent and ask for surgical review.",
+     "review": "03-cellulitis-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -2505,6 +2529,18 @@
      "correct": "b",
      "why": "A gap at the insertion with an avulsion flake suggests a complete rupture. Early repair gives the best results.",
      "review": "07-tendon-ruptures",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q23",
+     "correct": "a",
+     "why": "The effusion fits septic arthritis but does not prove it. Deep spread is invisible to ultrasound, and the vessels and pleura lie just behind the joint.",
+     "review": "08-effusions",
      "options": [
       "a",
       "b",

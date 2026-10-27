@@ -1,6 +1,6 @@
 ---
 title: "Cellulitis or abscess: make it swirl"
-minutes: 16
+minutes: 20
 ---
 
 ## Cellulitis
@@ -42,5 +42,13 @@ A red, swollen finger can be cellulitis, a superficial abscess or infection insi
 ## Neck lumps: node or pus
 
 In the neck, the commonest tender lump is an inflamed lymph node. Look for the bright hilum before you call a collection. A round lump with no hilum, debris and posterior enhancement suggests an abscess or a liquefying node, common in children. In an adult, a round or cystic node without a hilum may be a metastasis, and needs your local urgent suspected cancer pathway, not an incision. Stridor, trismus, drooling or difficulty swallowing suggest a deep neck infection, which ultrasound cannot see: call ENT. The Wavelength Pearl [Neck lump: hilum or pus?](/learn/neck-lump-node-or-abscess-ultrasound/) compares the patterns.
+
+## Dental swelling: the vestibular pocket
+
+Facial swelling from a tooth follows the same rules. Over the swelling, find the bright surface of the jaw bone: a collection is a dark pocket lying against it, superficial to the bone, with flow in its rim. Oedematous fat without a pocket is cellulitis. Ultrasound cannot see the deep neck spaces: trismus, drooling, a change in voice or swelling of the floor of the mouth put the airway first. The Wavelength Pearl [Dental swelling: find the vestibular pocket](/learn/dental-abscess-ultrasound/) shows each step.
+
+## Pain deep in the muscle: pyomyositis
+
+When the pain is deep and constant, scan below the fascia. Pyomyositis is infection inside the muscle: first a swollen muscle that has lost its striations, then a complex pocket within it, with flow in the rim. It affects people with diabetes, immunosuppression or injecting drug use, and children. Early disease can look almost normal, so MRI and surgical review follow when the picture fits. The Wavelength Pearl [Pyomyositis: look below the fascia](/learn/pyomyositis-ultrasound/) compares it with cellulitis.
 
 > **Pitfall** Swirl tells you the lump holds liquid. Blood moves too. Switch on colour Doppler before any needle or blade.
