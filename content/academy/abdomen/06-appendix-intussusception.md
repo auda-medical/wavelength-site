@@ -1,6 +1,6 @@
 ---
 title: "The appendix and intussusception"
-minutes: 14
+minutes: 16
 ---
 
 ## The appendix
@@ -18,6 +18,10 @@ Ultrasound is the first-line image for suspected appendicitis in children and in
 **Normal appendix:** compressible, thin-walled, under 6 mm.
 
 > **Pitfall** Not seeing the appendix is a non-diagnostic scan, not a negative one. Follow your local pathway: scoring systems, formal ultrasound, MRI in pregnancy or CT in adults.
+
+## Left-sided pain: diverticulitis
+
+The same graded compression works in the left iliac fossa. Put the probe on the point of tenderness and follow the colon. Diverticulitis shows a thickened colon wall with a small dark pouch, often with a bright centre, surrounded by bright, non-compressible inflamed fat. A collection or gas outside the bowel means complicated disease and needs CT and surgical review. A thick segment can also be a cancer, so make sure follow-up is arranged. The Wavelength Pearl [Diverticulitis: find the inflamed pouch](/learn/diverticulitis-ultrasound/) shows each step.
 
 ## Intussusception in children
 

@@ -97,3 +97,11 @@ title: Final assessment
 - The patient needs no antibiotics
 - A tubo-ovarian abscess is confirmed
 : Pelvic inflammatory disease often shows nothing on ultrasound. Treat according to the clinical picture and local guidance.
+
+?? Two weeks after a miscarriage, a woman has ongoing bleeding. The endometrium is thick and uneven with blood flow entering it from the wall. What does this suggest?
+@ 03-early-pregnancy
++ Retained products of conception, so refer to the early pregnancy or gynaecology team
+- Clot only, needing no follow-up
+- A normal finding after miscarriage
+- An ectopic pregnancy
+: Thick, vascular tissue in the cavity raises concern for retained products. Clot is usually avascular.

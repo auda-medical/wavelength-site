@@ -1259,6 +1259,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q13",
+     "correct": "b",
+     "why": "A haematocele with a broken outline suggests rupture, which is repaired early.",
+     "review": "05-torsion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -1925,6 +1937,18 @@
      "correct": "d",
      "why": "Loss of flow in the bowel wall, wall thickening, fluid in the sac and absent peristalsis suggest compromised bowel, which needs urgent surgery.",
      "review": "08-hernia",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q20",
+     "correct": "a",
+     "why": "A cystic node without a hilum in an adult may be a metastasis. Incision is not the answer.",
+     "review": "03-cellulitis-abscess",
      "options": [
       "a",
       "b",
@@ -2817,6 +2841,18 @@
      "correct": "d",
      "why": "Pelvic inflammatory disease often shows nothing on ultrasound. Treat according to the clinical picture and local guidance.",
      "review": "05-cysts-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q13",
+     "correct": "a",
+     "why": "Thick, vascular tissue in the cavity raises concern for retained products. Clot is usually avascular.",
+     "review": "03-early-pregnancy",
      "options": [
       "a",
       "b",

@@ -1,6 +1,6 @@
 ---
 title: "The full bladder: measure, then look upstream"
-minutes: 13
+minutes: 14
 ---
 
 A bedside bladder scan confirms retention in minutes, avoids unnecessary catheters, and checks that a catheter is working.
@@ -32,6 +32,8 @@ Ask the patient to pass urine, then scan within about 10 minutes. The volume lef
 ## The catheterised patient
 
 A full bladder around a catheter means the catheter is blocked or misplaced. Find the balloon. A balloon inflated in the urethra needs urgent attention. Clot in the bladder needs a three-way catheter and washout.
+
+When a urethral catheter cannot be passed, a suprapubic catheter needs a full bladder and a clear window. Scan in transverse and sagittal, confirm no bowel lies between the skin and the bladder, and measure the depth. Previous lower abdominal surgery makes bowel in the path more likely. If the window is not clear, do not proceed blind. The Wavelength Pearl [Suprapubic catheter: fill first, then find the window](/learn/suprapubic-catheter-ultrasound/) shows each step.
 
 > **The aha** Measure the bladder. Then check the kidneys.
 

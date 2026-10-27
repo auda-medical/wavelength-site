@@ -1,6 +1,6 @@
 ---
 title: "Cellulitis or abscess: make it swirl"
-minutes: 12
+minutes: 14
 ---
 
 ## Cellulitis
@@ -34,5 +34,9 @@ Inflamed, swollen tissue without a drainable collection. It looks like a cobbles
 - **Epidermoid cyst:** well-defined, often with an onion-ring or speckled pattern, sometimes a punctum to the skin.
 - **Foreign body:** a bright line or shape with a shadow or reverberation, often with fluid around it.
 - **Necrotising fasciitis:** fluid along the deep fascia, thickened fat, and bright foci with dirty shadowing from gas. A surgical emergency. Ultrasound does not exclude it.
+
+## Neck lumps: node or pus
+
+In the neck, the commonest tender lump is an inflamed lymph node. Look for the bright hilum before you call a collection. A round lump with no hilum, debris and posterior enhancement suggests an abscess or a liquefying node, common in children. In an adult, a round or cystic node without a hilum may be a metastasis, and needs your local urgent suspected cancer pathway, not an incision. Stridor, trismus, drooling or difficulty swallowing suggest a deep neck infection, which ultrasound cannot see: call ENT. The Wavelength Pearl [Neck lump: hilum or pus?](/learn/neck-lump-node-or-abscess-ultrasound/) compares the patterns.
 
 > **Pitfall** Swirl tells you the lump holds liquid. Blood moves too. Switch on colour Doppler before any needle or blade.

@@ -97,3 +97,11 @@ title: Final assessment
 - When the patient is over 18
 - When the pain started more than 6 hours ago
 : Torsion is a clinical diagnosis, and salvage falls with time. Refer on clinical grounds. A bedside scan can be done while urology attends, not instead.
+
+?? After a kick to the groin, the scrotum is full of complex fluid and the testicular outline is broken. What do you do?
+@ 05-torsion
++ Urgent urology review for possible testicular rupture
+- Aspirate the fluid and discharge
+- Reassure: it is a simple hydrocele
+- Repeat the scan in six weeks
+: A haematocele with a broken outline suggests rupture, which is repaired early.

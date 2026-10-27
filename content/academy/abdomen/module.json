@@ -6,7 +6,7 @@
   "category": "Abdomen",
   "summary": "Six focused scans for the patient with abdominal pain: the aorta, the gallbladder, the kidneys and ureteric jets, small bowel obstruction, the appendix and, in children, intussusception. Learn what each scan rules in, what it cannot rule out, and when to escalate.",
   "cpdHours": 1.5,
-  "minutes": 95,
+  "minutes": 97,
   "passMark": 80,
   "draft": false,
   "pearl": "/learn/appendicitis-ultrasound/",

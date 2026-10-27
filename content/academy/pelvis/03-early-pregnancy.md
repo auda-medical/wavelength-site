@@ -1,6 +1,6 @@
 ---
 title: "Early pregnancy: find the pregnancy, then look beyond the uterus"
-minutes: 14
+minutes: 16
 ---
 
 Ectopic pregnancy remains a leading cause of early pregnancy death. Most implant in the fallopian tube. The bedside scan aims to show a definite intrauterine pregnancy, and when it cannot, to look for signs of an ectopic and of bleeding.
@@ -41,3 +41,7 @@ Bleeding from the endometrium in an ectopic pregnancy collects as fluid in the c
 - **Stable, definite intrauterine pregnancy:** ectopic pregnancy becomes very unlikely, except after assisted conception. Follow local guidance for pain or bleeding in early pregnancy.
 
 Do not comment on viability from a bedside scan. Leave that to formal assessment.
+
+## After the pregnancy: retained products
+
+Bleeding or pain after a miscarriage, termination or birth raises the question of retained products of conception. Look along the endometrium for a thick, uneven area or a mass, then add colour Doppler. Retained tissue usually has flow entering it from the wall; clot is usually avascular. No thickness cut-off is reliable on its own, and some retained products show no flow. Heavy bleeding needs resuscitation first, and fever or an offensive discharge suggests an infected miscarriage needing urgent antibiotics and gynaecology review. The Wavelength Pearl [Retained products: thick and vascular](/learn/retained-products-of-conception-ultrasound/) shows each pattern.

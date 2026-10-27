@@ -194,6 +194,8 @@
   "/learn/appendicitis-ultrasound/test/",
   "/learn/appendix-testis-torsion-ultrasound/",
   "/learn/appendix-testis-torsion-ultrasound/test/",
+  "/learn/ascites-ultrasound/",
+  "/learn/ascites-ultrasound/test/",
   "/learn/b-lines-lung-ultrasound/",
   "/learn/b-lines-lung-ultrasound/test/",
   "/learn/bakers-cyst-ultrasound/",
@@ -221,6 +223,8 @@
   "/learn/difficult-iv-access-vein-distension/test/",
   "/learn/distal-biceps-rupture-ultrasound/",
   "/learn/distal-biceps-rupture-ultrasound/test/",
+  "/learn/diverticulitis-ultrasound/",
+  "/learn/diverticulitis-ultrasound/test/",
   "/learn/dvt-ultrasound/",
   "/learn/dvt-ultrasound/test/",
   "/learn/ectopic-pregnancy-ultrasound/",
@@ -257,6 +261,8 @@
   "/learn/haemorrhagic-ovarian-cyst-ultrasound/test/",
   "/learn/hip-effusion-ultrasound/",
   "/learn/hip-effusion-ultrasound/test/",
+  "/learn/hydrocele-scrotal-fluid-ultrasound/",
+  "/learn/hydrocele-scrotal-fluid-ultrasound/test/",
   "/learn/hydronephrosis-ultrasound/",
   "/learn/hydronephrosis-ultrasound/test/",
   "/learn/intussusception-ultrasound/",
@@ -277,6 +283,8 @@
   "/learn/mirror-image-artefact-ultrasound/",
   "/learn/mirror-image-artefact-ultrasound/test/",
   "/learn/msk-soft-tissue-ultrasound/",
+  "/learn/neck-lump-node-or-abscess-ultrasound/",
+  "/learn/neck-lump-node-or-abscess-ultrasound/test/",
   "/learn/necrotising-fasciitis-ultrasound/",
   "/learn/necrotising-fasciitis-ultrasound/test/",
   "/learn/ocular-ultrasound/",
@@ -285,6 +293,8 @@
   "/learn/olecranon-bursitis-ultrasound/test/",
   "/learn/ovarian-torsion-ultrasound/",
   "/learn/ovarian-torsion-ultrasound/test/",
+  "/learn/paracentesis-ultrasound/",
+  "/learn/paracentesis-ultrasound/test/",
   "/learn/patellar-tendon-rupture-ultrasound/",
   "/learn/patellar-tendon-rupture-ultrasound/test/",
   "/learn/peng-block/",
@@ -319,6 +329,8 @@
   "/learn/renal-colic-ultrasound-ureteric-jets/test/",
   "/learn/renal-stone-twinkle-artefact/",
   "/learn/renal-stone-twinkle-artefact/test/",
+  "/learn/retained-products-of-conception-ultrasound/",
+  "/learn/retained-products-of-conception-ultrasound/test/",
   "/learn/rv-strain-ultrasound/",
   "/learn/rv-strain-ultrasound/test/",
   "/learn/serratus-anterior-plane-block/",
@@ -333,6 +345,8 @@
   "/learn/small-bowel-obstruction-ultrasound/test/",
   "/learn/superior-trunk-block/",
   "/learn/superior-trunk-block/test/",
+  "/learn/suprapubic-catheter-ultrasound/",
+  "/learn/suprapubic-catheter-ultrasound/test/",
   "/learn/tendon-tear-vs-anisotropy/",
   "/learn/tendon-tear-vs-anisotropy/test/",
   "/learn/tennis-leg-ultrasound/",
@@ -427,6 +441,10 @@
    "title": "Appendix testis torsion: find the tender nub"
   },
   {
+   "slug": "ascites-ultrasound",
+   "title": "Ascites: simple or complex?"
+  },
+  {
    "slug": "b-lines-lung-ultrasound",
    "title": "B-lines: map the pattern"
   },
@@ -477,6 +495,10 @@
   {
    "slug": "distal-biceps-rupture-ultrasound",
    "title": "Distal biceps rupture: follow the tendon to the tuberosity"
+  },
+  {
+   "slug": "diverticulitis-ultrasound",
+   "title": "Diverticulitis: find the inflamed pouch"
   },
   {
    "slug": "dvt-ultrasound",
@@ -551,6 +573,10 @@
    "title": "Hip effusion: compare the capsule distance"
   },
   {
+   "slug": "hydrocele-scrotal-fluid-ultrasound",
+   "title": "Scrotal fluid: clear or complex?"
+  },
+  {
    "slug": "hydronephrosis-ultrasound",
    "title": "Hydronephrosis: black that branches"
   },
@@ -587,6 +613,10 @@
    "title": "Mirror artefact: read the diaphragm"
   },
   {
+   "slug": "neck-lump-node-or-abscess-ultrasound",
+   "title": "Neck lump: hilum or pus?"
+  },
+  {
    "slug": "necrotising-fasciitis-ultrasound",
    "title": "Necrotising fasciitis: look below the cobblestones"
   },
@@ -601,6 +631,10 @@
   {
    "slug": "ovarian-torsion-ultrasound",
    "title": "Ovarian torsion: follow the pedicle"
+  },
+  {
+   "slug": "paracentesis-ultrasound",
+   "title": "Paracentesis: pick the pocket"
   },
   {
    "slug": "patellar-tendon-rupture-ultrasound",
@@ -671,6 +705,10 @@
    "title": "Renal stone twinkle: a clue, not a diagnosis"
   },
   {
+   "slug": "retained-products-of-conception-ultrasound",
+   "title": "Retained products: thick and vascular"
+  },
+  {
    "slug": "rv-strain-ultrasound",
    "title": "RV strain: three clues beat one ratio"
   },
@@ -697,6 +735,10 @@
   {
    "slug": "superior-trunk-block",
    "title": "Shoulder reduction: low-volume superior trunk block"
+  },
+  {
+   "slug": "suprapubic-catheter-ultrasound",
+   "title": "Suprapubic catheter: fill first, then find the window"
   },
   {
    "slug": "tendon-tear-vs-anisotropy",

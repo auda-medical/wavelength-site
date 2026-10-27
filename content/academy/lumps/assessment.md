@@ -153,3 +153,11 @@ title: Final assessment
 - Contents that slide back with gentle pressure
 - A defect seen only on coughing
 : Loss of flow in the bowel wall, wall thickening, fluid in the sac and absent peristalsis suggest compromised bowel, which needs urgent surgery.
+
+?? A 60-year-old has a painless lump in the side of the neck. It is round, with a dark cystic centre and no hilum. What do you do?
+@ 03-cellulitis-abscess
++ Refer on the urgent suspected cancer pathway rather than incise it
+- Incise and drain it as an abscess
+- Reassure: it is a reactive node
+- Repeat the scan in a year
+: A cystic node without a hilum in an adult may be a metastasis. Incision is not the answer.

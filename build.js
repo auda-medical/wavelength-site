@@ -372,7 +372,7 @@ const PEARL_LOG_SLUG = {
   'ultrasound-guided-iv-posterior-wall-puncture': ['pva'], 'ultrasound-guided-iv-threading-failure': ['pva'], 'ultrasound-iv-flush-test': ['pva'],
   'vein-or-artery-ultrasound-compression': ['pva'], 'ultrasound-guided-iv-choose-the-vein': ['pva'],
   'central-line-ultrasound-guidewire-check': ['cvc'], 'ultrasound-guided-radial-arterial-line': ['procedure'],
-  'pneumoperitoneum-ultrasound': ['abdo'], 'colour-doppler-aliasing': null, 'mirror-image-artefact-ultrasound': null, 'cricothyroid-membrane-ultrasound': null,
+  'pneumoperitoneum-ultrasound': ['abdo'], 'retained-products-of-conception-ultrasound': ['preg'], 'colour-doppler-aliasing': null, 'mirror-image-artefact-ultrasound': null, 'cricothyroid-membrane-ultrasound': null,
 };
 function logStrip(p) {
   const types = p.slug in PEARL_LOG_SLUG ? PEARL_LOG_SLUG[p.slug] : PEARL_LOG_CATEGORY[p.category] || null;
