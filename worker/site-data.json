@@ -227,6 +227,8 @@
   "/learn/difficult-iv-access-vein-distension/test/",
   "/learn/distal-biceps-rupture-ultrasound/",
   "/learn/distal-biceps-rupture-ultrasound/test/",
+  "/learn/distal-triceps-tendon-ultrasound/",
+  "/learn/distal-triceps-tendon-ultrasound/test/",
   "/learn/diverticulitis-ultrasound/",
   "/learn/diverticulitis-ultrasound/test/",
   "/learn/dvt-ultrasound/",
@@ -305,8 +307,12 @@
   "/learn/ovarian-torsion-ultrasound/test/",
   "/learn/paracentesis-ultrasound/",
   "/learn/paracentesis-ultrasound/test/",
+  "/learn/partial-testicular-torsion-ultrasound/",
+  "/learn/partial-testicular-torsion-ultrasound/test/",
   "/learn/patellar-tendon-rupture-ultrasound/",
   "/learn/patellar-tendon-rupture-ultrasound/test/",
+  "/learn/pectoralis-major-tear-ultrasound/",
+  "/learn/pectoralis-major-tear-ultrasound/test/",
   "/learn/peng-block/",
   "/learn/peng-block/test/",
   "/learn/pericardial-vs-pleural-effusion/",
@@ -349,6 +355,8 @@
   "/learn/rib-fracture-ultrasound/test/",
   "/learn/rv-strain-ultrasound/",
   "/learn/rv-strain-ultrasound/test/",
+  "/learn/scrotal-trauma-testicular-rupture-ultrasound/",
+  "/learn/scrotal-trauma-testicular-rupture-ultrasound/test/",
   "/learn/serratus-anterior-plane-block/",
   "/learn/serratus-anterior-plane-block/test/",
   "/learn/shac-block/",
@@ -529,6 +537,10 @@
    "title": "Distal biceps rupture: follow the tendon to the tuberosity"
   },
   {
+   "slug": "distal-triceps-tendon-ultrasound",
+   "title": "Distal triceps: find the olecranon attachment"
+  },
+  {
    "slug": "diverticulitis-ultrasound",
    "title": "Diverticulitis: find the inflamed pouch"
   },
@@ -681,8 +693,16 @@
    "title": "Paracentesis: pick the pocket"
   },
   {
+   "slug": "partial-testicular-torsion-ultrasound",
+   "title": "Partial testicular torsion: flow does not clear it"
+  },
+  {
    "slug": "patellar-tendon-rupture-ultrasound",
    "title": "Patellar tendon rupture: follow it to the tibial tubercle"
+  },
+  {
+   "slug": "pectoralis-major-tear-ultrasound",
+   "title": "Pectoralis major tear: look beyond the shoulder"
   },
   {
    "slug": "peng-block",
@@ -767,6 +787,10 @@
   {
    "slug": "rv-strain-ultrasound",
    "title": "RV strain: three clues beat one ratio"
+  },
+  {
+   "slug": "scrotal-trauma-testicular-rupture-ultrasound",
+   "title": "Scrotal trauma: follow the tunica"
   },
   {
    "slug": "serratus-anterior-plane-block",

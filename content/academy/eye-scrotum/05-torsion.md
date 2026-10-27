@@ -1,6 +1,6 @@
 ---
 title: "Torsion or epididymo-orchitis: follow the cord"
-minutes: 17
+minutes: 19
 ---
 
 Testicular torsion twists the spermatic cord and cuts off the blood supply. The chance of saving the testis falls with every hour. Torsion is a clinical diagnosis. A strong suspicion goes straight to urology, without waiting for a scan.
@@ -25,11 +25,11 @@ A small round structure at the upper pole, often with no flow and a bright rim, 
 
 > **The aha** If you suspect torsion, follow the cord, not just the colour box.
 
-> **Pitfall** Never delay urology review for a scan. Partial or intermittent torsion preserves flow, and a testis which has spontaneously untwisted looks hyperaemic, like epididymo-orchitis. Normal colour Doppler does not exclude torsion.
+> **Pitfall** Never delay urology review for a scan. Partial or intermittent torsion preserves flow, and a testis which has spontaneously untwisted looks hyperaemic, like epididymo-orchitis. Normal colour Doppler does not exclude torsion: a partly twisted cord blocks the veins first, so flow can persist with a high-resistance arterial waveform. See [Partial testicular torsion: flow does not clear it](/learn/partial-testicular-torsion-ultrasound/).
 
 ## Fluid around the testis
 
-A simple hydrocele is black fluid around the testis. Debris, strands or septations suggest a pyocele with infection, or a haematocele after trauma. The fluid is a window, not the diagnosis: look at the testis inside it. After trauma, a broken testicular outline or a disorganised testis suggests rupture, which needs urgent urology review. A new hydrocele in a young man can hide a tumour. A small reactive hydrocele often accompanies torsion and infection. The Wavelength Pearl [Scrotal fluid: clear or complex?](/learn/hydrocele-scrotal-fluid-ultrasound/) shows the patterns.
+A simple hydrocele is black fluid around the testis. Debris, strands or septations suggest a pyocele with infection, or a haematocele after trauma. The fluid is a window, not the diagnosis: look at the testis inside it. After trauma, follow the bright tunica albuginea all the way round: a break in it, an irregular outline or tissue pushing through suggests rupture, which needs urgent urology review. See [Scrotal trauma: follow the tunica](/learn/scrotal-trauma-testicular-rupture-ultrasound/). A new hydrocele in a young man can hide a tumour. A small reactive hydrocele often accompanies torsion and infection. The Wavelength Pearl [Scrotal fluid: clear or complex?](/learn/hydrocele-scrotal-fluid-ultrasound/) shows the patterns.
 
 ## Varicocele
 

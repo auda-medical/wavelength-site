@@ -1,6 +1,6 @@
 ---
 title: "Tendon ruptures: the Achilles, the distal biceps and the quadriceps"
-minutes: 17
+minutes: 20
 ---
 
 Three tendon ruptures are often missed at first presentation, because patients keep some movement: the Achilles, the distal biceps at the elbow, and the quadriceps above the knee. In all three, the scan follows the tendon all the way to its insertion and adds movement when a still image is unclear.
@@ -80,6 +80,14 @@ The same extensor mechanism continues below the patella. Patellar tendon rupture
 3. Turn to short axis at any abnormal spot, and compare with the other knee.
 
 A complete rupture shows a dark gap of fluid or haematoma with wavy retracted ends. Heel-toe the probe before you call a dark patch a tear. The Wavelength Pearl [Patellar tendon rupture: follow it to the tibial tubercle](/learn/patellar-tendon-rupture-ultrasound/) shows each step.
+
+## The distal triceps tendon
+
+A fall onto an outstretched hand or heavy lifting, with weak elbow extension. Patients can often still extend with gravity, so test against resistance. With the elbow bent, follow the triceps tendon in long axis onto the olecranon. A gap at the insertion with the tendon end pulled back, or a small bright avulsion flake above the olecranon, suggests a tear; the flake may also show on a lateral X-ray. See [Distal triceps: find the olecranon attachment](/learn/distal-triceps-tendon-ultrasound/).
+
+## Pectoralis major
+
+A pop at the front of the shoulder during a heavy bench press, then bruising down the arm, a thin anterior axillary fold and weak adduction. Follow the tendon along the fold to its insertion on the lateral lip of the bicipital groove. No tendon at the humerus and a retracted stump suggest a complete tear; MRI usually follows to plan repair. See [Pectoralis major tear: look beyond the shoulder](/learn/pectoralis-major-tear-ultrasound/).
 
 ## What to do with the finding
 

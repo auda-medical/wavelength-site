@@ -169,3 +169,11 @@ title: Final assessment
 - Diagnose olecranon bursitis
 - Aspirate the bursa
 : An effusion after trauma suggests an injury inside the joint. Ultrasound may show the fluid without showing the fracture.
+
+?? After a fall onto an outstretched hand, a man can lift his forearm only with gravity. Over the olecranon there is a dark gap at the triceps insertion and a small bright fragment with a shadow above the bone. What do you do?
+@ 07-tendon-ruptures
++ Treat it as a distal triceps rupture with avulsion: urgent orthopaedic referral
+- Diagnose olecranon bursitis and aspirate
+- Reassure: the fragment is a normal ossification centre
+- Sling and review in six weeks
+: A gap at the insertion with an avulsion flake suggests a complete rupture. Early repair gives the best results.
