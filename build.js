@@ -163,6 +163,8 @@ function mark({ size = 42, cls = '', draw = false, ring = 'currentColor' } = {})
 }
 const tick = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="11" stroke="#2A7F8A" stroke-width="1.4"/><path d="M7.5 12.4l3 3 6-6.6" stroke="#2A7F8A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const arrow = `<svg class="arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// The 3D field, probe and logo (homepage hero, Pearl band): plain WebGL, about 10 KB compressed.
+const WL3D_JS = `<script src="/assets/wl3d.js?v=${BUILD}" defer></script>\n`;
 const mesh = `<div class="mesh" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="grain" aria-hidden="true"></div>`;
 
 const anyDates = courses.some((c) => (c.dates || []).some((d) => d.date >= new Date().toISOString().slice(0, 10)));
@@ -193,7 +195,7 @@ const NAV = [
 // already shows the site name (WebSite schema) above each result, so a long title keeps its keywords instead.
 const TITLE_MAX = 60;
 const brandTitle = (t) => (`${t} | ${site.name}`.length <= TITLE_MAX ? `${t} | ${site.name}` : t);
-function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png' }) {
+function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png', scripts = '' }) {
   const canonical = url(pathname);
   const base = seoTitle || title;
   const fullTitle = base ? brandTitle(base) : `${site.name} | Point-of-care ultrasound education`;
@@ -285,7 +287,7 @@ ${body}
     </div>
   </div>
 </footer>
-<script src="/assets/main.js?v=${BUILD}" defer></script>
+${scripts}<script src="/assets/main.js?v=${BUILD}" defer></script>
 </body>
 </html>`;
 }
@@ -317,7 +319,7 @@ function film(kind, id, caption) {
   const f = FILMS[kind];
   return `<figure class="film reveal"><video id="${id}" controls playsinline preload="metadata" width="1920" height="1080" poster="/media/${f.base}-poster.jpg" aria-label="${esc(f.label)}"><source src="/media/${f.base}.mp4" type="video/mp4"><track kind="captions" srclang="en" label="English" src="/media/${f.base}.en.vtt" default><a href="/media/${f.base}.mp4">Download the film (MP4, ${f.size})</a></video><figcaption>${esc(caption)} <span class="film-fallback" role="status">The film could not load here. <a href="/media/${f.base}.mp4" download>Download it (MP4, ${f.size})</a>.</span></figcaption><details class="film-transcript"><summary>Read the film as text</summary>${filmTranscript(f.base)}</details></figure>`;
 }
-function pageHero({ eyebrow, title, lede, crumbs = [], extra = '' }) {
+function pageHero({ eyebrow, title, lede, crumbs = [], extra = '', band = '' }) {
   const crumbHtml = crumbs.length
     ? `<nav class="crumbs rise" aria-label="Breadcrumb">${crumbs.map((c, i) => (c.href ? `<a href="${c.href}">${esc(c.label)}</a>` : `<span aria-current="page">${esc(c.label)}</span>`) + (i < crumbs.length - 1 ? '<span aria-hidden="true">/</span>' : '')).join('')}</nav>`
     : '';
@@ -328,7 +330,7 @@ function pageHero({ eyebrow, title, lede, crumbs = [], extra = '' }) {
     <h1 class="split-words" style="font-size:clamp(46px,7vw,96px);margin-bottom:24px">${title}</h1>
     ${lede ? `<p class="lede rise">${lede}</p>` : ''}
     ${extra}
-  </div>
+  </div>${band}
 </section>`;
 }
 
@@ -621,11 +623,13 @@ pages['/'] = layout({
   pathname: '/',
   description: 'Hands-on emergency ultrasound and POCUS courses for UK clinicians, mapped to the RCEM curriculum. Free ultrasound Pearls, CPD e-learning and a logbook app.',
   jsonld: [{ '@context': 'https://schema.org', '@type': 'WebSite', name: site.name, url: url('/'), inLanguage: 'en-GB' }, faqLd(generalFaqs)],
+  scripts: WL3D_JS,
   body: `
-<section class="hero on-dark">${mesh}
+<section class="hero hero-split on-dark">${mesh}
   <canvas class="waves" aria-hidden="true"></canvas>
+  <canvas class="hero-3d" aria-hidden="true"></canvas>
   <div class="wrap hero-inner">
-    <div class="rise">${mark({ size: 96, cls: 'hero-mark', draw: true, ring: '#F7F5F0' })}</div>
+   <div class="hero-copy">
     <p class="eyebrow rise">Point-of-care ultrasound education</p>
     <h1 class="split-words">Tune in. <em>Gain clarity.</em></h1>
     <p class="lede rise">Hands-on courses, tailored training, a free ultrasound logbook, five-minute Pearls and certified e-learning for emergency and acute clinicians. Mapped to the RCEM curriculum and led by an emergency medicine consultant who has scanned since 2008 and taught ultrasound since 2010.</p>
@@ -634,6 +638,12 @@ pages['/'] = layout({
       <a class="btn btn-ghost light cta-caps" href="/app/get/" data-m="home-hero-logbook">Start your free logbook</a>
     </div>
     ${nextDate ? `<p class="rise" style="margin-top:14px;color:#B9C4D0;font-size:15px">Next core course: <a class="text-link" style="color:var(--teal-l)" href="/courses/core-emergency-ultrasound/#dates">${fmtDate(nextDate.d.date, { day: 'numeric', month: 'long', year: 'numeric' })}</a></p>` : ''}
+   </div>
+    <div class="hero-stage" aria-hidden="true">
+      <div class="rise stage-mark">${mark({ size: 96, cls: 'hero-mark', draw: true, ring: '#F7F5F0' })}</div>
+      <p class="stage-hint" hidden>Move across the scan to steer the beam</p>
+      <div class="stage-readout"><span>Curved array 3.5 MHz</span><span>Depth <b data-depth>4.0</b> cm · Gain <b>52</b></span><span>Sector <b data-angle>0°</b></span></div>
+    </div>
     <div class="hero-meta rise">
       <div><b>RCEM curriculum</b>Core emergency applications, mapped</div>
       <div><b>FAMUS-accredited instructors</b>Senior clinicians, years of experience</div>
@@ -1248,7 +1258,8 @@ for (const p of posts) {
       { '@context': 'https://schema.org', '@type': 'Article', headline: p.seoTitle || p.title, alternativeHeadline: p.title, description: p.summary, ...(graphic || social ? { image: [graphic, social].filter(Boolean).map(url) } : {}), datePublished: p.date, dateModified: p.reviewed || p.date, author: { '@type': 'Person', name: p.author || site.director.name, ...(isDirector ? { '@id': url('/faculty/#director'), jobTitle: site.director.title, url: url('/faculty/') } : {}) }, publisher: { '@id': url('/#org') }, mainEntityOfPage: url(href), articleSection: t.heading || t.label, isAccessibleForFree: true, inLanguage: 'en-GB' },
       breadcrumbLd([...trail, { label: p.title, href }]),
     ],
-    body: `${pageHero({ eyebrow: (p.category || 'Learn') + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: esc(p.summary || ''), crumbs: [...trail, { label: p.title }], extra: `<p class="byline rise">${isDirector ? `<a href="/faculty/">${esc(p.author || site.director.name)}</a>` : esc(p.author)}${p.date ? ' · ' + fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}${p.date ? ` · Reviewed ${fmtDate(p.reviewed || p.date, { month: 'long', year: 'numeric' })}, next review ${fmtDate(nextReview(p), { month: 'long', year: 'numeric' })}` : ''}</p>` })}
+    scripts: WL3D_JS,
+    body: `${pageHero({ eyebrow: (p.category || 'Learn') + (p.draft === true ? ' · Draft, not published' : ''), title: esc(p.title), lede: esc(p.summary || ''), crumbs: [...trail, { label: p.title }], band: `<div class="pearl-band" aria-hidden="true"><canvas data-tint="${esc(t.tint || '#7FC4CC')}"></canvas></div>`, extra: `<p class="byline rise">${isDirector ? `<a href="/faculty/">${esc(p.author || site.director.name)}</a>` : esc(p.author)}${p.date ? ' · ' + fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}${p.date ? ` · Reviewed ${fmtDate(p.reviewed || p.date, { month: 'long', year: 'numeric' })}, next review ${fmtDate(nextReview(p), { month: 'long', year: 'numeric' })}` : ''}</p>` })}
 <section class="section"><div class="wrap"><article class="prose post reveal">${p.html}</article>
 ${p.questions.length ? `<div class="test-cta reveal"><div><p class="eyebrow">Test yourself</p><h3>${p.questions.length} questions on this pearl</h3><p>Answer at your own pace. Each answer comes with a short explanation. About ${Math.max(2, Math.round(p.questions.length * 0.6))} minutes.</p></div><a class="btn btn-teal" href="/learn/${p.slug}/test/">Take the test ${arrow}</a></div>` : ''}
 ${logStrip(p)}

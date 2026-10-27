@@ -137,6 +137,32 @@ h1,h2,h3,h4{margin:0;font-weight:500;line-height:1.1}
 .scroll-cue{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);width:26px;height:42px;border:1.5px solid rgba(247,245,240,.4);border-radius:14px}
 .scroll-cue::after{content:"";position:absolute;left:50%;top:8px;width:3px;height:8px;margin-left:-1.5px;border-radius:2px;background:var(--cream);animation:cue 2.2s var(--ease) infinite}
 @keyframes cue{0%{opacity:0;transform:translateY(0)}30%{opacity:1}100%{opacity:0;transform:translateY(14px)}}
+/* Homepage hero: words on the left, the 3D probe, beam and logo on the right (wl3d.js) */
+.hero-split .hero-inner{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:40px;align-items:center}
+.hero-split h1{font-size:clamp(52px,6.6vw,108px)}
+.hero-split .hero-meta{grid-column:1/-1}
+.hero-3d{position:absolute;inset:0;width:100%;height:100%;z-index:-1;display:none}
+.has-3d .hero-3d{display:block}
+.has-3d .hero-split{touch-action:pan-y pinch-zoom}
+.has-3d .hero-split::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,rgba(10,21,38,.9) 0%,rgba(10,21,38,.72) 40%,rgba(10,21,38,0) 60%)}
+.has-3d .hero-split .waves,.has-3d .stage-mark{display:none}
+.hero-stage{position:relative;align-self:stretch;min-height:460px;display:grid;place-items:center}
+.stage-mark .hero-mark{width:clamp(160px,18vw,240px);height:auto;margin:0}
+.stage-hint{position:absolute;left:0;bottom:0;margin:0;font-size:13px;color:var(--mist);display:flex;align-items:center;gap:10px}
+.stage-hint[hidden]{display:none}
+.stage-hint::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--teal-light);animation:ping 2.2s ease-out infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(127,196,204,.6)}100%{box-shadow:0 0 0 12px rgba(127,196,204,0)}}
+.stage-readout{display:none;position:absolute;right:0;bottom:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);gap:4px;text-align:right;font-variant-numeric:tabular-nums}
+.has-3d .stage-readout{display:grid}
+.stage-readout b{color:var(--teal-light);font-weight:600}
+@media (max-width:900px){.hero-split .hero-inner{grid-template-columns:1fr}.hero-stage{min-height:360px}.has-3d .hero-split::after{background:linear-gradient(180deg,rgba(10,21,38,.85) 0%,rgba(10,21,38,.55) 40%,rgba(10,21,38,0) 60%)}.has-3d .stage-readout{display:none}}
+/* Pearl pages: a slim band of the field along the foot of the hero, tinted by topic */
+.pearl-band{position:absolute;left:0;right:0;bottom:0;height:96px;z-index:-1;pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)}
+.pearl-band canvas{display:block;width:100%;height:100%}
+/* Academy covers lean with the scroll (main.js sets --tilt) */
+.tilt-on .ac-card .card-img{perspective:700px}
+.tilt-on .ac-card .card-img img{rotate:x var(--tilt,0deg);scale:1.04}
+@media (prefers-reduced-motion:reduce){.stage-hint::before{animation:none}}
 @media (max-width:700px){.waves{height:26%;opacity:.6}.scroll-cue{display:none}.hero-inner{padding-top:130px;padding-bottom:90px}.hero-mark{width:72px;height:72px;margin-bottom:26px}}
 
 /* Drawn mark */
@@ -350,7 +376,7 @@ section{position:relative}
   .draw .mark-ring,.draw .mark-wave{stroke-dashoffset:0}
 }
 
-@media print{.reveal-on .reveal,.js .hero .rise,.split-words .w>span{opacity:1!important;transform:none!important}.mesh,.waves,.grain,.site-header,.scroll-cue{display:none}}
+@media print{.reveal-on .reveal,.js .hero .rise,.split-words .w>span{opacity:1!important;transform:none!important}.mesh,.waves,.grain,.site-header,.scroll-cue,.hero-3d,.pearl-band,.hero-stage{display:none}}
 
 /* Newsletter sign-up */
 .sub-band{background:var(--cream)}

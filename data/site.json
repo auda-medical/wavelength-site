@@ -111,6 +111,7 @@
       {
         "slug": "fundamentals",
         "label": "Fundamentals",
+        "tint": "#8FA6C4",
         "intro": "Set up the machine and the image before you look for pathology.",
         "categories": [
           "Core skills"
@@ -119,6 +120,7 @@
       {
         "slug": "heart",
         "label": "Heart and vessels",
+        "tint": "#D97A8C",
         "intro": "Cardiac views, the venous system, the aorta and the leg veins.",
         "categories": [
           "Cardiac",
@@ -136,6 +138,7 @@
       {
         "slug": "lung",
         "label": "Lung and airway",
+        "tint": "#6FB9DE",
         "intro": "Pneumothorax, consolidation, effusion, the diaphragm and tube position.",
         "categories": [
           "Lung",
@@ -152,6 +155,7 @@
       {
         "slug": "abdomen",
         "label": "Abdomen and pelvis",
+        "tint": "#DDA866",
         "intro": "Free fluid, the gallbladder and bile duct, kidneys, bladder, stomach, bowel and the pelvis, in adults and children.",
         "categories": [
           "Abdomen",
@@ -170,6 +174,7 @@
       {
         "slug": "soft-tissue",
         "label": "Soft tissue and joints",
+        "tint": "#86C493",
         "intro": "Collections, foreign bodies, tendons and joint effusions.",
         "categories": [
           "Soft tissue",
@@ -186,6 +191,7 @@
       {
         "slug": "eye-scrotum",
         "label": "Eye and scrotum",
+        "tint": "#A693DD",
         "intro": "Time-critical small parts, scanned safely.",
         "categories": [
           "Eye",
@@ -195,6 +201,7 @@
       {
         "slug": "nerve-blocks",
         "label": "Nerve blocks",
+        "tint": "#E0C36A",
         "intro": "Ultrasound-guided regional anaesthesia for pain in the emergency department.",
         "categories": [
           "Nerve blocks"
@@ -210,6 +217,7 @@
       {
         "slug": "vascular-access",
         "label": "Vascular access",
+        "tint": "#7FC4CC",
         "intro": "Peripheral cannulation, central line safety and arterial lines with ultrasound.",
         "categories": [
           "Vascular access"

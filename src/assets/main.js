@@ -99,9 +99,45 @@
     items.forEach(show);
   }
 
-  // Hero waveform
+  // 3D hero (wl3d.js, homepage): the probe steers a beam across the field. Without WebGL the waveform and the
+  // drawn mark stay instead.
+  var hero3d = document.querySelector('canvas.hero-3d');
+  if (hero3d && window.WL3D) {
+    var heroEl = hero3d.closest('.hero'), stage = heroEl.querySelector('.hero-stage');
+    var depthEl = stage.querySelector('[data-depth]'), angleEl = stage.querySelector('[data-angle]');
+    var on3d = WL3D.hero(hero3d, { pointer: heroEl, stage: stage, onAngle: function (deg, cm) { angleEl.textContent = deg + '\u00B0'; depthEl.textContent = cm.toFixed(1); } });
+    if (on3d) {
+      doc.classList.add('has-3d');
+      var hint = stage.querySelector('.stage-hint');
+      if (hint && !reduce) { if (window.matchMedia('(hover: none)').matches) hint.textContent = 'Drag across the scan to steer the beam'; hint.hidden = false; }
+    }
+  }
+  // Pearl band: the same field, tinted by the Pearl's topic
+  document.querySelectorAll('.pearl-band canvas').forEach(function (c) {
+    if (window.WL3D) WL3D.band(c, { tint: c.getAttribute('data-tint') });
+  });
+  // Academy covers lean gently with the scroll
+  var covers = document.querySelectorAll('.ac-card .card-img');
+  if (covers.length && !reduce) {
+    doc.classList.add('tilt-on');
+    var tiltQueued = false;
+    var tilt = function () {
+      tiltQueued = false;
+      var vh = window.innerHeight;
+      covers.forEach(function (c) {
+        var r = c.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > vh) return;
+        var p = Math.max(-1, Math.min(1, (r.top + r.height / 2 - vh / 2) / (vh / 2)));
+        c.style.setProperty('--tilt', (p * 5).toFixed(2) + 'deg');
+      });
+    };
+    window.addEventListener('scroll', function () { if (!tiltQueued) { tiltQueued = true; requestAnimationFrame(tilt); } }, { passive: true });
+    tilt();
+  }
+
+  // Hero waveform (when the 3D hero is not running)
   var canvas = document.querySelector('canvas.waves');
-  if (canvas && canvas.getContext) {
+  if (canvas && canvas.getContext && !doc.classList.contains('has-3d')) {
     var ctx = canvas.getContext('2d');
     var w, h, dpr, t = 0, visible = true, raf;
     var lines = [
