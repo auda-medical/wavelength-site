@@ -148,7 +148,7 @@ h1,h2,h3,h4{margin:0;font-weight:500;line-height:1.1}
 .has-3d .hero-split .waves,.has-3d .stage-mark{display:none}
 .hero-stage{position:relative;align-self:stretch;min-height:460px;display:grid;place-items:center}
 .stage-mark .hero-mark{width:clamp(160px,18vw,240px);height:auto;margin:0}
-.stage-hint{position:absolute;left:0;bottom:0;margin:0;font-size:13px;color:var(--mist);display:flex;align-items:center;gap:10px}
+.stage-hint{position:absolute;left:0;top:0;margin:0;font-size:13px;color:var(--mist);display:flex;align-items:center;gap:10px}
 .stage-hint[hidden]{display:none}
 .stage-hint::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--teal-light);animation:ping 2.2s ease-out infinite}
 @keyframes ping{0%{box-shadow:0 0 0 0 rgba(127,196,204,.6)}100%{box-shadow:0 0 0 12px rgba(127,196,204,0)}}

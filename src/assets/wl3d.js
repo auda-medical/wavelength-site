@@ -140,7 +140,7 @@
     }
     var relief = grid(sr, sc2, sm);
     // Cable: leaves the tail, drops towards the floor and runs out of frame.
-    var ctrl = [[0, 3.5, 0], [0.02, 4.3, -0.1], [0.3, 5.2, -0.3], [1.6, 6.4, -0.6], [2.9, 6.8, -0.8], [4.7, 7.2, -1], [6.4, 7.6, -1.1], [9, 8, -1.2]], cp = [];
+    var ctrl = [[0, 3.5, 0], [0, 4.2, -0.1], [-0.45, 4.95, -0.4], [-1.5, 5.45, -0.8], [-3.1, 5.75, -1.2], [-5.4, 5.95, -1.5], [-9, 6.1, -1.7], [-14, 6.2, -1.8], [-20, 6.25, -1.9]], cp = [];
     for (var s = 0; s < ctrl.length - 1; s++) for (var t = 0; t < 1; t += 0.05) {
       cp.push([0, 1, 2].map(function (k2) {
         var p0 = ctrl[Math.max(0, s - 1)][k2], p1 = ctrl[s][k2], p2 = ctrl[s + 1][k2], p3 = ctrl[Math.min(ctrl.length - 1, s + 2)][k2];
@@ -201,7 +201,7 @@
     '  else if (vM > 5.5 && vM < 6.5) { base = vec3(0.10, 0.45, 0.50); em = vec3(0.12, 0.42, 0.46) * 0.75; ro = 0.18; }',
     '  else if (vM > 6.5) { base = vec3(0.0); em = vec3(0.55, 0.54, 0.52); spec = 0.0; }',
     '  if (vM < 0.5 && vLN.z > 0.55) {',
-    '    vec2 uv = vec2(vL.x / 0.44 + 0.5, 0.5 - (vL.y - 1.56) / 0.44);',
+    '    vec2 uv = vec2(vL.x / 0.44 + 0.5, (vL.y - 1.56) / 0.44 + 0.5);',
     '    if (uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) { vec4 d = texture2D(uDecal, uv); base = mix(base, d.rgb, d.a); }',
     '  }',
     '  float ndv = max(dot(N, V), 0.0); vec3 R = reflect(-V, N);',
@@ -217,19 +217,19 @@
   ].join('\n');
   var PTS_VS = [
     'uniform mat4 uView; uniform mat4 uProj; uniform float uTime; uniform vec2 uSrc; uniform float uAng; uniform float uPix;',
-    'uniform float uWidth; uniform float uReach;',
+    'uniform float uWidth; uniform float uReach; uniform float uWall; uniform float uStart; uniform float uK;',
     'attribute vec3 aPos; attribute float aRand; varying float vB; varying float vH; varying float vR; varying float vF;',
     'void main(){',
-    '  vec3 p = aPos; vec2 d = p.xz - uSrc; float r = length(d);',
+    '  vec3 p = aPos; vec2 d = mix(p.xz, p.xy, uWall) - uSrc; float r = length(d); float q = mix(p.z, p.y, uWall);',
     '  float a = atan(d.x, d.y);',
     '  float da = abs(mod(a - uAng + 3.14159265, 6.2831853) - 3.14159265);',
-    '  float beam = smoothstep(uWidth, uWidth * 0.68, da) * smoothstep(0.3, 1.3, r) * smoothstep(uReach, uReach * 0.6, r);',
-    '  float wave = sin(r * 2.1 - uTime * 2.6) * exp(-r * 0.075) * 0.85;',
-    '  float speckle = (sin(p.x * 1.7 + uTime * 0.9 + aRand * 6.28) * 0.5 + sin(p.z * 2.3 - uTime * 0.6 + aRand * 3.1) * 0.5) * 0.16;',
+    '  float beam = smoothstep(uWidth, uWidth * 0.86, da) * smoothstep(uStart, uStart + 0.35, r) * smoothstep(uReach, uReach * 0.6, r);',
+    '  float wave = sin(r * uK - uTime * 2.6) * exp(-r * 0.075) * 0.85;',
+    '  float speckle = (sin(p.x * 1.7 + uTime * 0.9 + aRand * 6.28) * 0.5 + sin(q * 2.3 - uTime * 0.6 + aRand * 3.1) * 0.5) * 0.16;',
     '  float h = mix(speckle, wave, beam);',
-    '  p.y += h; vB = beam; vH = h; vR = aRand;',
+    '  p += mix(vec3(0.0, h, 0.0), vec3(0.0, 0.0, h), uWall); vB = beam; vH = h; vR = aRand;',
     '  vec4 mv = uView * vec4(p, 1.0);',
-    '  vF = smoothstep(30.0, 12.0, -mv.z) + exp(-r * r * 0.9) * 1.4;',
+    '  vF = (smoothstep(34.0, 12.0, -mv.z) + exp(-(r - uStart) * (r - uStart) * 0.9) * 1.4) * mix(1.0, smoothstep(uReach * 1.45, uReach * 0.7, r), uWall);',
     '  gl_PointSize = uPix * (0.9 + beam * 1.3) * (9.0 / -mv.z);',
     '  gl_Position = uProj * mv;',
     '}'
@@ -283,6 +283,16 @@
     for (var z = 0; z < NZ; z++) for (var x = 0; x < NX; x++) {
       pos[k * 3] = (x / (NX - 1) - 0.5) * W + (Math.random() - 0.5) * W / NX * 0.5; pos[k * 3 + 1] = 0;
       pos[k * 3 + 2] = z0 - (z / (NZ - 1)) * D; rnd[k] = Math.random(); k++;
+    }
+    return { pos: buffer(gl, pos), rnd: buffer(gl, rnd), n: n };
+  }
+  // The image plane: a vertical sheet of points, the lens at the origin, the beam fanning upward.
+  function sheet(gl, NX, NY, W, H, y0) {
+    var n = NX * NY, pos = new Float32Array(n * 3), rnd = new Float32Array(n), k = 0;
+    for (var y = 0; y < NY; y++) for (var x = 0; x < NX; x++) {
+      pos[k * 3] = (x / (NX - 1) - 0.5) * W + (Math.random() - 0.5) * W / NX * 0.5;
+      pos[k * 3 + 1] = y0 + (y / (NY - 1)) * H + (Math.random() - 0.5) * H / NY * 0.5; pos[k * 3 + 2] = 0;
+      rnd[k] = Math.random(); k++;
     }
     return { pos: buffer(gl, pos), rnd: buffer(gl, rnd), n: n };
   }
@@ -340,9 +350,9 @@
     var probeG = probe(small);
     if (probeG.pos.length / 3 > 65535 && !big) return false;
     var probeM = meshBuffers(gl, probeG), markM = meshBuffers(gl, mark());
-    var pts = small ? field(gl, 110, 80, 26, 17, 2.6) : field(gl, 180, 120, 28, 18, 2.6);
+    var pts = small ? sheet(gl, 120, 100, 18, 13, -1.5) : sheet(gl, 190, 150, 20, 14, -1.5);
     var tex = texture(gl, decal());
-    var SRC = [0, 0.3], ang = Math.PI, target = Math.PI, lastMove = -1e9, layout = {}, dpr = 1;
+    var SRC = [0, 0], ang = 0, target = 0, lastMove = -1e9, layout = {}, dpr = 1;
 
     function resize() {
       var s = sizeCanvas(gl, canvas, 2); dpr = s.dpr;
@@ -352,26 +362,26 @@
       var cx = (st.left + st.width / 2 - cr.left) / cr.width * 2 - 1, cy = 1 - (st.top + st.height / 2 - cr.top) / cr.height * 2;
       var zoom = cr.height / Math.max(1, st.height);
       layout = narrow
-        ? { fov: 0.78, az: -0.08, el: 0.42, dist: 14, at: [1.4, 1.4, -2.4], mark: [-0.4, 3.6, -6.8], ms: 0.4, tilt: 0.75, ps: 1.0 }
-        : { fov: 0.58, az: -0.08, el: 0.38, dist: 14, at: [1.6, 1.5, -2.2], mark: [0.2, 3.5, -6.8], ms: 0.42, tilt: 0.75, ps: 0.92 };
+        ? { fov: 0.62, az: -0.35, el: 0.16, dist: 21, at: [0, 2.6, 0], reach: 6.8, ms: 0.42, ps: 1.15 }
+        : { fov: 0.6, az: -0.35, el: 0.16, dist: 21, at: [0, 2.7, 0], reach: 7.0, ms: 0.44, ps: 1.2 };
       layout.asp = s.w / s.h; layout.sx = cx; layout.sy = cy; layout.fov = 2 * Math.atan(Math.tan(layout.fov / 2) * zoom);
     }
     function steer(e) {
       var r = canvas.getBoundingClientRect();
       var cx = r.left + r.width * (layout.sx + 1) / 2;
       var nx = Math.max(-1, Math.min(1, (e.clientX - cx) / (r.width * 0.35)));
-      target = Math.PI + nx * 0.75; lastMove = performance.now();
+      target = nx * 0.55; lastMove = performance.now();
     }
     var el = opts.pointer || canvas;
     el.addEventListener('pointermove', steer); el.addEventListener('pointerdown', steer);
 
     var lastDeg = null;
     function frame(t) {
-      if (performance.now() - lastMove > 2600) target = Math.PI + Math.sin(t * 0.35) * 0.55;
+      if (performance.now() - lastMove > 2600) target = Math.sin(t * 0.35) * 0.4;
       ang += (target - ang) * 0.06;
-      var off = ang - Math.PI;
+      var off = ang;
       var scroll = Math.min(1, (window.scrollY || 0) / Math.max(1, canvas.clientHeight));
-      var az = layout.az + off * 0.35, el = layout.el + scroll * 0.25, at = layout.at;
+      var az = layout.az + off * 0.2, el = layout.el + scroll * 0.2, at = layout.at;
       var eye = [at[0] + Math.sin(az) * Math.cos(el) * layout.dist, at[1] + Math.sin(el) * layout.dist, at[2] + Math.cos(az) * Math.cos(el) * layout.dist];
       var view = lookAt(eye, at, [0, 1, 0]);
       var proj = persp(layout.fov, layout.asp, 0.1, 80, layout.sx, layout.sy);
@@ -383,22 +393,21 @@
       gl.uniformMatrix4fv(meshProg.u.uView, false, view); gl.uniformMatrix4fv(meshProg.u.uProj, false, proj);
       gl.uniform3fv(meshProg.u.uCam, eye); gl.uniform1f(meshProg.u.uGlow, 0.5 + 0.5 * Math.sin(t * 2.6));
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(meshProg.u.uDecal, 0);
-      // The probe is held as a hand would hold it: lens on the field at the apex of the beam, body leaning out to the
-      // side so it is seen in profile, the logo face towards the viewer.
-      var dir = [Math.sin(ang), 0, Math.cos(ang)], side = [-Math.cos(ang), 0, Math.sin(ang)], tilt = layout.tilt + Math.sin(t * 0.8) * 0.025;
-      var Y = norm(add(mul(side, Math.cos(tilt)), [0, Math.sin(tilt), 0]));
-      var back = mul(dir, -1), Z = norm(sub(back, mul(Y, dot(back, Y)))), X = cross(Y, Z);
-      var roll = Math.sin(t * 0.6) * 0.06; Z = norm(add(Z, mul(X, roll))); X = cross(Y, Z);
-      var lens = [SRC[0] - X[0] * 0.05, 0.12 + Math.sin(t * 1.1) * 0.015, SRC[1] - X[2] * 0.05];
+      // The probe points up, lens first: the beam leaves the lens along the probe's axis and fans in the plane of the
+      // lens curve, as a curved array does. The logo face looks at the viewer; the W rides at the end of the beam.
+      var b = [Math.sin(ang), Math.cos(ang), 0], Y = mul(b, -1), X = [-Math.cos(ang), Math.sin(ang), 0], Z = cross(X, Y);
+      var lens = [b[0] * -0.04 * layout.ps, b[1] * -0.04 * layout.ps + Math.sin(t * 1.1) * 0.015, 0];
       drawMesh(gl, meshProg, probeM, basis(X, Y, Z, lens, layout.ps));
-      var ma = Math.sin(t * 0.3) * 0.45, mc = Math.cos(ma), ms = Math.sin(ma), mp = layout.mark;
+      var ma = Math.sin(t * 0.3) * 0.35, mc = Math.cos(ma), ms = Math.sin(ma), mp = mul(b, layout.reach);
+      var apex = 0.95 * layout.ps; SRC = [b[0] * -apex, b[1] * -apex];
       drawMesh(gl, meshProg, markM, basis([mc, 0, -ms], [0, 1, 0], [ms, 0, mc], [mp[0], mp[1] + Math.sin(t * 0.9) * 0.08, mp[2]], layout.ms));
 
       gl.useProgram(ptsProg.p); gl.depthMask(false); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
       gl.uniformMatrix4fv(ptsProg.u.uView, false, view); gl.uniformMatrix4fv(ptsProg.u.uProj, false, proj);
       gl.uniform1f(ptsProg.u.uTime, t); gl.uniform2fv(ptsProg.u.uSrc, SRC); gl.uniform1f(ptsProg.u.uAng, ang);
-      gl.uniform1f(ptsProg.u.uPix, 1.7 * dpr * layout.dist / 11); gl.uniform1f(ptsProg.u.uWidth, 0.44); gl.uniform1f(ptsProg.u.uReach, 15);
-      gl.uniform3fv(ptsProg.u.cDim, [0.227, 0.337, 0.447]); gl.uniform3fv(ptsProg.u.cBeam, [0.165, 0.498, 0.541]); gl.uniform3fv(ptsProg.u.cCrest, [0.81, 0.937, 0.949]);
+      gl.uniform1f(ptsProg.u.uPix, 2.1 * dpr * layout.dist / 11); gl.uniform1f(ptsProg.u.uWidth, 0.58); gl.uniform1f(ptsProg.u.uReach, layout.reach - 0.2); gl.uniform1f(ptsProg.u.uWall, 1);
+      gl.uniform1f(ptsProg.u.uStart, apex); gl.uniform1f(ptsProg.u.uK, 3.3);
+      gl.uniform3fv(ptsProg.u.cDim, [0.3, 0.42, 0.55]); gl.uniform3fv(ptsProg.u.cBeam, [0.25, 0.66, 0.72]); gl.uniform3fv(ptsProg.u.cCrest, [0.81, 0.937, 0.949]);
       attrib(gl, ptsProg, 'aPos', pts.pos, 3); attrib(gl, ptsProg, 'aRand', pts.rnd, 1);
       gl.drawArrays(gl.POINTS, 0, pts.n);
 
@@ -424,7 +433,7 @@
       gl.useProgram(prog.p); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
       gl.uniformMatrix4fv(prog.u.uView, false, view); gl.uniformMatrix4fv(prog.u.uProj, false, proj);
       gl.uniform1f(prog.u.uTime, t); gl.uniform2fv(prog.u.uSrc, [-17, -1.5]); gl.uniform1f(prog.u.uAng, ang);
-      gl.uniform1f(prog.u.uPix, 1.5 * dpr); gl.uniform1f(prog.u.uWidth, 0.5); gl.uniform1f(prog.u.uReach, 40);
+      gl.uniform1f(prog.u.uPix, 1.5 * dpr); gl.uniform1f(prog.u.uWidth, 0.5); gl.uniform1f(prog.u.uReach, 40); gl.uniform1f(prog.u.uWall, 0); gl.uniform1f(prog.u.uStart, 0.3); gl.uniform1f(prog.u.uK, 2.1);
       gl.uniform3fv(prog.u.cDim, [0.2, 0.29, 0.39]); gl.uniform3fv(prog.u.cBeam, tint); gl.uniform3fv(prog.u.cCrest, crest);
       attrib(gl, prog, 'aPos', pts.pos, 3); attrib(gl, prog, 'aRand', pts.rnd, 1);
       gl.drawArrays(gl.POINTS, 0, pts.n);
