@@ -188,6 +188,8 @@
   "/learn/achilles-tendon-rupture-ultrasound/test/",
   "/learn/achilles-xanthoma-ultrasound/",
   "/learn/achilles-xanthoma-ultrasound/test/",
+  "/learn/adnexal-ring-corpus-luteum-ectopic-ultrasound/",
+  "/learn/adnexal-ring-corpus-luteum-ectopic-ultrasound/test/",
   "/learn/ankle-effusion-ultrasound/",
   "/learn/ankle-effusion-ultrasound/test/",
   "/learn/appendicitis-ultrasound/",
@@ -211,6 +213,8 @@
   "/learn/cauda-equina-bladder-ultrasound/test/",
   "/learn/central-line-ultrasound-guidewire-check/",
   "/learn/central-line-ultrasound-guidewire-check/test/",
+  "/learn/clavicle-fracture-ultrasound/",
+  "/learn/clavicle-fracture-ultrasound/test/",
   "/learn/colour-doppler-aliasing/",
   "/learn/colour-doppler-aliasing/test/",
   "/learn/common-bile-duct-ultrasound/",
@@ -245,6 +249,8 @@
   "/learn/fascia-iliaca-block-supra-inguinal/test/",
   "/learn/femoral-nerve-block/",
   "/learn/femoral-nerve-block/test/",
+  "/learn/flexor-tenosynovitis-ultrasound/",
+  "/learn/flexor-tenosynovitis-ultrasound/test/",
   "/learn/foreign-body-ultrasound/",
   "/learn/foreign-body-ultrasound/test/",
   "/learn/fracture-ultrasound/",
@@ -291,6 +297,8 @@
   "/learn/ocular-ultrasound/test/",
   "/learn/olecranon-bursitis-ultrasound/",
   "/learn/olecranon-bursitis-ultrasound/test/",
+  "/learn/optic-nerve-sheath-diameter-ultrasound/",
+  "/learn/optic-nerve-sheath-diameter-ultrasound/test/",
   "/learn/ovarian-torsion-ultrasound/",
   "/learn/ovarian-torsion-ultrasound/test/",
   "/learn/paracentesis-ultrasound/",
@@ -303,6 +311,10 @@
   "/learn/pericardial-vs-pleural-effusion/test/",
   "/learn/peritonsillar-abscess-ultrasound/",
   "/learn/peritonsillar-abscess-ultrasound/test/",
+  "/learn/plantar-fasciitis-ultrasound/",
+  "/learn/plantar-fasciitis-ultrasound/test/",
+  "/learn/pleural-effusion-septated-ultrasound/",
+  "/learn/pleural-effusion-septated-ultrasound/test/",
   "/learn/pleural-effusion-ultrasound/",
   "/learn/pleural-effusion-ultrasound/test/",
   "/learn/pneumoperitoneum-ultrasound/",
@@ -331,6 +343,8 @@
   "/learn/renal-stone-twinkle-artefact/test/",
   "/learn/retained-products-of-conception-ultrasound/",
   "/learn/retained-products-of-conception-ultrasound/test/",
+  "/learn/rib-fracture-ultrasound/",
+  "/learn/rib-fracture-ultrasound/test/",
   "/learn/rv-strain-ultrasound/",
   "/learn/rv-strain-ultrasound/test/",
   "/learn/serratus-anterior-plane-block/",
@@ -384,6 +398,8 @@
   "/learn/ultrasound-knobology/test/",
   "/learn/vein-or-artery-ultrasound-compression/",
   "/learn/vein-or-artery-ultrasound-compression/test/",
+  "/learn/wrist-effusion-ultrasound/",
+  "/learn/wrist-effusion-ultrasound/test/",
   "/pl/",
   "/pl/about/",
   "/pl/app/",
@@ -429,6 +445,10 @@
    "title": "Achilles lump: xanthoma or tear?"
   },
   {
+   "slug": "adnexal-ring-corpus-luteum-ectopic-ultrasound",
+   "title": "Adnexal ring: not always the ectopic"
+  },
+  {
    "slug": "ankle-effusion-ultrasound",
    "title": "Ankle effusion: open the anterior recess"
   },
@@ -471,6 +491,10 @@
   {
    "slug": "central-line-ultrasound-guidewire-check",
    "title": "Central line: see the wire before you dilate"
+  },
+  {
+   "slug": "clavicle-fracture-ultrasound",
+   "title": "Clavicle: follow the bright line"
   },
   {
    "slug": "colour-doppler-aliasing",
@@ -539,6 +563,10 @@
   {
    "slug": "femoral-nerve-block",
    "title": "Femoral nerve block: artery first, nerve next, then wrap it"
+  },
+  {
+   "slug": "flexor-tenosynovitis-ultrasound",
+   "title": "Finger infection: fluid in the sheath"
   },
   {
    "slug": "foreign-body-ultrasound",
@@ -629,6 +657,10 @@
    "title": "Olecranon bursa: keep the fluid in the right layer"
   },
   {
+   "slug": "optic-nerve-sheath-diameter-ultrasound",
+   "title": "Optic nerve sheath: measure 3 mm behind the globe"
+  },
+  {
    "slug": "ovarian-torsion-ultrasound",
    "title": "Ovarian torsion: follow the pedicle"
   },
@@ -651,6 +683,14 @@
   {
    "slug": "peritonsillar-abscess-ultrasound",
    "title": "Peritonsillar abscess: scan from the neck"
+  },
+  {
+   "slug": "plantar-fasciitis-ultrasound",
+   "title": "Heel pain: thick or torn?"
+  },
+  {
+   "slug": "pleural-effusion-septated-ultrasound",
+   "title": "Pleural effusion: simple or septated?"
   },
   {
    "slug": "pleural-effusion-ultrasound",
@@ -707,6 +747,10 @@
   {
    "slug": "retained-products-of-conception-ultrasound",
    "title": "Retained products: thick and vascular"
+  },
+  {
+   "slug": "rib-fracture-ultrasound",
+   "title": "Rib fracture: trace the cortex"
   },
   {
    "slug": "rv-strain-ultrasound",
@@ -807,6 +851,10 @@
   {
    "slug": "vein-or-artery-ultrasound-compression",
    "title": "Vein or artery: compress first"
+  },
+  {
+   "slug": "wrist-effusion-ultrasound",
+   "title": "Wrist effusion: find the dorsal recess"
   }
  ],
  "courses": [

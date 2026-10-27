@@ -27,6 +27,8 @@ A supine chest X-ray misses a moderate effusion, and it does not separate fluid 
 - **Echoes, strands, septations or swirling:** an exudate, such as a parapneumonic effusion, empyema or haemothorax.
 - **Thickened, nodular pleura:** raises the question of malignancy.
 
+Compressed lung inside the fluid can mimic septations: follow the moving lung and its air. A septated effusion in a febrile patient needs an ultrasound-guided tap. The Wavelength Pearl [Pleural effusion: simple or septated?](/learn/pleural-effusion-septated-ultrasound/) compares the patterns.
+
 ## Pericardial or pleural
 
 On the left, compare with the parasternal long-axis view. Pleural fluid sits behind the descending aorta. Pericardial fluid runs in front of it.

@@ -1,6 +1,6 @@
 ---
 title: "The eye: make it move"
-minutes: 12
+minutes: 14
 ---
 
 Three conditions cause sudden floaters or visual loss and show on ultrasound. The way each one moves tells them apart.
@@ -30,6 +30,10 @@ Posterior vitreous detachment is common with age. It causes flashes and floaters
 > **The aha** Tethered and stiff means retina. Free and floating means vitreous. Swirling dots mean blood.
 
 > **Pitfall** A posterior vitreous detachment or haemorrhage can hide a retinal tear. Every patient with new flashes and floaters needs same-day ophthalmology assessment.
+
+## The optic nerve sheath: a clue to raised pressure
+
+Behind the globe, the optic nerve runs back as a dark band inside its sheath. Raised intracranial pressure distends the sheath. Measure 3 mm behind the globe, outer edge to outer edge, in two planes in each eye, and average. Studies use cut-offs of about 5 to 6 mm in adults. A wide sheath should speed up CT and senior review; a normal one does not exclude raised pressure, and the scan must never delay either. The Wavelength Pearl [Optic nerve sheath: measure 3 mm behind the globe](/learn/optic-nerve-sheath-diameter-ultrasound/) shows each step.
 
 ## Other findings
 

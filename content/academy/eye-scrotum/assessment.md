@@ -105,3 +105,11 @@ title: Final assessment
 - Reassure: it is a simple hydrocele
 - Repeat the scan in six weeks
 : A haematocele with a broken outline suggests rupture, which is repaired early.
+
+?? How do you measure the optic nerve sheath diameter?
+@ 03-eye-findings
++ 3 mm behind the globe, outer edge to outer edge, in two planes in each eye
+- At the optic disc, in one plane
+- 10 mm behind the globe, inner edge to inner edge
+- Across the lens
+: The sheath is measured 3 mm behind the globe, and readings from both planes and both eyes are averaged.

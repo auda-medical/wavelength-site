@@ -1,6 +1,6 @@
 ---
 title: "Early pregnancy: find the pregnancy, then look beyond the uterus"
-minutes: 16
+minutes: 17
 ---
 
 Ectopic pregnancy remains a leading cause of early pregnancy death. Most implant in the fallopian tube. The bedside scan aims to show a definite intrauterine pregnancy, and when it cannot, to look for signs of an ectopic and of bleeding.
@@ -32,7 +32,7 @@ Bleeding from the endometrium in an ectopic pregnancy collects as fluid in the c
 
 > **The aha** Do not stop at the uterus. Find the adnexa, then look behind the uterus and up in the right upper quadrant.
 
-> **Pitfall** A ring of colour flow appears around a normal corpus luteum, which sits inside the ovary. A ring outside the ovary is the concern. Heterotopic pregnancy, an intrauterine and an ectopic pregnancy together, is rare after natural conception but more common after IVF, so a visible intrauterine pregnancy does not exclude an ectopic in these patients.
+> **Pitfall** A ring of colour flow appears around a normal corpus luteum, which sits inside the ovary. A ring outside the ovary is the concern, and with gentle probe pressure it moves separately from the ovary. See [Adnexal ring: not always the ectopic](/learn/adnexal-ring-corpus-luteum-ectopic-ultrasound/). Heterotopic pregnancy, an intrauterine and an ectopic pregnancy together, is rare after natural conception but more common after IVF, so a visible intrauterine pregnancy does not exclude an ectopic in these patients.
 
 ## Acting on the scan
 

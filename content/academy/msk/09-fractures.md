@@ -1,6 +1,6 @@
 ---
 title: "Fractures: follow the cortex"
-minutes: 8
+minutes: 10
 ---
 
 Ultrasound cannot see through adult bone, but it shows the bone surface very well. A fracture breaks that surface. The skill is to trace the cortex, find the break and confirm it in a second plane. Distal forearm fractures in children are the best-studied use. The same method works on any bone surface you can reach, such as the ribs, the clavicle, the metacarpals and the nasal bones.
@@ -32,6 +32,12 @@ Ultrasound cannot see through adult bone, but it shows the bone surface very wel
 - An effusion after trauma, as in the elbow, means a possible fracture inside the joint even when no fracture line is seen.
 
 The Wavelength Pearl [Fracture ultrasound: follow the cortex](/learn/fracture-ultrasound/) shows each step.
+
+## Ribs and the clavicle
+
+**Ribs.** Scan along the rib at the point of tenderness. Ultrasound finds many fractures an X-ray misses, including breaks in the costal cartilage. Then look under the rib for lung sliding and fluid: a pneumothorax or haemothorax matters more than the crack. Older patients and those with several fractures need your local chest injury pathway. See [Rib fracture: trace the cortex](/learn/rib-fracture-ultrasound/).
+
+**Clavicle.** The bone is superficial from the sternum to the acromion, so its cortex is easy to follow, which is useful in children. Keep the probe on the line of the bone as it curves at the ends. Tented skin and a posterior sternoclavicular dislocation need urgent orthopaedic review. See [Clavicle: follow the bright line](/learn/clavicle-fracture-ultrasound/).
 
 ## Case
 

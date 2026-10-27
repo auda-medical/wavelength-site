@@ -1271,6 +1271,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q14",
+     "correct": "b",
+     "why": "The sheath is measured 3 mm behind the globe, and readings from both planes and both eyes are averaged.",
+     "review": "03-eye-findings",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -1948,6 +1960,18 @@
      "id": "q20",
      "correct": "a",
      "why": "A cystic node without a hilum in an adult may be a metastasis. Incision is not the answer.",
+     "review": "03-cellulitis-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q21",
+     "correct": "b",
+     "why": "Flexor tenosynovitis needs urgent hand surgery review; many patients need washout.",
      "review": "03-cellulitis-abscess",
      "options": [
       "a",

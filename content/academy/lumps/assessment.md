@@ -161,3 +161,11 @@ title: Final assessment
 - Reassure: it is a reactive node
 - Repeat the scan in a year
 : A cystic node without a hilum in an adult may be a metastasis. Incision is not the answer.
+
+?? A finger is held bent, swollen along its length and painful to straighten. The scan shows fluid around the flexor tendon inside a distended sheath. What do you do?
+@ 03-cellulitis-abscess
++ Urgent hand surgery review with intravenous antibiotics
+- Incise over the swelling in the emergency department
+- Oral antibiotics and review in a week
+- Reassure: it is cellulitis
+: Flexor tenosynovitis needs urgent hand surgery review; many patients need washout.

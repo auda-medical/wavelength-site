@@ -1,6 +1,6 @@
 ---
 title: "Joint effusions: knee, shoulder, elbow and ankle"
-minutes: 18
+minutes: 20
 ---
 
 A hot, swollen joint raises one urgent question: could this be septic arthritis? Ultrasound answers two narrower questions well. Is there fluid in the joint, and where is the safest place to aspirate it? It does not tell you whether the fluid is infected.
@@ -62,6 +62,10 @@ Put the linear probe in long axis over the front of the ankle, in the midline. F
 > **The aha** Find the pocket. If the recess opens, believe the fluid.
 
 > **Pitfall** Ultrasound finds fluid. It does not separate septic from inflammatory or crystal arthritis, and a small or absent effusion does not exclude infection. A joint that looks infected needs aspiration and specialist review.
+
+## The wrist: the dorsal recess
+
+Put the linear probe in long axis over the back of the wrist, in line with the middle finger. Joint fluid lifts the dorsal recess over the lunate and capitate, deep to the extensor tendons. Fluid that moves with a tendon is tenosynovitis; a well-defined cyst with a neck is a ganglion. After a fall, an effusion may mean a fracture, including the scaphoid. The Wavelength Pearl [Wrist effusion: find the dorsal recess](/learn/wrist-effusion-ultrasound/) shows each step.
 
 ## Guided aspiration
 

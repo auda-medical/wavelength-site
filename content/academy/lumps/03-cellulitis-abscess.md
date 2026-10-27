@@ -1,6 +1,6 @@
 ---
 title: "Cellulitis or abscess: make it swirl"
-minutes: 14
+minutes: 16
 ---
 
 ## Cellulitis
@@ -34,6 +34,10 @@ Inflamed, swollen tissue without a drainable collection. It looks like a cobbles
 - **Epidermoid cyst:** well-defined, often with an onion-ring or speckled pattern, sometimes a punctum to the skin.
 - **Foreign body:** a bright line or shape with a shadow or reverberation, often with fluid around it.
 - **Necrotising fasciitis:** fluid along the deep fascia, thickened fat, and bright foci with dirty shadowing from gas. A surgical emergency. Ultrasound does not exclude it.
+
+## The finger: fluid in the flexor sheath
+
+A red, swollen finger can be cellulitis, a superficial abscess or infection inside the flexor tendon sheath. Follow the flexor tendon from the fingertip into the palm. Fluid surrounding the tendon within a distended sheath supports flexor tenosynovitis, a hand surgery emergency; fluid above a normal sheath is a superficial collection. The Kanavel signs decide, and a scan with little fluid does not exclude infection. See [Finger infection: fluid in the sheath](/learn/flexor-tenosynovitis-ultrasound/).
 
 ## Neck lumps: node or pus
 
