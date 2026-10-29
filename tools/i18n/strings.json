@@ -475,7 +475,7 @@
   "Credentials and approved scope confirmed by Wavelength.",
   "Credentials from other bodies",
   "Credentials relied on",
-  "Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first and Wavelength never receives the key.",
+  "Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first, sent only to the supervisor you choose, and deleted after sign-off or within 14 days.",
   "Crown-rump length",
   "Current password",
   "Curriculum order",

@@ -2717,5 +2717,6 @@
 "Other block (name it below)": "Altro blocco (indicalo sotto)",
 "Recorded as a fascia iliaca block, so it counts towards your fascia iliaca targets.": "Registrato come blocco della fascia iliaca: conta per i tuoi obiettivi di blocco della fascia iliaca.",
 "Only a link I send myself": "Solo un link che invio io",
-"With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "Con un solo link, il tuo supervisore vede le immagini tramite il link, non nella sua app Wavelength, e non riceve alcuna notifica."
+"With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "Con un solo link, il tuo supervisore vede le immagini tramite il link, non nella sua app Wavelength, e non riceve alcuna notifica.",
+"Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first, sent only to the supervisor you choose, and deleted after sign-off or within 14 days.": "Ritaglia e oscura gli identificativi prima di salvare e, se vuoi, annota l'immagine. Se condividi immagini con un supervisore, vengono prima cifrate sul tuo telefono, inviate solo al supervisore che scegli ed eliminate dopo la convalida o entro 14 giorni."
 }

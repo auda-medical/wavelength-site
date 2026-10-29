@@ -2793,5 +2793,6 @@
 "Other block (name it below)": "Inna blokada (wpisz poniżej)",
 "Recorded as a fascia iliaca block, so it counts towards your fascia iliaca targets.": "Zapisano jako blokadę powięzi biodrowej: liczy się do celów dla blokady powięzi biodrowej.",
 "Only a link I send myself": "Tylko link, który wyślę sam",
-"With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "Przy samym linku Twój opiekun zobaczy obrazy tylko przez link, nie w aplikacji Wavelength, i nie dostanie powiadomienia."
+"With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "Przy samym linku Twój opiekun zobaczy obrazy tylko przez link, nie w aplikacji Wavelength, i nie dostanie powiadomienia.",
+"Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first, sent only to the supervisor you choose, and deleted after sign-off or within 14 days.": "Przed zapisaniem przytnij obraz i zasłoń dane identyfikujące, a jeśli chcesz, dodaj opisy. Jeśli udostępniasz obrazy opiekunowi, są najpierw szyfrowane na Twoim telefonie, wysyłane tylko do wybranego opiekuna i usuwane po zatwierdzeniu lub w ciągu 14 dni."
 }

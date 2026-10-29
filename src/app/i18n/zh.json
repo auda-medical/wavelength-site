@@ -2679,5 +2679,6 @@
 "Other block (name it below)": "其他阻滞（请在下方注明）",
 "Recorded as a fascia iliaca block, so it counts towards your fascia iliaca targets.": "已记录为髂筋膜阻滞：计入您的髂筋膜阻滞目标。",
 "Only a link I send myself": "仅发送我自己转发的链接",
-"With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "仅发送链接时，您的督导老师只能通过链接查看图像，无法在其 Wavelength 应用中查看，也不会收到通知。"
+"With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "仅发送链接时，您的督导老师只能通过链接查看图像，无法在其 Wavelength 应用中查看，也不会收到通知。",
+"Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first, sent only to the supervisor you choose, and deleted after sign-off or within 14 days.": "保存前请裁剪并遮盖识别信息，如有需要可添加标注。如果您与上级医师分享图像，图像会先在您的手机上加密，仅发送给您选择的上级医师，并在签核后或 14 天内删除。"
 }

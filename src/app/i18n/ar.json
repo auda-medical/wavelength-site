@@ -2869,5 +2869,6 @@
 "Other block (name it below)": "حصار آخر (اذكره أدناه)",
 "Recorded as a fascia iliaca block, so it counts towards your fascia iliaca targets.": "سُجِّل كحصار للفافة الحرقفية: يُحتسب ضمن أهدافك لحصار اللفافة الحرقفية.",
 "Only a link I send myself": "رابط فقط أرسله بنفسي",
-"With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "عند إرسال رابط فقط، يرى مشرفك الصور عبر الرابط لا في تطبيق Wavelength، ولا يصله أي إشعار."
+"With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "عند إرسال رابط فقط، يرى مشرفك الصور عبر الرابط لا في تطبيق Wavelength، ولا يصله أي إشعار.",
+"Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first, sent only to the supervisor you choose, and deleted after sign-off or within 14 days.": "قصّ المعرّفات واحجبها قبل الحفظ، وأضف تعليقات توضيحية إن شئت. إذا شاركت الصور مع مشرف، فإنها تُشفَّر على هاتفك أولًا، وتُرسَل فقط إلى المشرف الذي تختاره، وتُحذَف بعد الاعتماد أو خلال 14 يومًا."
 }
