@@ -2819,5 +2819,6 @@
 "PDF only. Images come from this phone; a clip shows its first frame.": "PDF فقط. تأتي الصور من هذا الهاتف؛ ويظهر المقطع بإطاره الأول.",
 "Tick at least one scan for images, or choose No images.": "ضع علامة على فحص واحد على الأقل للصور، أو اختر بلا صور.",
 "Tick the declaration to export images, or choose No images.": "ضع علامة على الإقرار لتصدير الصور، أو اختر بلا صور.",
-"Waiting for your sign-off": "بانتظار توقيعك"
+"Waiting for your sign-off": "بانتظار توقيعك",
+"Signed in as {name}: this sign-off is recorded from your Wavelength account.": "تم تسجيل الدخول باسم {name}: يُسجَّل هذا الاعتماد من حسابك في Wavelength."
 }

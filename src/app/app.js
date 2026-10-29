@@ -4250,7 +4250,7 @@
   }
   function dashSignoff(code, learnerId) {
     api('/api/app/supervise/signoff?code=' + encodeURIComponent(code)).then(function (res) {
-      if (!res.ok) { toast(res.error); return; }
+      if (!res.ok) { toast(res.error || T('Could not load.'), 5000); return; }
       markOpened('signoff', code);
       var imgs = res.images || [], byEntry = {};
       imgs.forEach(function (im) { (byEntry[im.entry] = byEntry[im.entry] || []).push(im); });
@@ -4266,7 +4266,7 @@
             .catch(function (ex) { busy(b, false); var err = $('.err', f); err.textContent = ex.message; err.hidden = false; });
         });
       });
-    });
+    }).catch(function (ex) { toast(netFail(ex) ? T('Could not load. Check your connection.') : T('Could not load.'), 5000); });
   }
   function dashAssessSheet(title, intro, opts, send, learnerId) {
     sheet('<h2>' + esc(title) + '</h2><p class="muted small">' + esc(intro) + '</p>' + (opts.pick || '') + '<form id="asf">' + F.assessmentHtml(C, T, Object.assign({ pre: myPre() }, opts)) + (opts.after || '') + '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Record assessment')) + '</button><button type="button" class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div></form>', function (root) {

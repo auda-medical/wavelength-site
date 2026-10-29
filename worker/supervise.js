@@ -347,7 +347,7 @@ export async function supervisorLinks(env, l) {
   const mine = await env.DB.prepare(`SELECT s.id, s.supervisor_email, s.supervisor_id, s.status, s.created_at, s.accepted_at${life ? ', s.claimed_at, s.via' : ''}, t.title, t.first_name, t.last_name, t.role FROM supervisor_links s LEFT JOIN learners t ON t.id = s.supervisor_id WHERE s.learner_id = ? AND s.status != 'ended' ORDER BY s.created_at DESC`).bind(l.id).all();
   const invites = await env.DB.prepare(`SELECT s.id, s.created_at${life ? ', s.claimed_at, s.via' : ''}, t.title, t.first_name, t.last_name, t.role, t.organisation FROM supervisor_links s JOIN learners t ON t.id = s.learner_id WHERE (s.supervisor_email = ? OR s.supervisor_id = ?) AND s.status = 'pending' ORDER BY s.created_at DESC`).bind(String(l.email).toLowerCase(), l.id).all();
   const learners = await env.DB.prepare("SELECT s.id AS link_id, s.accepted_at, t.id, t.title, t.first_name, t.last_name, t.role, t.organisation, t.profile FROM supervisor_links s JOIN learners t ON t.id = s.learner_id WHERE s.supervisor_id = ? AND s.status = 'active' ORDER BY t.last_name").bind(l.id).all();
-  const pend = await env.DB.prepare("SELECT learner_id, COUNT(*) AS n FROM signoffs WHERE supervisor_id = ? AND status = 'pending' AND expires_at > ? GROUP BY learner_id").bind(l.id, Date.now()).all();
+  const pend = await env.DB.prepare(`SELECT learner_id, COUNT(*) AS n FROM signoffs WHERE status = 'pending' AND expires_at > ? AND (supervisor_id = ? OR (${openLink('', life)} AND learner_id IN (SELECT learner_id FROM supervisor_links WHERE supervisor_id = ? AND status = 'active'))) GROUP BY learner_id`).bind(Date.now(), l.id, mail(l), l.id).all();
   const pendA = await env.DB.prepare("SELECT learner_id, COUNT(*) AS n FROM assessments WHERE supervisor_id = ? AND status = 'pending' AND expires_at > ? GROUP BY learner_id").bind(l.id, Date.now()).all();
   const pc = {}; for (const r of [...(pend.results || []), ...(pendA.results || [])]) pc[r.learner_id] = (pc[r.learner_id] || 0) + r.n;
   // Each supervisor's standing, read once per request: a link's label comes from current approvals, never from the link.
@@ -412,7 +412,7 @@ export async function superviseLearner(env, l, url) {
   const pathways = (prof.pathways && prof.pathways.length ? prof.pathways : ['general']).filter((p) => PATHS[p]);
   const summary = buildSummary(entries, prof, pathways, asm);
   const recent = entries.slice(0, 60).map((e) => ({ id: e.id, type: e.type, date: e.date, setting: e.setting, indication: e.indication, findings: e.findings, overall: e.overall, quality: e.quality, interpretation: e.interpretation, supervision: e.supervision, supervisor: e.supervisor, signoff: e.signoff ? { status: e.signoff.status, name: e.signoff.name, at: e.signoff.at, code: e.signoff.code, rating: e.signoff.rating } : null, images: (e.images || []).length }));
-  const so = await env.DB.prepare("SELECT id, created_at, expires_at, entry_ids FROM signoffs WHERE learner_id = ? AND supervisor_id = ? AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC").bind(t.id, l.id, Date.now()).all();
+  const so = await env.DB.prepare(`SELECT id, created_at, expires_at, entry_ids FROM signoffs WHERE learner_id = ? AND (supervisor_id = ? OR ${openLink('', await lifecycleReady(env))}) AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC`).bind(t.id, l.id, mail(l), Date.now()).all();
   const as = await env.DB.prepare("SELECT * FROM assessments WHERE learner_id = ? AND supervisor_id = ? AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC").bind(t.id, l.id, Date.now()).all();
   const done = await env.DB.prepare("SELECT * FROM assessments WHERE learner_id = ? AND status = 'signed' ORDER BY assessed_on DESC LIMIT 50").bind(t.id).all();
   const link = await env.DB.prepare("SELECT id, accepted_at FROM supervisor_links WHERE supervisor_id = ? AND learner_id = ? AND status = 'active'").bind(l.id, t.id).first();
@@ -440,9 +440,15 @@ export function scanFilter(f) {
   return () => true;
 }
 const FILTERS = ['all', 'supervised', 'signed', 'unsigned', 'waiting'];
+// 29 Oct 2026 (owner): a sign-off link the learner shared (by WhatsApp, text or email) counts as waiting for each of
+// their active supervisors, unless they addressed it to someone else's email. Callers add the active-link check
+// (guard, or the learner_id subquery) and bind the supervisor's email (mail) for the placeholder. Before migration 0012
+// (no returned_at) nothing changes: links stay off the dashboard.
+const openLink = (p, life) => !life ? '(0 AND ? IS NOT NULL)' : `(${p}supervisor_id IS NULL AND ${p}method = 'remote' AND ${p}token_hash IS NOT NULL AND ${p}returned_at IS NULL AND (${p}supervisor_email IS NULL OR ${p}supervisor_email = '' OR lower(${p}supervisor_email) = ?))`;
+const mail = (l) => String(l.email || '').toLowerCase();
 // 1.0.26: entry id -> request code, for this learner's scans in requests waiting for this supervisor (not sent back).
-async function waitingFor(env, learnerId, supervisorId) {
-  const { results = [] } = await env.DB.prepare("SELECT id, entry_ids FROM signoffs WHERE learner_id = ? AND supervisor_id = ? AND status = 'pending' AND expires_at > ?").bind(learnerId, supervisorId, Date.now()).all();
+async function waitingFor(env, learnerId, l) {
+  const { results = [] } = await env.DB.prepare(`SELECT id, entry_ids FROM signoffs WHERE learner_id = ? AND (supervisor_id = ? OR ${openLink('', await lifecycleReady(env))}) AND status = 'pending' AND expires_at > ?`).bind(learnerId, l.id, mail(l), Date.now()).all();
   const m = {};
   for (const s of results) for (const id of JSON.parse(s.entry_ids || '[]')) m[id] = s.id;
   return m;
@@ -469,16 +475,22 @@ export async function superviseLearnerScans(env, l, url) {
     if (mod) { const st = P.moduleStats(mod, entries, prof.targets, []); const ids = new Set(st.list.map((e) => e.id)); entries = entries.filter((e) => ids.has(e.id)); module = { pathway: pid, id: mid, label: mod.label }; }
     else entries = [];
   }
-  const wait = await waitingFor(env, t.id, l.id);
+  const wait = await waitingFor(env, t.id, l);
   entries = entries.filter(filter === 'waiting' ? (e) => !!wait[e.id] : scanFilter(filter)).filter((e) => (!type || e.type === type) && (!month || String(e.date || '').slice(0, 7) === month));
   return json({ ok: true, learner: { id: t.id, name: fullName(t) }, filter, type: type || null, month: month || null, module, total: entries.length, offset, entries: entries.slice(offset, offset + 50).map((e) => (wait[e.id] ? { ...scanRow(e), waiting: wait[e.id] } : scanRow(e))), more: offset + 50 < entries.length });
 }
 // Sign-off from the dashboard, for requests the learner addressed to this supervisor.
 export async function superviseSignoffView(env, l, url) {
-  const so = await env.DB.prepare("SELECT s.*, t.title, t.first_name, t.last_name FROM signoffs s JOIN learners t ON t.id = s.learner_id WHERE s.id = ? AND s.supervisor_id = ? AND s.status = 'pending'").bind(clip(url.searchParams.get('code'), 20), l.id).first();
+  const so = await env.DB.prepare(`SELECT s.*, t.title, t.first_name, t.last_name FROM signoffs s JOIN learners t ON t.id = s.learner_id WHERE s.id = ? AND (s.supervisor_id = ? OR ${openLink('s.', await lifecycleReady(env))}) AND s.status = 'pending'`).bind(clip(url.searchParams.get('code'), 20), l.id, mail(l)).first();
   if (!so || so.expires_at < Date.now()) return json({ ok: false, error: 'This request is no longer open.' }, 404);
   const g = await guard(env, l, so.learner_id, { types: typesIn(so.snapshot) });
   if (g.res) return g.res;
+  // A link from this supervisor's own learner (the guard checked the active link): opening it here attaches it to
+  // this account, so Review, Ask for more, Decline and Sign work as for a dashboard request. The link still works.
+  if (!so.supervisor_id) {
+    const took = await env.DB.prepare("UPDATE signoffs SET supervisor_id = ? WHERE id = ? AND supervisor_id IS NULL AND status = 'pending'").bind(l.id, so.id).run();
+    if (!(took.meta && took.meta.changes)) return json({ ok: false, error: 'This request is no longer open.' }, 404);
+  }
   // 1.0.21: images the learner shared with this request, and the key their app sent for a dashboard request.
   let images = [], imageKey = null;
   if (env.IMAGE_SHARE === 'true' && env.SHARED_IMAGES) {

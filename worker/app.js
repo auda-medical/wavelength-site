@@ -483,10 +483,14 @@ async function signoffComplete(env, req, ctx) {
     return json({ ok: false, blocked: true, error: NEUTRAL_REFUSAL }, 403);
   }
   const owner = await env.DB.prepare('SELECT title, first_name, last_name FROM learners WHERE id = ?').bind(so.learner_id).first();
-  // Whoever holds a link signs as themselves: the snapshot records the details as declared, not verified.
-  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote', learnerName: owner ? fullName(owner) : null, actions: actionsForSignoff(sup.basis) });
-  const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''} WHERE id = ? AND status = 'pending'`)
-    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), so.id).run();
+  // Whoever holds a link signs as themselves: the snapshot records the details as declared, not verified. 29 Oct 2026
+  // (owner): someone signed in to their own Wavelength account (password login) who chose to sign as that account
+  // signs with its name and email and its verified status, and the request is attached to that account.
+  const asAccount = !!(d.asAccount && signer && signer.password_hash && signer.id !== so.learner_id);
+  if (asAccount) { sup.name = fullName(signer); sup.email = String(signer.email || '').toLowerCase(); }
+  const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote', accountId: asAccount ? signer.id : null, learnerName: owner ? fullName(owner) : null, actions: actionsForSignoff(sup.basis) });
+  const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''}${asAccount ? ', supervisor_id = COALESCE(supervisor_id, ?)' : ''} WHERE id = ? AND status = 'pending'`)
+    .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), ...(asAccount ? [signer.id] : []), so.id).run();
   // A double tap or a second tab: only the first submission signs.
   if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This sign-off link is no longer valid.' }, 410);
   await applySignoff(env, so, decisions, sup, 'remote', ratings, snap);

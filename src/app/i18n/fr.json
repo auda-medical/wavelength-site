@@ -2667,5 +2667,6 @@
 "PDF only. Images come from this phone; a clip shows its first frame.": "PDF uniquement. Les images viennent de ce téléphone ; un clip montre sa première image.",
 "Tick at least one scan for images, or choose No images.": "Cochez au moins un examen pour les images, ou choisissez Sans images.",
 "Tick the declaration to export images, or choose No images.": "Cochez la déclaration pour exporter les images, ou choisissez Sans images.",
-"Waiting for your sign-off": "En attente de votre validation"
+"Waiting for your sign-off": "En attente de votre validation",
+"Signed in as {name}: this sign-off is recorded from your Wavelength account.": "Connecté en tant que {name} : cette validation est enregistrée depuis votre compte Wavelength."
 }

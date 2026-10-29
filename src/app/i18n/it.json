@@ -2667,5 +2667,6 @@
 "PDF only. Images come from this phone; a clip shows its first frame.": "Solo PDF. Le immagini provengono da questo telefono; una clip mostra il primo fotogramma.",
 "Tick at least one scan for images, or choose No images.": "Spunta almeno un esame per le immagini, oppure scegli Nessuna immagine.",
 "Tick the declaration to export images, or choose No images.": "Spunta la dichiarazione per esportare le immagini, oppure scegli Nessuna immagine.",
-"Waiting for your sign-off": "In attesa della tua convalida"
+"Waiting for your sign-off": "In attesa della tua convalida",
+"Signed in as {name}: this sign-off is recorded from your Wavelength account.": "Accesso effettuato come {name}: questa convalida viene registrata dal tuo account Wavelength."
 }

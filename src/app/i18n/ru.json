@@ -2743,5 +2743,6 @@
 "PDF only. Images come from this phone; a clip shows its first frame.": "Только PDF. Изображения берутся с этого телефона; клип показан первым кадром.",
 "Tick at least one scan for images, or choose No images.": "Отметьте хотя бы одно исследование с изображениями или выберите «Без изображений».",
 "Tick the declaration to export images, or choose No images.": "Отметьте заявление, чтобы экспортировать изображения, или выберите «Без изображений».",
-"Waiting for your sign-off": "Ждёт вашей подписи"
+"Waiting for your sign-off": "Ждёт вашей подписи",
+"Signed in as {name}: this sign-off is recorded from your Wavelength account.": "Вы вошли как {name}: это подтверждение будет записано из вашей учётной записи Wavelength."
 }

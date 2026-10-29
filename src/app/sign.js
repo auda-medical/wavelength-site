@@ -153,14 +153,23 @@
         '<div class="field"><span class="lab">' + esc(T('Your signature')) + '</span><p class="small muted" style="margin:0 0 6px">' + esc(T('Sign with your finger, or your mouse on a computer.')) + '</p><canvas class="sigpad" data-sig></canvas><button type="button" class="link small" data-sigclr>' + esc(T('Clear')) + '</button></div>' +
         '<label class="check"><input type="checkbox" name="confirm" value="1" required><span>' + esc(T('I witnessed or reviewed these scans as stated, and my decisions above are accurate.')) + '</span></label>' +
         '<div class="err" hidden style="margin-top:12px"></div><div class="btns"><button class="btn teal block">' + esc(T('Submit sign-off')) + '</button></div></form>';
-      var f = document.getElementById('sf'), pad = F.bindSig(root, T);
+      var f = document.getElementById('sf'), pad = F.bindSig(root, T), asAccount = false;
       if (shared.length) { var br = document.getElementById('br'); if (br) br.checked = true; showImages(res, byEntry, token, keyStr); }
+      // 29 Oct 2026 (owner): signed in to Wavelength on this browser? Fill in that account's details and sign as it.
+      fetch('/api/app/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (me) {
+        var a = me && me.ok && me.account; if (!a || !a.name || a.name === res.learner) return; // never the learner's own account
+        var p = a.profile || {}, set = function (id, v) { var el = document.getElementById(id); if (el && v) el.value = v; };
+        set('as-n', a.name); set('as-r', p.grade || a.role); set('as-g', p.registration); set('em', a.email);
+        var n = document.getElementById('as-n'); if (n) n.readOnly = true;
+        var note = document.createElement('div'); note.className = 'ok small'; note.textContent = T('Signed in as {name}: this sign-off is recorded from your Wavelength account.', { name: a.name });
+        f.insertBefore(note, f.firstChild); asAccount = true;
+      }).catch(function () { /* not signed in, or offline: sign by link as before */ });
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var d = {}; new FormData(f).forEach(function (v, k) { d[k] = v; });
         var e2 = f.querySelector('.err'); e2.hidden = true;
         if (!d.name || !d.role || !d.confirm) { e2.textContent = T('Enter your name and role and tick the confirmation.'); e2.hidden = false; return; }
         if (pad.empty()) { e2.textContent = pad.emptyError(); e2.hidden = false; return; }
-        d.signature = pad.data(); d.signatureKind = pad.kind(); d.token = token; d.decisions = {}; root.querySelectorAll('[data-dec]').forEach(function (s) { d.decisions[s.dataset.dec] = s.value; });
+        d.signature = pad.data(); d.signatureKind = pad.kind(); d.token = token; d.asAccount = asAccount; d.decisions = {}; root.querySelectorAll('[data-dec]').forEach(function (s) { d.decisions[s.dataset.dec] = s.value; });
         d.ratings = F.readRatings(root);
         var b = f.querySelector('button.teal'); b.disabled = true; b.textContent = T('Submitting…');
         post('/api/app/signoff/complete', d).then(function (r) {

@@ -2629,5 +2629,6 @@
 "PDF only. Images come from this phone; a clip shows its first frame.": "仅限 PDF。图像来自这部手机；片段显示其第一帧。",
 "Tick at least one scan for images, or choose No images.": "请至少勾选一个要包含图像的扫查，或选择“不含图像”。",
 "Tick the declaration to export images, or choose No images.": "勾选声明后即可导出图像，或选择“不含图像”。",
-"Waiting for your sign-off": "等待您签署"
+"Waiting for your sign-off": "等待您签署",
+"Signed in as {name}: this sign-off is recorded from your Wavelength account.": "已以 {name} 身份登录：此签核将从您的 Wavelength 账户记录。"
 }
