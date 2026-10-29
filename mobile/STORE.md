@@ -129,6 +129,16 @@ Turn text, labels, pictograms and boxes with the new Rotation control beside Siz
 
 Get a phone notification when a supervisor signs off your scans, queries them or asks for more information, and when someone sends you scans to sign. Turn it on in Me, Settings. Supervisors can now ask for more information without signing, and you send it back in one tap. Email links open the app. Wavelength recovers by itself after your phone has kept it asleep. Have a suggestion? Tell us from Me, Help.
 
+## Release 1.0.26 (33): what's new
+
+Google Play (after 1.0.25), under 500 characters:
+
+Log a nerve block from a list: choose the block, such as femoral, PENG, serratus anterior or erector spinae, under Ultrasound-guided nerve block. A fascia iliaca block still counts towards its own target. Sign-off requests now go to your linked supervisor by default, so they get a notification and see your images in their app; a link only is still there for anyone without Wavelength. Supervisors are told why a request cannot open.
+
+App Store (the first update after 1.0.17, so it sums up 1.0.18 to 1.0.26), under 500 characters:
+
+Get a phone notification when a supervisor signs off or queries your scans, or someone sends you scans to sign (Me, Settings). Supervisors see your images in their app and can ask for more information without signing. Log a nerve block from a list, from femoral and PENG to serratus and erector spinae. Sign-off requests go to your linked supervisor by default. Zoom on review photos, export with or without images, and many smaller fixes.
+
 ## Export compliance (Apple) and encryption
 
 `ITSAppUsesNonExemptEncryption` is false. The app's encryption (AES-256-GCM for encrypted backups and for images shared in sign-off links, HKDF and PBKDF2) runs through Web Crypto, which is provided by the operating system's own WebKit; HTTPS is the system's too. Argon2id (`vendor/noble-hashes`) derives a key from the backup passphrase: it is a key-derivation (hashing) function, not encryption. Apple treats encryption used only within its operating system as exempt, so App Store Connect should not ask; if it does, answer that the app uses only encryption provided by the operating system. Reviewed 12 October 2026; recheck if a native crypto library is ever added.
