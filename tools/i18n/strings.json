@@ -1638,6 +1638,7 @@
   "Signed by link or on the learner's device. The name, role and any registration were entered by the signer and were not verified by Wavelength.",
   "Signed by {name}, then edited. Ask for sign-off again.",
   "Signed from their own Wavelength account. As verified on {date}:",
+  "Signed in as {name}: this sign-off is recorded from your Wavelength account.",
   "Signed off",
   "Signed off only",
   "Signed off. Code {code}.",
