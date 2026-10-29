@@ -1647,6 +1647,8 @@
   }
   function fieldHtml(fd, v) {
     var n = 'f.' + fd.id, id = 'f_' + fd.id;
+    // 29 Oct 2026: a long list in groups (the nerve blocks) is a dropdown; it saves the same text as a choice.
+    if (fd.type === 'choice' && fd.groups) return '<div class="field"><label for="' + id + '">' + esc(T(fd.label)) + '</label><select id="' + id + '" name="' + n + '"><option value="">' + esc(T('Choose')) + '</option>' + fd.groups.map(function (g) { return '<optgroup label="' + esc(T(g.label)) + '">' + g.options.map(function (o) { return '<option value="' + esc(o) + '"' + (v === o ? ' selected' : '') + '>' + esc(T(o)) + '</option>'; }).join('') + '</optgroup>'; }).join('') + '</select></div>';
     if (fd.type === 'choice') return '<div class="field"><span class="lab" id="q-' + fd.id + '">' + esc(T(fd.label)) + '</span>' + seg(n, fd.options, v, '', 'q-' + fd.id) + '</div>';
     if (fd.type === 'multi') return '<div class="field"><span class="lab" id="q-' + fd.id + '">' + esc(T(fd.label)) + '<span class="lab-note">' + esc(T('Choose all that apply')) + '</span></span><div class="seg multi" role="group" aria-labelledby="q-' + fd.id + '">' + fd.options.map(function (o, i) { return '<input type="checkbox" name="' + n + '" id="' + id + i + '" value="' + esc(o) + '"' + ((v || []).indexOf(o) >= 0 ? ' checked' : '') + '><label for="' + id + i + '">' + esc(T(o)) + '</label>'; }).join('') + '</div></div>';
     if (fd.type === 'number') return '<div class="field"><label for="' + id + '">' + esc(T(fd.label)) + (fd.unit ? ' (' + fd.unit + ')' : '') + '</label><input id="' + id + '" name="' + n + '" type="number" inputmode="decimal" step="any" value="' + esc(v == null ? '' : v) + '"></div>';
@@ -1919,6 +1921,17 @@
       var cur = readFindings();
       $('#fss-findings').textContent = T(t.label);
       $('#findings').innerHTML = t.fields.map(function (fd) { return fieldHtml(fd, cur[fd.id] != null ? cur[fd.id] : (e.type === t.id ? (e.findings || {})[fd.id] : null)); }).join('');
+      // A fascia iliaca block picked from the nerve block list is logged as the Fascia iliaca block type (which RCEM
+      // counts), with its approach set; side, agent, spread and complication carry over.
+      var nv = $('#f_nerve');
+      if (nv) nv.onchange = function () {
+        var fib = form.querySelector('input[name=type][value=fib]');
+        if (!fib || nv.value.indexOf('Fascia iliaca') !== 0) return;
+        var ap = nv.value.indexOf('supra') > 0 ? 'Supra-inguinal' : 'Infra-inguinal';
+        fib.checked = true; drawFindings();
+        var r = form.querySelector('input[name="f.approach"][value="' + ap + '"]'); if (r) r.checked = true;
+        toast(T('Recorded as a fascia iliaca block, so it counts towards your fascia iliaca targets.'), 5000);
+      };
       var mods = modulesForType(t.id), ex = e.exclude || [];
       $('#counts').innerHTML = mods.length ? '<section class="fs" id="fs-counts" aria-labelledby="fsh-counts"><header class="fs-h"><span class="fs-n" aria-hidden="true">' + (secN + 1) + '</span><div class="fs-t"><h2 id="fsh-counts">' + esc(T('Accreditation pathways')) + '</h2></div></header><div class="fs-b"><div class="field"><span class="lab" id="q-counts">' + esc(T('Counts towards')) + '</span><p class="hint">' + esc(T('Untick any target this scan should not count towards.')) + '</p><div class="seg multi" role="group" aria-labelledby="q-counts">' + mods.map(function (m, i) { return '<input type="checkbox" name="count" id="cm' + i + '" value="' + m.id + '"' + (ex.indexOf(m.id) < 0 ? ' checked' : '') + '><label for="cm' + i + '">' + esc(m.label) + '</label>'; }).join('') + '</div></div></div></section>' : '';
     };

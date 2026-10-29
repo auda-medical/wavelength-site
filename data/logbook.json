@@ -785,13 +785,113 @@
     },
     {
       "id": "block",
-      "label": "Other nerve block",
+      "label": "Ultrasound-guided nerve block",
       "short": "Block",
       "learn": "/elearning/nerve-blocks/",
       "fields": [
         {
+          "id": "nerve",
+          "label": "Which nerve block",
+          "type": "choice",
+          "groups": [
+            {
+              "label": "Hip and lower limb",
+              "options": [
+                "Femoral nerve",
+                "Fascia iliaca, supra-inguinal",
+                "Fascia iliaca, infra-inguinal",
+                "PENG (pericapsular nerve group)",
+                "Lateral femoral cutaneous nerve",
+                "Saphenous nerve (adductor canal)",
+                "Sciatic nerve (popliteal)",
+                "Ankle block"
+              ]
+            },
+            {
+              "label": "Upper limb and shoulder",
+              "options": [
+                "Interscalene brachial plexus",
+                "Superior trunk",
+                "Supraclavicular brachial plexus",
+                "Infraclavicular brachial plexus",
+                "Axillary brachial plexus",
+                "Suprascapular nerve",
+                "SHAC (shoulder anterior capsule)",
+                "Radial nerve",
+                "Median nerve",
+                "Ulnar nerve",
+                "Digital nerve"
+              ]
+            },
+            {
+              "label": "Chest and abdominal wall",
+              "options": [
+                "Serratus anterior plane",
+                "Erector spinae plane",
+                "Paravertebral",
+                "PECS (pectoral nerves)",
+                "Intercostal",
+                "Transversus abdominis plane (TAP)",
+                "Rectus sheath",
+                "Quadratus lumborum"
+              ]
+            },
+            {
+              "label": "Head and neck",
+              "options": [
+                "Greater occipital nerve",
+                "Superficial cervical plexus",
+                "Supraorbital and supratrochlear",
+                "Infraorbital",
+                "Mental nerve"
+              ]
+            },
+            {
+              "label": "Other",
+              "options": [
+                "Other block (name it below)"
+              ]
+            }
+          ],
+          "options": [
+            "Femoral nerve",
+            "Fascia iliaca, supra-inguinal",
+            "Fascia iliaca, infra-inguinal",
+            "PENG (pericapsular nerve group)",
+            "Lateral femoral cutaneous nerve",
+            "Saphenous nerve (adductor canal)",
+            "Sciatic nerve (popliteal)",
+            "Ankle block",
+            "Interscalene brachial plexus",
+            "Superior trunk",
+            "Supraclavicular brachial plexus",
+            "Infraclavicular brachial plexus",
+            "Axillary brachial plexus",
+            "Suprascapular nerve",
+            "SHAC (shoulder anterior capsule)",
+            "Radial nerve",
+            "Median nerve",
+            "Ulnar nerve",
+            "Digital nerve",
+            "Serratus anterior plane",
+            "Erector spinae plane",
+            "Paravertebral",
+            "PECS (pectoral nerves)",
+            "Intercostal",
+            "Transversus abdominis plane (TAP)",
+            "Rectus sheath",
+            "Quadratus lumborum",
+            "Greater occipital nerve",
+            "Superficial cervical plexus",
+            "Supraorbital and supratrochlear",
+            "Infraorbital",
+            "Mental nerve",
+            "Other block (name it below)"
+          ]
+        },
+        {
           "id": "block",
-          "label": "Block",
+          "label": "Block, if not listed",
           "type": "text"
         },
         {
@@ -806,9 +906,38 @@
           ]
         },
         {
+          "id": "needle",
+          "label": "Needle approach",
+          "type": "choice",
+          "options": [
+            "In plane",
+            "Out of plane"
+          ]
+        },
+        {
+          "id": "spread",
+          "label": "Spread seen around the nerve or in the plane",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
           "id": "agent",
           "label": "Agent and volume",
           "type": "text"
+        },
+        {
+          "id": "effect",
+          "label": "Block effective",
+          "type": "choice",
+          "options": [
+            "Yes",
+            "Partial",
+            "No",
+            "Not assessed"
+          ]
         },
         {
           "id": "complication",

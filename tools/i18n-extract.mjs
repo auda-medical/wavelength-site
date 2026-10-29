@@ -17,7 +17,7 @@ plurals.set('{n} requests waiting', '{n} request waiting');
 plurals.set("{n} images on the learner's phone", "{n} image on the learner's phone");
 const lb = JSON.parse(fs.readFileSync('data/logbook.json', 'utf8'));
 const add = (v) => { if (typeof v === 'string' && v.trim()) keys.add(v); };
-lb.types.forEach((t) => { add(t.label); add(t.short); t.fields.forEach((f) => { add(f.label); (f.options || []).forEach(add); }); });
+lb.types.forEach((t) => { add(t.label); add(t.short); t.fields.forEach((f) => { add(f.label); (f.options || []).forEach(add); (f.groups || []).forEach((g) => add(g.label)); }); });
 ['settings', 'ageBands', 'confirmation', 'assessmentScale'].forEach((k) => (lb[k] || []).forEach(add));
 lb.supervision.forEach((s) => { add(s.label); add(s.help); });
 lb.pathways.forEach((p) => { add(p.desc); add(p.region); p.modules.forEach((m) => { add(m.label); (m.rules || []).forEach((r) => add(r.label)); (m.assessments || []).forEach((a) => add(a.label)); (m.topics || []).forEach(add); }); });
