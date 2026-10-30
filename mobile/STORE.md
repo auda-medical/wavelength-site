@@ -59,7 +59,7 @@ Evidence anyone can check. Every sign-off, assessment and verified summary carri
 
 Ready for your portfolio. Export PDF, Excel or CSV with a verified summary for your e-portfolio, college or appraisal.
 
-Your images stay with you. Photos and clips stay on your phone and in backups you save to your own cloud. They are left out of iCloud backups and Android phone-to-phone transfer. If you choose to share them with a supervisor for sign-off, they are encrypted on your phone before upload, only that supervisor can open them, and they are deleted after sign-off or within 14 days. Only the written record syncs, and it must never contain patient identifiers.
+Your images stay with you. Photos and clips stay on your phone and in backups you save to your own cloud. They are left out of phone backups and phone-to-phone transfers. If you choose to share them with a supervisor for sign-off, they are encrypted on your phone before upload, only that supervisor can open them, and they are deleted after sign-off or within 14 days. Only the written record syncs, and it must never contain patient identifiers.
 
 Works anywhere. Log scans with no signal, in the department or the basement, and Wavelength syncs when you are back online. Lock your logbook with your fingerprint or face.
 
@@ -68,6 +68,8 @@ In nine languages: English, French, Spanish, German, Italian, Polish, Arabic, Ru
 Wavelength is independent of RCEM, FAMUS, the Intensive Care Society, EUSEM, ACEM, CPoCUS and ACEP. Your supervisor and accrediting body decide what evidence they accept. Wavelength is a logbook and education tool. It does not diagnose, and it is not a medical device.
 
 Have a suggestion for the app? Tell us at hello@thewavelength.co.uk. Every idea is read by the Wavelength team.
+
+Apple, Guideline 2.3.10 (rejection of 1.0.17, 29 Oct 2026): the App Store description, What's new and screenshots must not mention Android, Google Play or other platforms. Keep the listing text above platform-neutral.
 
 ## Apple App Privacy (nutrition label)
 
