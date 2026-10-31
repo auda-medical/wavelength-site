@@ -50,6 +50,26 @@
       "email": "zahra@thewavelength.co.uk"
     }
   ],
+  "faculty": [
+    {
+      "name": "Dr Carlos Lojo Rial",
+      "role": "Faculty",
+      "title": "Consultant in Emergency Medicine",
+      "bio": [
+        "Carlos is a Consultant in Emergency Medicine and the Quality and Safety Lead for the Emergency Department at Kingston and Richmond NHS Foundation Trust. Point-of-care ultrasound has been a long-standing interest: the Royal College of Emergency Medicine's Alison Gourdie Prize took him to a visiting fellowship in emergency ultrasound at Highland Hospital, San Francisco. Since then he has used ultrasound in his everyday practice and helped build structured ultrasound programmes in the emergency department.",
+        "His clinical focus is the critically ill patient, where emergency medicine meets critical care, and he holds a Postgraduate Diploma in Critical Care Medicine from Cardiff University. He trained in emergency medicine across London's major trauma centres, with a year's fellowship at the Geneva Trauma Centre, and was an Emergency Medicine Research Fellow at Guy's and St Thomas'. He is Vice Chair of the European Working Group on Quality and Safety in Emergency Medicine and a frequent invited faculty member at international conferences."
+      ],
+      "credentials": [
+        "Consultant in Emergency Medicine, Kingston",
+        "Quality and Safety Lead, Emergency Department",
+        "RCEM Alison Gourdie Prize: emergency ultrasound fellowship, San Francisco",
+        "FRCEM; Postgraduate Diploma in Critical Care Medicine",
+        "Vice Chair, European Working Group on Quality and Safety in EM",
+        "International conference faculty"
+      ],
+      "photo": "/assets/team-carlos.webp"
+    }
+  ],
   "legalUpdated": "2026-10-04",
   "accreditation": [],
   "newsletter": {
