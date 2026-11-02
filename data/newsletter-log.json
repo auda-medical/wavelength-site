@@ -26,7 +26,7 @@
       "slug": "b-lines-lung-ultrasound",
       "status": "drafted",
       "drafted": "2026-10-26",
-      "note": "Queued for Tue 27 Oct 2026 (data/pearl-issues.json)."
+      "note": "Queued for Tue 27 Oct 2026 (data/pearl-issues.json). Send status not verified on 2 Nov 2026: the send log could not be read, so the issue was kept with drafted refreshed to 2026-11-02. Next run: check newsletter_sends and correct this entry."
     }
   ],
   "queue": "data/pearl-issues.json"
