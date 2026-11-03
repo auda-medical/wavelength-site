@@ -24,9 +24,16 @@
     },
     {
       "slug": "b-lines-lung-ultrasound",
-      "status": "drafted",
+      "status": "sent",
       "drafted": "2026-10-26",
-      "note": "Queued for Tue 27 Oct 2026 (data/pearl-issues.json). Send status not verified on 2 Nov 2026: the send log could not be read, so the issue was kept with drafted refreshed to 2026-11-02. Next run: check newsletter_sends and correct this entry."
+      "note": "Queued for Tue 27 Oct 2026. Sent 27 Oct 07:30 UTC (D1 newsletter_sends, Zoho 200), confirmed 3 Nov 2026. The 2 Nov run could not read the send log and kept B-lines, so nothing went out on Tue 3 Nov.",
+      "sent": "2026-10-27"
+    },
+    {
+      "slug": "pneumoperitoneum-ultrasound",
+      "status": "drafted",
+      "drafted": "2026-11-03",
+      "note": "Missed on Tue 3 Nov 2026 (B-lines was kept by mistake). Sent out of turn on the owner's request on 4 Nov 2026 (admin Send now)."
     }
   ],
   "queue": "data/pearl-issues.json"
