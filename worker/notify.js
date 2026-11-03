@@ -251,6 +251,8 @@ export function render(kind, d) {
       paragraphs: [hi, `${d.learner} added the information you asked for and sent the ${d.what === 'as' ? 'assessment request' : (d.count === 1 ? 'scan' : `${d.count} scans`)} back to you in Wavelength.`, 'Open your supervisor dashboard to review and sign.'],
       button: { href: `${APP}/supervise${d.lid ? `/${Number(d.lid)}` : ''}`, label: 'Review and sign' },
     }),
+    // The weekly Pearl email (worker/newsletter.js tellOwner), only when a person must act. d.reason picks the text.
+    newsletter_alert: () => newsletterAlert(d),
   };
   const f = T[kind];
   if (!f) return null;
@@ -258,4 +260,22 @@ export function render(kind, d) {
   m.paragraphs = m.paragraphs.filter(Boolean);
   m.text = m.paragraphs.join('\n\n') + (m.button ? `\n\n${m.button.label}: ${m.button.href}` : '');
   return m;
+}
+
+// The owner's email about the weekly Pearl send: what happened and the clicks that fix it. The send itself retries
+// hourly on Tuesdays and sends a missed issue first the next Tuesday, so every email ends by saying nothing else is due.
+const ADMIN_NEWS = `${SITE}/admin/newsletter/`;
+const AFTER = 'Nothing else is needed. The website tries again every hour on Tuesdays until 6:30pm, and an issue that missed its Tuesday goes out first the next week, so no issue is skipped.';
+function newsletterAlert(d) {
+  const reconnect = ['1. Open thewavelength.co.uk/admin/newsletter/ (the button below) and sign in.', '2. Click "Reconnect Zoho Campaigns".', '3. On the Zoho page, click "Accept".', '4. Back on the Newsletter page, check the top line reads "Connected to Zoho Campaigns."'];
+  const R = {
+    reconnect: { subject: 'Weekly Pearl email: Zoho needs reconnecting', heading: 'Zoho needs reconnecting', paragraphs: ['The weekly Pearl email could not go out because Zoho Campaigns no longer accepts the website\'s connection.', ...reconnect, AFTER] },
+    list: { subject: 'Weekly Pearl email: the Zoho list is missing', heading: 'The newsletter list is missing', paragraphs: ['The weekly Pearl email could not go out because Zoho Campaigns has no list called "Wavelength newsletter".', '1. Open campaigns.zoho.eu and sign in.', '2. Click "Contacts" in the top menu, then "Lists".', '3. If the list has been renamed, click its name, click the pencil next to the name, and type: Wavelength newsletter', '4. Click "Save".', AFTER] },
+    empty: { subject: 'Weekly Pearl email: the queue is empty', heading: 'No Pearl issue is queued', paragraphs: ['Every Pearl in the newsletter queue has been sent, so there was nothing to send this Tuesday.', '1. Open a Claude thread for Wavelength.', '2. Ask: "Add the next Pearls to the weekly newsletter queue."', 'Once they are live, the next Tuesday send picks them up by itself.'] },
+    low: { subject: `Weekly Pearl email: ${d.left} ${d.left === 1 ? 'issue' : 'issues'} left in the queue`, heading: 'The Pearl queue is running low', paragraphs: [`This week's Pearl email went out. ${d.left ? `Only ${d.left} more ${d.left === 1 ? 'issue is' : 'issues are'}` : 'No more issues are'} queued after it.`, '1. Open a Claude thread for Wavelength.', '2. Ask: "Add the next Pearls to the weekly newsletter queue."'] },
+    unknown: { subject: 'Weekly Pearl email: please check one campaign in Zoho', heading: 'Did this campaign go out?', paragraphs: [`Zoho did not say whether the campaign for "${d.slug}" was sent, so the website is holding back rather than risk sending it twice.`, '1. Open campaigns.zoho.eu and sign in.', '2. Click "Campaigns" in the top menu.', `3. Find the campaign starting "Wavelength Pearl" for ${d.slug}. Its status shows under the name.`, '4. If it says Sent, nothing else is needed: the website sees this at its next check.', '5. If it says Draft, click its name, then click "Send now". Then nothing else is needed.'] },
+    stuck: { subject: 'Weekly Pearl email: two Tuesdays without a send', heading: 'The Pearl email keeps failing', paragraphs: [`The weekly Pearl email has failed every try since ${longDate(d.since) || d.since}. The last error was: ${d.detail || 'not recorded'}.`, 'The website keeps trying every Tuesday, and the missed issue goes first when sending works again.', '1. Open a Claude thread for Wavelength.', '2. Paste this email and ask: "Fix the weekly Pearl send."'] },
+  };
+  const m = R[d.reason] || R.stuck;
+  return { ...m, button: { href: ADMIN_NEWS, label: 'Open the Newsletter page' } };
 }

@@ -1,5 +1,5 @@
 // Cron routing (worker/cron.js): each cron in wrangler.jsonc runs exactly one job. 15 5 * * * runs only the daily
-// supervisor job; the two Tuesday crons run only the newsletter; an unknown cron runs nothing. Also simulates each
+// supervisor job; the hourly Tuesday cron runs only the newsletter; an unknown cron runs nothing. Also simulates each
 // cron through the Worker's real scheduled handler, and checks the daily job is idempotent and harmless on a database
 // shaped like production after migrations 0012 and 0013 (accounts, links, sign-offs and logbook rows, but no
 // supervisor approvals, applications, credentials or registrations).
@@ -21,16 +21,15 @@ function spies() {
 
 test('every cron maps to exactly one job', () => {
   assert.equal(DAILY_CRON, '15 5 * * *');
-  assert.deepEqual([...NEWSLETTER_CRONS], ['30 6 * * TUE', '30 7 * * TUE']);
+  assert.deepEqual([...NEWSLETTER_CRONS], ['30 6-17 * * TUE']);
   assert.equal(jobFor('15 5 * * *'), 'supervisor-daily');
-  assert.equal(jobFor('30 6 * * TUE'), 'newsletter');
-  assert.equal(jobFor('30 7 * * TUE'), 'newsletter');
+  assert.equal(jobFor('30 6-17 * * TUE'), 'newsletter');
   for (const other of ['15 5 * * 2', '30 6 * * *', '* * * * *', '', undefined, null]) assert.equal(jobFor(other), null, String(other));
 });
 
-test('wrangler.jsonc carries exactly the four crons, each routed (the hourly source monitoring added October 2026)', () => {
+test('wrangler.jsonc carries exactly the three crons, each routed (one hourly Tuesday newsletter cron since 3 Nov 2026)', () => {
   const crons = wranglerCrons();
-  assert.deepEqual(crons, ['30 6 * * TUE', '30 7 * * TUE', '15 5 * * *', '4,14,24,34,44,54 * * * *']);
+  assert.deepEqual(crons, ['30 6-17 * * TUE', '15 5 * * *', '4,14,24,34,44,54 * * * *']);
   assert.ok(crons.length <= 5, 'the Workers free plan allows five cron triggers per account');
   assert.deepEqual(crons.filter((c) => jobFor(c) === 'source-monitor'), [MONITOR_CRON]);
   assert.equal(new Set(crons).size, crons.length, 'no duplicates');
@@ -41,7 +40,7 @@ test('wrangler.jsonc carries exactly the four crons, each routed (the hourly sou
 
 test('the daily cron runs only dailyLifecycle; each Tuesday cron only scheduledNewsletter; others nothing', async () => {
   const env = { DB: {} };
-  for (const [cron, expected] of [['15 5 * * *', ['dailyLifecycle']], ['30 6 * * TUE', ['scheduledNewsletter']], ['30 7 * * TUE', ['scheduledNewsletter']], ['0 0 * * *', []], [undefined, []]]) {
+  for (const [cron, expected] of [['15 5 * * *', ['dailyLifecycle']], ['30 6-17 * * TUE', ['scheduledNewsletter']], ['30 6 * * TUE', []], ['0 0 * * *', []], [undefined, []]]) {
     const { calls, jobs } = spies(); const c = collectingCtx();
     const warn = mock.method(console, 'warn', () => {});
     runScheduled({ cron }, env, c, jobs);
@@ -56,7 +55,7 @@ test('the daily cron runs only dailyLifecycle; each Tuesday cron only scheduledN
 
 test('the hourly monitoring cron runs only monitorRun, and the existing crons never run it', async () => {
   const env = { DB: {} };
-  for (const [cron, expected] of [[MONITOR_CRON, ['monitorRun:cron']], [DAILY_CRON, ['dailyLifecycle']], ['30 6 * * TUE', ['scheduledNewsletter']]]) {
+  for (const [cron, expected] of [[MONITOR_CRON, ['monitorRun:cron']], [DAILY_CRON, ['dailyLifecycle']], ['30 6-17 * * TUE', ['scheduledNewsletter']]]) {
     const calls = []; const c = collectingCtx();
     runScheduled({ cron }, env, c, { dailyLifecycle: async () => { calls.push('dailyLifecycle'); }, scheduledNewsletter: async () => { calls.push('scheduledNewsletter'); }, monitorRun: async (e, ctx, o) => { calls.push(`monitorRun:${o.trigger}`); } });
     await c.done();
@@ -134,15 +133,18 @@ test('simulated 05:15 daily cron: one job run, nothing else changes, and a secon
   } finally { globalThis.fetch = realFetch; mock.timers.reset(); }
 });
 
-// Each Tuesday cron, in summer (BST) and winter (GMT). scheduledNewsletter loads the issue only at 7am to 8am London
-// time; the issue here is on hold (ready false), so nothing reaches Zoho. The daily job never runs.
-for (const [when, cron, loads] of [
-  ['2026-10-13T06:30:00Z', '30 6 * * TUE', true], // 07:30 BST
-  ['2026-10-13T07:30:00Z', '30 7 * * TUE', false], // 08:30 BST
-  ['2026-12-01T06:30:00Z', '30 6 * * TUE', false], // 06:30 GMT
-  ['2026-12-01T07:30:00Z', '30 7 * * TUE', true], // 07:30 GMT
+// The hourly Tuesday cron through the Worker's real scheduled handler, in summer (BST) and winter (GMT). It reads the
+// queue from 7am London time; the only queued issue here is not ready, so nothing reaches Zoho. Newsletter tables
+// (the send log, the owner's "queue is empty" email and its settings) may change; no supervisor table does, and the
+// daily job never runs. Sending itself: test/newsletter-queue.test.mjs.
+for (const [when, loads] of [
+  ['2026-10-13T06:30:00Z', true], // 07:30 BST
+  ['2026-10-13T07:30:00Z', true], // 08:30 BST, the first hourly retry
+  ['2026-10-13T17:30:00Z', true], // 18:30 BST, the last
+  ['2026-12-01T06:30:00Z', false], // 06:30 GMT, too early
+  ['2026-12-01T07:30:00Z', true], // 07:30 GMT
 ]) {
-  test(`simulated Tuesday newsletter cron ${cron} at ${when}: newsletter only${loads ? ', issue loaded' : ', outside the send hour'}`, async () => {
+  test(`simulated Tuesday newsletter cron at ${when}: newsletter only${loads ? ', queue read' : ', before the send time'}`, async () => {
     mock.timers.enable({ apis: ['Date'], now: new Date(when) });
     const sent = [];
     const realFetch = globalThis.fetch;
@@ -151,14 +153,15 @@ for (const [when, cron, loads] of [
       const env = productionLike();
       env.DB.db.prepare("INSERT INTO settings (key, value) VALUES ('zoho_refresh_token', 'test'), ('newsletter_auto', 'on')").run();
       const assets = [];
-      env.ASSETS = { fetch: async (r) => { assets.push(new URL(r.url).pathname); return Response.json({ slug: 'test-pearl', ready: false, drafted: when.slice(0, 10) }); } };
-      const before = dump(env);
+      env.ASSETS = { fetch: async (r) => { assets.push(new URL(r.url).pathname); return Response.json({ issues: [{ n: 1, slug: 'test-pearl', ready: false }] }); } };
+      const NEWS = ['settings', 'notification_log', 'newsletter_sends'];
+      const before = dump(env, NEWS);
       const c = collectingCtx();
-      await worker.scheduled({ cron, scheduledTime: Date.now() }, env, c);
+      await worker.scheduled({ cron: '30 6-17 * * TUE', scheduledTime: Date.now() }, env, c);
       await c.done();
-      assert.deepEqual(assets, loads ? ['/email/pearl/issue.json'] : []);
+      assert.deepEqual(assets, loads ? ['/email/pearl/queue.json'] : []);
       assert.deepEqual(sent, [], 'nothing sent to Zoho or ZeptoMail');
-      assert.deepEqual(dump(env), before, 'no table changed: no job run, no supervisor work');
+      assert.deepEqual(dump(env, NEWS), before, 'no other table changed: no job run, no supervisor work');
       assert.equal(env.DB.db.prepare('SELECT COUNT(*) n FROM job_runs').get().n, 0);
     } finally { globalThis.fetch = realFetch; mock.timers.reset(); }
   });
@@ -189,6 +192,6 @@ test('no Worker cron gives its day of the week as a number', () => {
 
 test('the newsletter crons are Tuesday by name, matched whatever the case, and the old Monday crons run nothing', () => {
   assert.ok(NEWSLETTER_CRONS.every((c) => c.endsWith(' TUE')));
-  for (const c of ['30 6 * * tue', '30 7 * * Tue', ' 30 6  * * TUE ']) assert.equal(jobFor(c), 'newsletter', c);
-  for (const c of ['30 6 * * 2', '30 7 * * 2', '30 6 * * 3', '30 6 * * WED']) assert.equal(jobFor(c), null, c);
+  for (const c of ['30 6-17 * * tue', '30 6-17 * * Tue', ' 30 6-17  * * TUE ']) assert.equal(jobFor(c), 'newsletter', c);
+  for (const c of ['30 6 * * 2', '30 7 * * 2', '30 6-17 * * 3', '30 6-17 * * WED', '30 6 * * TUE', '30 7 * * TUE']) assert.equal(jobFor(c), null, c);
 });

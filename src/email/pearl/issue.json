@@ -1,9 +1,0 @@
-{
-  "_help": "Read by the Worker's Tuesday send. ready true and an unsent slug means it sends at 7:30am UK time on the first Tuesday on or after drafted, unless the draft is more than eight days old. Set ready false to hold an issue.",
-  "slug": "pneumoperitoneum-ultrasound",
-  "subject": "Pneumoperitoneum: inspect the stripe",
-  "preheader": "Free air touches the peritoneum. Bowel gas sits deeper. Try the question.",
-  "campaignName": "Wavelength Pearl: Pneumoperitoneum",
-  "drafted": "2026-11-03",
-  "ready": true
-}

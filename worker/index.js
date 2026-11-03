@@ -10,7 +10,7 @@ import { handleAcademy, sendCertificate } from './academy.js';
 import { handleApp } from './app.js';
 import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
 import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
-import { zohoConnectUrl, zohoCallback, zohoSubscribe, scheduledNewsletter, newsletterAdminHtml, newsletterAdminPost } from './newsletter.js';
+import { zohoConnectUrl, zohoCallback, zohoSubscribe, scheduledNewsletter, newsletterAdminHtml, newsletterAdminPost, issuePage } from './newsletter.js';
 import { supervisorsAdminHtml, supervisorCaseHtml, supervisorsAdminPost, evidenceFile } from './supervisors-admin.js';
 import { monitorRun } from './monitor/run.js';
 import { sourcesAdminHtml, sourcesAdminPost } from './monitor/admin.js';
@@ -431,7 +431,7 @@ async function adminRoute(req, env, ctx, url, p, s, who = null) {
 
 export default {
   async scheduled(event, env, ctx) {
-    // One cron, one job (worker/cron.js): 15 5 * * * runs the daily supervisor job, the two Tuesday crons the newsletter,
+    // One cron, one job (worker/cron.js): 15 5 * * * runs the daily supervisor job, the hourly Tuesday cron the newsletter,
     // 4,14,24,34,44,54 * * * * the source monitoring.
     runScheduled(event, env, ctx, { dailyLifecycle, scheduledNewsletter, monitorRun });
   },
@@ -465,6 +465,8 @@ export default {
     if (p.startsWith('/api/app/')) return req.method === 'OPTIONS' ? preflight(req) : withNative(req, await handleApp(req, env, ctx));
     // Certificate PDFs are public by code; the store apps fetch them to save or share.
     if (/^\/elearning\/certificate\/[A-Z0-9-]+\.pdf$/.test(p) && req.method === 'GET') return withNative(req, await handleAcademy(req, env, ctx));
+    // Weekly Pearl email pages as Zoho imports them (worker/newsletter.js issuePage): the built page, month of sending.
+    { const m = p.match(/^\/api\/newsletter\/pearl\/([a-z0-9-]+)\/?$/); if (m && (req.method === 'GET' || req.method === 'HEAD')) { const r = await issuePage(env, m[1]); if (r) return r; } }
     if (p.startsWith('/elearning/') || p.startsWith('/api/')) return handleAcademy(req, env, ctx);
     // Website films and their stills: through the Worker so that byte-range requests work (worker/media.js).
     if (p.startsWith('/media/')) return serveMedia(req, env);

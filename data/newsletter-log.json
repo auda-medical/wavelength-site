@@ -1,5 +1,5 @@
 {
-  "_help": "Weekly Pearl newsletter log. One entry per issue. status: drafted (template ready in src/email/pearl/), sent (Firas has sent it from Zoho Campaigns). The weekly scheduled task picks the next pearl not listed here, mixing topics so consecutive issues differ, and avoids nerve blocks two weeks running.",
+  "_help": "History of the weekly Pearl newsletter up to 3 Nov 2026, when sending became automatic. From then on D1 newsletter_sends (shown on /admin/newsletter/) is the record, and nothing is written here each week. The queue is data/pearl-issues.json.",
   "cadence": "weekly",
   "sendDay": "Tuesday morning",
   "issues": [

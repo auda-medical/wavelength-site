@@ -2505,4 +2505,11 @@ fs.writeFileSync(
   path.join(DIST, '_headers'),
   `/assets/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/assets/*\n  Cache-Control: public, max-age=86400\n/assets/guides/*\n  X-Robots-Tag: noindex\n/app/sw.js\n  Cache-Control: no-cache\n/app/\n  Cache-Control: no-cache\n/app/vendor/*\n  Cache-Control: public, max-age=2592000\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
 );
+// Weekly Pearl newsletter: one email page per queued pearl and the send queue the Worker reads on Tuesdays
+// (lib/pearl-issue.js, worker/newsletter.js). Runs last: it needs the built test pages.
+{
+  const q = require('./lib/pearl-issue.js').buildQueue(ROOT, DIST);
+  const waiting = q.filter((x) => !x.ready);
+  console.log(`Pearl newsletter queue: ${q.length - waiting.length} of ${q.length} ready${waiting.length ? '. Not ready: ' + waiting.map((x) => `${x.slug} (${x.reason})`).join('; ') : ''}`);
+}
 console.log(`Built ${Object.keys(pages).length} pages to dist/`);
