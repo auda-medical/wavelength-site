@@ -194,6 +194,10 @@ const NAV = [
 // The brand is added only while the whole title stays within TITLE_MAX characters: Google cuts longer titles off and
 // already shows the site name (WebSite schema) above each result, so a long title keeps its keywords instead.
 const TITLE_MAX = 60;
+// The founder and Course Director as one person across both sites: the same @id here, with sameAs pointing to his own
+// site (abouauda.co.uk, whose Person is https://abouauda.co.uk/#person) and LinkedIn, so search engines and AI
+// assistants join the two up.
+const FOUNDER_LD = { '@type': 'Person', '@id': url('/faculty/#director'), name: site.director.name, url: site.director.website || url('/faculty/'), sameAs: [site.director.website, site.director.linkedin].filter(Boolean) };
 const brandTitle = (t) => (`${t} | ${site.name}`.length <= TITLE_MAX ? `${t} | ${site.name}` : t);
 function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png', scripts = '' }) {
   const canonical = url(pathname);
@@ -212,6 +216,9 @@ function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogT
       slogan: site.tagline,
       areaServed: site.region,
       description: site.description,
+      founder: FOUNDER_LD,
+      parentOrganization: { '@type': 'Organization', '@id': 'https://abouauda.co.uk/#auda-medical', name: site.company, identifier: site.companyNumber, url: 'https://abouauda.co.uk/' },
+      knowsAbout: ['Point-of-care ultrasound (POCUS)', 'Emergency ultrasound', 'eFAST', 'Echo in life support', 'Ultrasound-guided vascular access', 'Ultrasound-guided nerve blocks', 'RCEM ultrasound curriculum', 'FAMUS accreditation'],
       ...([site.linkedin, site.instagram].filter(Boolean).length ? { sameAs: [site.linkedin, site.instagram].filter(Boolean) } : {}),
     },
     ...jsonld,
@@ -783,6 +790,7 @@ function directorBlock() {
       <p class="role reveal" data-d="1">${esc(d.title)} · ${esc(d.role)}</p>
       ${d.bio.map((p) => `<p class="reveal" data-d="2">${esc(p)}</p>`).join('')}
       ${personEmail(d.email)}
+      ${d.website ? `<p class="email reveal" data-d="2"><a class="text-link" href="${d.website}" rel="me">${esc(d.website.replace(/^https:\/\/|\/$/g, ''))}</a></p>` : ''}
       <div class="creds reveal" data-d="3">${d.credentials.map((x) => `<span class="chip dark">${esc(x)}</span>`).join('')}</div>
     </div>
   </div>`;
@@ -939,7 +947,7 @@ pages['/faculty/'] = layout({
   description: `Meet the Wavelength team: Course Director ${site.director.name}, Consultant in Emergency Medicine, and General Manager Dr Zahra Habibzadeh, Emergency Medicine Specialist.`,
   jsonld: [
     breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'Faculty', href: '/faculty/' }]),
-    { '@context': 'https://schema.org', '@type': 'Person', '@id': url('/faculty/#director'), name: site.director.name, jobTitle: site.director.title, url: url('/faculty/'), worksFor: { '@id': url('/#org') }, description: site.director.bio[0], ...(site.director.photo ? { image: url(site.director.photo) } : {}), knowsAbout: ['Point-of-care ultrasound', 'Emergency ultrasound', 'Emergency medicine', 'Ultrasound-guided regional anaesthesia', 'Medical education'], ...(site.director.email ? { email: site.director.email } : {}) },
+    { '@context': 'https://schema.org', '@type': 'Person', '@id': url('/faculty/#director'), name: site.director.name, jobTitle: site.director.title, url: url('/faculty/'), sameAs: FOUNDER_LD.sameAs, worksFor: { '@id': url('/#org') }, description: site.director.bio[0], ...(site.director.photo ? { image: url(site.director.photo) } : {}), knowsAbout: ['Point-of-care ultrasound', 'Emergency ultrasound', 'Emergency medicine', 'Ultrasound-guided regional anaesthesia', 'Medical education'], ...(site.director.email ? { email: site.director.email } : {}) },
     ...[...(site.team || []), ...(site.faculty || [])].map((m) => ({ '@context': 'https://schema.org', '@type': 'Person', name: m.name, jobTitle: m.title || m.role, worksFor: { '@id': url('/#org') }, description: m.bio[0], ...(m.email ? { email: m.email } : {}), ...(m.photo ? { image: url(m.photo) } : {}) })),
   ],
   body: `${pageHero({ eyebrow: 'Faculty', title: 'Taught by clinicians who scan.', lede: 'Every course is led by our Course Director and taught by emergency medicine clinicians who scan, including FAMUS-accredited instructors and RCEM-approved ultrasound supervisors. They teach the way they practise.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Faculty' }] })}
@@ -2202,7 +2210,7 @@ const notFound = layout({
       const alts = altsFor(enPath);
       const fullTitle = brandTitle(title);
       const nav = [[`${base}app/`, c('app')], [`${base}about/`, c('about')], [`${base}contact/`, c('contact')]];
-      const ld = [{ '@context': 'https://schema.org', '@type': 'EducationalOrganization', '@id': url('/#org'), name: site.name, url: url('/') }, { '@context': 'https://schema.org', '@type': 'WebPage', name: title, url: url(pathname), inLanguage: hl }, ...jsonld];
+      const ld = [{ '@context': 'https://schema.org', '@type': 'EducationalOrganization', '@id': url('/#org'), name: site.name, url: url('/'), founder: FOUNDER_LD }, { '@context': 'https://schema.org', '@type': 'WebPage', name: title, url: url(pathname), inLanguage: hl }, ...jsonld];
       return `<!doctype html>
 <html lang="${hl}"${rtl ? ' dir="rtl"' : ''}>
 <head>
@@ -2488,7 +2496,63 @@ for (const g of liveGuides) LASTMOD[`/guides/${g.slug}/`] = [g.reviewed || g.dat
 if (pages['/pocus-logbook/']) LASTMOD['/pocus-logbook/'] = [pathwaysChecked, '2026-10-05'].filter(Boolean).sort().pop();
 if (liveGuides.length) LASTMOD['/guides/'] = liveGuides.map((g) => LASTMOD[`/guides/${g.slug}/`]).sort().pop();
 if (posts.length) LASTMOD['/learn/'] = posts.map((p) => p.date).sort().pop();
-fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /email/\nDisallow: /subscribe/thanks/\nDisallow: /app/sign/\nDisallow: /app/assess/\nAllow: /app/get/\n\nSitemap: ${url('/sitemap.xml')}\n`);
+// One group for every crawler, AI assistants included (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended):
+// a named group would replace this one for that crawler, so the private areas would have to be repeated in it.
+fs.writeFileSync(path.join(DIST, 'robots.txt'), `# Search engines and AI assistants are welcome to read and cite the public pages.\n# A plain-text summary of the site: ${url('/llms.txt')}\nUser-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /volunteer/\nDisallow: /email/\nDisallow: /subscribe/thanks/\nDisallow: /app/sign/\nDisallow: /app/assess/\nAllow: /app/get/\n\nSitemap: ${url('/sitemap.xml')}\n`);
+// llms.txt (llmstxt.org): a short plain-text summary with links, for AI assistants answering questions about the site.
+// Built from the same data as the pages, so courses, dates, prices and content lists stay current.
+{
+  const today = new Date().toISOString().slice(0, 10);
+  const longDate = (d) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const line = (title, href, text) => `- [${title}](${url(href)})${text ? `: ${text}` : ''}`;
+  const d = site.director;
+  const courseLines = openCourses.map((c) => {
+    const next = (c.dates || []).filter((x) => x.date >= today).map((x) => `${longDate(x.date)}${x.venue ? `, ${x.venue}${x.city ? `, ${x.city}` : ''}` : ''}${x.price != null ? `, £${x.price}` : ''}`);
+    return line(c.title, `/courses/${c.slug}/`, `${c.short}${c.duration ? ` ${c.duration}.` : ''}${next.length ? ` Next dates: ${next.join('; ')}.` : ' New dates are announced to subscribers first.'}`);
+  });
+  const langs = Object.keys(pages).filter((p) => /^\/[a-z]{2}\/$/.test(p));
+  const llms = [
+    `# ${site.name}`,
+    '',
+    `> ${site.description}`,
+    '',
+    `${site.name} is run by ${site.company} (company ${site.companyNumber}, England and Wales). Founder and Course Director: ${d.name}, ${d.title}${d.website ? ` (${d.website})` : ''}. Courses run in ${site.region}.`,
+    '',
+    '## Courses and training',
+    '',
+    ...courseLines,
+    line('All courses', '/courses/', 'every course with dates, prices and booking.'),
+    line('Tailored ultrasound training', '/training/', 'training designed around a person, team, hospital or organisation.'),
+    '',
+    '## Free learning',
+    '',
+    line('Wavelength Pearls', '/learn/', `${posts.length} short illustrated ultrasound pearls, each with a five-question test; one is emailed every week to subscribers.`),
+    line('Wavelength Academy', '/elearning/', `${liveModules.length} free CPD e-learning modules with an assessment and a certificate of completion.`),
+    ...liveModules.map((m) => line(m.title, `/elearning/${m.slug}/`, `${m.summary}${m.cpdHours ? ` ${m.cpdHours} CPD ${Number(m.cpdHours) === 1 ? 'hour' : 'hours'}.` : ''}`)),
+    line('Guides', '/guides/', 'reference guides on POCUS accreditation and training pathways.'),
+    ...liveGuides.map((g) => line(g.title, `/guides/${g.slug}/`, g.summary)),
+    '',
+    '## Logbook app',
+    '',
+    line('Wavelength POCUS logbook', '/pocus-logbook/', 'free ultrasound logbook and portfolio app (iPhone, Android and web): log scans with images kept on the phone, track progress against RCEM, FAMUS and other targets, and get supervisor sign-off.'),
+    line('Get the app', '/app/get/'),
+    '',
+    '## About',
+    '',
+    line('Faculty', '/faculty/', `${d.name} and the teaching faculty.`),
+    ...(d.website ? [`- [${d.name}](${d.website}): the founder's own site.`] : []),
+    line('About Wavelength', '/about/'),
+    line('Teach with us', '/faculty/join/', 'apply to join the faculty.'),
+    line('Contact', '/contact/', `or email ${site.enquiriesEmail}.`),
+    ...(langs.length ? ['', '## Other languages', '', ...langs.map((p) => line(new Intl.DisplayNames(['en'], { type: 'language' }).of(p.replace(/\//g, '')), p))] : []),
+    '',
+    '## Optional',
+    '',
+    ...posts.map((p) => line(p.title, `/learn/${p.slug}/`, p.summary)),
+    '',
+  ].join('\n');
+  fs.writeFileSync(path.join(DIST, 'llms.txt'), llms);
+}
 fs.writeFileSync(
   path.join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pages)
