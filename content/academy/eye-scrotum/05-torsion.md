@@ -1,6 +1,6 @@
 ---
 title: "Torsion or epididymo-orchitis: follow the cord"
-minutes: 19
+minutes: 22
 ---
 
 Testicular torsion twists the spermatic cord and cuts off the blood supply. The chance of saving the testis falls with every hour. Torsion is a clinical diagnosis. A strong suspicion goes straight to urology, without waiting for a scan.
@@ -34,6 +34,13 @@ A simple hydrocele is black fluid around the testis. Debris, strands or septatio
 ## Varicocele
 
 A cluster of dilated veins above the testis, usually on the left, which enlarge and fill with reversed colour flow when the patient bears down or stands. Veins over about 3 mm support it. Most are routine referrals. A new right-sided varicocele, or one that does not empty lying down, can come from a mass pressing on the veins higher up: image the abdomen and kidneys. The Wavelength Pearl [Varicocele: veins that wake up with Valsalva](/learn/varicocele-ultrasound/) shows each step.
+
+## Beyond the scrotum: the penis
+
+Two penile emergencies share the same probe and the same rule: the scan supports, urology decides.
+
+- **Penile fracture.** A snap during intercourse, immediate loss of erection and rapid swelling. Follow the bright tunica albuginea around each corpus cavernosum: a gap with haematoma at the defect is a tear, and its site helps the surgeon. A haematoma over an intact tunica can come from a dorsal vein tear. Blood at the meatus raises a urethral injury: no blind catheter. Repair is best within 24 hours. See [Penile fracture: find the tunica break](/learn/penile-fracture-ultrasound/).
+- **Priapism.** A painful, rigid erection over four hours is ischaemic until proven otherwise. Colour Doppler shows little or no cavernosal artery flow; a painless erection after perineal trauma with high flow and a turbulent blush is the non-ischaemic type. The corporal blood gas decides, and neither test may delay aspiration. See [Priapism: read the cavernosal flow](/learn/priapism-ultrasound/).
 
 ## Who goes straight to urology
 

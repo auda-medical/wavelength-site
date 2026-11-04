@@ -1,6 +1,6 @@
 ---
 title: "Pleural effusion: find the spine above the diaphragm"
-minutes: 12
+minutes: 14
 ---
 
 A supine chest X-ray misses a moderate effusion, and it does not separate fluid from collapsed lung. Ultrasound answers both.
@@ -36,5 +36,7 @@ On the left, compare with the parasternal long-axis view. Pleural fluid sits beh
 ## Procedures
 
 The British Thoracic Society guideline advises ultrasound guidance for pleural procedures. Mark the site with the patient in the position you will use, measure the depth to fluid, and check for intercostal vessels with colour Doppler. Avoid the area close to the diaphragm, liver and spleen.
+
+Watch the chosen pocket through several breaths. The lung drifts down into it on inspiration, and the diaphragm, with the liver or spleen, rises on expiration: the pocket must stay clear through the whole cycle. Measure skin to fluid and the depth of fluid at the site, enter just above the upper edge of the rib below, stay lateral to the paraspinal muscles where the intercostal artery is tortuous, and aspirate without moving the patient. The Wavelength Pearl [Thoracentesis: mark the pocket](/learn/thoracentesis-ultrasound/) shows each step.
 
 > **Pitfall** The spine sign on its own does not separate effusion from consolidation. Confirm black fluid, and scan both sides.

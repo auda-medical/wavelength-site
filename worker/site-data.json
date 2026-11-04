@@ -209,6 +209,8 @@
   "/learn/cardiac-tamponade-ultrasound/",
   "/learn/cardiac-tamponade-ultrasound/test/",
   "/learn/cardiac-vascular-ultrasound/",
+  "/learn/carotid-artery-dissection-ultrasound/",
+  "/learn/carotid-artery-dissection-ultrasound/test/",
   "/learn/cauda-equina-bladder-ultrasound/",
   "/learn/cauda-equina-bladder-ultrasound/test/",
   "/learn/central-line-ultrasound-guidewire-check/",
@@ -313,6 +315,8 @@
   "/learn/ovarian-torsion-ultrasound/test/",
   "/learn/paracentesis-ultrasound/",
   "/learn/paracentesis-ultrasound/test/",
+  "/learn/parotid-abscess-ultrasound/",
+  "/learn/parotid-abscess-ultrasound/test/",
   "/learn/partial-testicular-torsion-ultrasound/",
   "/learn/partial-testicular-torsion-ultrasound/test/",
   "/learn/patellar-tendon-rupture-ultrasound/",
@@ -321,6 +325,8 @@
   "/learn/pectoralis-major-tear-ultrasound/test/",
   "/learn/peng-block/",
   "/learn/peng-block/test/",
+  "/learn/penile-fracture-ultrasound/",
+  "/learn/penile-fracture-ultrasound/test/",
   "/learn/pericardial-vs-pleural-effusion/",
   "/learn/pericardial-vs-pleural-effusion/test/",
   "/learn/peritonsillar-abscess-ultrasound/",
@@ -337,6 +343,8 @@
   "/learn/portal-vein-pulsatility/test/",
   "/learn/portal-venous-gas-pneumobilia-ultrasound/",
   "/learn/portal-venous-gas-pneumobilia-ultrasound/test/",
+  "/learn/priapism-ultrasound/",
+  "/learn/priapism-ultrasound/test/",
   "/learn/pseudoaneurysm-ultrasound/",
   "/learn/pseudoaneurysm-ultrasound/test/",
   "/learn/pyelonephritis-ultrasound/",
@@ -359,6 +367,8 @@
   "/learn/renal-stone-twinkle-artefact/test/",
   "/learn/retained-products-of-conception-ultrasound/",
   "/learn/retained-products-of-conception-ultrasound/test/",
+  "/learn/retropharyngeal-abscess-ultrasound/",
+  "/learn/retropharyngeal-abscess-ultrasound/test/",
   "/learn/rib-fracture-ultrasound/",
   "/learn/rib-fracture-ultrasound/test/",
   "/learn/rv-strain-ultrasound/",
@@ -388,6 +398,8 @@
   "/learn/test/",
   "/learn/testicular-torsion-ultrasound/",
   "/learn/testicular-torsion-ultrasound/test/",
+  "/learn/thoracentesis-ultrasound/",
+  "/learn/thoracentesis-ultrasound/test/",
   "/learn/tubo-ovarian-abscess-ultrasound/",
   "/learn/tubo-ovarian-abscess-ultrasound/test/",
   "/learn/ulnar-nerve-block/",
@@ -509,6 +521,10 @@
   {
    "slug": "cardiac-tamponade-ultrasound",
    "title": "Tamponade: time the collapse"
+  },
+  {
+   "slug": "carotid-artery-dissection-ultrasound",
+   "title": "Carotid dissection: look for the intimal flap"
   },
   {
    "slug": "cauda-equina-bladder-ultrasound",
@@ -715,6 +731,10 @@
    "title": "Paracentesis: pick the pocket"
   },
   {
+   "slug": "parotid-abscess-ultrasound",
+   "title": "Parotid swelling: find the collection"
+  },
+  {
    "slug": "partial-testicular-torsion-ultrasound",
    "title": "Partial testicular torsion: flow does not clear it"
   },
@@ -729,6 +749,10 @@
   {
    "slug": "peng-block",
    "title": "PENG block: find the ramus, then lift the tendon"
+  },
+  {
+   "slug": "penile-fracture-ultrasound",
+   "title": "Penile fracture: find the tunica break"
   },
   {
    "slug": "pericardial-vs-pleural-effusion",
@@ -761,6 +785,10 @@
   {
    "slug": "portal-venous-gas-pneumobilia-ultrasound",
    "title": "Liver air: portal venous gas or pneumobilia?"
+  },
+  {
+   "slug": "priapism-ultrasound",
+   "title": "Priapism: read the cavernosal flow"
   },
   {
    "slug": "pseudoaneurysm-ultrasound",
@@ -805,6 +833,10 @@
   {
    "slug": "retained-products-of-conception-ultrasound",
    "title": "Retained products: thick and vascular"
+  },
+  {
+   "slug": "retropharyngeal-abscess-ultrasound",
+   "title": "Retropharyngeal abscess: look behind the pharynx"
   },
   {
    "slug": "rib-fracture-ultrasound",
@@ -861,6 +893,10 @@
   {
    "slug": "testicular-torsion-ultrasound",
    "title": "Testicular torsion: follow the cord"
+  },
+  {
+   "slug": "thoracentesis-ultrasound",
+   "title": "Thoracentesis: mark the pocket"
   },
   {
    "slug": "tubo-ovarian-abscess-ultrasound",

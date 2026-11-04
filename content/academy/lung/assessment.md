@@ -121,3 +121,11 @@ title: Final assessment
 - It replaces the need for a chest X-ray
 - It measures the size of a pneumothorax
 : Lung findings vary from zone to zone. A zone-by-zone record shows what you looked at, what you did not, and gives a baseline for repeat scans. Ultrasound does not measure pneumothorax size reliably.
+
+?? You plan a pleural aspiration. On inspiration, aerated lung slides into the pocket you marked; on expiration the diaphragm rises close to it. What do you do?
+@ 06-effusion
++ Choose a space where the pocket stays clear of lung and diaphragm through the whole breathing cycle
+- Aspirate quickly at end expiration
+- Use a longer needle and aim deeper
+- Proceed, because a chest X-ray confirmed the effusion
+: The safe site is the deepest pocket that stays clear throughout breathing, marked and aspirated in the procedure position, entering just above the rib below.

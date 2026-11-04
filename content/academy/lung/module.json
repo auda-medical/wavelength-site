@@ -6,7 +6,7 @@
   "category": "Lung",
   "summary": "Use the probe to answer the questions a chest X-ray answers slowly or not at all: is there a pneumothorax, is the lung wet, is it consolidated, and is there fluid at the base? Learn the bat sign, sliding and its mimics, B-lines, consolidation and the spine sign.",
   "cpdHours": 1.5,
-  "minutes": 90,
+  "minutes": 92,
   "passMark": 80,
   "draft": false,
   "pearl": "/learn/absent-lung-sliding-pneumothorax/",

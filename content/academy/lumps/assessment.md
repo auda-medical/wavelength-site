@@ -177,3 +177,11 @@ title: Final assessment
 - A muscle strain
 - A lymph node
 : A pocket inside the muscle, below the fascia, is pyomyositis until proven otherwise. Take cultures, image the extent and ask for surgical review.
+
+?? An 82-year-old, dehydrated after surgery, has a hot, tender swelling in front of the ear. Ultrasound shows a darker, patchy parotid with a discrete pocket containing debris and flow in its rim. What next?
+@ 03-cellulitis-abscess
++ Antibiotics and fluids, and ENT review for guided drainage
+- Incise the pocket in the emergency department
+- Reassure: this is mumps
+- Discharge with sialogogues only
+: A pocket with rim flow is a parotid abscess. The facial nerve runs through the gland, so ENT drains it under guidance or at surgery.

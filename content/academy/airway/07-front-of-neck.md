@@ -1,6 +1,6 @@
 ---
 title: "Front of neck: find the cricothyroid membrane"
-minutes: 10
+minutes: 12
 ---
 
 Every difficult airway plan ends with front-of-neck access through the cricothyroid membrane. In a slim neck you can feel it. In obesity, neck swelling, previous surgery or radiotherapy, palpation often misses it, and ultrasound finds it much more often. The time to find it is during preparation, while the patient is oxygenating.
@@ -28,6 +28,10 @@ Every difficult airway plan ends with front-of-neck access through the cricothyr
 ## The epiglottis
 
 The same window, one level higher. With the probe transverse between the hyoid bone and the thyroid cartilage, the epiglottis is a thin, curved dark band deep to the bright pre-epiglottic fat. In epiglottitis it becomes thick, rounded and darker. In a calm, stable adult this can support the diagnosis; a normal scan does not exclude it. Never scan a patient with stridor, drooling or distress: the airway plan and ENT come first. The Wavelength Pearl [Epiglottis: find the swollen leaf](/learn/epiglottitis-ultrasound/) shows each step.
+
+## Behind the pharynx
+
+A young child with fever, neck pain, a neck that will not extend, drooling or stridor may have a retropharyngeal abscess. In a calm patient, a linear probe on the upper lateral neck, medial and deep to the carotid and jugular vein, can sometimes show a collection behind the pharynx, or thick phlegmon without a pocket. Ultrasound sees this deep space poorly, so a normal scan never excludes it: keep the child upright and calm, call senior airway help and ENT, and image with CT when it is safe. The Wavelength Pearl [Retropharyngeal abscess: look behind the pharynx](/learn/retropharyngeal-abscess-ultrasound/) shows each step.
 
 ## Where it fits
 

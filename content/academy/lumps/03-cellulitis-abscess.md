@@ -1,6 +1,6 @@
 ---
 title: "Cellulitis or abscess: make it swirl"
-minutes: 20
+minutes: 22
 ---
 
 ## Cellulitis
@@ -41,11 +41,15 @@ A red, swollen finger can be cellulitis, a superficial abscess or infection insi
 
 ## Neck lumps: node or pus
 
-In the neck, the commonest tender lump is an inflamed lymph node. Look for the bright hilum before you call a collection. A round lump with no hilum, debris and posterior enhancement suggests an abscess or a liquefying node, common in children. In an adult, a round or cystic node without a hilum may be a metastasis, and needs your local urgent suspected cancer pathway, not an incision. Stridor, trismus, drooling or difficulty swallowing suggest a deep neck infection, which ultrasound cannot see: call ENT. The Wavelength Pearl [Neck lump: hilum or pus?](/learn/neck-lump-node-or-abscess-ultrasound/) compares the patterns.
+In the neck, the commonest tender lump is an inflamed lymph node. Look for the bright hilum before you call a collection. A round lump with no hilum, debris and posterior enhancement suggests an abscess or a liquefying node, common in children. In an adult, a round or cystic node without a hilum may be a metastasis, and needs your local urgent suspected cancer pathway, not an incision. Stridor, trismus, drooling or difficulty swallowing suggest a deep neck infection, which ultrasound sees poorly: call ENT. The Wavelength Pearl [Neck lump: hilum or pus?](/learn/neck-lump-node-or-abscess-ultrasound/) compares the patterns.
 
 ## Dental swelling: the vestibular pocket
 
-Facial swelling from a tooth follows the same rules. Over the swelling, find the bright surface of the jaw bone: a collection is a dark pocket lying against it, superficial to the bone, with flow in its rim. Oedematous fat without a pocket is cellulitis. Ultrasound cannot see the deep neck spaces: trismus, drooling, a change in voice or swelling of the floor of the mouth put the airway first. The Wavelength Pearl [Dental swelling: find the vestibular pocket](/learn/dental-abscess-ultrasound/) shows each step.
+Facial swelling from a tooth follows the same rules. Over the swelling, find the bright surface of the jaw bone: a collection is a dark pocket lying against it, superficial to the bone, with flow in its rim. Oedematous fat without a pocket is cellulitis. Ultrasound sees the deep neck spaces poorly: trismus, drooling, a change in voice or swelling of the floor of the mouth put the airway first. The Wavelength Pearl [Dental swelling: find the vestibular pocket](/learn/dental-abscess-ultrasound/) shows each step.
+
+## Parotid swelling: parotitis or a collection
+
+A hot, tender swelling in front of the ear in a dehydrated or elderly patient is usually acute bacterial parotitis: an enlarged, darker, patchy gland with increased colour flow and no pocket. It settles with fluids, antibiotics, sialogogues and mouth care. A discrete dark pocket with debris and flow in its rim is an abscess. Find the retromandibular vein in the gland: the facial nerve lies just superficial to it, so drainage belongs to ENT, never a blind incision. The deep lobe hides behind the jaw: trismus or deep swelling needs CT. The Wavelength Pearl [Parotid swelling: find the collection](/learn/parotid-abscess-ultrasound/) compares the patterns.
 
 ## Pain deep in the muscle: pyomyositis
 

@@ -1295,6 +1295,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q16",
+     "correct": "d",
+     "why": "A break in the tunica albuginea with haematoma is a penile fracture. Repair within 24 hours gives the best function.",
+     "review": "05-torsion",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -2003,6 +2015,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q23",
+     "correct": "b",
+     "why": "A pocket with rim flow is a parotid abscess. The facial nerve runs through the gland, so ENT drains it under guidance or at surgery.",
+     "review": "03-cellulitis-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -2221,6 +2245,18 @@
      "correct": "d",
      "why": "Lung findings vary from zone to zone. A zone-by-zone record shows what you looked at, what you did not, and gives a baseline for repeat scans. Ultrasound does not measure pneumothorax size reliably.",
      "review": "07-documentation",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q16",
+     "correct": "c",
+     "why": "The safe site is the deepest pocket that stays clear throughout breathing, marked and aspirated in the procedure position, entering just above the rib below.",
+     "review": "06-effusion",
      "options": [
       "a",
       "b",

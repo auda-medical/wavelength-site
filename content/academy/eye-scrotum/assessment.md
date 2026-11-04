@@ -121,3 +121,11 @@ title: Final assessment
 - A vitreous haemorrhage
 - A normal optic disc
 : The lens is missing from behind the iris and lies in the vitreous. Refer urgently to ophthalmology.
+
+?? A man felt a snap during intercourse, lost his erection at once, and now has a swollen, bruised penis. Ultrasound shows a gap in the bright line around one corpus cavernosum with haematoma at the gap. What is the diagnosis and the next step?
+@ 05-torsion
++ Penile fracture: urgent urology for repair
+- Ischaemic priapism: aspirate the corpora
+- Simple bruising: analgesia and discharge
+- Peyronie disease: routine clinic
+: A break in the tunica albuginea with haematoma is a penile fracture. Repair within 24 hours gives the best function.
