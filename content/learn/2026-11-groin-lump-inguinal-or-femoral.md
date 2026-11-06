@@ -4,7 +4,7 @@ slug: inguinal-femoral-hernia-ultrasound
 seoTitle: "Inguinal or femoral hernia ultrasound: read the groin lump"
 summary: Inguinal hernias lie above the inguinal ligament. Femoral hernias lie below it, beside the femoral vein, and often strangulate. Scan along the ligament and over the femoral vessels, at rest and on straining. Colour Doppler every groin lump, because a saphena varix also grows with straining, and a pseudoaneurysm can look like an abscess.
 category: Soft tissue
-date: 2027-01-04
+date: 2026-11-09
 reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false

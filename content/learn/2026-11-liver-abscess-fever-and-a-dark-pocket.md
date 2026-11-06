@@ -4,7 +4,7 @@ slug: liver-abscess-ultrasound
 seoTitle: "Liver abscess ultrasound: fever and a dark round pocket"
 summary: Fever and right upper quadrant pain with a gallbladder that does not explain them should make you sweep the whole liver. A round or irregular dark lesion with debris, no internal flow and bright tissue behind it suggests an abscess. An early abscess can look solid and bright, so a normal scan does not exclude it.
 category: Abdomen
-date: 2026-12-07
+date: 2026-11-09
 reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false

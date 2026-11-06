@@ -4,7 +4,7 @@ slug: vesicoureteric-junction-stone-ultrasound
 seoTitle: "Vesicoureteric junction stone ultrasound: look behind the bladder"
 summary: The junction of the ureter and the bladder is a common place for a stone to stick, and a full bladder gives a clear window onto it. A bright echo with a shadow or twinkle at the back of the bladder, with a dilated ureter or no jet on that side, suggests a stone. A normal scan does not exclude one.
 category: Renal
-date: 2027-01-04
+date: 2026-11-09
 reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false
