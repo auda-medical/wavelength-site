@@ -206,6 +206,8 @@
   "/learn/bladder-clot-ultrasound/test/",
   "/learn/bladder-volume-ultrasound/",
   "/learn/bladder-volume-ultrasound/test/",
+  "/learn/bowel-ischaemia-ultrasound/",
+  "/learn/bowel-ischaemia-ultrasound/test/",
   "/learn/cardiac-tamponade-ultrasound/",
   "/learn/cardiac-tamponade-ultrasound/test/",
   "/learn/cardiac-vascular-ultrasound/",
@@ -517,6 +519,10 @@
   {
    "slug": "bladder-volume-ultrasound",
    "title": "Urinary retention: measure the bladder, then look upstream"
+  },
+  {
+   "slug": "bowel-ischaemia-ultrasound",
+   "title": "Bowel ischaemia: read the wall"
   },
   {
    "slug": "cardiac-tamponade-ultrasound",

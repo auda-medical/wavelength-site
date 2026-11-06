@@ -5,7 +5,7 @@ seoTitle: "Lens dislocation ultrasound after eye trauma"
 summary: After blunt eye trauma, find the lens first. Through the closed lid it sits just behind the iris as an oval with bright edges. A lens lying deep in the vitreous, or missing from its place, suggests dislocation. If the globe might be ruptured, do not scan: shield the eye and call ophthalmology.
 category: Eye
 date: 2026-10-27
-reviewed: 2026-10-27
+reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false
 ---

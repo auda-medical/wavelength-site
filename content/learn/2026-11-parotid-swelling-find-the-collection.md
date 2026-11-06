@@ -12,7 +12,7 @@ draft: false
 
 Acute suppurative parotitis is a bacterial infection of the parotid gland, usually Staphylococcus aureus, in people who are dehydrated, elderly, recovering from surgery or with poor oral hygiene. The gland becomes hot, tender and swollen, and pus may appear at the opening of the parotid duct inside the cheek when the gland is pressed. A few go on to form an abscess, which antibiotics alone may not cure. Mumps and other viral parotitis are usually bilateral and do not form pus.
 
-![Wavelength Pearl: parotid swelling. Diffuse parotitis with increased flow and no pocket, a parotid abscess with peripheral flow, and a normal gland beside a pocket.](/learn/images/parotid-abscess-pearl.webp)
+![Wavelength Pearl: parotid swelling. Diffuse parotitis with increased flow and no pocket, a parotid abscess with flow in its rim, and the retromandibular vein in a normal gland.](/learn/images/parotid-abscess-pearl.webp)
 
 *Scan images in the graphic are illustrations, not patient scans.*
 

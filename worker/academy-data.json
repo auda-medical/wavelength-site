@@ -211,6 +211,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q18",
+     "correct": "a",
+     "why": "Early mesenteric ischaemia can be normal on ultrasound and lactate. Pain out of proportion with a source of embolus needs CT angiography now.",
+     "review": "05-bowel",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {

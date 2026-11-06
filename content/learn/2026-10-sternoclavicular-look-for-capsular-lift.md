@@ -5,7 +5,7 @@ seoTitle: "Sternoclavicular joint effusion ultrasound"
 summary: A hot, swollen sternoclavicular joint can be septic arthritis, especially in people who inject drugs, have diabetes or a central line. Ultrasound across the joint shows fluid lifting the capsule. Compare both sides. Fluid does not prove infection, and spread behind the joint needs CT or MRI.
 category: MSK
 date: 2026-10-27
-reviewed: 2026-10-27
+reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false
 ---

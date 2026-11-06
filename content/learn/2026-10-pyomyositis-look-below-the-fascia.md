@@ -5,7 +5,7 @@ seoTitle: "Pyomyositis ultrasound: infection inside the muscle"
 summary: Deep, constant muscle pain with fever, often in the thigh, buttock or calf, can be pyomyositis, an infection inside the muscle. Scan past the fat into the muscle. Swollen, disorganised muscle or a complex pocket within it is the clue. Early on it can look almost normal, so MRI and surgical review follow.
 category: Soft tissue
 date: 2026-10-27
-reviewed: 2026-10-27
+reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Small bowel obstruction"
-minutes: 15
+minutes: 17
 ---
 
 Obstructed small bowel fills with fluid, and fluid carries ultrasound well. The dilated loops show clearly, often before an X-ray shows the classic pattern.
@@ -27,6 +27,10 @@ Obstructed small bowel fills with fluid, and fluid carries ultrasound well. The 
 - Absent peristalsis in a segment which was moving.
 
 Together these raise concern for strangulation or ischaemia, and need urgent surgical review.
+
+## Bowel ischaemia: pain out of proportion
+
+Severe pain with a soft abdomen, in an older patient with atrial fibrillation or vascular disease, can be acute mesenteric ischaemia. Look for a thick bowel wall with little or no colour flow, free fluid, and later gas in the wall or in the portal veins. Early ischaemia can look normal, and the lactate can be normal too, so neither test rules it out. Call the surgeons and request urgent CT angiography. The Wavelength Pearl [Bowel ischaemia: read the wall](/learn/bowel-ischaemia-ultrasound/) shows each step.
 
 > **The aha** Dilated, to-and-fro and a transition point: think mechanical obstruction.
 

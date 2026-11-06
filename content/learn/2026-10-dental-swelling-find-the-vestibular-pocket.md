@@ -5,7 +5,7 @@ seoTitle: "Dental abscess ultrasound: cellulitis or pus to drain"
 summary: Facial swelling from a tooth can be cellulitis or a collection. Over the swelling, a hypoechoic pocket beside the bright jaw bone means pus that may drain. Ultrasound does not see the deep neck spaces, so trismus, drooling or floor-of-mouth swelling put the airway first.
 category: Soft tissue
 date: 2026-10-27
-reviewed: 2026-10-27
+reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false
 ---

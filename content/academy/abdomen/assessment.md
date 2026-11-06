@@ -137,3 +137,11 @@ title: Final assessment
 - Gas that never moves
 - Gas only in the gallbladder lumen
 : Portal flow carries gas to the edge of the liver. Bile drains to the hilum, so biliary gas stays central.
+
+?? A 78-year-old with atrial fibrillation has severe abdominal pain and a soft abdomen. Your scan and the lactate are normal. What next?
+@ 05-bowel
++ Urgent CT angiography and surgical review
+- Discharge with analgesia, as both tests are normal
+- Repeat the scan next week
+- Wait for the lactate to rise before imaging
+: Early mesenteric ischaemia can be normal on ultrasound and lactate. Pain out of proportion with a source of embolus needs CT angiography now.

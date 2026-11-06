@@ -5,14 +5,14 @@ seoTitle: "Nasogastric tube ultrasound: a scout, not confirmation"
 summary: Ultrasound can show a nasogastric tube in the oesophagus on the left side of the neck, or in the stomach, which helps troubleshoot a difficult insertion. In UK practice it does not confirm position. Before anything goes down the tube, use aspirate pH 1 to 5.5 or a correctly interpreted X-ray.
 category: Airway
 date: 2026-10-27
-reviewed: 2026-10-27
+reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false
 ---
 
 Feeding or flushing through a nasogastric tube that sits in the airway causes serious harm, and in England it is a Never Event. UK guidance confirms position with an aspirate pH of 1 to 5.5, or with a chest X-ray read by a competent person. Ultrasound is not one of the confirmation methods. It is still useful: in the neck it shows whether the tube has gone down the oesophagus, the same anatomy you use when you [check an endotracheal tube](/learn/ultrasound-confirm-intubation/).
 
-![Wavelength Pearl: NG tube. The left neck in transverse with trachea, thyroid, carotid and oesophagus, the tube as a bright echo in the oesophagus, and the stomach window.](/learn/images/ng-tube-pearl.webp)
+![Wavelength Pearl: NG tube. The left neck in transverse with trachea, thyroid, carotid and oesophagus, the tube as a bright echo in the oesophagus, and an indeterminate view.](/learn/images/ng-tube-pearl.webp)
 
 *Scan images in the graphic are illustrations, not patient scans.*
 
