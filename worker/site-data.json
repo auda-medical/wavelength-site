@@ -180,6 +180,8 @@
   "/learn/abdominal-pelvic-ultrasound/",
   "/learn/abdominal-wall-hernia-ultrasound/",
   "/learn/abdominal-wall-hernia-ultrasound/test/",
+  "/learn/abscess-drainage-ultrasound/",
+  "/learn/abscess-drainage-ultrasound/test/",
   "/learn/abscess-ultrasound/",
   "/learn/abscess-ultrasound/test/",
   "/learn/absent-lung-sliding-pneumothorax/",
@@ -206,6 +208,8 @@
   "/learn/bladder-clot-ultrasound/test/",
   "/learn/bladder-volume-ultrasound/",
   "/learn/bladder-volume-ultrasound/test/",
+  "/learn/blocked-catheter-ultrasound/",
+  "/learn/blocked-catheter-ultrasound/test/",
   "/learn/bowel-ischaemia-ultrasound/",
   "/learn/bowel-ischaemia-ultrasound/test/",
   "/learn/cardiac-tamponade-ultrasound/",
@@ -291,6 +295,8 @@
   "/learn/knee-effusion-ultrasound/test/",
   "/learn/lens-dislocation-ultrasound/",
   "/learn/lens-dislocation-ultrasound/test/",
+  "/learn/liver-abscess-ultrasound/",
+  "/learn/liver-abscess-ultrasound/test/",
   "/learn/lung-consolidation-ultrasound/",
   "/learn/lung-consolidation-ultrasound/test/",
   "/learn/lung-ultrasound/",
@@ -389,6 +395,8 @@
   "/learn/small-bowel-obstruction-ultrasound/test/",
   "/learn/sternoclavicular-joint-effusion-ultrasound/",
   "/learn/sternoclavicular-joint-effusion-ultrasound/test/",
+  "/learn/strangulated-hernia-ultrasound/",
+  "/learn/strangulated-hernia-ultrasound/test/",
   "/learn/superior-trunk-block/",
   "/learn/superior-trunk-block/test/",
   "/learn/suprapubic-catheter-ultrasound/",
@@ -469,6 +477,10 @@
    "title": "Abdominal wall hernia: stand them up and make it cough"
   },
   {
+   "slug": "abscess-drainage-ultrasound",
+   "title": "Abscess drainage: plan the needle path"
+  },
+  {
    "slug": "abscess-ultrasound",
    "title": "Abscess: make it swirl"
   },
@@ -519,6 +531,10 @@
   {
    "slug": "bladder-volume-ultrasound",
    "title": "Urinary retention: measure the bladder, then look upstream"
+  },
+  {
+   "slug": "blocked-catheter-ultrasound",
+   "title": "Blocked catheter: find the balloon"
   },
   {
    "slug": "bowel-ischaemia-ultrasound",
@@ -687,6 +703,10 @@
   {
    "slug": "lens-dislocation-ultrasound",
    "title": "Eye trauma: has the lens moved?"
+  },
+  {
+   "slug": "liver-abscess-ultrasound",
+   "title": "Liver abscess: fever and a dark round pocket"
   },
   {
    "slug": "lung-consolidation-ultrasound",
@@ -879,6 +899,10 @@
   {
    "slug": "sternoclavicular-joint-effusion-ultrasound",
    "title": "Sternoclavicular joint: look for capsular lift"
+  },
+  {
+   "slug": "strangulated-hernia-ultrasound",
+   "title": "Strangulated hernia: read the sac"
   },
   {
    "slug": "superior-trunk-block",

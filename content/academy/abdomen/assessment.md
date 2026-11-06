@@ -145,3 +145,11 @@ title: Final assessment
 - Repeat the scan next week
 - Wait for the lactate to rise before imaging
 : Early mesenteric ischaemia can be normal on ultrasound and lactate. Pain out of proportion with a source of embolus needs CT angiography now.
+
+?? A febrile patient has right upper quadrant pain and a normal gallbladder. What should the scan do next?
+@ 03-gallbladder
++ Sweep the whole liver, looking for an abscess
+- Stop, because the gallbladder is normal
+- Measure the aorta only
+- Needle any lesion found
+: A liver abscess can present this way. Ultrasound looks for it, and radiology drains it after CT.

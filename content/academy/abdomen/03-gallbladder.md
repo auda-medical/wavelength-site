@@ -1,6 +1,6 @@
 ---
 title: "The gallbladder: follow the fissure"
-minutes: 12
+minutes: 14
 ---
 
 ## Find it every time
@@ -29,6 +29,10 @@ minutes: 12
 > **The aha** The fissure is the road to the gallbladder. Find the portal vein, then follow the bright line.
 
 > **Pitfall** A thick wall alone is not cholecystitis. A recent meal, ascites, heart failure, low albumin and hepatitis all thicken the wall. A packed gallbladder shows a bright line with a dense shadow and no lumen: do not mistake it for bowel gas.
+
+## When the gallbladder does not explain the fever
+
+Fever and right upper quadrant pain with a normal gallbladder should make you sweep the whole liver, through the spaces between the ribs and under the costal margin. A round or irregular dark lesion with debris, no internal flow and bright tissue behind it suggests a liver abscess. An early abscess can look solid and bright, and a normal scan does not exclude one. Take blood cultures, start antibiotics, ask about travel, and request CT and radiology advice. Do not needle it in the emergency department. The Wavelength Pearl [Liver abscess: fever and a dark round pocket](/learn/liver-abscess-ultrasound/) shows each step.
 
 ## Acting on the result
 

@@ -1,6 +1,6 @@
 ---
 title: "Safe drainage and documentation"
-minutes: 8
+minutes: 10
 ---
 
 ## Before you drain
@@ -10,6 +10,8 @@ minutes: 8
 3. Check the depth and the structures beneath. Avoid nerves, vessels and joint spaces.
 4. Mark the skin over the largest, most superficial part of the collection, in two planes.
 5. Measure the depth from skin to the centre of the collection.
+
+Then choose the shortest route that avoids what you have found, and decide how you will use it. A skin mark is quick, but it moves if the patient or the skin moves after the scan. Real-time guidance shows you the needle. The Wavelength Pearl [Abscess drainage: plan the needle path](/learn/abscess-drainage-ultrasound/) shows each step.
 
 ## Needle aspiration or incision
 

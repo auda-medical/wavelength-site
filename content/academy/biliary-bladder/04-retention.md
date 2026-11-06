@@ -1,6 +1,6 @@
 ---
 title: "The full bladder: measure, then look upstream"
-minutes: 14
+minutes: 16
 ---
 
 A bedside bladder scan confirms retention in minutes, avoids unnecessary catheters, and checks that a catheter is working.
@@ -31,7 +31,13 @@ Ask the patient to pass urine, then scan within about 10 minutes. The volume lef
 
 ## The catheterised patient
 
-A full bladder around a catheter means the catheter is blocked or misplaced. Find the balloon. A balloon inflated in the urethra needs urgent attention. Clot in the bladder needs a three-way catheter and washout.
+A catheter that stops draining is blocked, misplaced, or has no urine to drain. Check the tube and the bag, then scan above the pubic bone and find the balloon: a round, black circle with a bright wall.
+
+- **Full bladder around the balloon:** the catheter is blocked. Flush it or replace it, following local policy. Clot in the bladder needs a three-way catheter and washout.
+- **Balloon in an empty bladder:** the catheter is draining, so look upstream at the volume state and the kidneys.
+- **Full bladder with no balloon inside it:** look below the bladder neck. A balloon in the urethra needs deflating and urgent urology review. Do not inflate it further.
+
+The Wavelength Pearl [Blocked catheter: find the balloon](/learn/blocked-catheter-ultrasound/) shows each step.
 
 When a urethral catheter cannot be passed, a suprapubic catheter needs a full bladder and a clear window. Scan in transverse and sagittal, confirm no bowel lies between the skin and the bladder, and measure the depth. Previous lower abdominal surgery makes bowel in the path more likely. If the window is not clear, do not proceed blind. The Wavelength Pearl [Suprapubic catheter: fill first, then find the window](/learn/suprapubic-catheter-ultrasound/) shows each step.
 

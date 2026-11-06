@@ -223,6 +223,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q19",
+     "correct": "c",
+     "why": "A liver abscess can present this way. Ultrasound looks for it, and radiology drains it after CT.",
+     "review": "03-gallbladder",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -608,6 +620,18 @@
      "id": "q13",
      "correct": "b",
      "why": "Early, incomplete cauda equina syndrome often has normal bladder function. A large residual raises concern; a normal one does not reassure.",
+     "review": "04-retention",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q14",
+     "correct": "d",
+     "why": "A balloon below the bladder neck may lie in the urethra. Inflating it can cause serious injury.",
      "review": "04-retention",
      "options": [
       "a",
@@ -2033,6 +2057,30 @@
      "correct": "b",
      "why": "A pocket with rim flow is a parotid abscess. The facial nerve runs through the gland, so ENT drains it under guidance or at surgery.",
      "review": "03-cellulitis-abscess",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q24",
+     "correct": "d",
+     "why": "Measure, map the vessels, and choose a route that avoids them.",
+     "review": "05-safe-drainage",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q25",
+     "correct": "d",
+     "why": "A painful, irreducible hernia goes to the surgeons, whatever the scan shows.",
+     "review": "08-hernia",
      "options": [
       "a",
       "b",

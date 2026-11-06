@@ -105,3 +105,11 @@ title: Final assessment
 - The bladder scanner is faulty
 - The patient needs a catheter
 : Early, incomplete cauda equina syndrome often has normal bladder function. A large residual raises concern; a normal one does not reassure.
+
+?? A catheter has stopped draining. The scan shows a full bladder with no balloon inside it, and a small ring below the bladder neck. What do you do?
+@ 04-retention
++ Deflate the balloon and call urology
+- Inflate the balloon further
+- Flush the catheter hard
+- Discharge with a leg bag
+: A balloon below the bladder neck may lie in the urethra. Inflating it can cause serious injury.

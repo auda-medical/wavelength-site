@@ -185,3 +185,19 @@ title: Final assessment
 - Reassure: this is mumps
 - Discharge with sialogogues only
 : A pocket with rim flow is a parotid abscess. The facial nerve runs through the gland, so ENT drains it under guidance or at surgery.
+
+?? You are planning to aspirate an abscess in the forearm. Colour Doppler shows an artery beside the pocket. What is the best route?
+@ 05-safe-drainage
++ The shortest route to the pocket that avoids the artery, or refer if no safe route exists
+- The most direct route, whatever lies in the way
+- Through the artery, because it is the shortest
+- No plan is needed if the skin is marked
+: Measure, map the vessels, and choose a route that avoids them.
+
+?? A painful, irreducible hernia has normal colour flow in the bowel wall. What do you do?
+@ 08-hernia
++ Arrange urgent surgical review, because preserved flow does not exclude strangulation
+- Reassure and discharge, because the flow is normal
+- Reduce it firmly
+- Book a routine outpatient scan
+: A painful, irreducible hernia goes to the surgeons, whatever the scan shows.
