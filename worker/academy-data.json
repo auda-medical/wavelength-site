@@ -4,7 +4,7 @@
    "slug": "abdomen",
    "code": "ABD",
    "title": "Acute abdominal pain: aorta, gallbladder, kidneys and bowel",
-   "cpdHours": 1.5,
+   "cpdHours": 1.75,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -1796,7 +1796,7 @@
    "slug": "lumps",
    "code": "LMP",
    "title": "The hot, pulsatile or reducible lump: abscess, haematoma, pseudoaneurysm or hernia",
-   "cpdHours": 1.25,
+   "cpdHours": 1.75,
    "passMark": 80,
    "draft": false,
    "questions": [
