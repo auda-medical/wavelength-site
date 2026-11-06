@@ -1,6 +1,6 @@
 ---
 title: "The kidneys and ureteric jets"
-minutes: 19
+minutes: 21
 ---
 
 In suspected renal colic, ultrasound looks for hydronephrosis, checks the bladder for ureteric jets, and rules out alternatives. In the STONE trial, starting with point-of-care ultrasound rather than CT reduced radiation exposure, with no increase in high-risk missed diagnoses.
@@ -37,6 +37,10 @@ In suspected renal colic, ultrasound looks for hydronephrosis, checks the bladde
 A jet on one side and none on the painful side, with hydronephrosis on that side, supports obstruction. Weak jets on both sides suggest low urine output or an underfilled bladder.
 
 > **Pitfall** No hydronephrosis does not exclude a stone. Early obstruction and dehydration limit dilatation, and jets are intermittent.
+
+## Stone at the bladder
+
+The junction of the ureter and the bladder is a common place for a stone to stick, and a full bladder gives a clear window onto it. Angle down to the back wall on each side. A bright echo with a shadow where the ureter enters, with a dilated lower ureter or no jet on that side, suggests a stone. A stone loose in the bladder rolls when the patient turns; a stone in the junction stays put. The Wavelength Pearl [Stone at the bladder: look behind it](/learn/vesicoureteric-junction-stone-ultrasound/) shows each step.
 
 ## Twinkle: a clue to a stone
 

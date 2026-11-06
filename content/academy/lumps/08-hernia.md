@@ -1,6 +1,6 @@
 ---
 title: "The lump that comes and goes: abdominal wall hernia"
-minutes: 12
+minutes: 15
 ---
 
 A lump in the groin, at the umbilicus or by a scar may be a hernia. Incising one by mistake injures bowel. A scan with movement shows the fascial defect, what passes through it, and whether it goes back.
@@ -26,6 +26,10 @@ A lump in the groin, at the umbilicus or by a scar may be a hernia. Incising one
 > **The aha** If the lump hides at rest, make it move.
 
 > **Pitfall** A negative scan in a supine patient at rest does not exclude a small hernia. A lipoma, a lymph node, a haematoma or an abscess also form lumps, and an abscess sometimes sits next to a hernia. Look for a fascial defect and movement before you call a lump a hernia, and before anyone drains it.
+
+## In the groin: inguinal or femoral?
+
+Find the inguinal ligament and the femoral vein. An inguinal hernia lies above the ligament, and its contents slide through the canal. A femoral hernia lies below the ligament and medial to the femoral vein, and it often strangulates, so it needs urgent referral even when it does not hurt. A saphena varix also grows with straining, but it compresses and fills with colour, so colour Doppler every groin lump. The Wavelength Pearl [Groin lump: inguinal or femoral?](/learn/inguinal-femoral-hernia-ultrasound/) shows each step.
 
 ## Stuck, or dying?
 

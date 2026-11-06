@@ -153,3 +153,11 @@ title: Final assessment
 - Measure the aorta only
 - Needle any lesion found
 : A liver abscess can present this way. Ultrasound looks for it, and radiology drains it after CT.
+
+?? A patient has left loin pain and mild hydronephrosis. Through a full bladder, a bright echo with a shadow sits at the left back wall and does not move when they turn. What is the likely diagnosis?
+@ 04-kidneys
++ A stone at the vesicoureteric junction
+- A stone loose in the bladder
+- A normal ureteric jet
+- A blocked catheter
+: A stone in the junction is fixed. Look for a dilated lower ureter or a missing jet on that side.

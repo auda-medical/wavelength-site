@@ -235,6 +235,18 @@
       "c",
       "d"
      ]
+    },
+    {
+     "id": "q20",
+     "correct": "a",
+     "why": "A stone in the junction is fixed. Look for a dilated lower ureter or a missing jet on that side.",
+     "review": "04-kidneys",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
     }
    ],
    "lessons": {
@@ -2080,6 +2092,30 @@
      "id": "q25",
      "correct": "d",
      "why": "A painful, irreducible hernia goes to the surgeons, whatever the scan shows.",
+     "review": "08-hernia",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q26",
+     "correct": "c",
+     "why": "Needle aspiration, repeated if needed, is the usual first step, and the patient should keep feeding or expressing.",
+     "review": "05-safe-drainage",
+     "options": [
+      "a",
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    {
+     "id": "q27",
+     "correct": "b",
+     "why": "The ligament and the vein identify it, and femoral hernias carry a high risk of strangulation.",
      "review": "08-hernia",
      "options": [
       "a",

@@ -212,6 +212,8 @@
   "/learn/blocked-catheter-ultrasound/test/",
   "/learn/bowel-ischaemia-ultrasound/",
   "/learn/bowel-ischaemia-ultrasound/test/",
+  "/learn/breast-abscess-ultrasound/",
+  "/learn/breast-abscess-ultrasound/test/",
   "/learn/cardiac-tamponade-ultrasound/",
   "/learn/cardiac-tamponade-ultrasound/test/",
   "/learn/cardiac-vascular-ultrasound/",
@@ -285,6 +287,8 @@
   "/learn/hydrocele-scrotal-fluid-ultrasound/test/",
   "/learn/hydronephrosis-ultrasound/",
   "/learn/hydronephrosis-ultrasound/test/",
+  "/learn/inguinal-femoral-hernia-ultrasound/",
+  "/learn/inguinal-femoral-hernia-ultrasound/test/",
   "/learn/intussusception-ultrasound/",
   "/learn/intussusception-ultrasound/test/",
   "/learn/ivc-thrombus-ultrasound/",
@@ -335,6 +339,8 @@
   "/learn/peng-block/test/",
   "/learn/penile-fracture-ultrasound/",
   "/learn/penile-fracture-ultrasound/test/",
+  "/learn/perianal-abscess-ultrasound/",
+  "/learn/perianal-abscess-ultrasound/test/",
   "/learn/pericardial-vs-pleural-effusion/",
   "/learn/pericardial-vs-pleural-effusion/test/",
   "/learn/peritonsillar-abscess-ultrasound/",
@@ -446,6 +452,8 @@
   "/learn/varicocele-ultrasound/test/",
   "/learn/vein-or-artery-ultrasound-compression/",
   "/learn/vein-or-artery-ultrasound-compression/test/",
+  "/learn/vesicoureteric-junction-stone-ultrasound/",
+  "/learn/vesicoureteric-junction-stone-ultrasound/test/",
   "/learn/wrist-effusion-ultrasound/",
   "/learn/wrist-effusion-ultrasound/test/",
   "/pl/",
@@ -539,6 +547,10 @@
   {
    "slug": "bowel-ischaemia-ultrasound",
    "title": "Bowel ischaemia: read the wall"
+  },
+  {
+   "slug": "breast-abscess-ultrasound",
+   "title": "Breast abscess: aspirate before you cut"
   },
   {
    "slug": "cardiac-tamponade-ultrasound",
@@ -685,6 +697,10 @@
    "title": "Hydronephrosis: black that branches"
   },
   {
+   "slug": "inguinal-femoral-hernia-ultrasound",
+   "title": "Groin lump: inguinal or femoral?"
+  },
+  {
    "slug": "intussusception-ultrasound",
    "title": "Intussusception: target, then sandwich"
   },
@@ -779,6 +795,10 @@
   {
    "slug": "penile-fracture-ultrasound",
    "title": "Penile fracture: find the tunica break"
+  },
+  {
+   "slug": "perianal-abscess-ultrasound",
+   "title": "Perianal abscess: judge the depth"
   },
   {
    "slug": "pericardial-vs-pleural-effusion",
@@ -995,6 +1015,10 @@
   {
    "slug": "vein-or-artery-ultrasound-compression",
    "title": "Vein or artery: compress first"
+  },
+  {
+   "slug": "vesicoureteric-junction-stone-ultrasound",
+   "title": "Stone at the bladder: look behind it"
   },
   {
    "slug": "wrist-effusion-ultrasound",

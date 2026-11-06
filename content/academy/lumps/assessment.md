@@ -201,3 +201,19 @@ title: Final assessment
 - Reduce it firmly
 - Book a routine outpatient scan
 : A painful, irreducible hernia goes to the surgeons, whatever the scan shows.
+
+?? A breastfeeding patient has a hot, tender breast. Ultrasound shows an irregular dark pocket with debris and no internal flow. What is the usual next step?
+@ 05-safe-drainage
++ Antibiotics and referral to the breast team for ultrasound-guided aspiration
+- Incision in the emergency department, and stop breastfeeding
+- Reassure, because this is mastitis
+- Antibiotics alone, with no follow-up
+: Needle aspiration, repeated if needed, is the usual first step, and the patient should keep feeding or expressing.
+
+?? An older woman has a small, tender lump below the inguinal ligament, medial to the femoral vein. What do you do?
+@ 08-hernia
++ Refer urgently, because a femoral hernia often strangulates
+- Incise it as an abscess
+- Reassure, because it is a saphena varix
+- Book a routine appointment in a year
+: The ligament and the vein identify it, and femoral hernias carry a high risk of strangulation.

@@ -18,9 +18,9 @@ const NEW = ['portal-venous-gas-pneumobilia-ultrasound', 'cauda-equina-bladder-u
   'ultrasound-two-planes', 'varicocele-ultrasound', 'ultrasound-probe-movements-sweep-fan', 'epiglottitis-ultrasound',
   'distal-triceps-tendon-ultrasound', 'scrotal-trauma-testicular-rupture-ultrasound', 'pectoralis-major-tear-ultrasound', 'partial-testicular-torsion-ultrasound',
   'nasogastric-tube-ultrasound', 'lens-dislocation-ultrasound', 'pyomyositis-ultrasound', 'sternoclavicular-joint-effusion-ultrasound', 'dental-abscess-ultrasound',
-  'thoracentesis-ultrasound', 'carotid-artery-dissection-ultrasound', 'retropharyngeal-abscess-ultrasound', 'priapism-ultrasound', 'penile-fracture-ultrasound', 'parotid-abscess-ultrasound', 'bowel-ischaemia-ultrasound', 'blocked-catheter-ultrasound', 'abscess-drainage-ultrasound', 'strangulated-hernia-ultrasound', 'liver-abscess-ultrasound'];
+  'thoracentesis-ultrasound', 'carotid-artery-dissection-ultrasound', 'retropharyngeal-abscess-ultrasound', 'priapism-ultrasound', 'penile-fracture-ultrasound', 'parotid-abscess-ultrasound', 'bowel-ischaemia-ultrasound', 'blocked-catheter-ultrasound', 'abscess-drainage-ultrasound', 'strangulated-hernia-ultrasound', 'liver-abscess-ultrasound', 'vesicoureteric-junction-stone-ultrasound', 'breast-abscess-ultrasound', 'perianal-abscess-ultrasound', 'inguinal-femoral-hernia-ultrasound'];
 const queue = JSON.parse(fs.readFileSync('data/pearl-issues.json', 'utf8')).issues.filter((x) => NEW.includes(x.slug));
-if (queue.length !== 46) throw new Error('queue: ' + queue.length);
+if (queue.length !== 50) throw new Error('queue: ' + queue.length);
 const browser = await chromium.launch();
 const errors = [];
 const watch = (page) => { page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error' && !/favicon|Failed to load resource/.test(m.text())) errors.push(m.text()); }); };
@@ -53,7 +53,7 @@ for (const [w, h, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
     if (!ok) bad.push({ slug: it.slug, status: r.status(), ...m, og: og && og.status() });
     if (label === 'phone' && ['cauda-equina-bladder-ultrasound', 'achilles-xanthoma-ultrasound', 'portal-venous-gas-pneumobilia-ultrasound'].includes(it.slug)) await page.screenshot({ path: path.join(OUT, `P-${it.slug}-phone.png`), fullPage: false });
   }
-  record(`P-${label}`, `${label}: all 46 new Pearl pages load with the graphic, alt text, the illustration note, link preview image, canonical, structured data, a test link, no dashes and no sideways scroll`, !bad.length, bad.length ? bad : `${queue.length} pages`);
+  record(`P-${label}`, `${label}: all 50 new Pearl pages load with the graphic, alt text, the illustration note, link preview image, canonical, structured data, a test link, no dashes and no sideways scroll`, !bad.length, bad.length ? bad : `${queue.length} pages`);
   await ctx.close();
 }
 
@@ -71,7 +71,7 @@ for (const [w, h, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
     const markedOk = /right|correct|chosen|is-/.test(marked.cls + ' ' + marked.anyState) || marked.open || marked.aria === 'true';
     if (q.length !== 5 || q.some((x) => x.opts !== 4 || x.correct !== 1) || !/noindex/.test(robots) || !markedOk) bad.push({ slug: it.slug, q, robots, marked });
   }
-  record('T', 'All 46 tests: five questions, four options and one correct answer each, noindex, and the email answer link marks the answer on arrival', !bad.length, bad.length ? bad : '46 tests');
+  record('T', 'All 50 tests: five questions, four options and one correct answer each, noindex, and the email answer link marks the answer on arrival', !bad.length, bad.length ? bad : '50 tests');
   await ctx.close();
 }
 
@@ -80,7 +80,7 @@ for (const [w, h, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
 {
   const ctx = await browser.newContext({ viewport: { width: 600, height: 1000 } }); const page = await ctx.newPage(); watch(page);
   const QUEUE = JSON.parse(fs.readFileSync(new URL('../data/pearl-issues.json', import.meta.url), 'utf8')).issues;
-  for (const issue of QUEUE.filter((x) => NEW.slice(-4).includes(x.slug))) {
+  for (const issue of QUEUE.filter((x) => NEW.slice(-8).includes(x.slug))) {
   await page.goto(`${BASE}/email/pearl/${issue.slug}/`);
   const e = await page.evaluate(() => ({ h1: document.querySelector('h1').textContent, links: [...document.querySelectorAll('a[href]')].map((a) => a.href), imgs: [...document.querySelectorAll('img')].map((i) => i.src), answers: [...document.querySelectorAll('a[href*="q=1&a="]')].map((a) => [a.href.match(/a=([a-d])/)[1], a.textContent.replace(/\s+/g, ' ').trim()]) }));
   const learn = e.links.filter((l) => /\/learn\//.test(l));
@@ -101,7 +101,7 @@ for (const [w, h, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
 
 // A: changed Academy lessons for a registered learner (desktop and phone).
 if (process.env.READ_ONLY !== '1') {
-  const lessons = [['abdomen', 'kidneys', /Pyelonephritis: a normal kidney can be infected/i], ['abdomen', 'bowel', /Gas in the liver: portal or biliary/i], ['biliary-bladder', 'retention', /post-void residual in suspected cauda equina/i], ['cardiac', 'right-heart-venous', /look inside the vein/i], ['msk', 'tendon-ruptures', /Xanthoma:/i], ['eye-scrotum', 'torsion', /find the tender nub/i], ['eye-scrotum', 'torsion', /Fluid around the testis/i], ['lumps', 'cellulitis-abscess', /Neck lumps: node or pus/i], ['pelvis', 'early-pregnancy', /retained products/i], ['abdomen', 'appendix-intussusception', /Left-sided pain: diverticulitis/i], ['biliary-bladder', 'retention', /fill first, then find the window/i], ['eye-scrotum', 'eye-findings', /optic nerve sheath: a clue/i], ['msk', 'fractures', /Ribs and the clavicle/i], ['msk', 'effusions', /The wrist: the dorsal recess/i], ['lung', 'effusion', /simple or septated/i], ['pelvis', 'early-pregnancy', /not always the ectopic/i], ['lumps', 'cellulitis-abscess', /fluid in the flexor sheath/i], ['eye-scrotum', 'torsion', /veins that wake up with Valsalva/i], ['airway', 'front-of-neck', /The epiglottis/i], ['msk', 'tendon-ruptures', /The distal triceps tendon/i], ['eye-scrotum', 'torsion', /follow the bright tunica albuginea/i], ['msk', 'effusions', /The sternoclavicular joint/i], ['lumps', 'cellulitis-abscess', /Dental swelling: the vestibular pocket/i], ['lumps', 'cellulitis-abscess', /Pain deep in the muscle: pyomyositis/i], ['airway', 'tube', /The nasogastric tube/i], ['eye-scrotum', 'eye-findings', /find the lens first/i], ['lung', 'effusion', /Thoracentesis: mark the pocket/i], ['airway', 'front-of-neck', /Behind the pharynx/i], ['lumps', 'cellulitis-abscess', /Parotid swelling: parotitis or a collection/i], ['eye-scrotum', 'torsion', /Beyond the scrotum: the penis/i], ['abdomen', 'bowel', /Bowel ischaemia: pain out of proportion/i], ['biliary-bladder', 'retention', /Blocked catheter: find the balloon/i], ['lumps', 'safe-drainage', /Abscess drainage: plan the needle path/i], ['lumps', 'hernia', /Stuck, or dying/i], ['abdomen', 'gallbladder', /When the gallbladder does not explain the fever/i]];
+  const lessons = [['abdomen', 'kidneys', /Pyelonephritis: a normal kidney can be infected/i], ['abdomen', 'bowel', /Gas in the liver: portal or biliary/i], ['biliary-bladder', 'retention', /post-void residual in suspected cauda equina/i], ['cardiac', 'right-heart-venous', /look inside the vein/i], ['msk', 'tendon-ruptures', /Xanthoma:/i], ['eye-scrotum', 'torsion', /find the tender nub/i], ['eye-scrotum', 'torsion', /Fluid around the testis/i], ['lumps', 'cellulitis-abscess', /Neck lumps: node or pus/i], ['pelvis', 'early-pregnancy', /retained products/i], ['abdomen', 'appendix-intussusception', /Left-sided pain: diverticulitis/i], ['biliary-bladder', 'retention', /fill first, then find the window/i], ['eye-scrotum', 'eye-findings', /optic nerve sheath: a clue/i], ['msk', 'fractures', /Ribs and the clavicle/i], ['msk', 'effusions', /The wrist: the dorsal recess/i], ['lung', 'effusion', /simple or septated/i], ['pelvis', 'early-pregnancy', /not always the ectopic/i], ['lumps', 'cellulitis-abscess', /fluid in the flexor sheath/i], ['eye-scrotum', 'torsion', /veins that wake up with Valsalva/i], ['airway', 'front-of-neck', /The epiglottis/i], ['msk', 'tendon-ruptures', /The distal triceps tendon/i], ['eye-scrotum', 'torsion', /follow the bright tunica albuginea/i], ['msk', 'effusions', /The sternoclavicular joint/i], ['lumps', 'cellulitis-abscess', /Dental swelling: the vestibular pocket/i], ['lumps', 'cellulitis-abscess', /Pain deep in the muscle: pyomyositis/i], ['airway', 'tube', /The nasogastric tube/i], ['eye-scrotum', 'eye-findings', /find the lens first/i], ['lung', 'effusion', /Thoracentesis: mark the pocket/i], ['airway', 'front-of-neck', /Behind the pharynx/i], ['lumps', 'cellulitis-abscess', /Parotid swelling: parotitis or a collection/i], ['eye-scrotum', 'torsion', /Beyond the scrotum: the penis/i], ['abdomen', 'bowel', /Bowel ischaemia: pain out of proportion/i], ['biliary-bladder', 'retention', /Blocked catheter: find the balloon/i], ['lumps', 'safe-drainage', /Abscess drainage: plan the needle path/i], ['lumps', 'hernia', /Stuck, or dying/i], ['abdomen', 'gallbladder', /When the gallbladder does not explain the fever/i], ['abdomen', 'kidneys', /Stone at the bladder/i], ['lumps', 'safe-drainage', /Two collections that need a different plan/i], ['lumps', 'hernia', /In the groin: inguinal or femoral/i]];
   for (const [w, h, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h } }); const page = await ctx.newPage(); watch(page);
     const H = { 'Content-Type': 'application/json', Accept: 'application/json', Origin: BASE };
@@ -119,7 +119,7 @@ if (process.env.READ_ONLY !== '1') {
       const t = await page.evaluate(() => ({ text: (document.querySelector('main') || document.body).innerText, over: document.documentElement.scrollWidth > innerWidth + 1, quiz: document.querySelectorAll('.quiz').length }));
       if (r.status() !== 200 || !re.test(t.text) || t.over) bad.push({ mod, les, status: r.status(), found: re.test(t.text), over: t.over });
     }
-    record(`A-${label}`, `${label}: the 35 Academy lesson changes open for a registered learner, show the new teaching and fit the screen`, regOk && !bad.length, bad.length ? { regOk, bad } : '35 lessons');
+    record(`A-${label}`, `${label}: the 38 Academy lesson changes open for a registered learner, show the new teaching and fit the screen`, regOk && !bad.length, bad.length ? { regOk, bad } : '38 lessons');
     if (label === 'phone') { await page.goto(`${BASE}/elearning/biliary-bladder/learn/retention/`); await page.screenshot({ path: path.join(OUT, 'A-retention-phone.png'), fullPage: false }); }
     await ctx.close();
   }
@@ -130,7 +130,7 @@ if (process.env.READ_ONLY !== '1') {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } }); const page = await ctx.newPage(); watch(page);
   await page.goto(`${BASE}/learn/`);
   const found = await page.evaluate((slugs) => slugs.filter((s) => !document.querySelector(`a[href="/learn/${s}/"] img`)), queue.map((q) => q.slug));
-  record('L', 'The Learn page lists all 46 with their card thumbnails', !found.length, found.length ? { missing: found } : '46 cards');
+  record('L', 'The Learn page lists all 50 with their card thumbnails', !found.length, found.length ? { missing: found } : '50 cards');
   await ctx.close();
 }
 

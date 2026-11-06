@@ -1,6 +1,6 @@
 ---
 title: "Safe drainage and documentation"
-minutes: 10
+minutes: 14
 ---
 
 ## Before you drain
@@ -22,6 +22,12 @@ Small collections, and those in cosmetically sensitive areas such as the face or
 - Use an in-plane approach so you see the whole needle.
 - Watch the collection shrink as you aspirate.
 - Rescan at the end for a remaining pocket.
+
+## Two collections that need a different plan
+
+**Breast.** Bright, swollen tissue with no pocket is mastitis. A dark or complex pocket with no internal flow suggests an abscess. Give antibiotics, encourage the patient to keep feeding or expressing, and refer to the breast team, who usually offer needle aspiration under ultrasound, repeated if needed. A red breast that does not settle, or a solid area, needs the breast clinic, because inflammatory cancer can look like infection. See the Wavelength Pearl [Breast abscess: aspirate before you cut](/learn/breast-abscess-ultrasound/).
+
+**Perianal.** A small lump on the skin can be the top of a deep collection. With a covered linear probe and a light touch, note the depth and the relation to the sphincter. A collection tracking deep needs imaging and surgery, and ultrasound can miss deep and supralevator collections. Bright gas with dirty shadowing raises concern for Fournier gangrene. See the Wavelength Pearl [Perianal abscess: judge the depth](/learn/perianal-abscess-ultrasound/).
 
 ## When not to drain in the emergency department
 
