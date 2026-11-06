@@ -284,7 +284,7 @@
    "slug": "airway",
    "code": "AWY",
    "title": "Ultrasound around the airway: stomach, tube, lungs and diaphragm",
-   "cpdHours": 1,
+   "cpdHours": 1.25,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -1160,7 +1160,7 @@
    "slug": "eye-scrotum",
    "code": "EYS",
    "title": "Time-critical small parts: the eye and the scrotum",
-   "cpdHours": 1,
+   "cpdHours": 1.25,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -2400,7 +2400,7 @@
    "slug": "msk",
    "code": "MSK",
    "title": "Soft tissue and joints: foreign bodies, tendons, effusions, the shoulder and the hip",
-   "cpdHours": 1.5,
+   "cpdHours": 2,
    "passMark": 80,
    "draft": false,
    "questions": [
