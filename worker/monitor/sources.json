@@ -44,7 +44,7 @@
    "draft": false,
    "reviewed": "2026-10-04",
    "updated": "2026-10-11",
-   "contentVersion": "18a62c9ba5f6c4a2",
+   "contentVersion": "eca3750b07f098e8",
    "sources": [
     "g:5385918cc2ee",
     "g:50f2134f87a3",
@@ -63,7 +63,7 @@
    "draft": false,
    "reviewed": "2026-10-04",
    "updated": "2026-10-05",
-   "contentVersion": "f81a1d5e3a0c33e0",
+   "contentVersion": "45323e9ed8018375",
    "sources": [
     "g:5e2f7962ecbf",
     "g:aa0067173e88",
@@ -83,7 +83,7 @@
    "draft": false,
    "reviewed": "2026-10-04",
    "updated": "2026-10-11",
-   "contentVersion": "c9bf7f20db25e2fd",
+   "contentVersion": "652fe4a936ff663a",
    "sources": [
     "g:f92d726b14bb",
     "g:72e381cfe3d4",
@@ -915,5 +915,5 @@
    "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the RCEM ultrasound education and training page with the two scales the guide cites."
   }
  ],
- "version": "8bb3f8463bc0b66d"
+ "version": "ca3a2d6211692eab"
 }

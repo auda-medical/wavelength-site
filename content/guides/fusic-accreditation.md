@@ -79,6 +79,8 @@ Download the module's training pack and assessment pack. Every form you need (re
 
 You need one or the other, not both. FEEL and BSE Level 1 courses count automatically for FUSIC Heart. Other courses may count after the Society checks them. Do the theory before your first logbook scan.
 
+> **Wavelength note** [Wavelength courses](/courses/), such as the [Core Emergency Ultrasound course](/courses/core-emergency-ultrasound/), are mapped to the RCEM curriculum. They are not FUSIC accredited, so do not rely on one for this step unless the Society has checked it. They offer hands-on scanning practice.
+
 ### Step 5. Plan your 12-month window before your first scan
 
 Your logbook must run from first scan to last within 12 months. For Lung, DVT and Vascular, the triggered assessment must also fall inside that window. The clock starts with your first logbook scan, not with registration, so start when you have regular patient access and a mentor or trainer available.

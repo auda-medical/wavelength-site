@@ -156,6 +156,8 @@ Any format works if it holds the minimum dataset and protects patient data.
 
 Whichever you choose, log on the day of the scan. A logbook rebuilt from memory before an assessment rarely matches the detail your supervisor expects.
 
+> **Wavelength note** [Wavelength courses](/courses/), such as the [Core Emergency Ultrasound course](/courses/core-emergency-ultrasound/), are mapped to the RCEM curriculum. They are not RCEM, FAMUS or FUSIC accredited, and no course replaces the supervised scans your pathway asks for. Check your pathway's counting rules before you log scans from any course.
+
 ## Sources
 
 Checked against these documents on 4 October 2026.

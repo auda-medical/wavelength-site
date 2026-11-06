@@ -71,6 +71,8 @@ Passing the FAMUS e-learning assessment on e-Learning for Healthcare (e-LFH) is 
 
 A course is not mandatory, but SAM strongly recommends one. SAM recommends attending within three months of your first supervised scan. The thoracic pack allows the first supervised scan up to three months before the course, and recommends starting within three months after it. If you skip the course, you must show the theory knowledge during training, and your supervisor confirms it at the ACT.
 
+> **Wavelength note** [Wavelength courses](/courses/), such as the [Core Emergency Ultrasound course](/courses/core-emergency-ultrasound/), are mapped to the RCEM curriculum. They are not FAMUS accredited, so they do not count as a FAMUS-approved course. They offer hands-on scanning practice.
+
 ### Step 6. Do your supervised scans face to face
 
 Your first scans should be directly supervised by your supervisor or a mentor. Complete the FAMUS anonymised reporting sheet for each one. Even if you supervise remotely later, SAM asks for the supervised scans to be face to face.
