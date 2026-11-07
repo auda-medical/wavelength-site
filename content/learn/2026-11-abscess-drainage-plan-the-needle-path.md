@@ -4,7 +4,7 @@ slug: abscess-drainage-ultrasound
 seoTitle: "Abscess drainage with ultrasound: plan the needle path"
 summary: Before any needle or blade, ultrasound measures how deep the pocket starts and how wide it is, shows the vessels nearby and finds the shortest safe route. Colour Doppler comes first, because a pseudoaneurysm can look like an abscess. Then mark the skin or watch the needle, and rescan for a remaining pocket.
 category: Soft tissue
-date: 2026-11-09
+date: 2026-11-07
 reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false

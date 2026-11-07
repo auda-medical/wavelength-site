@@ -4,7 +4,7 @@ slug: strangulated-hernia-ultrasound
 seoTitle: "Strangulated hernia ultrasound: read the sac"
 summary: In a painful hernia that will not go back, ultrasound looks for bowel at risk. A thick wall, fluid in the sac, no peristalsis and little flow in the wall suggest strangulation, and dilated loops upstream suggest obstruction. Preserved flow does not exclude it, so a painful, irreducible hernia goes to the surgeons whatever the scan shows.
 category: Soft tissue
-date: 2026-11-09
+date: 2026-11-07
 reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false

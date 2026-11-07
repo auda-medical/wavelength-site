@@ -4,7 +4,7 @@ slug: blocked-catheter-ultrasound
 seoTitle: "Blocked catheter ultrasound: find the balloon"
 summary: A catheter that stops draining is blocked, misplaced, or has no urine to drain. A scan above the pubic bone tells these apart in a minute. A full bladder around the balloon means blocked. An empty bladder means look upstream. No balloon in the bladder may mean it lies in the urethra.
 category: Renal
-date: 2026-11-09
+date: 2026-11-07
 reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false

@@ -4,7 +4,7 @@ slug: breast-abscess-ultrasound
 seoTitle: "Breast abscess ultrasound: mastitis or a collection?"
 summary: In a hot, tender breast, ultrasound separates mastitis from a collection. A dark or complex pocket with no internal flow suggests an abscess, and oedema without a pocket suggests mastitis. Most abscesses are treated by needle aspiration under ultrasound, repeated if needed, with antibiotics and a breast team. A red breast that does not settle needs the breast clinic.
 category: Soft tissue
-date: 2026-11-09
+date: 2026-11-07
 reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false

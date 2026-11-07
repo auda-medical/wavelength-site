@@ -4,7 +4,7 @@ slug: perianal-abscess-ultrasound
 seoTitle: "Perianal abscess ultrasound: judge the depth"
 summary: A small lump beside the anus can be the top of a much deeper collection. Ultrasound from the skin notes the depth of the pocket and how it relates to the sphincter. A collection tracking deep needs imaging and surgery. Ultrasound can miss deep and supralevator collections, and bright gas with dirty shadowing raises concern for Fournier gangrene.
 category: Soft tissue
-date: 2026-11-09
+date: 2026-11-07
 reviewed: 2026-11-06
 author: Dr Firas Abou-Auda
 draft: false
