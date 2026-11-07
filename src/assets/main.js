@@ -102,7 +102,8 @@
   // 3D hero (wl3d.js, homepage): the probe steers a beam across the field. Without WebGL the waveform and the
   // drawn mark stay instead.
   var hero3d = document.querySelector('canvas.hero-3d');
-  if (hero3d && window.WL3D) {
+  // Phones get the words only (style.css hides the stage below 760px), so the scene is not started there.
+  if (hero3d && window.WL3D && window.matchMedia('(min-width: 760px)').matches) {
     var heroEl = hero3d.closest('.hero'), stage = heroEl.querySelector('.hero-stage');
     var depthEl = stage.querySelector('[data-depth]'), angleEl = stage.querySelector('[data-angle]');
     var on3d = WL3D.hero(hero3d, { pointer: heroEl, stage: stage, onAngle: function (deg, cm) { angleEl.textContent = deg + '\u00B0'; depthEl.textContent = cm.toFixed(1); } });
