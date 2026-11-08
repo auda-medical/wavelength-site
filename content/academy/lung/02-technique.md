@@ -17,7 +17,7 @@ minutes: 12
 3. Between them, a bright line sits slightly deeper than the top of the ribs. This is the pleural line.
 4. The ribs form the wings and the pleura the body of a bat.
 
-If you lie the probe along a rib, you see one bright curved line with black below it. That is the rib surface. A rib never slides, so this is how new scanners call absent sliding by mistake.
+If you lie the probe along a rib, you see one bright curved line with black below it. That is the rib surface. A rib never slides, so this is how new scanners call absent sliding by mistake. The Pearl [Lung: find the bat before you judge sliding](/learn/lung-ultrasound-bat-sign/) shows both views side by side.
 
 > **The aha** No two rib shadows, no pleural line you trust. Find the bat, then judge sliding.
 

@@ -7,10 +7,14 @@ category: Aorta
 date: 2026-11-08
 reviewed: 2026-11-08
 author: Dr Firas Abou-Auda
-draft: true
+draft: false
 ---
 
 Bowel gas, body habitus and pain all make the abdominal aorta difficult to see. The scan only rules out an aneurysm when you see the whole length.
+
+![Wavelength Pearl: abdominal aorta. A transverse sweep from the epigastrium to the umbilicus, the aorta in front of the spine with the IVC beside it, the coeliac axis and SMA, an aneurysm measured outer wall to outer wall, and the bifurcation.](/learn/images/aaa-complete-pearl.webp)
+
+*Scan images in the graphic are illustrations, not patient scans.*
 
 ## The complete scan
 

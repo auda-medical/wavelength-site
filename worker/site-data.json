@@ -177,6 +177,8 @@
   "/it/app/",
   "/it/contact/",
   "/learn/",
+  "/learn/aaa-ultrasound/",
+  "/learn/aaa-ultrasound/test/",
   "/learn/abdominal-pelvic-ultrasound/",
   "/learn/abdominal-wall-hernia-ultrasound/",
   "/learn/abdominal-wall-hernia-ultrasound/test/",
@@ -295,6 +297,8 @@
   "/learn/ivc-thrombus-ultrasound/test/",
   "/learn/ivc-ultrasound-fluid-status/",
   "/learn/ivc-ultrasound-fluid-status/test/",
+  "/learn/ivc-ultrasound/",
+  "/learn/ivc-ultrasound/test/",
   "/learn/knee-effusion-ultrasound/",
   "/learn/knee-effusion-ultrasound/test/",
   "/learn/lens-dislocation-ultrasound/",
@@ -303,6 +307,8 @@
   "/learn/liver-abscess-ultrasound/test/",
   "/learn/lung-consolidation-ultrasound/",
   "/learn/lung-consolidation-ultrasound/test/",
+  "/learn/lung-ultrasound-bat-sign/",
+  "/learn/lung-ultrasound-bat-sign/test/",
   "/learn/lung-ultrasound/",
   "/learn/lvot-vti-ultrasound/",
   "/learn/lvot-vti-ultrasound/test/",
@@ -480,6 +486,10 @@
   "/zh/contact/"
  ],
  "pearls": [
+  {
+   "slug": "aaa-ultrasound",
+   "title": "Aorta: when is the scan complete?"
+  },
   {
    "slug": "abdominal-wall-hernia-ultrasound",
    "title": "Abdominal wall hernia: stand them up and make it cough"
@@ -709,6 +719,10 @@
    "title": "IVC clot: not every big IVC is congestion"
   },
   {
+   "slug": "ivc-ultrasound",
+   "title": "IVC: follow it into the right atrium"
+  },
+  {
    "slug": "ivc-ultrasound-fluid-status",
    "title": "IVC: a big vein is not a fluid order"
   },
@@ -727,6 +741,10 @@
   {
    "slug": "lung-consolidation-ultrasound",
    "title": "Consolidation: watch the air bronchograms move"
+  },
+  {
+   "slug": "lung-ultrasound-bat-sign",
+   "title": "Lung: find the bat before you judge sliding"
   },
   {
    "slug": "lvot-vti-ultrasound",

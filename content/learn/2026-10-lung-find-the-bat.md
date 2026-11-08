@@ -7,20 +7,20 @@ category: Lung
 date: 2026-11-08
 reviewed: 2026-11-08
 author: Dr Firas Abou-Auda
-draft: true
+draft: false
 ---
 
 Lung sliding is the first question in a suspected pneumothorax. The answer depends on looking at the right line. Many new scanners place the probe along the ribs, pick up the surface of a rib, see no movement, and call it absent sliding.
 
-## Before
+![Wavelength Pearl: lung sliding. A linear probe across two ribs, the bright line seen along a rib, the bat sign with the pleural line between two rib shadows, and where to judge sliding.](/learn/images/lung-bat-pearl.webp)
 
-![Before: probe along a rib. One bright line with black below it, so pleura and rib look the same.](/learn/images/lung-before.svg)
+*Scan images in the graphic are illustrations, not patient scans.*
+
+## Before
 
 With the probe lying along a rib, the beam hits bone. You see one bright, curved line with a black shadow filling the screen beneath it. The surface of a rib and the pleura both look like a bright line, so you have no way to tell which one you are watching. A rib never slides.
 
 ## The move
-
-![The move: rotate the linear probe from lying along a rib to crossing two ribs, marker to the head.](/learn/images/lung-move.webp)
 
 1. Start with the linear probe in the second or third intercostal space, mid-clavicular line, with the patient supine.
 2. Turn the probe 90° so it lies head to foot and crosses two ribs.
@@ -28,8 +28,6 @@ With the probe lying along a rib, the beam hits bone. You see one bright, curved
 4. Hold the probe still, with light pressure, and let the patient breathe.
 
 ## After
-
-![After: two rib shadows with the pleural line between them, slightly deeper than the ribs. The bat sign.](/learn/images/lung-after.svg)
 
 Now you see two ribs, each with its own shadow, and a bright horizontal line between them, sitting slightly deeper than the top of the ribs. This is the pleural line. The ribs form the wings and the pleura forms the body of a bat. Watch the pleural line between the shadows. Shimmering movement along it is lung sliding.
 
@@ -58,12 +56,12 @@ Now you see two ribs, each with its own shadow, and a bright horizontal line bet
 - Inside the rib shadow
 : The ribs are the wings and the pleura is the body of the bat. Judge sliding on that line.
 
-?? A ventilated patient has no lung sliding on the left. Which cause other than pneumothorax should you consider?
-+ The tube has passed into the right main bronchus
-- A raised heart rate
-- A full stomach
-- Low blood sugar
-: If the left lung is not ventilated, its pleura does not slide. Apnoea and pleural adhesions also stop sliding.
+?? You have the bat sign, but movement along the pleural line is hard to judge. What helps?
++ M-mode through the pleural line, between the rib shadows
+- Pressing harder with the probe
+- Turning the probe back along the rib
+- Switching to colour Doppler on the rib
+: In M-mode, a sliding lung gives a grainy pattern below the pleural line. No sliding gives straight horizontal lines.
 
 ?? Which finding confirms a pneumothorax?
 + A lung point, where sliding and no sliding meet

@@ -35,4 +35,4 @@ An abdominal aortic aneurysm (AAA) kills when it ruptures, and it hides behind p
 
 - **AAA with pain or hypotension:** senior and vascular surgical team immediately. Permissive hypotension. Do not delay transfer for CT if the patient is unstable.
 - **AAA found incidentally:** refer for vascular follow-up.
-- **Incomplete scan:** record it as incomplete. Do not call it negative.
+- **Incomplete scan:** record it as incomplete. Do not call it negative. The Pearl [Aorta: when is the scan complete?](/learn/aaa-ultrasound/) walks the whole sweep.

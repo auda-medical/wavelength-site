@@ -23,7 +23,7 @@ A normal RV does not exclude pulmonary embolism, because most small emboli leave
 
 ## The IVC: follow it into the right atrium
 
-The aorta lies close to the IVC and looks similar in long axis. Make sure you have the right vessel.
+The aorta lies close to the IVC and looks similar in long axis. Make sure you have the right vessel. The Pearl [IVC: follow it into the right atrium](/learn/ivc-ultrasound/) shows the move.
 
 1. Start in the subcostal four-chamber view.
 2. Move the probe until the right atrium sits in the centre of the screen.

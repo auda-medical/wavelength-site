@@ -7,20 +7,20 @@ category: Cardiac
 date: 2026-11-08
 reviewed: 2026-11-08
 author: Dr Firas Abou-Auda
-draft: true
+draft: false
 ---
 
 The inferior vena cava (IVC), the large vein returning blood from the lower body, is easy to find and easy to mistake. The aorta runs close by, and in long axis the two look alike. The way to be sure is to see the vessel enter the heart.
 
-## Before
+![Wavelength Pearl: IVC. The subcostal view with the right atrium in the centre, the aorta with a branch running forwards, and the thin-walled IVC entering the right atrium with a hepatic vein joining it.](/learn/images/ivc-atrium-pearl.webp)
 
-![Before: a thick-walled tube with a branch running forwards, stopping short of the heart. This is the aorta.](/learn/images/ivc-before.svg)
+*Scan images in the graphic are illustrations, not patient scans.*
+
+## Before
 
 Placing the probe in the epigastrium in long axis and looking for a tube often finds the aorta. Its walls are thick and bright, it pulses, it gives off branches running forwards (the coeliac trunk and the superior mesenteric artery), and it never reaches the heart. Measuring this vessel gives a confident answer to the wrong question.
 
 ## The move
-
-![The move: from the subcostal four-chamber view, rotate the probe 90 degrees so the marker points to the head, tilting slightly to the patient's right.](/learn/images/ivc-move.webp)
 
 1. Start in the subcostal four-chamber view.
 2. Move the probe until the right atrium sits in the centre of the screen.
@@ -29,8 +29,6 @@ Placing the probe in the epigastrium in long axis and looking for a tube often f
 5. Keep the right atrium on screen the whole time. If it disappears, go back to step 2.
 
 ## After
-
-![After: the IVC runs through the liver into the right atrium, with a hepatic vein joining it. Measure about 2 cm from the atrium.](/learn/images/ivc-after.svg)
 
 Now the vessel runs through the liver and opens into the right atrium. Its walls are thin, it changes size with breathing, and a hepatic vein drains into it. Measure the diameter about 2 cm from the right atrium, just beyond where the hepatic vein joins, at a right angle to the vessel.
 
