@@ -7,20 +7,20 @@ category: Cardiac
 date: 2026-11-08
 reviewed: 2026-11-08
 author: Dr Firas Abou-Auda
-draft: true
+draft: false
 ---
 
 The subcostal view is the window you need most in the sickest patients: during cardiac arrest, in the ventilated patient, and when the chest is hard to scan. It is also the view new scanners find hardest. The reason is nearly always the angle of the probe, not the patient.
 
-## Before
+![Wavelength Pearl: subcostal view. The probe laid almost flat below the xiphoid with an overhand grip, bowel gas with an upright probe, the subcostal four-chamber view through the liver, and the pericardium checked for fluid.](/learn/images/subcostal-flat-pearl.webp)
 
-![Before: probe upright. Liver near the probe, bowel gas and dirty shadow below, no heart.](/learn/images/subcostal-before.svg)
+*Scan images in the graphic are illustrations, not patient scans.*
+
+## Before
 
 Holding the probe like a pen, pointing straight into the abdomen, sends the beam back towards the spine. You see liver near the probe, then bowel gas with a grey, dirty shadow beneath it. The heart sits above and behind the ribs, out of the beam.
 
 ## The move
-
-![The move: overhand grip, probe just below the xiphoid, laid almost flat so the beam passes under the ribs to the heart.](/learn/images/subcostal-move.webp)
 
 1. Ask the patient to lie flat and bend the knees. This relaxes the abdominal wall.
 2. Use the phased array probe with the marker to the patient's left.
@@ -30,8 +30,6 @@ Holding the probe like a pen, pointing straight into the abdomen, sends the beam
 6. Increase the depth, then ask the patient to take a deep breath in and hold it. This brings the heart down towards the probe.
 
 ## After
-
-![After: liver as the window, right ventricle nearest the probe, left ventricle beyond, atria to the left, pericardium around the heart.](/learn/images/subcostal-after.svg)
 
 The liver now fills the near field, with the heart behind it. The right ventricle sits nearest the probe, against the liver, with the left ventricle beyond it. The atria lie to the left of the screen and the apex points to the right. The pericardium is the bright line around the heart, and this is where you look for a pericardial effusion.
 

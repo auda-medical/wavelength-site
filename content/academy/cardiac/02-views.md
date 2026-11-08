@@ -32,6 +32,6 @@ Use the phased-array probe and the cardiac preset. On the cardiac preset the mar
 3. Lay the probe almost flat and aim at the left shoulder. Increase the depth. Ask for a deep breath in and hold.
 4. The liver fills the near field. The RV lies against it, the LV beyond. The pericardium is the bright line around the heart.
 
-> **The aha** In the subcostal view, flatter is better. Bowel gas means drop your hand, not press harder.
+> **The aha** In the subcostal view, flatter is better. Bowel gas means drop your hand, not press harder. The Pearl [Subcostal view: flatten the probe](/learn/subcostal-view-echo/) shows the move.
 
 > **Pitfall** One view is never enough. If a finding matters, confirm it in a second view.

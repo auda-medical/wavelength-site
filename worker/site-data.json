@@ -409,6 +409,8 @@
   "/learn/sternoclavicular-joint-effusion-ultrasound/test/",
   "/learn/strangulated-hernia-ultrasound/",
   "/learn/strangulated-hernia-ultrasound/test/",
+  "/learn/subcostal-view-echo/",
+  "/learn/subcostal-view-echo/test/",
   "/learn/superior-trunk-block/",
   "/learn/superior-trunk-block/test/",
   "/learn/suprapubic-catheter-ultrasound/",
@@ -941,6 +943,10 @@
   {
    "slug": "strangulated-hernia-ultrasound",
    "title": "Strangulated hernia: read the sac"
+  },
+  {
+   "slug": "subcostal-view-echo",
+   "title": "Subcostal view: flatten the probe"
   },
   {
    "slug": "superior-trunk-block",
