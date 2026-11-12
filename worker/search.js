@@ -20,6 +20,7 @@ import { orgsReady, resolveOrg } from './organisations.js';
 import { normOrg, queryWords } from './org-norm.js';
 import { rateLimitAll, clientIp, ipKey, TOO_MANY } from './ratelimit.js';
 import { queueStmt, deliverLater } from './notify.js';
+import { pushPerson } from './push.js';
 import { audit, auditStmt } from './audit.js';
 import { ukDate, addDays, nowIso } from './time.js';
 import { GRACE_DAYS } from './professional.js';
@@ -113,7 +114,7 @@ export async function requestSupervisor(env, l, d, ctx) {
   const ref = clip(d && d.ref, 40);
   if (!REF.test(ref)) return json({ ok: false, error: NOT_AVAILABLE }, 404);
   if ((await count(env, l.id, 'requests')) >= DAILY_REQUESTS) return json({ ok: false, limit: true, error: `You can send ${DAILY_REQUESTS} supervision requests a day. Try again tomorrow.` }, 429);
-  const sup = await env.DB.prepare("SELECT id, email, title, first_name, last_name FROM learners WHERE supervisor_public_ref = ? AND supervisor_searchable = 1 AND test_account = 0 AND password_hash IS NOT NULL AND email_status = 'verified'").bind(ref).first();
+  const sup = await env.DB.prepare("SELECT id, email, title, first_name, last_name FROM learners WHERE supervisor_public_ref = ? AND (searchable_at IS NULL OR searchable_at NOT LIKE 'out:%') AND test_account = 0 AND password_hash IS NOT NULL AND email_status = 'verified'").bind(ref).first();
   if (!sup || sup.id === l.id) return json({ ok: false, error: NOT_AVAILABLE }, 404);
   const block = await env.DB.prepare('SELECT id FROM supervisor_blocks WHERE learner_id = ? AND lifted_at IS NULL').bind(sup.id).first();
   if (block || !(await eligibleNow(env, sup.id))) return json({ ok: false, error: NOT_AVAILABLE }, 404);
@@ -137,6 +138,8 @@ export async function requestSupervisor(env, l, d, ctx) {
     auditStmt(env, { actorType: 'learner', actorId: l.id, action: 'search.request', subjectType: 'link', subjectId: link.id, meta: { via: 'search' } }),
   ]);
   deliverLater(env, ctx, [key]);
+  // Audit 12 Nov 2026: a request through search reaches the supervisor's phone too, as an email invitation does.
+  const ph = pushPerson(env, sup.id, 'link_invite', { learner: fullName(l) }).catch(() => 0); if (ctx && ctx.waitUntil) ctx.waitUntil(ph); else await ph;
   return json({ ok: true, link: { id: link.id, name: fullName(sup), state: 'invited', via: 'search' } });
 }
 

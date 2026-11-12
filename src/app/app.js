@@ -504,7 +504,7 @@
       var jobs = (res.saved || []).map(function (s) {
         answered[s.id] = true;
         var local = S.entries.find(function (x) { return x.id === s.id; });
-        if (s.conflict) return resolveConflict(local, s.server) && ++conflicts;
+        if (s.conflict) return resolveConflict(local, s.server, typeof res.now === 'number' ? res.now - Date.now() : 0) && ++conflicts;
         // Edited again while this push was in flight: keep the newer local edit and send it next time.
         if (local && local !== pushed[s.id]) { local.updatedAt = s.updatedAt; conflicts++; return put('entries', local); }
         if (s.deleted) { S.entries = S.entries.filter(function (x) { return x.id !== s.id; }); return del('entries', s.id); }
@@ -519,7 +519,7 @@
         var local = S.entries.find(function (x) { return x.id === e.id; });
         if (local && local === pushed[e.id]) { local._syncError = (why && why.reason) || 'not-accepted'; jobs.push(put('entries', local)); }
       });
-      return Promise.all(jobs).then(function () { return conflicts; });
+      return Promise.all(jobs).then(function () { if (S.conflictToast) { S.conflictToast = false; toast(T('A scan was also changed on another device. The most recent version was kept.'), 6000); } return conflicts; });
     });
   }
   // The last 12 sync attempts on this device, for the details panel: time, result kind, how long it took and the kind
@@ -593,9 +593,22 @@
   // A restored backup never overwrites a live server copy: the server copy wins. Otherwise the learner's latest
   // edit wins, rebased on the server copy so it saves next time; the server keeps the sign-off only if the
   // signed fields are unchanged. Returns true when the entry needs pushing again.
-  function resolveConflict(local, server) {
+  // Audit 12 Nov 2026: the same scan changed on two devices. Until now this phone's copy always won, so an older
+  // offline edit could overwrite a newer one. Now the more recent edit wins (this phone's edit time, corrected by the
+  // server clock), the other version is kept on this phone (kv 'conflicts', last 20) and the learner is told.
+  function keepConflict(lost) { var list = (S.kv.conflicts || []).concat([{ at: Date.now(), entry: strip(lost) }]).slice(-20); return setKv('conflicts', list); }
+  function resolveConflict(local, server, skew) {
     if (!local || !server) return false;
     if (local._restored && !server.deleted) { saveLocal(server); return false; }
+    // A supervisor signing the scan also moves its server time on: that is not an edit from another device, and the
+    // learner's edit keeps winning (the server then voids the sign-off with a record of why), as before.
+    var bySigning = server.signoff && server.signoff.at && Math.abs(Date.parse(server.signoff.at) - server.updatedAt) < 60000;
+    if (!bySigning && local._editedAt && server.updatedAt && server.updatedAt > local._editedAt + (skew || 0) + 5000) {
+      keepConflict(local); S.conflictToast = true;
+      if (server.deleted) { S.entries = S.entries.filter(function (x) { return x.id !== server.id; }); dropImages(server.id); del('entries', server.id); return false; }
+      saveLocal(server); return false;
+    }
+    if (!server.deleted) keepConflict(server);
     local.updatedAt = server.updatedAt;
     put('entries', local);
     return true;
@@ -1065,7 +1078,7 @@
       pwFields('pw', T('Password'), 'password') +
       '<div class="field"><label for="role">' + esc(T('Role')) + '</label><input id="role" name="role" type="text" placeholder="' + esc(T('For example ST4 emergency medicine, ACP, consultant')) + '" autocomplete="organization-title"></div>' +
       orgField('org', T('Hospital or organisation'), '', '') +
-      '<input type="text" name="wl_trap" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">' +
+      '<input type="text" name="wl_trap" tabindex="-1" autocomplete="off" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);opacity:0" aria-hidden="true">' +
       '<div class="field"><label class="check"><input type="checkbox" name="newsletter" value="1"><span>' + esc(T('Send me the Wavelength newsletter (optional).')) + '</span></label></div>' +
       '<div class="field"><label class="check"><input type="checkbox" name="terms" value="1" required><span>' + T('I accept the <a href="/app-terms/" target="_blank" rel="noopener">logbook terms of use</a> and the <a href="/privacy/" target="_blank" rel="noopener">privacy notice</a>.') + '</span></label></div>' +
       '<button class="btn teal block" type="submit">' + esc(T('Create account')) + '</button><div class="btns" style="justify-content:center"><a class="link" href="#/login">' + esc(T('Log in instead')) + '</a></div></form>');
@@ -1180,6 +1193,8 @@
   // The store apps can show a notification when a request arrives or a supervisor decides (worker/push.js). Asked once,
   // after sign-in, and switched in Settings; a token moves with the account signed in on the phone and is removed at
   // sign-out. A tap on a notification, or an email link to the logbook, opens that screen (native.js: wl:open).
+  // Audit 12 Nov 2026: this phone's notification token, so logging out other devices keeps this one registered.
+  function myPushToken() { return NAT.push && pushIsOn() ? NAT.push.token().then(function (x) { return x && x.token ? x.token : ''; }, function () { return ''; }) : Promise.resolve(''); }
   function pushIsOn() { try { return localStorage.getItem('wl-push') === '1'; } catch (e) { return false; } }
   function pushRegister(t) {
     if (!t) return Promise.resolve(false);
@@ -1872,6 +1887,9 @@
       (editing ? '' : '<div class="field" id="senddeclf" data-req="senddecl" hidden><label class="check"><input type="checkbox" id="senddecl"><span id="senddecltx"></span></label></div>') +
       '<div class="err" hidden></div><div class="btns savebar"><button class="btn teal block" type="submit" data-after="" id="sv1">' + esc(editing ? T('Save changes') : T('Save scan')) + '</button>' + (editing ? '' : '<button class="btn ghost block" type="submit" data-after="draft" id="sv2" hidden>' + esc(T('Save as draft')) + '</button>') + '</div>' + (editing ? '' : '<p class="hint" id="savehint" aria-live="polite"></p>') +
       '</div></form>';
+    // Audit 12 Nov 2026: a scan waiting for sign-off says that changing it means that request no longer applies.
+    var wEd = editing && !(editing.signoff && editing.signoff.status === 'confirmed') ? waiting(editing) : null;
+    if (wEd && !wEd.returned) body = '<div class="warn" role="note" style="margin-bottom:12px">' + esc(T('This scan is waiting for sign-off. If you change it, that request no longer applies to it and you will need to send it again.')) + '</div>' + body;
     mount(shell({ title: editing ? T('Edit scan') : copyFrom ? T('Another scan') : T('Log a scan'), back: editing ? 'entry/' + editing.id : '', tab: 'new' }, body));
     var form = $('#ef'); form.dataset.formkey = formKey; form.dataset.draft = inst;
     // 1.0.21: the supervisor cards fill the name; the save buttons follow the level of supervision.
@@ -2258,7 +2276,7 @@
         saving = true; busy(btn, true, T('Saving…'));
         var keepImgs = existing.filter(function (x) { return removed.indexOf(x.id) < 0; }), savedIds = draftImages.map(function (x) { return x.id; });
         out.images = keepImgs.concat(draftImages.map(function (x) { var o = { id: x.id, w: x.w, h: x.h, declared: true }; if (x.kind === 'clip') { o.kind = 'clip'; o.dur = x.dur; } return o; }));
-        out._dirty = true; if (!editing) out._new = true;
+        out._dirty = true; out._editedAt = Date.now(); if (!editing) out._new = true; // _editedAt: this phone's clock, for conflicts
         out.updatedAt = editing ? editing.updatedAt : 0;
         if (draftImages.length && navigator.storage && navigator.storage.persist) navigator.storage.persist();
         fingerprints(out.images, draftImages, editing && editing.media).then(function (media) {
@@ -3240,7 +3258,7 @@
     if (ms) shareFor(e.id).then(function (q) {
       var st = shareState(q, e);
       ms.innerHTML = '<span class="chip ' + (st.cls || '') + '">' + esc(st.label) + '</span>' + (st.retry ? ' <button class="link small" type="button" data-retryq>' + esc(T('Retry')) + '</button>' : '') + (st.link && q.link ? ' <button class="link small" type="button" data-showq>' + esc(T('Show link')) + '</button>' : '');
-      var rb = $('[data-retryq]', ms); if (rb) rb.onclick = function () { busy(rb, true); runShare(q).then(function (k) { linkReady({ link: q.link + '.' + k, images: q.files.length, dash: q.dash }, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(q.scans || 1, 'ultrasound scan'), link: q.link + '.' + k }), T('Ultrasound logbook sign-off')); }).catch(function (ex) { if (ex.share) shareFailed(q, ex, function (k) { linkReady({ link: q.link + '.' + k, images: q.files.length, dash: q.dash }, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(q.scans || 1, 'ultrasound scan'), link: q.link + '.' + k }), T('Ultrasound logbook sign-off')); }); else { busy(rb, false); toast(ex.message, 4000); } }); };
+      var rb = $('[data-retryq]', ms); if (rb) rb.onclick = function () { busy(rb, true); runShare(q).then(function (k) { linkReady({ link: (q.link ? q.link + '.' + k : ''), images: q.files.length, dash: q.dash }, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(q.scans || 1, 'ultrasound scan'), link: (q.link ? q.link + '.' + k : '') }), T('Ultrasound logbook sign-off')); }).catch(function (ex) { if (ex.share) shareFailed(q, ex, function (k) { linkReady({ link: (q.link ? q.link + '.' + k : ''), images: q.files.length, dash: q.dash }, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(q.scans || 1, 'ultrasound scan'), link: (q.link ? q.link + '.' + k : '') }), T('Ultrasound logbook sign-off')); }); else { busy(rb, false); toast(ex.message, 4000); } }); };
       var sb = $('[data-showq]', ms); if (sb) sb.onclick = function () { linkReady({ link: shareLink(q), images: q.files.length, dash: q.dash }, T('Please sign off {scans} in my Wavelength logbook: {link}', { scans: plural(q.scans || 1, 'ultrasound scan'), link: shareLink(q) }), T('Ultrasound logbook sign-off')); };
     });
     var nsb = $('#nsb');
@@ -3331,7 +3349,7 @@
         var how = s.method === 'in-person' ? T('In person') : s.method === 'dashboard' ? T('Dashboard') : s.supervisor_id ? T('Dashboard and link') : T('By link');
         return '<div class="card"><div class="row"><div class="grow"><b>' + esc(s.id) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([plural(n, 'scan'), how, fmt(s.signed_at || s.created_at), s.supervisor_name || '', s.status === 'signed' ? T('{n} confirmed', { n: conf }) : ''].filter(Boolean).join(' · ')) + '</p></div>' + st + '</div>' + (s.status === 'signed' && s.signer ? '<p class="small muted" style="margin:6px 0 0">' + esc(signerText(s.signer)) + '</p>' : '') + (s.issuedInError ? '<div class="warn" style="margin-top:8px">' + esc(T('Marked as issued in error by Wavelength.')) + '</div>' : '') + (s.comment ? '<p class="small" style="margin:8px 0 0">“' + esc(s.comment) + '”</p>' : '') + (s.status === 'pending' && !s.returned && s.reviewState === 'under_review' ? '<p class="small" style="margin:8px 0 0">' + esc(T('Under review: your supervisor has opened this request.')) + '</p>' : '') + (s.status === 'pending' && s.returned ? '<p class="small" style="margin:8px 0 0">' + esc(returnedText(s.returned)) + '</p>' + (s.returned.reason === 'more_info' && supervisorOf(s.returned.from) ? '<p class="hint" style="margin:4px 0 0">' + esc(T('Update the scan first if they asked for changes. You can include images when you send it back.')) + '</p><div class="btns"><button class="btn teal sm" data-resend="' + esc(s.id) + '">' + esc(T('Send back to {name}', { name: supervisorOf(s.returned.from).name || supervisorOf(s.returned.from).email })) + '</button><button class="btn ghost sm" data-back="' + esc(s.id) + '">' + esc(T('Send to someone else')) + '</button></div>' : '<div class="btns"><button class="btn teal sm" data-back="' + esc(s.id) + '">' + esc(T('Send on')) + '</button></div>') : '') + (s.status === 'pending' && s.expires_at > Date.now() && !s.returned ? '<div class="btns"><button class="btn ghost sm" data-cancel="' + esc(s.id) + '">' + esc(T('Cancel request')) + '</button></div>' : '') + '</div>';
       }).join('') : '<p class="muted small">' + esc(T('No sign-offs yet.')) + '</p>';
-      $$('[data-cancel]', h).forEach(function (b) { b.onclick = function () { api('/api/app/signoff/cancel', { code: b.dataset.cancel }).then(function () { toast(T('Request cancelled.')); viewSignoff(route()); }); }; });
+      $$('[data-cancel]', h).forEach(function (b) { b.onclick = function () { api('/api/app/signoff/cancel', { code: b.dataset.cancel }).then(function (res) { toast(res && res.ok === false ? res.error : T('Request cancelled.')); viewSignoff(route()); }).catch(function (ex) { toast(netFail(ex) ? T('You are offline. Nothing has changed.') : ex.message, 5000); }); }; });
       $$('[data-back]', h).forEach(function (b) { b.onclick = function () { returnedSheet('signoff', b.dataset.back, T('This sign-off request')); }; });
       $$('[data-resend]', h).forEach(function (b) { b.onclick = function () {
         var so = list.find(function (x) { return x.id === b.dataset.resend; }); if (!so) return;
@@ -3341,12 +3359,12 @@
         if (!navigator.onLine) { toast(T('Sign-off needs an internet connection.')); return; }
         signByLink(ids, { replaces: so.id, sup: sup ? sup.id : null, name: sup ? (sup.name || sup.email) : '' });
       }; });
-    });
+    }).catch(function () { var bx = $('#hist'); if (bx) bx.innerHTML = '<p class="muted small">' + esc(T('Connect to the internet to see your sign-off requests.')) + '</p>'; }); // audit 12 Nov 2026: offline, say so instead of loading forever
   }
   // media (1.0.21): the scan's images, shown under its title and before the ratings, so they are seen before rating.
   function entryCard(e, decide, media) {
     var t = TYPES[e.type] || {};
-    return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T(t.label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (decide ? '<select data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">' + esc(T('Confirm')) + '</option><option value="query">' + esc(T('Query')) + '</option></select>' : '') + '</div>' + (media || '') + (decide ? F.ratingHtml(C, T, e.id) : '') + '</div>';
+    return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T(t.label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (decide ? '<select aria-label="' + esc(T('Decision for {scan}', { scan: (T(t.label || e.type)) + ', ' + fmt(e.date) })) + '" data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">' + esc(T('Confirm')) + '</option><option value="query">' + esc(T('Query')) + '</option></select>' : '') + '</div>' + (media || '') + (decide ? F.ratingHtml(C, T, e.id) : '') + '</div>';
   }
   function signoffFormHtml(pre) {
     return '<form id="pf">' + F.assessorHtml(T, pre) +
@@ -3498,7 +3516,7 @@
       var run = function (b, p) { btns.forEach(function (x) { x.disabled = true; }); busy(b, true); p.then(function (k) { closeSheet(); done(k); }).catch(function (e2) { btns.forEach(function (x) { x.disabled = false; }); busy(b, false); if (e2.share) { shareFailed(e2.share, e2, done); return; } err.textContent = e2.message; err.hidden = false; }); };
       $('[data-retry]', root).onclick = function () { run(this, runShare(q, function (i, n) { $('[data-retry]', root).textContent = T('Uploading {i} of {n}…', { i: i, n: n }); })); };
       var w = $('[data-without]', root); if (w) w.onclick = function () { run(this, finishShare(q)); };
-      $('[data-cancelq]', root).onclick = function () { api('/api/app/signoff/cancel', { code: q.code }).then(function () { return del('shares', q.code); }).then(function () { closeSheet(); toast(T('Request cancelled.')); sync(); }); };
+      $('[data-cancelq]', root).onclick = function () { api('/api/app/signoff/cancel', { code: q.code }).then(function (res) { return (res && res.ok === false ? Promise.resolve() : del('shares', q.code)).then(function () { return res; }); }).then(function (res) { closeSheet(); toast(res && res.ok === false ? res.error : T('Request cancelled.')); sync(); }).catch(function (ex) { toast(netFail(ex) ? T('You are offline. Nothing has changed.') : ex.message, 5000); }); };
     });
   }
   function signByLink(ids, opts) {
@@ -3546,10 +3564,10 @@
             if (!res.ok) throw new Error(res.error);
             code = res.code;
             if (!withImages) return { link: res.link, images: 0, dash: res.toDashboard };
-            return shareImages(res.code, sets, function (i, n) { b.textContent = T('Uploading {i} of {n}…', { i: i, n: n }); }, { link: res.link, dash: res.toDashboard, scans: ids.length, entries: ids, expires: Date.now() + 14 * 864e5 }).then(function (k) { return { link: res.link + '.' + k, images: count, dash: res.toDashboard }; });
+            return shareImages(res.code, sets, function (i, n) { b.textContent = T('Uploading {i} of {n}…', { i: i, n: n }); }, { link: res.link, dash: res.toDashboard, scans: ids.length, entries: ids, expires: Date.now() + 14 * 864e5 }).then(function (k) { return { link: res.link ? res.link + '.' + k : '', images: count, dash: res.toDashboard }; });
           }).then(ready)
             .catch(function (ex) {
-              if (ex.share) { shareFailed(ex.share, ex, function (k) { ready({ link: ex.share.link + '.' + k, images: ex.share.files.length, dash: ex.share.dash }); }); return; }
+              if (ex.share) { shareFailed(ex.share, ex, function (k) { ready({ link: ex.share.link ? ex.share.link + '.' + k : '', images: ex.share.files.length, dash: ex.share.dash }); }); return; }
               if (code) api('/api/app/signoff/cancel', { code: code }).then(function () { del('shares', code); });
               busy(b, false); b.textContent = T('Create request'); err.textContent = ex.message || T('Could not create the request. Check the connection.'); if (supId && ex.message) err.insertAdjacentHTML('beforeend', ' ' + guideLink()); err.hidden = false;
             });
@@ -3579,7 +3597,7 @@
       });
     }).then(function (out) { NAT.haptic('success'); linkReady(out, msg(out), T('Ultrasound logbook sign-off')); sync(); })
       .catch(function (ex) {
-        if (ex && ex.share) { shareFailed(ex.share, ex, function (k) { linkReady({ link: ex.share.link ? ex.share.link + '.' + k : '', images: ex.share.files.length, dash: ex.share.dash }, msg({ link: ex.share.link }), T('Ultrasound logbook sign-off')); }); return; }
+        if (ex && ex.share) { shareFailed(ex.share, ex, function (k) { linkReady({ link: ex.share.link ? ex.share.link + '.' + k : '', images: ex.share.files.length, dash: ex.share.dash }, msg({ link: ex.share.link ? ex.share.link + '.' + k : '' }), T('Ultrasound logbook sign-off')); }); return; }
         if (code) api('/api/app/signoff/cancel', { code: code }).then(function () { del('shares', code); });
         toast(T('Could not send it: {why}', { why: (ex && ex.message) || T('Check the connection.') }), 6000);
         signByLink([id], { sup: sup.id });
@@ -3628,7 +3646,7 @@
       asmNotes(a, root);
       var bk = $('[data-backas]', root); if (bk) bk.onclick = function () { returnedSheet('assessment', a.id, T('This assessment request')); };
       var rs = $('[data-resendas]', root); if (rs) rs.onclick = function () { busy(rs, true); api('/api/app/assessment/resend', { code: a.id }).then(function (res) { busy(rs, false); if (!res.ok) { toast(res.error || T('Something went wrong.')); return; } closeSheet(); toast(T('Sent back to their dashboard.')); loadAssessments().then(function () { render(true); }); }).catch(function () { busy(rs, false); toast(T('Could not save. Check your connection.')); }); };
-      var x = $('[data-cancelas]', root); if (x) x.onclick = function () { api('/api/app/assessment/cancel', { code: a.id }).then(function () { closeSheet(); toast(T('Request cancelled.')); loadAssessments().then(function () { render(true); }); }); };
+      var x = $('[data-cancelas]', root); if (x) x.onclick = function () { api('/api/app/assessment/cancel', { code: a.id }).catch(function (ex) { return { ok: false, error: netFail(ex) ? T('You are offline. Nothing has changed.') : ex.message }; }).then(function (res) { closeSheet(); toast(res && res.ok === false ? res.error : T('Request cancelled.')); loadAssessments().then(function () { render(true); }); }); };
     });
   }
   // Who signed (approved supervisor, account not approved, or self-declared), and any amendment history. A supervisor
@@ -4303,7 +4321,7 @@
         f.addEventListener('submit', function (ev) {
           ev.preventDefault(); var d = collectSignoff(root, f, pad); if (!d) return; d.code = code;
           var b = $('button.teal', f); busy(b, true, T('Signing…'));
-          api('/api/app/supervise/signoff', d).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(T('Signed off. Code {code}.', { code: r2.code }), 4000); loadLinks(); S.sv = null; render(true); })
+          api('/api/app/supervise/signoff', d).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(r2.skipped ? T('Signed off. Code {code}.', { code: r2.code }) + ' ' + T('{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.', { n: r2.skipped }) : T('Signed off. Code {code}.', { code: r2.code }), r2.skipped ? 8000 : 4000); loadLinks(); S.sv = null; render(true); })
             .catch(function (ex) { busy(b, false); var err = $('.err', f); err.textContent = ex.message; err.hidden = false; });
         });
       });
@@ -4459,7 +4477,7 @@
           toast(on ? T('Learners can now find you.') : T('You no longer appear in search.'));
         }).catch(function () { fb.disabled = false; fb.checked = !on; toast(T('Could not save. Check your connection.')); });
       };
-      $$('[data-svcancel]').forEach(function (b) { b.onclick = function () { if (!confirm(T('Withdraw this application? Your answers and documents are deleted. You can start again later.'))) return; busy(b, true); api('/api/app/supervisor/application/cancel', {}).then(function () { toast(T('Application withdrawn.')); viewSupervisorStatus(); }); }; });
+      $$('[data-svcancel]').forEach(function (b) { b.onclick = function () { if (!confirm(T('Withdraw this application? Your answers and documents are deleted. You can start again later.'))) return; busy(b, true); api('/api/app/supervisor/application/cancel', {}).then(function (res) { if (res && res.ok === false) throw new Error(res.error || T('Something went wrong.')); toast(T('Application withdrawn.')); viewSupervisorStatus(); }).catch(function (ex) { busy(b, false); toast(netFail(ex) ? T('You are offline. Nothing has changed.') : ex.message, 5000); }); }; });
       $$('[data-svstart]').forEach(function (b) { b.onclick = function () { busy(b, true); api('/api/app/supervisor/' + b.dataset.svstart, {}).then(function (res) { busy(b, false); if (!res.ok) { toast(res.error, 5000); return; } go('supervisor/apply'); }); }; });
     }).catch(function () { toast(T('Could not load. Check your connection.')); });
   }
@@ -4939,8 +4957,8 @@
           (x.withdrawn ? '' : '<div class="btns"><button class="btn sm" data-copy="' + esc(x.id) + '">' + esc(T('Copy link')) + '</button><button class="btn sm ghost" data-wd="' + esc(x.id) + '">' + esc(T('Withdraw')) + '</button></div>') + '</div>';
       }).join('');
       $$('[data-copy]', box).forEach(function (bt) { bt.onclick = function () { copy(NAT.origin + '/app/verify/?code=' + bt.dataset.copy); }; });
-      $$('[data-wd]', box).forEach(function (bt) { bt.onclick = function () { if (!confirm(T('Withdraw {code}? Anyone who checks this code will see it is withdrawn.', { code: bt.dataset.wd }))) return; api('/api/app/evidence/withdraw', { code: bt.dataset.wd }).then(function () { toast(T('Withdrawn.')); viewEvidence(); }); }; });
-    });
+      $$('[data-wd]', box).forEach(function (bt) { bt.onclick = function () { if (!confirm(T('Withdraw {code}? Anyone who checks this code will see it is withdrawn.', { code: bt.dataset.wd }))) return; api('/api/app/evidence/withdraw', { code: bt.dataset.wd }).then(function (res) { if (res && res.ok === false) throw new Error(res.error || T('Something went wrong.')); toast(T('Withdrawn.')); viewEvidence(); }).catch(function (ex) { toast(netFail(ex) ? T('You are offline. Nothing has changed.') : ex.message, 5000); }); }; });
+    }).catch(function () { var bx = $('#evl'); if (bx) bx.innerHTML = '<p class="muted small">' + esc(T('Connect to the internet to see your verified summaries.')) + '</p>'; }); // audit 12 Nov 2026: offline, say so instead of loading forever
   }
   function fetchSignoffs() { return navigator.onLine ? api('/api/app/signoffs').then(function (r) { return r.signoffs || []; }).catch(function () { return []; }) : Promise.resolve([]); }
   // In the App Store and Google Play shells, web downloads and Web Share do not work inside the WebView,
@@ -5441,6 +5459,15 @@
     if (!n) return out();
     sheet('<h2>' + esc(T('Log out?')) + '</h2><p class="muted small">' + esc(N(n, '{n} entry on this device has not synced yet.', '{n} entries on this device have not synced yet.')) + ' ' + esc(T('It stays saved on this device and syncs when you log in here again.')) + '</p><div class="btns"><button class="btn block" data-close>' + esc(T('Stay logged in')) + '</button><button class="btn ghost block" data-ok>' + esc(T('Log out')) + '</button></div>', function (root) { $('[data-ok]', root).onclick = function () { closeSheet(); out(); }; });
   }
+  // Puts a kept version back as the current one (sent at the next sync).
+  document.addEventListener('click', function (ev) {
+    var bt = ev.target && ev.target.closest ? ev.target.closest('[data-restorekept]') : null; if (!bt) return;
+    var list = (S.kv.conflicts || []).slice(), i = Number(bt.dataset.restorekept), c = list[i]; if (!c) return;
+    var cur = S.entries.find(function (x) { return x.id === c.entry.id; });
+    var d = Object.assign({}, c.entry, { _dirty: true, _editedAt: Date.now(), updatedAt: cur ? cur.updatedAt : 0 });
+    list.splice(i, 1);
+    saveLocal(d).then(function () { return setKv('conflicts', list); }).then(function () { toast(T('Version restored. It syncs now.')); sync(); viewSettings(); });
+  });
   function viewSettings() {
     var p = profile();
     var certs = (S.me && S.me.certificates) || [];
@@ -5448,6 +5475,8 @@
     var opt = function (v, cls, label) { return '<input type="radio" name="theme" id="th-' + v + '" value="' + v + '"' + (cur === v ? ' checked' : '') + '><label for="th-' + v + '"><span class="sw ' + cls + '" aria-hidden="true"><i></i><b></b></span>' + esc(label) + '</label>'; };
     mount(shell({ title: T('Settings'), back: 'me', tab: 'me' },
       '<h2 class="sec" style="margin-top:6px" id="sync">' + esc(T('Sync')) + '</h2><div class="card" id="syncpanel" data-syncpanel></div>' +
+      // Audit 12 Nov 2026: versions kept when the same scan was changed on two devices can be put back.
+      ((S.kv.conflicts || []).length ? '<div class="card" id="kept-versions"><p class="small" style="margin:0 0 8px"><b>' + esc(T('Versions kept after a scan was changed on two devices')) + '</b></p>' + S.kv.conflicts.slice().reverse().map(function (c, i) { var t2 = TYPES[c.entry.type] || { label: c.entry.type || '' }; return '<div class="row" style="margin:6px 0"><span class="grow small">' + esc(T(t2.label)) + ' · ' + esc(fmt(c.entry.date)) + ' · ' + esc(T('kept {date}', { date: fmt(new Date(c.at).toISOString()) })) + '</span><button type="button" class="btn ghost sm" data-restorekept="' + (S.kv.conflicts.length - 1 - i) + '">' + esc(T('Use this version')) + '</button></div>'; }).join('') + '</div>' : '') +
       '<h2 class="sec">' + esc(T('Backup')) + '</h2><div class="card"><p class="small muted" style="margin:0 0 10px">' + esc(S.kv.lastBackup ? T('Last backup file created {date}', { date: fmt(S.kv.lastBackup) }) : T('No backup file created on this device yet')) + '. ' + esc(T('Backups are encrypted with a passphrase you choose and saved where you decide.')) + '</p><a class="btn sm" href="#/backup">' + esc(T('Back up and restore')) + '</a></div>' +
       '<h2 class="sec">' + esc(T('Appearance')) + '</h2><div class="card"><div class="theme-pick" role="radiogroup" aria-label="' + esc(T('Appearance')) + '">' + opt('system', 's', T('Match my phone')) + opt('light', '', T('Light')) + opt('dark', 'd', T('Dark')) + '</div><p class="small muted" style="margin:12px 0 0">' + esc(T('Match my phone follows the light or dark setting on your phone.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Language')) + '</h2><div class="card set-lang"><div class="row"><span>' + I.globe + '</span><b class="grow">' + esc(T('App language')) + '</b>' + langPicker('lang-m') + '</div><p class="small muted" style="margin:8px 0 0">' + esc(T('Exports and certificates stay in English so any assessor can read them.')) + '</p></div>' +
@@ -5463,14 +5492,14 @@
     if (route().q.get('sync')) $('#sync').scrollIntoView();
     $$('input[name=theme]').forEach(function (i) { i.onchange = function () { if (window.WLTheme) WLTheme.set(i.value); NAT.haptic(); }; });
     bindPw($('#cpw'), 'c2');
-    $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; var bad = pwProblem(f, 'c2'); if (bad) { toast(bad, 5000); return; } api('/api/app/password', formData(f)).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
+    $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; var bad = pwProblem(f, 'c2'); if (bad) { toast(bad, 5000); return; } myPushToken().then(function (pt) { var fd = formData(f); if (pt) fd.pushToken = pt; return api('/api/app/password', fd); }).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
     var ntp = $('#ntp'); if (ntp) ntp.onchange = function () { var on = ntp.checked; ntp.disabled = true; (on ? pushEnable() : pushDisable().then(function () { return false; })).then(function (ok) { ntp.disabled = false; ntp.checked = !!ok; }); };
     $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? T('Sign-off emails on.') : T('Sign-off emails off.')); }).catch(function (ex) { toast(ex.message); }); };
     bindLockCard();
     $('#lo').onclick = askLogout;
     $('#loa').onclick = function () {
       sheet('<h2>' + esc(T('Log out of all other devices?')) + '</h2><p class="muted small">' + esc(T('Every other phone, tablet and browser signed in to your account is logged out. Logbook entries they have not synced stay on them until someone logs in there again. This device stays logged in.')) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Log out other devices')) + '</button><button class="btn ghost block" data-close>' + esc(T('Cancel')) + '</button></div>', function (root) {
-        $('[data-ok]', root).onclick = function () { var b = this; busy(b, true); api('/api/app/logout-all', { keepThisDevice: true }).then(function (res) { closeSheet(); toast(res.ok ? T('Other devices are logged out.') : res.error, 4000); }).catch(function () { busy(b, false); toast(T('Could not log out other devices. Check your connection.')); }); };
+        $('[data-ok]', root).onclick = function () { var b = this; busy(b, true); myPushToken().then(function (pt) { return api('/api/app/logout-all', { keepThisDevice: true, pushToken: pt || '' }); }).then(function (res) { closeSheet(); toast(res.ok ? T('Other devices are logged out.') : res.error, 4000); }).catch(function () { busy(b, false); toast(T('Could not log out other devices. Check your connection.')); }); };
       });
     };
     $('#dl').onclick = function () {
@@ -5577,7 +5606,7 @@
       if (res.needPassword) {
         done(T('Choose your password.'), T('To finish creating your account, choose the password you will use to log in.'), '<form id="f" novalidate><div class="err" hidden></div>' + pwFields('pw', T('Password')) + '<button class="btn teal block">' + esc(T('Save and log in')) + '</button></form>');
         bindPw($('#f'), 'pw');
-        $('#f').addEventListener('submit', function (e) { e.preventDefault(); var bad = pwProblem(this, 'pw'); if (bad) { var er0 = $('.err', this); er0.textContent = bad; er0.hidden = false; return; } var b = $('button', this); busy(b, true); send({ password: $('#pw').value }).then(function (r2) { if (r2.needPassword) { busy(b, false); var er = $('.err'); er.textContent = r2.error; er.hidden = false; return; } handle(r2); }); });
+        $('#f').addEventListener('submit', function (e) { e.preventDefault(); var bad = pwProblem(this, 'pw'); if (bad) { var er0 = $('.err', this); er0.textContent = bad; er0.hidden = false; return; } var b = $('button', this); busy(b, true); send({ password: $('#pw').value }).then(function (r2) { if (r2.needPassword) { busy(b, false); var er = $('.err'); er.textContent = r2.error; er.hidden = false; return; } handle(r2); }).catch(function () { busy(b, false); var er = $('.err'); er.textContent = T('Could not reach Wavelength. Check your connection and try again.'); er.hidden = false; }); });
         return;
       }
       return finish(res);

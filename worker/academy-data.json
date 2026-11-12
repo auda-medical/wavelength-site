@@ -684,7 +684,7 @@
    "slug": "cardiac",
    "code": "FCU",
    "title": "Focused cardiac ultrasound in the breathless or shocked patient",
-   "cpdHours": 1.5,
+   "cpdHours": 1.75,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -1388,7 +1388,7 @@
    "slug": "hand-blocks",
    "code": "HND",
    "title": "Ultrasound-guided blocks for the hand: median, ulnar, radial and digital",
-   "cpdHours": 1.5,
+   "cpdHours": 1.25,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -2400,7 +2400,7 @@
    "slug": "msk",
    "code": "MSK",
    "title": "Soft tissue and joints: foreign bodies, tendons, effusions, the shoulder and the hip",
-   "cpdHours": 2,
+   "cpdHours": 1.75,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -2658,7 +2658,7 @@
     },
     {
      "id": "q22",
-     "correct": "b",
+     "correct": "c",
      "why": "A gap at the insertion with an avulsion flake suggests a complete rupture. Early repair gives the best results.",
      "review": "07-tendon-ruptures",
      "options": [
@@ -2904,7 +2904,7 @@
    "slug": "pelvis",
    "code": "PEL",
    "title": "Pelvic pain in women: early pregnancy, torsion, bleeding cysts and pelvic sepsis",
-   "cpdHours": 1.25,
+   "cpdHours": 1,
    "passMark": 80,
    "draft": false,
    "questions": [
@@ -3272,7 +3272,7 @@
    "slug": "vascular-access",
    "code": "VAC",
    "title": "Ultrasound-guided vascular access: peripheral, central and arterial",
-   "cpdHours": 1.5,
+   "cpdHours": 1.25,
    "passMark": 80,
    "draft": false,
    "questions": [

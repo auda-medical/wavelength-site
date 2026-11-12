@@ -2733,5 +2733,19 @@
 "Send to {name} in the app instead": "Envoyer plutôt à {name} dans l'application",
 "Link your supervisor so requests go straight to their app": "Liez votre superviseur pour que les demandes arrivent directement dans son application",
 "Link ready: not sent yet": "Lien prêt : pas encore envoyé",
-"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Votre superviseur n'a rien reçu. Envoyez-lui ce lien maintenant. Wavelength ne l'envoie pas à votre place."
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Votre superviseur n'a rien reçu. Envoyez-lui ce lien maintenant. Wavelength ne l'envoie pas à votre place.",
+"A scan was also changed on another device. The most recent version was kept.": "Un examen a aussi été modifié sur un autre appareil. La version la plus récente a été conservée.",
+"Confirm or query at least one scan.": "Validez ou questionnez au moins un examen.",
+"Connect to the internet to see your sign-off requests.": "Connectez-vous à internet pour voir vos demandes de validation.",
+"Decision for {scan}": "Décision pour {scan}",
+"The learner changed these scans after asking for sign-off, so this request no longer matches them. Ask them to send a new request.": "L’apprenant a modifié ces examens après la demande ; la demande ne correspond plus. Demandez-lui d’en envoyer une nouvelle.",
+"This scan is waiting for sign-off. If you change it, that request no longer applies to it and you will need to send it again.": "Cet examen attend une validation. Si vous le modifiez, cette demande ne s’applique plus et vous devrez l’envoyer à nouveau.",
+"This summary was not found.": "Ce résumé est introuvable.",
+"You are offline. Nothing has changed.": "Vous êtes hors ligne. Rien n’a changé.",
+"You have sent many invitations today. Try again tomorrow.": "Vous avez envoyé beaucoup d’invitations aujourd’hui. Réessayez demain.",
+"{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.": "{n} de ces examens ont été modifiés par l’apprenant après la demande ; votre décision ne leur a pas été appliquée. Demandez-lui de les renvoyer.",
+"Versions kept after a scan was changed on two devices": "Versions conservées quand un examen a été modifié sur deux appareils",
+"kept {date}": "conservée le {date}",
+"Use this version": "Utiliser cette version",
+"Version restored. It syncs now.": "Version restaurée. Elle se synchronise maintenant."
 }

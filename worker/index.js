@@ -280,7 +280,7 @@ async function adminRoute(req, env, ctx, url, p, s, who = null) {
   if (!who && p === '/admin/accounts/') return bootstrapRoute(req, env, url, helpers(env, req, acc, ''));
   if (!who && (p === '/admin/account/' || p === '/admin/reauth/')) return redirect('/admin/');
 
-  if (p === '/admin/') return page(consoleHome(acc), '');
+  if (p === '/admin/') return page((await mailTrouble(env)) + consoleHome(acc), '');
 
   // Business dashboard (worker/business.js): owner role. CSV exports keep the .csv path.
   if (p === '/admin/business/' || p.startsWith('/admin/business/')) {
@@ -382,7 +382,7 @@ async function adminRoute(req, env, ctx, url, p, s, who = null) {
       if (who) f.set('reviewer', accountName);
       else if (accessEmail) f.set('reviewer', accessEmail);
       else f.set('reviewer', String(s.admin_username || 'admin')); // 12 Nov 2026: never typed; the login is the reviewer
-      const r = await sourcesAdminPost(env, f, who ? adminId : accessEmail ? 'access' : s.admin_username, ctx);
+      const r = await sourcesAdminPost(env, f, who ? adminId : accessEmail ? `access:${accessEmail}` : s.admin_username, ctx);
       return redirect(`/admin/sources/?${r.change ? `change=${encodeURIComponent(r.change)}&` : r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`);
     }
     return page(await sourcesAdminHtml(env, url), 'sources');
@@ -414,7 +414,7 @@ async function adminRoute(req, env, ctx, url, p, s, who = null) {
   // The whole case for one person: read here, decided through /admin/supervisors/ (its forms post there).
   if (p === '/admin/supervisors/case/') {
     if (req.method !== 'GET' && req.method !== 'HEAD') return redirect(`/admin/supervisors/case/?id=${Number(url.searchParams.get('id')) || 0}`);
-    const remembered = (/(?:^|;s*)wl_reviewer=([^;]*)/.exec(req.headers.get('Cookie') || '') || [])[1];
+    const remembered = (/(?:^|;\s*)wl_reviewer=([^;]*)/.exec(req.headers.get('Cookie') || '') || [])[1];
     let reviewer = '';
     try { reviewer = remembered ? decodeURIComponent(remembered).slice(0, 80) : ''; } catch { reviewer = ''; }
     const can = who ? (action) => { const perm = permissionFor('POST', '/admin/supervisors/', action); return !!perm && who.perms.has(perm); } : null;
@@ -566,3 +566,20 @@ export default {
     return redirect('/volunteer/');
   },
 };
+
+// Audit 12 Nov 2026: the email provider refused everything for four days (credit exhausted) and nobody knew. The console
+// home says so whenever emails have not gone in the last week, with where to resend them.
+async function mailTrouble(env) {
+  try {
+    const since = new Date(Date.now() - 7 * 864e5).toISOString().replace('T', ' ').slice(0, 19);
+    const n = async (sql) => { try { return (await env.DB.prepare(sql).bind(since).first('n')) || 0; } catch { return 0; } };
+    const certs = await n("SELECT COUNT(*) AS n FROM certificates WHERE emailed_at IS NULL AND email_error IS NOT NULL AND REPLACE(created_at, 'T', ' ') >= ?");
+    const enq = await n("SELECT COUNT(*) AS n FROM department_enquiries WHERE emailed_at IS NULL AND email_error IS NOT NULL AND REPLACE(created_at, 'T', ' ') >= ?");
+    const fac = await n("SELECT COUNT(*) AS n FROM faculty_applications WHERE emailed_at IS NULL AND email_error IS NOT NULL AND REPLACE(created_at, 'T', ' ') >= ?");
+    const out = await n("SELECT COUNT(*) AS n FROM notification_log WHERE status IN ('failed', 'unknown') AND REPLACE(created_at, 'T', ' ') >= ?");
+    if (!certs && !enq && !fac && !out) return '';
+    const s = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+    const bits = [certs && `${s(certs, 'certificate email', 'certificate emails')} (Academy: Send pending certificates)`, enq && `${s(enq, 'training enquiry', 'training enquiries')} (Training enquiries)`, fac && `${s(fac, 'faculty application', 'faculty applications')} (Faculty applications)`, out && `${s(out, 'notification', 'notifications')} (Supervisor verification, System)`].filter(Boolean);
+    return `<p class="sv-banner sv-warn" role="status" style="font-weight:600">Some emails did not go out in the last 7 days: ${bits.join('; ')}. Check the email provider (ZeptoMail credit and log), then resend from the pages named.</p>`;
+  } catch { return ''; }
+}

@@ -41,7 +41,7 @@ In a shocked patient with suspected high-risk pulmonary embolism, RV dysfunction
 + About two thirds of the left ventricle or smaller
 - Equal to the left ventricle
 - Twice the left ventricle
-- About one third of the left ventricle
+- One and a half times the left ventricle
 : A normal right ventricle measures about two thirds of the left at the base, or less. Equal to or larger than the left counts as dilated.
 
 ?? What does a D-shaped left ventricle in parasternal short axis indicate?

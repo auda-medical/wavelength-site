@@ -2809,5 +2809,19 @@
 "Send to {name} in the app instead": "Вместо этого отправить {name} в приложении",
 "Link your supervisor so requests go straight to their app": "Свяжитесь с руководителем, чтобы запросы приходили прямо в его приложение",
 "Link ready: not sent yet": "Ссылка готова: ещё не отправлена",
-"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Ваш руководитель ничего не получил. Отправьте ему эту ссылку сейчас. Wavelength не отправляет её за вас."
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Ваш руководитель ничего не получил. Отправьте ему эту ссылку сейчас. Wavelength не отправляет её за вас.",
+"A scan was also changed on another device. The most recent version was kept.": "Исследование также было изменено на другом устройстве. Сохранена самая новая версия.",
+"Confirm or query at least one scan.": "Подтвердите или поставьте под вопрос хотя бы одно исследование.",
+"Connect to the internet to see your sign-off requests.": "Подключитесь к интернету, чтобы увидеть запросы на подтверждение.",
+"Decision for {scan}": "Решение по {scan}",
+"The learner changed these scans after asking for sign-off, so this request no longer matches them. Ask them to send a new request.": "Учащийся изменил эти исследования после запроса, поэтому запрос больше им не соответствует. Попросите отправить новый.",
+"This scan is waiting for sign-off. If you change it, that request no longer applies to it and you will need to send it again.": "Это исследование ожидает подтверждения. Если вы его измените, запрос перестанет действовать и его нужно будет отправить снова.",
+"This summary was not found.": "Эта сводка не найдена.",
+"You are offline. Nothing has changed.": "Вы не в сети. Ничего не изменилось.",
+"You have sent many invitations today. Try again tomorrow.": "Сегодня вы отправили много приглашений. Попробуйте завтра.",
+"{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.": "{n} из этих исследований были изменены учащимся после запроса, поэтому ваше решение к ним не применено. Попросите отправить их снова.",
+"Versions kept after a scan was changed on two devices": "Версии, сохранённые, когда исследование изменили на двух устройствах",
+"kept {date}": "сохранено {date}",
+"Use this version": "Использовать эту версию",
+"Version restored. It syncs now.": "Версия восстановлена. Сейчас синхронизируется."
 }

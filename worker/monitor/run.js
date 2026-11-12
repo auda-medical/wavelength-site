@@ -9,7 +9,7 @@
 //   - a directory sync is one validated snapshot written in one statement: never half applied, never emptied
 //   - clinical or accreditation content is never changed here: changes are recorded for a person to review
 import SOURCES from './sources.json';
-import { htmlToText, htmlMeta, pdfMeta, sha256, TEXT_LIMIT } from './extract.js';
+import { htmlToText, htmlMeta, pdfMeta, sha256, TEXT_LIMIT, EXTRACT_VERSION } from './extract.js';
 import { classify, NEEDS_REVIEW } from './classify.js';
 import { parseDirectory, validate, sync, optedOut } from './directory.js';
 import { queueStmt, deliverLater } from '../notify.js';
@@ -47,7 +47,8 @@ export async function seedSources(env) {
       FROM json_each(?) WHERE true
       ON CONFLICT (id) DO UPDATE SET kind = excluded.kind, name = excluded.name, body = excluded.body, mode = excluded.mode, adapter = excluded.adapter, guides = excluded.guides, meta = json_set(monitor_sources.meta, '$.why', json_extract(excluded.meta, '$.why')),
         url = excluded.url, status = CASE WHEN excluded.mode = 'manual' THEN 'unsupported' WHEN excluded.mode = 'not_authorised' THEN 'not_authorised' WHEN monitor_sources.status IN ('unsupported', 'not_authorised') THEN 'never' ELSE monitor_sources.status END,
-        content_hash = CASE WHEN excluded.url = monitor_sources.url THEN monitor_sources.content_hash END, snapshot = CASE WHEN excluded.url = monitor_sources.url THEN monitor_sources.snapshot END, updated_at = datetime('now')`).bind(rows),
+        content_hash = CASE WHEN excluded.url = monitor_sources.url THEN monitor_sources.content_hash END, snapshot = CASE WHEN excluded.url = monitor_sources.url THEN monitor_sources.snapshot END,
+        etag = CASE WHEN excluded.url = monitor_sources.url THEN monitor_sources.etag END, last_modified = CASE WHEN excluded.url = monitor_sources.url THEN monitor_sources.last_modified END, updated_at = datetime('now')`).bind(rows), // audit 12 Nov 2026: a new address never gets the old address's validators
     // A source no longer cited anywhere is retired: kept with its history, no longer checked.
     env.DB.prepare("UPDATE monitor_sources SET mode = 'retired', status = 'retired' WHERE id NOT IN (SELECT json_extract(value, '$.id') FROM json_each(?))").bind(rows),
     env.DB.prepare("INSERT INTO settings (key, value) VALUES ('monitor_sources_version', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").bind(SOURCES.version),
@@ -95,7 +96,8 @@ async function fetchSource(env, s) {
   // Conditional requests save the source's bandwidth, but once a week the full content is read and compared, so
   // a server that answers 304 wrongly cannot hide a change.
   const fullDue = !meta.fullAt || Date.now() - Date.parse(meta.fullAt) > 7 * 864e5;
-  if (s.content_hash && !fullDue) { if (s.etag) headers['If-None-Match'] = s.etag; if (s.last_modified) headers['If-Modified-Since'] = s.last_modified; }
+  const stale = (meta.extractV || 1) !== EXTRACT_VERSION;
+  if (s.content_hash && !fullDue && !stale) { if (s.etag) headers['If-None-Match'] = s.etag; if (s.last_modified) headers['If-Modified-Since'] = s.last_modified; }
   const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const limit = Number(env.MONITOR_TIMEOUT_MS) || TIMEOUT_MS;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), limit) : null;
@@ -151,9 +153,12 @@ export async function checkSource(env, s, trigger = 'cron', o = {}) {
     const hm = htmlMeta(html, text);
     next = { isDocument: false, hash: await sha256(text), text: text.slice(0, SNAPSHOT_MAX), version: hm.version, publishedOn: hm.publishedOn, title: hm.title };
   }
-  const prev = s.content_hash ? { hash: s.content_hash, text: s.snapshot, version: s.doc_version, publishedOn: s.published_on, isDocument: next.isDocument } : null;
+  // A page last read by an older extractor takes a new baseline quietly (EXTRACT_VERSION); documents are not affected.
+  const rebase = !next.isDocument && (meta.extractV || 1) !== EXTRACT_VERSION;
+  const prev = s.content_hash && !rebase ? { hash: s.content_hash, text: s.snapshot, version: s.doc_version, publishedOn: s.published_on, isDocument: next.isDocument } : null;
   const result = classify(prev, next);
   meta.fullAt = iso();
+  if (!next.isDocument) meta.extractV = EXTRACT_VERSION;
   if (result.classification === 'format_changed') return recordFailure(env, s, { outcome: 'format_changed', http: got.status, error: result.summary, evidence: result.evidence }, trigger, started);
   return recordSuccess(env, s, { outcome: result.classification === 'baseline' ? 'no_change' : result.classification, http: got.status, next, result, meta, etag: got.headers.get('ETag'), lastModified: got.headers.get('Last-Modified') }, trigger, started);
 }
@@ -223,7 +228,7 @@ async function recordDirectory(env, s, r, trigger, started) {
     if (flagged.length) stmts.push(env.DB.prepare("UPDATE directory_links SET flag = CASE WHEN (SELECT json_extract(value, '$.kind') FROM json_each(?) WHERE json_extract(value, '$.key') = directory_links.entry_key LIMIT 1) = 'removed' THEN 'listing_removed' ELSE 'modules_changed' END WHERE source_id = ? AND status IN ('claimed', 'confirmed') AND entry_key IN (SELECT json_extract(value, '$.key') FROM json_each(?))").bind(JSON.stringify(flagged.map((e) => ({ key: e.key, kind: e.kind }))), s.id, JSON.stringify(flagged.map((e) => ({ key: e.key })))));
     const review = r.events.filter((e) => e.review);
     if (r.cur && r.events.length) stmts.push(env.DB.prepare("INSERT INTO monitor_changes (source_id, detected_at, classification, summary, evidence, guides, review_status) VALUES (?,?,'directory',?,?, '[]', ?)")
-      .bind(s.id, now, `${Object.entries(counts).filter(([k]) => k !== 'listed').map(([k, n]) => `${n} ${k.replace(/_/g, ' ')}`).join(', ')}; ${counts.listed} listed.`, JSON.stringify({ counts, events: r.events.slice(0, 60) }).slice(0, 8000), review.length ? 'open' : 'none'));
+      .bind(s.id, now, `${Object.entries(counts).filter(([k]) => k !== 'listed').map(([k, n]) => `${n} ${k.replace(/_/g, ' ')}`).join(', ')}; ${counts.listed} listed.`, JSON.stringify(capEvidence(counts, r.events)), review.length ? 'open' : 'none'));
   }
   stmts.push(env.DB.prepare("UPDATE monitor_sources SET status = 'ok', last_outcome = ?, last_attempt_at = ?, last_success_at = ?, last_change_at = CASE WHEN ? THEN ? ELSE last_change_at END, next_check_at = ?, failures = 0, lease_until = NULL, content_hash = ?, meta = json_set(meta, '$.fullAt', ?, '$.counts', json(?)), updated_at = datetime('now') WHERE id = ?")
     .bind(r.outcome, now, now, r.events.length ? 1 : 0, now, iso(Date.now() + DAY_MS), r.hash || null, now, JSON.stringify(counts), s.id));
@@ -256,4 +261,12 @@ async function retention(env) {
     env.DB.prepare("DELETE FROM directory_events WHERE at < ?").bind(iso(Date.now() - 395 * 864e5)),
     env.DB.prepare("INSERT INTO settings (key, value) VALUES ('monitor_retention_day', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").bind(day),
   ]);
+}
+
+// Audit 12 Nov 2026: the stored change history must stay valid JSON (an objection has to be able to remove a name
+// from it), so events are dropped whole until it fits, never cut mid-text.
+function capEvidence(counts, events) {
+  let ev = events.slice(0, 60);
+  while (ev.length && JSON.stringify({ counts, events: ev }).length > 8000) ev = ev.slice(0, -1);
+  return { counts, events: ev, ...(ev.length < events.length ? { more: events.length - ev.length } : {}) };
 }

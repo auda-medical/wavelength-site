@@ -87,3 +87,15 @@ export async function facultyAdminPost(env, req) {
   if (id && f.get('action') === 'delete') await env.DB.prepare('DELETE FROM faculty_applications WHERE id = ?').bind(id).run();
   if (id && f.get('action') === 'contacted') await env.DB.prepare('UPDATE faculty_applications SET contacted = 1 - contacted WHERE id = ?').bind(id).run();
 }
+
+// The daily job retries a team notice that failed recently (worker/supervisor-lifecycle.js, audit 12 Nov 2026).
+export async function retryTeamNotices(env, since) {
+  const out = { sent: 0, failed: 0 };
+  const { results = [] } = await env.DB.prepare("SELECT * FROM faculty_applications WHERE emailed_at IS NULL AND email_error IS NOT NULL AND REPLACE(created_at, 'T', ' ') >= ? LIMIT 10").bind(since).all();
+  for (const r of results) {
+    await notifyTeam(env, r.id, { first: r.first_name, last: r.last_name, email: r.email, phone: r.phone, profession: r.profession, specialty: r.specialty, org: r.organisation, registration: r.registration, experience: r.experience, credentials: r.credentials, applications: r.applications, interests: r.interests, details: r.details });
+    const now = await env.DB.prepare('SELECT emailed_at FROM faculty_applications WHERE id = ?').bind(r.id).first();
+    (now && now.emailed_at) ? out.sent++ : out.failed++;
+  }
+  return out;
+}

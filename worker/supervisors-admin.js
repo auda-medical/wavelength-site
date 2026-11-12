@@ -875,7 +875,7 @@ async function revokeAll(env, learnerId, { actor, adminAudit, reason, message = 
   const stmts = [
     env.DB.prepare("UPDATE supervisor_approvals SET status = 'revoked', ended_by = ?, ended_at = ?, ended_reason = ? WHERE learner_id = ? AND status = 'approved'").bind(actor, at, reason, learnerId),
     env.DB.prepare("UPDATE supervisor_applications SET status = 'withdrawn', decided_at = ?, decided_by = ?, decision_note = 'Closed: supervisor status revoked', updated_at = datetime('now') WHERE learner_id = ? AND status IN ('draft', 'submitted', 'more_info')").bind(at, actor, learnerId),
-    env.DB.prepare('UPDATE learners SET supervisor_searchable = 0 WHERE id = ?').bind(learnerId),
+    env.DB.prepare('UPDATE learners SET supervisor_searchable = 0, supervisor_public_ref = NULL WHERE id = ?').bind(learnerId), // audit 12 Nov 2026
     env.DB.prepare('UPDATE directory_profiles SET listed = 0 WHERE learner_id = ?').bind(learnerId),
     env.DB.prepare("UPDATE supervisor_blocks SET lifted_at = ?, lifted_by = ?, lift_note = 'Replaced by a later block' WHERE learner_id = ? AND lifted_at IS NULL").bind(at, actor, learnerId),
     env.DB.prepare('INSERT INTO supervisor_blocks (learner_id, kind, reason, one_off_permitted, one_off_note, blocked_by, blocked_at) VALUES (?,?,?,?,?,?,?)').bind(learnerId, kind, reason, oneOff ? 1 : 0, oneOff ? oneOffNote : null, actor, at),

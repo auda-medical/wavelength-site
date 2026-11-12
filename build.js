@@ -128,6 +128,11 @@ const modules = (fs.existsSync(ACADEMY_DIR) ? fs.readdirSync(ACADEMY_DIR) : [])
   });
 // Draft modules are built so the team can review them by link, but stay unlisted, noindex and out of the sitemap.
 const liveModules = modules.filter((m) => m.draft !== true);
+// Audit 12 Nov 2026 (owner rule, 6 Nov): CPD hours are the lesson minutes the module shows, to the nearest quarter hour.
+for (const m of liveModules) {
+  const sum = m.lessonPages.reduce((n, l) => n + l.minutes, 0);
+  if (m.minutes !== sum || m.cpdHours !== Math.round(sum / 15) / 4) throw new Error(`Academy ${m.slug}: lessons add up to ${sum} min, so minutes must be ${sum} and cpdHours ${Math.round(sum / 15) / 4} (module.json has ${m.minutes} and ${m.cpdHours})`);
+}
 
 // Topic groups (data/site.json learnTopics) shared by the Pearls and Academy pages.
 const TOPICS = ((site.learnTopics || {}).topics || []).concat([{ slug: 'more', label: 'More pearls', intro: 'Further techniques from the Wavelength faculty.', categories: [] }]);
@@ -1270,7 +1275,7 @@ for (const p of posts) {
 <section class="section"><div class="wrap"><article class="prose post reveal">${p.html}</article>
 ${p.questions.length ? `<div class="test-cta reveal"><div><p class="eyebrow">Test yourself</p><h3>${p.questions.length} questions on this pearl</h3><p>Answer at your own pace. Each answer comes with a short explanation. About ${Math.max(2, Math.round(p.questions.length * 0.6))} minutes.</p></div><a class="btn btn-teal" href="/learn/${p.slug}/test/">Take the test ${arrow}</a></div>` : ''}
 ${logStrip(p)}
-<div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Four or five delegates per instructor, FAMUS-accredited faculty and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
+<div class="post-cta reveal"><div><h2>Practise it with us</h2><p>Four or five delegates per instructor, FAMUS-accredited instructors and RCEM-approved ultrasound supervisors, and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
 </div></section>
 ${others.length || topicMods.length ? `<section class="section sand"><div class="wrap"><div class="section-head"><p class="eyebrow reveal">More on ${esc(topicOf(p.category).label.toLowerCase())}</p></div>${others.length ? `<div class="post-grid">${others.map((o) => postCard(o, 'h3', { topicView: true })).join('')}</div>` : ''}${topicMods.length ? `<div class="topic-modules">${topicMods.map(moduleStrip).join('')}</div>` : ''}<p class="reveal" style="margin-top:32px"><a class="text-link" href="${tHref || `/learn/#topic-${t.slug}`}">All ${esc(t.label.toLowerCase())} pearls</a></p></div></section>` : ''}
 ${subscribeBand('Get the next one <em>by email.</em>')}`,
@@ -1404,7 +1409,7 @@ ${p.questions.join('\n')}
 <div class="test-score" data-score hidden><p class="eyebrow">Your score</p><p class="test-result"><span data-right>0</span> of ${p.questions.length}</p><p data-message></p>
 <div class="test-actions"><a class="btn" href="/learn/${p.slug}/">Back to the pearl</a>${next && next !== p ? `<a class="btn btn-teal" href="/learn/${next.slug}/test/">Next test ${arrow}</a>` : ''}<button type="button" class="text-link test-retry" data-retry>Try again</button></div></div>
 </div>
-<div class="post-cta reveal"><div><h3>Practise it with us</h3><p>Four or five delegates per instructor, FAMUS-accredited faculty and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
+<div class="post-cta reveal"><div><h2>Practise it with us</h2><p>Four or five delegates per instructor, FAMUS-accredited instructors and RCEM-approved ultrasound supervisors, and long, supervised time on the probe.</p></div><a class="btn btn-teal" href="/courses/core-emergency-ultrasound/">See the core course ${arrow}</a></div>
 </div></section>
 ${subscribeBand('A new pearl and test <em>every week.</em>')}`,
   });
@@ -1620,9 +1625,9 @@ pages['/verify/'] = layout({
   <p class="form-error" id="verr" hidden>Codes start with WL-, SO- or EV-. Check the code and try again.</p>
 </form>
 <div class="pillars" style="margin-top:48px">
-  <div class="pillar"><div class="num">WL-</div><h3>Academy certificate</h3><p>Shows the learner's name, the module, CPD hours and the date it was issued.</p></div>
-  <div class="pillar"><div class="num">SO-</div><h3>Supervisor sign-off</h3><p>Shows who signed, their stated role and accreditation, how they signed and which scans they confirmed.</p></div>
-  <div class="pillar"><div class="num">EV-</div><h3>Verified logbook summary</h3><p>Shows the learner's progress against each pathway as Wavelength recorded it. Counts and dates only.</p></div>
+  <div class="pillar"><div class="num">WL-</div><h2 class="pillar-h">Academy certificate</h2><p>Shows the learner's name, the module, CPD hours and the date it was issued.</p></div>
+  <div class="pillar"><div class="num">SO-</div><h2 class="pillar-h">Supervisor sign-off</h2><p>Shows who signed, their stated role and accreditation, how they signed and which scans they confirmed.</p></div>
+  <div class="pillar"><div class="num">EV-</div><h2 class="pillar-h">Verified logbook summary</h2><p>Shows the learner's progress against each pathway as Wavelength recorded it. Counts and dates only.</p></div>
 </div>
 <p style="margin-top:32px;color:var(--slate)">Scanning the QR code on a certificate or export opens the same check. Wavelength holds no patient identifiers, and checks never show findings or images.</p>
 </div></section>
@@ -2526,7 +2531,7 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'), `# Search engines and AI assista
     '',
     '## Free learning',
     '',
-    line('Wavelength Pearls', '/learn/', `${posts.length} short illustrated ultrasound pearls, each with a five-question test; one is emailed every week to subscribers.`),
+    line('Wavelength Pearls', '/learn/', `${posts.length} short illustrated ultrasound pearls, each with a short test; one is emailed every week to subscribers.`),
     line('Wavelength Academy', '/elearning/', `${liveModules.length} free CPD e-learning modules with an assessment and a certificate of completion.`),
     ...liveModules.map((m) => line(m.title, `/elearning/${m.slug}/`, `${m.summary}${m.cpdHours ? ` ${m.cpdHours} CPD ${Number(m.cpdHours) === 1 ? 'hour' : 'hours'}.` : ''}`)),
     line('Guides', '/guides/', 'reference guides on POCUS accreditation and training pathways.'),
@@ -2567,7 +2572,7 @@ fs.writeFileSync(
 fs.writeFileSync(path.join(DIST, 'site.webmanifest'), JSON.stringify({ name: site.name, short_name: site.name, start_url: '/', icons: [{ src: '/assets/logo-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/logo-512.png', sizes: '512x512', type: 'image/png' }], theme_color: '#0A1526', background_color: '#0A1526', display: 'standalone' }));
 fs.writeFileSync(
   path.join(DIST, '_headers'),
-  `/assets/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/assets/*\n  Cache-Control: public, max-age=86400\n/assets/guides/*\n  X-Robots-Tag: noindex\n/app/sw.js\n  Cache-Control: no-cache\n/app/\n  Cache-Control: no-cache\n/app/vendor/*\n  Cache-Control: public, max-age=2592000\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
+  `/assets/*\n  Cache-Control: public, max-age=86400\n/assets/fonts/*\n  ! Cache-Control\n  Cache-Control: public, max-age=31536000, immutable\n/assets/guides/*\n  X-Robots-Tag: noindex\n/app/sw.js\n  Cache-Control: no-cache\n/app/\n  Cache-Control: no-cache\n/app/vendor/*\n  Cache-Control: public, max-age=2592000\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
 );
 // Weekly Pearl newsletter: one email page per queued pearl and the send queue the Worker reads on Tuesdays
 // (lib/pearl-issue.js, worker/newsletter.js). Runs last: it needs the built test pages.

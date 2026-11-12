@@ -2733,5 +2733,19 @@
 "Send to {name} in the app instead": "Enviar a {name} en la aplicación",
 "Link your supervisor so requests go straight to their app": "Vincule a su supervisor para que las solicitudes lleguen directamente a su aplicación",
 "Link ready: not sent yet": "Enlace listo: aún no enviado",
-"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Su supervisor no ha recibido nada. Envíele este enlace ahora. Wavelength no lo envía por usted."
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Su supervisor no ha recibido nada. Envíele este enlace ahora. Wavelength no lo envía por usted.",
+"A scan was also changed on another device. The most recent version was kept.": "Un estudio también se modificó en otro dispositivo. Se conservó la versión más reciente.",
+"Confirm or query at least one scan.": "Confirme o cuestione al menos un estudio.",
+"Connect to the internet to see your sign-off requests.": "Conéctese a internet para ver sus solicitudes de firma.",
+"Decision for {scan}": "Decisión para {scan}",
+"The learner changed these scans after asking for sign-off, so this request no longer matches them. Ask them to send a new request.": "El estudiante cambió estos estudios después de solicitar la firma, por lo que la solicitud ya no coincide. Pídale que envíe una nueva.",
+"This scan is waiting for sign-off. If you change it, that request no longer applies to it and you will need to send it again.": "Este estudio está pendiente de firma. Si lo cambia, esa solicitud dejará de aplicarse y tendrá que enviarlo de nuevo.",
+"This summary was not found.": "No se encontró este resumen.",
+"You are offline. Nothing has changed.": "Está sin conexión. No ha cambiado nada.",
+"You have sent many invitations today. Try again tomorrow.": "Ha enviado muchas invitaciones hoy. Inténtelo mañana.",
+"{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.": "{n} de estos estudios fueron modificados por el estudiante después de solicitarlo, así que su decisión no se aplicó a ellos. Pídale que los envíe de nuevo.",
+"Versions kept after a scan was changed on two devices": "Versiones conservadas cuando un estudio se modificó en dos dispositivos",
+"kept {date}": "conservada el {date}",
+"Use this version": "Usar esta versión",
+"Version restored. It syncs now.": "Versión restaurada. Se sincroniza ahora."
 }

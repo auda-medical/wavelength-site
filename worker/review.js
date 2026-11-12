@@ -52,7 +52,7 @@ export async function acceptRequest(env, l, req) {
   const o = await own(env, l, d);
   if (o.error) return o.error;
   await env.DB.batch([
-    env.DB.prepare(`UPDATE ${o.t} SET accepted_at = COALESCE(accepted_at, ?) WHERE id = ? AND status = 'pending'`).bind(nowIso(), o.row.id),
+    env.DB.prepare(`UPDATE ${o.t} SET accepted_at = COALESCE(accepted_at, ?) WHERE id = ? AND status = 'pending' AND accepted_at IS NULL`).bind(nowIso(), o.row.id),
     auditStmt(env, { actorType: 'supervisor', actorId: l.id, action: 'request.accept', subjectType: d.kind, subjectId: o.row.id, meta: {} }, { ifChanged: true }),
   ]);
   return json({ ok: true, state: 'under_review' });
@@ -89,7 +89,7 @@ export async function moreInfoRequest(env, l, req, ctx) {
   const o = await own(env, l, d);
   if (o.error) return o.error;
   const out = await env.DB.batch([
-    env.DB.prepare(`UPDATE ${o.t} SET returned_from = supervisor_id, supervisor_id = NULL, returned_at = ?, returned_reason = 'more_info', declined_at = NULL, decline_reason = ? WHERE id = ? AND status = 'pending' AND supervisor_id = ?`).bind(nowIso(), note, o.row.id, l.id),
+    env.DB.prepare(`UPDATE ${o.t} SET returned_from = supervisor_id, supervisor_id = NULL, returned_at = ?, returned_reason = 'more_info', declined_at = NULL, decline_reason = ?, token_hash = NULL WHERE id = ? AND status = 'pending' AND supervisor_id = ?`).bind(nowIso(), note, o.row.id, l.id),
     auditStmt(env, { actorType: 'supervisor', actorId: l.id, action: 'request.more_info', subjectType: d.kind, subjectId: o.row.id, meta: { length: note.length } }, { ifChanged: true }),
   ]);
   const changed = !!(out[0] && out[0].meta && out[0].meta.changes);

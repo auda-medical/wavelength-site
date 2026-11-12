@@ -66,7 +66,7 @@ FAST is specific but misses injuries. A negative scan lowers the chance of a lar
 - Discharge, as a negative FAST excludes significant injury
 - Repeat the FAST in 24 hours before any further imaging
 - Diagnostic laparotomy
-: A negative FAST does not exclude injury, especially to hollow viscus, diaphragm and retroperitoneum. In a stable patient, CT gives the definitive assessment. Repeat the FAST if the condition changes. Discharge on a negative FAST misses injuries. Laparotomy is not indicated in a stable patient without other findings.
+: A negative FAST does not exclude injury, especially to the hollow viscera, the diaphragm and the retroperitoneum. In a stable patient, CT gives the definitive assessment. Repeat the FAST if the condition changes. Discharge on a negative FAST misses injuries. Laparotomy is not indicated in a stable patient without other findings.
 
 ?? Which injury is a FAST scan most likely to miss?
 + An isolated bowel perforation

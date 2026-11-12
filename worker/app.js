@@ -49,9 +49,9 @@ import { appEvent, activity, count, forgetLearner } from './metrics.js';
 import { actionsForSignoff } from './verification/pathways.js';
 import { acceptRequest, declineRequest, moreInfoRequest, reviewState, REVIEW_STATES } from './review.js';
 import * as AL from './alerts.js';
-import { registerDevice, unregisterDevice, pushReady, pushPerson } from './push.js';
+import { registerDevice, unregisterDevice, pushReady, pushPerson, forgetDevices } from './push.js';
 
-import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady, sigKind, withSigKind, splitSigKind } from './app-util.js';
+import { enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, contentHash, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady, sigKind, withSigKind, splitSigKind , cleanDecisions, cleanRatings } from './app-util.js';
 
 // ---------- Accounts ----------
 async function signup(env, req, ctx) {
@@ -195,6 +195,7 @@ async function logoutAll(env, l, req) {
   const d = (await body(req)) || {};
   try { await env.DB.prepare('UPDATE learners SET sessions_after = ? WHERE id = ?').bind(Date.now(), l.id).run(); }
   catch { return json({ ok: false, error: 'This is not available yet.' }, 503); }
+  await forgetDevices(env, l.id, d.keepThisDevice ? d.pushToken : '');
   await audit(env, { actorType: 'learner', actorId: l.id, action: 'account.logout_all', subjectType: 'learner', subjectId: l.id, meta: { keepThisDevice: !!d.keepThisDevice } });
   return json({ ok: true, loggedOut: !d.keepThisDevice }, 200, { 'Set-Cookie': d.keepThisDevice ? await cookieFor(env, l.id) : clearCookie });
 }
@@ -207,6 +208,7 @@ async function changePassword(env, l, req) {
   await env.DB.prepare('UPDATE learners SET password_hash = ? WHERE id = ?').bind(await hashPassword(pw), l.id).run();
   // Log out every other device, then give this one a fresh cookie.
   await revokeSessions(env, l.id);
+  await forgetDevices(env, l.id, d.pushToken || '');
   return json({ ok: true }, 200, { 'Set-Cookie': await cookieFor(env, l.id) });
 }
 
@@ -250,6 +252,7 @@ async function resetComplete(env, req) {
   ]);
   // Whoever knew the old password is logged out everywhere.
   await revokeSessions(env, row.learner_id);
+  await forgetDevices(env, row.learner_id);
   // The reset link was delivered to this address, so the email is now proven too.
   if (await verificationReady(env)) await env.DB.prepare("UPDATE learners SET email_status = 'verified', email_verified_at = COALESCE(email_verified_at, datetime('now')) WHERE id = ?").bind(row.learner_id).run();
   const l = await env.DB.prepare('SELECT * FROM learners WHERE id = ?').bind(row.learner_id).first();
@@ -403,10 +406,12 @@ function cleanSupervisor(d) {
 }
 const RATING = ['g', 'a', 'r'];
 function cleanRating(r) { if (!r || typeof r !== 'object') return null; const o = {}; for (const k of ['image', 'accuracy']) if (RATING.includes(r[k])) o[k] = r[k]; return Object.keys(o).length ? o : null; }
-async function applySignoff(env, so, decisions, sup, method, ratings = {}, snap = null) {
+// dry: only work out which scans would be signed (still as they were when requested), writing nothing.
+async function applySignoff(env, so, decisions, sup, method, ratings = {}, snap = null, dry = false) {
   const at = new Date().toISOString();
   const now = Date.now();
   const hv = (await lifecycleReady(env)) ? 2 : 1;
+  const applied = [];
   for (const e of JSON.parse(so.snapshot)) {
     const status = decisions[e.id] === 'confirmed' ? 'confirmed' : decisions[e.id] === 'query' ? 'query' : null;
     if (!status) continue;
@@ -415,14 +420,18 @@ async function applySignoff(env, so, decisions, sup, method, ratings = {}, snap 
     const data = JSON.parse(row.data);
     const hash = await contentHash(data);
     if (hash !== (await contentHash(e))) continue; // edited since the request: skip
-    if (hv === 2 && Array.isArray(e.media) && JSON.stringify([...e.media].sort()) !== JSON.stringify(mediaOf(data).map((m) => m.sha256).sort())) continue; // images changed since the request
+    // Images changed since the request (audit 12 Nov 2026: also when the request had none and images were added).
+    if (hv === 2 && JSON.stringify([...(Array.isArray(e.media) ? e.media : [])].sort()) !== JSON.stringify(mediaOf(data).map((m) => m.sha256).sort())) continue;
+    if (dry) { applied.push(e.id); continue; }
     data.signoff = { code: so.id, status, name: sup.name, role: sup.role, reg: sup.reg, accreditation: sup.accreditation, basis: sup.basis, method, at, hash: hv === 2 ? await hashFor(data, 2) : hash, ...(hv === 2 ? { hv } : {}), signatureKind: sup.signatureKind || 'drawn' };
     const rt = cleanRating((ratings || {})[e.id]); if (rt) data.signoff.rating = rt;
     // What Wavelength had verified about the signer at this moment. Server-owned like the rest of signoff.
     const vs = entrySnapshot(snap); if (vs) data.signoff.verification = vs;
     delete data.signoffVoid;
     await env.DB.prepare('UPDATE logbook_entries SET data = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(data), now, e.id).run();
+    applied.push(e.id);
   }
+  return applied;
 }
 
 async function signoffRequest(env, l, req, ctx) {
@@ -464,19 +473,22 @@ async function signoffComplete(env, req, ctx) {
   const d = await body(req);
   if (!d) return json({ ok: false }, 400);
   const so = await env.DB.prepare('SELECT * FROM signoffs WHERE token_hash = ?').bind(await sha256(clip(d.token, 100))).first();
-  if (!so || so.status !== 'pending' || so.expires_at < Date.now()) return json({ ok: false, error: 'This sign-off link is no longer valid.' }, 410);
+  // Audit 12 Nov 2026: a request that came back to the learner (more information, declined) cannot be signed by an old link.
+  if (!so || so.status !== 'pending' || so.returned_at || so.expires_at < Date.now()) return json({ ok: false, error: 'This sign-off link is no longer valid.' }, 410);
   const sup = cleanSupervisor(d);
   if (!sup.name || !sup.role || !d.confirm) return json({ ok: false, error: 'Enter your name and role, and tick the confirmation.' }, 400);
   const sig = String(d.signature || '');
   if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(sig) || sig.length > 120000) return json({ ok: false, error: 'Sign in the box with your finger or mouse.' }, 400);
-  const decisions = d.decisions && typeof d.decisions === 'object' ? d.decisions : {};
-  const ratings = d.ratings && typeof d.ratings === 'object' ? d.ratings : {};
+  const soIds = JSON.parse(so.entry_ids || '[]');
+  const decisions = cleanDecisions(soIds, d.decisions);
+  const ratings = cleanRatings(soIds, d.ratings);
+  if (!Object.keys(decisions).length) return json({ ok: false, error: 'Confirm or query at least one scan.' }, 400);
   // An account whose supervisor status Wavelength revoked cannot sign the same material as a one-off assessor.
   const signer = await learner(env, req).catch(() => null);
   const barred = await signerBlocked(env, { accountId: signer && signer.id, emails: [sup.email, so.supervisor_email], reg: sup.reg });
   if (barred) {
     await env.DB.batch([
-      env.DB.prepare("UPDATE signoffs SET token_hash = NULL, returned_at = ?, returned_reason = 'signer_unavailable' WHERE id = ? AND status = 'pending'").bind(nowIso(), so.id),
+      env.DB.prepare("UPDATE signoffs SET token_hash = NULL, returned_at = ?, returned_reason = 'signer_unavailable', returned_from = supervisor_id, supervisor_id = NULL WHERE id = ? AND status = 'pending'").bind(nowIso(), so.id),
       auditStmt(env, { actorType: 'token', actorId: signer ? signer.id : null, action: 'oneoff.blocked', subjectType: 'signoff', subjectId: so.id, meta: { route: 'signoff/complete' } }),
     ]);
     await deleteSharedImages(env, so.id);
@@ -488,23 +500,28 @@ async function signoffComplete(env, req, ctx) {
   // signs with its name and email and its verified status, and the request is attached to that account.
   const asAccount = !!(d.asAccount && signer && signer.password_hash && signer.id !== so.learner_id);
   if (asAccount) { sup.name = fullName(signer); sup.email = String(signer.email || '').toLowerCase(); }
+  // Audit 12 Nov 2026: if the learner changed every scan after asking, nothing can be signed. Say so before the link is
+  // used up, instead of thanking the supervisor for a sign-off that is never applied.
+  if (!(await applySignoff(env, so, decisions, sup, 'remote', ratings, null, true)).length) return json({ ok: false, changed: true, error: 'The learner changed these scans after asking for sign-off, so this request no longer matches them. Ask them to send a new request.' }, 409);
   const snap = await snapshotFor(env, { entries: JSON.parse(so.snapshot), declared: sup, method: 'remote', accountId: asAccount ? signer.id : null, learnerName: owner ? fullName(owner) : null, actions: actionsForSignoff(sup.basis) });
   const done = await env.DB.prepare(`UPDATE signoffs SET status = 'signed', supervisor_name = ?, supervisor_role = ?, supervisor_reg = ?, supervisor_email = COALESCE(NULLIF(?, ''), supervisor_email), accreditation = ?, basis = ?, comment = ?, decisions = ?, ratings = ?, signature = ?, signed_at = datetime('now'), token_hash = NULL${snap ? ', supervisor_snapshot = ?' : ''}${asAccount ? ', supervisor_id = COALESCE(supervisor_id, ?)' : ''} WHERE id = ? AND status = 'pending'`)
     .bind(sup.name, sup.role, sup.reg, sup.email, sup.accreditation, sup.basis, sup.comment, JSON.stringify(decisions), JSON.stringify(withSigKind(ratings, sup.signatureKind)), sig, ...(snap ? [JSON.stringify(snap)] : []), ...(asAccount ? [signer.id] : []), so.id).run();
   // A double tap or a second tab: only the first submission signs.
   if (!(done.meta && done.meta.changes)) return json({ ok: false, error: 'This sign-off link is no longer valid.' }, 410);
-  await applySignoff(env, so, decisions, sup, 'remote', ratings, snap);
+  const applied = await applySignoff(env, so, decisions, sup, 'remote', ratings, snap);
   await deleteSharedImages(env, so.id);
-  const mail = notifyLearner(env, so, decisions, sup);
+  const mail = notifyLearner(env, so, decisions, sup, applied);
   if (ctx && ctx.waitUntil) ctx.waitUntil(mail); else await mail;
-  return json({ ok: true, code: so.id });
+  const skipped = Object.keys(decisions).filter((id) => !applied.includes(id));
+  return json({ ok: true, code: so.id, ...(skipped.length ? { skipped: skipped.length } : {}) });
 }
 
 // Tells the learner by email when a supervisor completes a sign-off link or signs from their dashboard. Counts and
 // the code only, never findings. Learners turn this off in the app (profile.notifyEmail = false).
-export async function notifyLearner(env, so, decisions, sup) {
+export async function notifyLearner(env, so, decisions, sup, applied = null) {
   try {
-    const ids = JSON.parse(so.entry_ids || '[]');
+    // Audit 12 Nov 2026: only scans actually signed (not skipped as edited since the request) are counted.
+    const ids = JSON.parse(so.entry_ids || '[]').filter((id) => !applied || applied.includes(id));
     const ok = ids.filter((id) => decisions[id] === 'confirmed').length;
     const q = ids.filter((id) => decisions[id] === 'query').length;
     if (!ok && !q) return;
@@ -566,7 +583,7 @@ async function signoffReassign(env, l, req, ctx) {
   const { link, error } = await SV.eligibleLink(env, l.id, d.supervisorLink, { types: [...new Set(JSON.parse(so.snapshot || '[]').map((e) => e.type))] });
   if (!link) return json({ ok: false, error: error || 'Choose a supervisor.' }, 400);
   await env.DB.batch([
-    env.DB.prepare("UPDATE signoffs SET supervisor_id = ?, returned_at = NULL, returned_reason = NULL, token_hash = NULL, expires_at = MAX(expires_at, ?) WHERE id = ? AND status = 'pending'").bind(link.supervisor_id, Date.now() + 14 * 864e5, so.id),
+    env.DB.prepare("UPDATE signoffs SET supervisor_id = ?, returned_at = NULL, returned_reason = NULL, returned_from = NULL, accepted_at = NULL, declined_at = NULL, decline_reason = NULL, token_hash = NULL, expires_at = MAX(expires_at, ?) WHERE id = ? AND status = 'pending'").bind(link.supervisor_id, Date.now() + 14 * 864e5, so.id),
     auditStmt(env, { actorType: 'learner', actorId: l.id, action: 'request.reassign', subjectType: 'signoff', subjectId: so.id, meta: { link: link.id } }),
   ]);
   await AL.signoffRequested(env, ctx, { code: so.id, learnerId: l.id, supervisorId: link.supervisor_id, count: JSON.parse(so.entry_ids || '[]').length });
@@ -578,7 +595,7 @@ async function signoffRelink(env, l, req) {
   if (!so) return json({ ok: false, error: 'This request is no longer open.' }, 404);
   const t = token();
   await env.DB.batch([
-    env.DB.prepare("UPDATE signoffs SET supervisor_id = NULL, token_hash = ?, expires_at = ?, returned_at = NULL, returned_reason = NULL, supervisor_name = ?, supervisor_email = ? WHERE id = ? AND status = 'pending'").bind(await sha256(t), Date.now() + 14 * 864e5, clip(d.supervisorName, 120) || null, clip(d.supervisorEmail, 160).toLowerCase() || null, so.id),
+    env.DB.prepare("UPDATE signoffs SET supervisor_id = NULL, token_hash = ?, expires_at = ?, returned_at = NULL, returned_reason = NULL, returned_from = NULL, accepted_at = NULL, declined_at = NULL, decline_reason = NULL, supervisor_name = ?, supervisor_email = ? WHERE id = ? AND status = 'pending'").bind(await sha256(t), Date.now() + 14 * 864e5, clip(d.supervisorName, 120) || null, clip(d.supervisorEmail, 160).toLowerCase() || null, so.id),
     auditStmt(env, { actorType: 'learner', actorId: l.id, action: 'request.relink', subjectType: 'signoff', subjectId: so.id, meta: {} }),
   ]);
   // Any images shared under the old link used a key the old link carried; they are removed, and the app shares again.
@@ -591,6 +608,8 @@ async function signoffCancel(env, l, req) {
   const c = clip(d && d.code, 20);
   const r = await env.DB.prepare("UPDATE signoffs SET status = 'cancelled', token_hash = NULL WHERE id = ? AND learner_id = ? AND status = 'pending'").bind(c, l.id).run();
   if (r.meta && r.meta.changes) await deleteSharedImages(env, c);
+  // Audit 12 Nov 2026: say so when nothing was cancelled (already signed, cancelled or never open).
+  if (!(r.meta && r.meta.changes)) return json({ ok: false, error: 'This request is no longer open.' }, 409);
   return json({ ok: true });
 }
 
@@ -672,7 +691,7 @@ async function verify(env, url) {
   const check = publicSnapshot(so.supervisor_snapshot);
   const sk = splitSigKind(so.ratings).signatureKind; // 'typed' or 'drawn': a typed name is not a hand signature
   // supervisorCheck: what Wavelength had verified about the signer when they signed (null for older sign-offs).
-  return json({ ok: true, code: so.id, learner: (check && check.learnerName) || fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand && sk !== 'typed', signatureKind: sk, method: so.method, signedAt: so.signed_at, confirmed: Object.values(dec).filter((x) => x === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })), supervisorCheck: check, ...(so.error_at ? { issuedInError: { on: String(so.error_at).slice(0, 10), notice: 'Wavelength has marked this record as issued in error. It does not count as evidence.' } } : {}) });
+  return json({ ok: true, code: so.id, learner: (check && check.learnerName) || fullName(so), supervisor: so.supervisor_name, role: so.supervisor_role, accreditation: so.accreditation, basis: so.basis, handSigned: !!so.signed_by_hand && sk !== 'typed', signatureKind: sk, method: so.method, signedAt: so.signed_at, confirmed: snap.filter((e) => dec[e.id] === 'confirmed').length, entries: snap.map((e) => ({ date: e.date, type: e.type, decision: dec[e.id] || null })), supervisorCheck: check, ...(so.error_at ? { issuedInError: { on: String(so.error_at).slice(0, 10), notice: 'Wavelength has marked this record as issued in error. It does not count as evidence.' } } : {}) });
 }
 
 // Migration 0015 adds the review columns (worker/review.js).
@@ -760,7 +779,7 @@ async function routeApp(req, env, ctx, url, p) {
     const lst = await handleMonitorApp(env, l, req, url, p, body);
     if (lst) return lst;
     if (p === 'email/resend') return resendEmail(env, l);
-    if (p === 'supervise/signoff') return SV.superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, (so, dec, sup) => { const m = notifyLearner(env, so, dec, sup); if (ctx && ctx.waitUntil) ctx.waitUntil(m); });
+    if (p === 'supervise/signoff') return SV.superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, (so, dec, sup, applied) => { const m = notifyLearner(env, so, dec, sup, applied); if (ctx && ctx.waitUntil) ctx.waitUntil(m); });
     if (p === 'supervise/assessment') return SV.superviseAssessmentComplete(env, l, req, ctx);
     if (p === 'supervise/assessment/new') return SV.superviseAssessmentNew(env, l, req, ctx);
     if (p === 'supervise/request/accept') return acceptRequest(env, l, req);

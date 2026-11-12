@@ -55,7 +55,7 @@ export async function requestReminders(env, now = Date.now()) {
   const before = new Date(now - 3 * 864e5).toISOString().replace('T', ' ').slice(0, 19);
   const out = { queued: 0 };
   for (const [t, prefix, kind] of [['signoffs', 'so', 'rem_signoff'], ['assessments', 'as', 'rem_assess']]) {
-    const { results = [] } = await env.DB.prepare(`SELECT id, learner_id, supervisor_id FROM ${t} WHERE status = 'pending' AND supervisor_id IS NOT NULL AND returned_at IS NULL AND expires_at > ? AND REPLACE(created_at, 'T', ' ') <= ? LIMIT 200`).bind(now, before).all();
+    const { results = [] } = await env.DB.prepare(`SELECT id, learner_id, supervisor_id FROM ${t} WHERE status = 'pending' AND supervisor_id IS NOT NULL AND returned_at IS NULL AND expires_at > ? AND REPLACE(created_at, 'T', ' ') <= ? AND NOT EXISTS (SELECT 1 FROM notification_log n WHERE n.key = 'rem:${prefix}:' || ${t}.id || ':' || ${t}.supervisor_id) ORDER BY created_at LIMIT 200`).bind(now, before).all(); // audit 12 Nov 2026: reminded requests no longer crowd out newer ones
     for (const r of results) {
       const key = `rem:${prefix}:${r.id}:${r.supervisor_id}`;
       const seen = await env.DB.prepare('SELECT 1 FROM notification_log WHERE key = ?').bind(key).first();
@@ -83,7 +83,7 @@ export async function moreInfoRequested(env, ctx, { what, code, learnerId, super
   return notice(env, ctx, learnerId, 'req_more', `more:${what}:${code}:${Date.now()}`, { supervisor: supervisorName || 'Your supervisor', what });
 }
 export async function requestResent(env, ctx, { what, code, learnerId, supervisorId, count }) {
-  return notice(env, ctx, supervisorId, 'req_resent', `resent:${what}:${code}:${supervisorId}`, { learner: await learnerName(env, learnerId), what, count: count || 1, lid: learnerId });
+  return notice(env, ctx, supervisorId, 'req_resent', `resent:${what}:${code}:${supervisorId}:${Date.now()}`, { learner: await learnerName(env, learnerId), what, count: count || 1, lid: learnerId });
 }
 export async function requestDeclined(env, ctx, { what, code, learnerId, supervisorName }) {
   return notice(env, ctx, learnerId, 'req_declined', `declined:${what}:${code}:${Date.now()}`, { supervisor: supervisorName || 'Your supervisor', what: what === 'as' ? 'assessment' : 'sign-off request', where: what === 'as' ? 'assess' : 'signoff' });

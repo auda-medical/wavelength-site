@@ -224,7 +224,7 @@ export async function withdrawSupervisor(env, l, { reason = 'prefer_not_to_say',
     // The reason is kept for the audit only, never shown to trainees.
     env.DB.prepare("UPDATE supervisor_approvals SET status = 'withdrawn', ended_by = 'self', ended_at = ?, ended_reason = ? WHERE learner_id = ? AND status = 'approved'").bind(at, `voluntary withdrawal: ${reason}`, l.id),
     env.DB.prepare("UPDATE supervisor_applications SET status = 'withdrawn', decided_at = ?, decided_by = 'self', updated_at = datetime('now') WHERE learner_id = ? AND status IN ('draft', 'submitted', 'more_info')").bind(at, l.id),
-    env.DB.prepare('UPDATE learners SET supervisor_searchable = 0 WHERE id = ?').bind(l.id),
+    env.DB.prepare('UPDATE learners SET supervisor_searchable = 0, supervisor_public_ref = NULL WHERE id = ?').bind(l.id), // audit 12 Nov 2026: the old reference stops working
     env.DB.prepare('UPDATE directory_profiles SET listed = 0 WHERE learner_id = ?').bind(l.id),
     ...un.stmts,
     auditStmt(env, { actorType: 'supervisor', actorId: l.id, action: 'supervisor.withdraw', subjectType: 'learner', subjectId: l.id, meta: { reason, scopes: approvals.map((a) => `${a.pathway}:${a.module}`), links: un.links, returned: un.returned } }),
@@ -261,8 +261,14 @@ export async function dailyLifecycle(env) {
   await step('retention', () => retention(env));
   // 25 Oct 2026: the owner's weekly summary email, Mondays (worker/weekly-summary.js).
   await step('weekly-summary', () => weeklySummary(env));
+  // Audit 12 Nov 2026: certificate, enquiry and faculty emails that failed in the last two days are tried again (older
+  // failures are left for a person: the Academy page resends certificates).
+  await step('email-retry', () => retryRecentEmails(env));
   const failed = Object.values(counts).some((c) => c && c.error);
-  if (runId) await env.DB.prepare('UPDATE job_runs SET finished_at = ?, outcome = ?, counts = ?, error = ? WHERE id = ?').bind(nowIso(), failed ? 'error' : 'ok', JSON.stringify(counts).slice(0, 4000), failed ? Object.entries(counts).filter(([, c]) => c && c.error).map(([k, c]) => `${k}: ${c.error}`).join('; ').slice(0, 1000) : null, runId).run();
+  // Audit 12 Nov 2026: four days of refused email (the provider's credit ran out) were recorded as 'ok'. Any email
+  // that did not go now marks the run 'warn', which the admin console shows.
+  const mailTrouble = (counts.email && counts.email.failed > 0) || (counts['weekly-summary'] && counts['weekly-summary'].result === 'refused') || (counts['email-retry'] && counts['email-retry'].failed > 0);
+  if (runId) await env.DB.prepare('UPDATE job_runs SET finished_at = ?, outcome = ?, counts = ?, error = ? WHERE id = ?').bind(nowIso(), failed ? 'error' : mailTrouble ? 'warn' : 'ok', JSON.stringify(counts).slice(0, 4000), failed ? Object.entries(counts).filter(([, c]) => c && c.error).map(([k, c]) => `${k}: ${c.error}`).join('; ').slice(0, 1000) : null, runId).run();
   return counts;
 }
 
@@ -393,6 +399,13 @@ async function retention(env) {
   out.audit = ((await env.DB.prepare("DELETE FROM audit_events WHERE at < ? AND action NOT LIKE 'approval.%' AND action NOT LIKE 'application.%' AND action NOT IN ('account.delete')").bind(new Date(Date.now() - 730 * 864e5).toISOString()).run()).meta || {}).changes || 0;
   out.outbox = ((await env.DB.prepare("DELETE FROM notification_log WHERE status = 'sent' AND sent_at < ?").bind(new Date(Date.now() - 365 * 864e5).toISOString()).run()).meta || {}).changes || 0;
   out.jobs = ((await env.DB.prepare("DELETE FROM job_runs WHERE started_at < ?").bind(new Date(Date.now() - 365 * 864e5).toISOString()).run()).meta || {}).changes || 0;
+  // Audit 12 Nov 2026: expired links, sessions and counters, and the addresses on emails that never went, are not kept.
+  const del = async (sql, ...b) => { try { return ((await env.DB.prepare(sql).bind(...b).run()).meta || {}).changes || 0; } catch { return 0; } };
+  out.tokens = await del('DELETE FROM email_tokens WHERE expires_at < ?', Date.now() - 30 * 864e5);
+  out.resets = await del('DELETE FROM password_resets WHERE expires_at < ?', Date.now() - 30 * 864e5);
+  out.adminSessions = await del('DELETE FROM admin_sessions WHERE expires_at < ?', new Date(Date.now() - 864e5).toISOString());
+  out.counters = await del('DELETE FROM rate_counters WHERE expires_at < ?', Date.now());
+  out.unsent = await del("UPDATE notification_log SET payload = NULL WHERE status IN ('failed', 'unknown') AND payload IS NOT NULL AND created_at < ?", new Date(Date.now() - 90 * 864e5).toISOString());
   if (out.audit) await audit(env, { actorType: 'system', actorId: 'cron:supervisor-daily', action: 'audit.retention', meta: { count: out.audit } });
   return out;
 }
@@ -440,3 +453,17 @@ export function relationshipStage(link, sup, enforced) {
 }
 export const SITE_APP = `${SITE}/app/#`;
 export { parseTs };
+
+// Certificate, enquiry and faculty emails go straight out (not through the outbox). One that failed in the last two
+// days is tried again by the daily job; success clears the error. Returns counts.
+async function retryRecentEmails(env) {
+  const since = new Date(Date.now() - 2 * 864e5).toISOString().replace('T', ' ').slice(0, 19);
+  const out = { sent: 0, failed: 0 };
+  const { sendCertificate } = await import('./academy.js');
+  const certs = (await env.DB.prepare("SELECT c.*, l.email, l.title, l.first_name, l.last_name FROM certificates c JOIN learners l ON l.id = c.learner_id WHERE c.emailed_at IS NULL AND c.email_error IS NOT NULL AND REPLACE(c.created_at, 'T', ' ') >= ? LIMIT 20").bind(since).all().catch(() => ({ results: [] }))).results || [];
+  for (const c of certs) (await sendCertificate(env, c, c)) ? out.sent++ : out.failed++;
+  const { retryTeamNotices: dept } = await import('./departments.js');
+  const { retryTeamNotices: fac } = await import('./faculty.js');
+  for (const fn of [dept, fac]) { const r = await fn(env, since).catch(() => ({ sent: 0, failed: 0 })); out.sent += r.sent; out.failed += r.failed; }
+  return out;
+}

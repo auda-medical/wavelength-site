@@ -14,6 +14,9 @@ export const COMMON_DOMAINS = [
   'btinternet.com', 'sky.com', 'virginmedia.com', 'talktalk.net', 'protonmail.com', 'proton.me',
 ];
 
+// Real providers one or two letters from a common one (audit, 12 Nov 2026): never questioned.
+export const REAL_NEAR = ['live.ca', 'live.fr', 'live.nl', 'live.ie', 'hotmail.ca', 'hotmail.fr', 'hotmail.de', 'hotmail.es', 'hotmail.it', 'yahoo.ca', 'yahoo.fr', 'yahoo.de', 'yahoo.es', 'yahoo.it', 'yahoo.ie', 'email.com', 'gmail.co.uk', 'aol.co.uk', 'me.uk', 'mail.ru', 'gmx.de', 'gmx.net', 'web.de', 'hse.ie', 'gov.uk', 'ac.uk', 'nhs.wales'];
+
 // Edit distance with adjacent swaps (Damerau-Levenshtein, optimal string alignment).
 export function distance(a, b) {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
@@ -31,7 +34,7 @@ export function distance(a, b) {
 // The common domain the typed one most likely meant, or null when it is itself common or not close to any.
 export function suggestDomain(domain) {
   const dom = String(domain || '').toLowerCase().trim();
-  if (!dom || COMMON_DOMAINS.includes(dom)) return null;
+  if (!dom || COMMON_DOMAINS.includes(dom) || REAL_NEAR.includes(dom)) return null;
   // A trust domain such as "nhs.net" with an extra label is real ("xyz.nhs.uk"): only whole-domain slips are caught.
   let best = null, bestD = 3;
   for (const c of COMMON_DOMAINS) {

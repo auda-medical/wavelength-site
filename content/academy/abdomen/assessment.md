@@ -21,7 +21,7 @@ title: Final assessment
 ?? How do you measure the abdominal aorta?
 @ 02-aorta
 + Outer wall to outer wall, at a right angle to the vessel, at its widest point
-- Inner wall to inner wall in long axis
+- Obliquely along the vessel in long axis
 - Across the black lumen only
 - At the level of the coeliac axis only
 : Measuring the lumen alone ignores mural thrombus and underestimates the size. Measure outer wall to outer wall, at right angles to the vessel, along the whole length.

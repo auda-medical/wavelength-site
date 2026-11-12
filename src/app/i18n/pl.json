@@ -2809,5 +2809,19 @@
 "Send to {name} in the app instead": "Wyślij zamiast tego do {name} w aplikacji",
 "Link your supervisor so requests go straight to their app": "Połącz się z opiekunem, aby prośby trafiały prosto do jego aplikacji",
 "Link ready: not sent yet": "Link gotowy: jeszcze nie wysłany",
-"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Twój opiekun niczego nie otrzymał. Wyślij mu teraz ten link. Wavelength nie wysyła go za Ciebie."
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Twój opiekun niczego nie otrzymał. Wyślij mu teraz ten link. Wavelength nie wysyła go za Ciebie.",
+"A scan was also changed on another device. The most recent version was kept.": "Badanie zostało zmienione także na innym urządzeniu. Zachowano najnowszą wersję.",
+"Confirm or query at least one scan.": "Potwierdź lub zakwestionuj co najmniej jedno badanie.",
+"Connect to the internet to see your sign-off requests.": "Połącz się z internetem, aby zobaczyć prośby o zatwierdzenie.",
+"Decision for {scan}": "Decyzja dla {scan}",
+"The learner changed these scans after asking for sign-off, so this request no longer matches them. Ask them to send a new request.": "Uczestnik zmienił te badania po wysłaniu prośby, więc prośba już do nich nie pasuje. Poproś o nową.",
+"This scan is waiting for sign-off. If you change it, that request no longer applies to it and you will need to send it again.": "To badanie czeka na zatwierdzenie. Jeśli je zmienisz, prośba przestanie obowiązywać i trzeba będzie wysłać je ponownie.",
+"This summary was not found.": "Nie znaleziono tego podsumowania.",
+"You are offline. Nothing has changed.": "Jesteś offline. Nic się nie zmieniło.",
+"You have sent many invitations today. Try again tomorrow.": "Wysłano dziś wiele zaproszeń. Spróbuj jutro.",
+"{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.": "{n} z tych badań zmieniono po wysłaniu prośby, więc Twoja decyzja ich nie objęła. Poproś o ponowne wysłanie.",
+"Versions kept after a scan was changed on two devices": "Wersje zachowane, gdy badanie zmieniono na dwóch urządzeniach",
+"kept {date}": "zachowano {date}",
+"Use this version": "Użyj tej wersji",
+"Version restored. It syncs now.": "Wersję przywrócono. Synchronizuje się teraz."
 }

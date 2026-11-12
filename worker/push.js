@@ -118,3 +118,13 @@ export async function unregisterDevice(env, l, d) {
   if (token) await env.DB.prepare('DELETE FROM push_devices WHERE token = ? AND learner_id = ?').bind(token, l.id).run();
   return { ok: true };
 }
+
+// Audit 12 Nov 2026: after "log out of all devices", a password change or a password reset, phones that were signed in
+// stop receiving this person's notices. keep: the token of the phone making the request, if it sent one.
+export async function forgetDevices(env, learnerId, keep = '') {
+  try {
+    if (!learnerId || !(await pushReady(env))) return;
+    if (keep) await env.DB.prepare('DELETE FROM push_devices WHERE learner_id = ? AND token != ?').bind(learnerId, String(keep).slice(0, 400)).run();
+    else await env.DB.prepare('DELETE FROM push_devices WHERE learner_id = ?').bind(learnerId).run();
+  } catch { /* never block a logout */ }
+}

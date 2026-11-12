@@ -2,7 +2,8 @@
 import LOGBOOK from '../data/logbook.json';
 const enc = new TextEncoder();
 const SITE = 'https://thewavelength.co.uk';
-const HEAD = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin' };
+// Audit 12 Nov 2026: the same protective headers as the Academy API (these answers are data, never pages).
+const HEAD = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin', 'X-Frame-Options': 'DENY', 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains', 'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'" };
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...HEAD, ...extra } });
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ' ').trim().slice(0, n);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -136,3 +137,17 @@ function withSigKind(ratings, kind) { const r = { ...(ratings && typeof ratings 
 function splitSigKind(json) { let r = {}; try { r = JSON.parse(json || '{}') || {}; } catch { r = {}; } const kind = r[SIG_KEY] === 'typed' ? 'typed' : 'drawn'; delete r[SIG_KEY]; return { ratings: r, signatureKind: kind }; }
 
 export { sigKind, SIG_KEY, withSigKind, splitSigKind, LANGS, enc, SITE, HEAD, json, clip, EMAIL, TITLES, PATHWAYS, ALPHABET, b64, unb64, b64u, pbkdf2, hashPassword, checkPassword, sha256, token, code, SIGNED_FIELDS, canonical, contentHash, contentHashV2, hashFor, mediaOf, body, fullName, profileOf, cleanProfile, account, verificationReady, lifecycleReady };
+
+// Audit 12 Nov 2026: a signer's decisions are kept only for the scans in the request, and only as 'confirmed' or
+// 'query'. Anything else (extra keys, other values) is dropped; ratings likewise only for those scans.
+export function cleanDecisions(entryIds, raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return Object.fromEntries((entryIds || []).filter((i) => r[i] === 'confirmed' || r[i] === 'query').map((i) => [i, r[i]]));
+}
+export function cleanRatings(entryIds, raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+  for (const i of entryIds || []) if (r[i] && typeof r[i] === 'object') out[i] = r[i];
+  if (r.signatureKind) out.signatureKind = r.signatureKind;
+  return out;
+}

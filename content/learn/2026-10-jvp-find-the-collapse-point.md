@@ -47,7 +47,7 @@ The jugular venous pressure (JVP) tells you how full the right side of the heart
 - The point where the vein crosses the clavicle
 : Below the top of the column, blood fills and distends the vein. Above it, the vein is empty and its walls meet. The collapse point is the ultrasound equivalent of the top of the visible pulsation in a clinical JVP. Width of the vein varies with position, probe pressure and breathing.
 
-?? You find a collapse point just above the clavicle. Then you press a little harder with the probe and it seems to move higher. What explains this?
+?? You find a collapse point just above the clavicle. Then you press a little harder with the probe and it seems to move lower. What explains this?
 + Probe pressure is collapsing the vein, giving a falsely low reading
 - The JVP is rising during the scan
 - The patient has a high JVP

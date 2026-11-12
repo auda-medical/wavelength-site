@@ -2885,5 +2885,19 @@
 "Send to {name} in the app instead": "أرسله إلى {name} في التطبيق بدلًا من ذلك",
 "Link your supervisor so requests go straight to their app": "اربط مشرفك لتصل الطلبات مباشرة إلى تطبيقه",
 "Link ready: not sent yet": "الرابط جاهز: لم يُرسل بعد",
-"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "لم يصل أي شيء إلى مشرفك. أرسل له هذا الرابط الآن. لا يرسله Wavelength نيابةً عنك."
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "لم يصل أي شيء إلى مشرفك. أرسل له هذا الرابط الآن. لا يرسله Wavelength نيابةً عنك.",
+"A scan was also changed on another device. The most recent version was kept.": "تم تعديل فحص أيضًا على جهاز آخر. تم الاحتفاظ بأحدث نسخة.",
+"Confirm or query at least one scan.": "أكّد فحصًا واحدًا على الأقل أو استفسر عنه.",
+"Connect to the internet to see your sign-off requests.": "اتصل بالإنترنت لرؤية طلبات الاعتماد.",
+"Decision for {scan}": "القرار بشأن {scan}",
+"The learner changed these scans after asking for sign-off, so this request no longer matches them. Ask them to send a new request.": "غيّر المتعلم هذه الفحوص بعد طلب الاعتماد، لذا لم يعد الطلب مطابقًا لها. اطلب منه إرسال طلب جديد.",
+"This scan is waiting for sign-off. If you change it, that request no longer applies to it and you will need to send it again.": "هذا الفحص بانتظار الاعتماد. إذا غيّرته، لن ينطبق الطلب عليه وسيلزم إرساله مرة أخرى.",
+"This summary was not found.": "لم يتم العثور على هذا الملخص.",
+"You are offline. Nothing has changed.": "أنت غير متصل. لم يتغير شيء.",
+"You have sent many invitations today. Try again tomorrow.": "أرسلت دعوات كثيرة اليوم. حاول غدًا.",
+"{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.": "عُدّل {n} من هذه الفحوص بعد الطلب، لذا لم يُطبَّق قرارك عليها. اطلب من المتعلم إرسالها مرة أخرى.",
+"Versions kept after a scan was changed on two devices": "نسخ محفوظة عندما عُدّل فحص على جهازين",
+"kept {date}": "حُفظت في {date}",
+"Use this version": "استخدم هذه النسخة",
+"Version restored. It syncs now.": "تمت استعادة النسخة. تجري مزامنتها الآن."
 }

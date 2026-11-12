@@ -3,6 +3,7 @@
 // stores a snapshot with a public code (EV-XXXX-XXXX), and shows it at /app/verify/?code=.
 // No findings, indications or reflections are stored in the snapshot: only counts.
 import LOGBOOK from '../data/logbook.json';
+import { ukDate } from './time.js';
 
 import '../src/app/progress.js';
 
@@ -49,7 +50,7 @@ export function buildSummary(entries, profile, pathwayIds, assessments = []) {
 
 export async function createEvidence(env, l, d, { code, clip, fullName, profileOf, json, origin }) {
   const from = ISO.test(d && d.from) ? d.from : '2000-01-01';
-  const to = ISO.test(d && d.to) ? d.to : new Date().toISOString().slice(0, 10);
+  const to = ISO.test(d && d.to) ? d.to : ukDate(); // audit 12 Nov 2026: the UK day, not the UTC day
   if (from > to) return json({ ok: false, error: 'The start date is after the end date.' }, 400);
   const profile = profileOf(l);
   const mine = (profile.pathways && profile.pathways.length ? profile.pathways : ['general']).filter((p) => PATHS[p]);
@@ -77,7 +78,8 @@ export async function listEvidence(env, l, json) {
 }
 
 export async function withdrawEvidence(env, l, d, clip, json) {
-  await env.DB.prepare('UPDATE evidence_summaries SET withdrawn = 1 WHERE id = ? AND learner_id = ?').bind(clip(d && d.code, 20), l.id).run();
+  const r = await env.DB.prepare('UPDATE evidence_summaries SET withdrawn = 1 WHERE id = ? AND learner_id = ?').bind(clip(d && d.code, 20), l.id).run();
+  if (!(r.meta && r.meta.changes)) return json({ ok: false, error: 'This summary was not found.' }, 404); // audit 12 Nov 2026
   return json({ ok: true });
 }
 

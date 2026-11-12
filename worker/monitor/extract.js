@@ -25,6 +25,21 @@ export function decode(s) {
 }
 // The main content of an HTML page as normalised lines: <main> or <article> when the page has one, without scripts,
 // navigation, headers, footers, forms and lines of page furniture; whitespace and typographic quotes made uniform.
+const RELATED = /<(div|section|aside|ul|ol)\b[^>]*\b(?:id|class)\s*=\s*["'](?:[^"']*\s)?(?:related[\w-]*|upcoming[\w-]*|more-events|events-list)(?:\s[^"']*)?["'][^>]*>/i;
+// Removes each related or upcoming listing with everything nested inside it (matched by tag depth).
+export function dropRelated(s) {
+  let m, guard = 0;
+  while ((m = RELATED.exec(s)) && guard++ < 20) {
+    const tag = new RegExp('<(/?)' + m[1] + '(?![\\w-])[^>]*>', 'gi'); tag.lastIndex = m.index + m[0].length;
+    let depth = 1, x, end = m.index + m[0].length; // unclosed: drop only the opening tag, never the rest of the page
+    while ((x = tag.exec(s))) { depth += x[1] ? -1 : 1; if (!depth) { end = x.index + x[0].length; break; } }
+    s = s.slice(0, m.index) + '\n' + s.slice(end);
+  }
+  return s;
+}
+// Bumped whenever htmlToText reads pages differently: each HTML source then takes one new baseline, quietly, instead
+// of raising a "change" that is only a change in how Wavelength reads the page. 2: related listings dropped (12 Nov 2026).
+export const EXTRACT_VERSION = 2;
 export function htmlToText(html) {
   // One pass for all dropped blocks (thirteen separate passes cost four times the CPU on a large page, and the free
   // plan allows 10 ms per run: tools/monitor-cpu.mjs).
@@ -32,7 +47,11 @@ export function htmlToText(html) {
   s = s.replace(/<!--[\s\S]*?-->/g, '');
   // Elements marked as cookie, consent or banner furniture (one level: enough for the common banners).
   s = s.replace(/<(div|section|p)\b[^>]*(?:id|class)="[^"]*(?:cookie|consent|gdpr|banner|newsletter|share|social|breadcrumb|advert|promo)[^"]*"[^>]*>[\s\S]*?<\/\1>/gi, '\n');
-  const main = s.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i) || s.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
+  // Audit 12 Nov 2026: listings of other items ("related events", "upcoming") are removed whole, and an <article> is
+  // the main text only when it is the only one: on the ICS event pages the articles are related-event cards.
+  s = dropRelated(s);
+  const arts = [...s.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)];
+  const main = s.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i) || (arts.length === 1 ? arts[0] : null);
   if (main && main[1].replace(/<[^>]+>/g, '').trim().length > 200) s = main[1];
   // Official documents the page links to, by file name: a new version of a curriculum pack behind the same link text
   // ("curriculum pack") changes the file name, so it is a change to this page too.

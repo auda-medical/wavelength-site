@@ -84,7 +84,7 @@ export async function weeklyFigures(env, { from, to }) {
     requests: n((await first(env, `SELECT COUNT(*) AS n FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE ${inWeek('s.created_at')} ${T}`, ...W)).n),
     signed: n((await first(env, `SELECT COUNT(*) AS n FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.status = 'signed' AND ${inWeek('s.signed_at')} ${T}`, ...W)).n),
     returned: n((await first(env, `SELECT COUNT(*) AS n FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE ${inWeek('s.returned_at')} ${T}`, ...W)).n),
-    waiting: n((await first(env, `SELECT COUNT(*) AS n FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.status = 'pending' ${T}`)).n),
+    waiting: n((await first(env, `SELECT COUNT(*) AS n FROM signoffs s JOIN learners l ON l.id = s.learner_id WHERE s.status = 'pending' AND s.expires_at > ${Date.now()} AND s.returned_at IS NULL ${T}`)).n),
     assessments: n((await first(env, `SELECT COUNT(*) AS n FROM assessments s JOIN learners l ON l.id = s.learner_id WHERE s.status IN ('signed', 'superseded') AND ${inWeek('s.signed_at')} ${T}`, ...W)).n),
   };
 
@@ -167,9 +167,13 @@ export async function weeklySummary(env, { now = Date.now(), force = false } = {
   const key = `weekly-summary:${week.to}`;
   const claim = await env.DB.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, 'sending')").bind(key).run();
   if (!(claim.meta && claim.meta.changes)) return { skipped: 'already sent', week: week.to };
-  const mail = summaryEmail(await weeklyFigures(env, week));
-  const to = env.SUMMARY_TO || env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk';
-  const result = await sendMailResult(env, { to, toName: 'Wavelength', fromName: 'Wavelength', ...mail, button: { href: `${SITE}/admin/`, label: 'Open the admin console' } });
+  // Audit 12 Nov 2026: if the figures or the send throw, the claim is released so a later run sends the summary.
+  let result;
+  try {
+    const mail = summaryEmail(await weeklyFigures(env, week));
+    const to = env.SUMMARY_TO || env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk';
+    result = await sendMailResult(env, { to, toName: 'Wavelength', fromName: 'Wavelength', ...mail, button: { href: `${SITE}/admin/`, label: 'Open the admin console' } });
+  } catch (e) { await env.DB.prepare("DELETE FROM settings WHERE key = ? AND value = 'sending'").bind(key).run(); throw e; }
   if (result === 'refused') await env.DB.prepare('DELETE FROM settings WHERE key = ?').bind(key).run();
   else await env.DB.prepare('UPDATE settings SET value = ? WHERE key = ?').bind(result, key).run();
   return { result, week: week.to };

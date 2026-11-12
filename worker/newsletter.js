@@ -259,7 +259,9 @@ async function settle(env, now) {
     }
     let st = 'unknown';
     try { st = await campaignState(env, r.campaign_key); } catch { /* unknown */ }
-    if (st === 'sent') { await record(env, r.slug, 'sent', `Campaign ${r.campaign_key}: Zoho confirmed it went out`, r.campaign_key, now); continue; }
+    // Audit 12 Nov 2026: the send keeps the time of the attempt, not of the confirmation, so a late confirmation does not
+    // count as this week's issue and skip a week.
+    if (st === 'sent') { const at = Date.parse(String(r.updated_at || '').replace(' ', 'T') + 'Z'); await record(env, r.slug, 'sent', `Campaign ${r.campaign_key}: Zoho confirmed it went out`, r.campaign_key, Number.isFinite(at) ? at : now); continue; }
     if (st === 'draft') { await record(env, r.slug, 'failed', `Campaign ${r.campaign_key} was created but not sent; tried again`, '', now); continue; }
     return { unknown: { slug: r.slug, campaign: r.campaign_key } };
   }
@@ -286,6 +288,8 @@ export async function sendNext(env, { force = false, now = Date.now() } = {}) {
   let key = '';
   try {
     await record(env, issue.slug, 'sending', 'Creating campaign', '', now);
+    // Audit 12 Nov 2026: an earlier refused draft's key must not be kept on this attempt (it let a second run send too).
+    await env.DB.prepare('UPDATE newsletter_sends SET campaign_key = NULL WHERE slug = ?').bind(issue.slug).run();
     key = await createVerified(env, issue, now);
     // Saved before the send call: if Zoho's answer is lost, the next run checks this campaign before anything else.
     await record(env, issue.slug, 'sending', `Campaign ${key} created, sending`, key, now);
@@ -371,7 +375,7 @@ export async function newsletterAdminHtml(env, msg) {
     ${s.zoho_client_id ? `<a class="btn btn-ghost small" href="/admin/newsletter/connect/">${connected ? 'Reconnect' : 'Connect'} Zoho Campaigns</a>` : ''}
     <form method="post"><input type="hidden" name="action" value="toggle"><button class="btn btn-ghost small" type="submit">${s.newsletter_auto === 'off' ? 'Resume' : 'Pause'} automatic sending</button></form>
     ${connected ? `<form method="post"><input type="hidden" name="action" value="test"><button class="btn btn-ghost small" type="submit">Test connection (sends nothing)</button></form><form method="post"><input type="hidden" name="action" value="dryrun"><button class="btn btn-ghost small" type="submit">Dry run (draft only, sends nothing)</button></form>` : ''}
-    ${connected ? `<form method="post" onsubmit="return confirm('Send the next issue to the whole list now? The Tuesday send then moves on to the one after it.')"><input type="hidden" name="action" value="send"><button class="btn small" type="submit">Send the next issue now</button></form>` : ''}
+    ${connected ? `<form method="post" onsubmit="return confirm('Send the next issue to the whole list now? It counts as this week’s issue: a Tuesday send less than three days later is skipped.')"><input type="hidden" name="action" value="send"><button class="btn small" type="submit">Send the next issue now</button></form>` : ''}
   </div>
   ${connected ? '' : `<form class="form pw-form" method="post" style="max-width:560px;margin-bottom:32px"><input type="hidden" name="action" value="client"><p class="admin-summary" style="overflow-wrap:anywhere">Step 1: paste the Client ID and Client Secret from the Zoho API console (server-based application, redirect URI ${REDIRECT}). Step 2: click Connect.</p><label>Client ID<input name="client_id" autocomplete="off" required maxlength="200" value="${esc(s.zoho_client_id || '')}"></label><label>Client Secret<input name="client_secret" type="password" autocomplete="off" required maxlength="200"></label><button class="btn btn-ghost small" type="submit">Save</button></form>`}
   ${results.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Updated</th><th scope="col">Issue</th><th scope="col">Status</th><th scope="col">Detail</th></tr></thead><tbody>${results.map((r) => `<tr><td>${esc(r.updated_at)}</td><td>${esc(r.slug)}</td><td>${esc(r.status)}</td><td>${esc(r.detail)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No issues sent yet.</p>'}`;

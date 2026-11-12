@@ -110,7 +110,7 @@ export async function listingSearch(env, l, url) {
     .sort((a, b) => b.s - a.s || a.x.name.localeCompare(b.x.name)).slice(0, MAX_RESULTS).map((h) => h.x);
   // On Wavelength: a confirmed claim, a current approval, and the person's own consent to be found.
   const keys = hits.map((h) => `${h.source}|${h.key}`);
-  const on = keys.length ? ((await env.DB.prepare(`SELECT k.source_id || '|' || k.entry_key AS k FROM directory_links k JOIN learners t ON t.id = k.learner_id WHERE k.status = 'confirmed' AND t.supervisor_searchable = 1 AND EXISTS (SELECT 1 FROM supervisor_approvals a WHERE a.learner_id = k.learner_id AND a.status = 'approved') AND (k.source_id || '|' || k.entry_key) IN (${keys.map(() => '?').join(',')})`).bind(...keys).all().catch(() => ({ results: [] }))).results || []) : [];
+  const on = keys.length ? ((await env.DB.prepare(`SELECT k.source_id || '|' || k.entry_key AS k FROM directory_links k JOIN learners t ON t.id = k.learner_id WHERE k.status = 'confirmed' AND (t.searchable_at IS NULL OR t.searchable_at NOT LIKE 'out:%') AND EXISTS (SELECT 1 FROM supervisor_approvals a WHERE a.learner_id = k.learner_id AND a.status = 'approved') AND (k.source_id || '|' || k.entry_key) IN (${keys.map(() => '?').join(',')})`).bind(...keys).all().catch(() => ({ results: [] }))).results || []) : [];
   const onSet = new Set(on.map((r) => r.k));
   return json({ ok: true, available: true, results: hits.map((h) => ({ ref: `${h.source}|${h.key}`, name: h.name, organisation: h.organisation, source: h.sourceName, body: h.body, roles: h.roles, onWavelength: onSet.has(`${h.source}|${h.key}`) })), note: 'From official directories, checked daily. Being listed is not Wavelength approval.' });
 }

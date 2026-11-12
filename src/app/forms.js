@@ -69,10 +69,18 @@
     var g, drawn = false, last = null;
     var size = function () { cv.width = cv.clientWidth || 300; cv.height = cv.clientHeight || 150; g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.strokeStyle = '#0F1E33'; g.lineWidth = 2.4; g.lineCap = 'round'; g.lineJoin = 'round'; drawn = false; };
     setTimeout(size, 30);
-    var pt = function (e) { var r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    // Audit 12 Nov 2026: after the phone rotates the box changes size. The bitmap follows it (the pad is cleared: a
+    // stretched half signature is not a signature), points are scaled to the bitmap, and only a stroke that lands
+    // inside it counts as drawn, so a blank pad can never be sent.
+    var lastW = 0;
+    var refit = function () { var w = cv.clientWidth, h = cv.clientHeight; if (!w || !h || (Math.abs(w - cv.width) < 2 && Math.abs(h - cv.height) < 2)) return; if (drawn && Math.abs(w - cv.width) < 40) return; drawn = false; last = null; size(); };
+    if (window.ResizeObserver) new ResizeObserver(function () { if (cv.clientWidth !== lastW) { lastW = cv.clientWidth; refit(); } }).observe(cv); else window.addEventListener('resize', refit);
+    var pt = function (e) { var r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * (cv.width / (r.width || 1)), y: (e.clientY - r.top) * (cv.height / (r.height || 1)) }; };
+    var inside = function (p) { return p.x >= 0 && p.y >= 0 && p.x <= cv.width && p.y <= cv.height; };
     cv.addEventListener('pointerdown', function (e) { e.preventDefault(); cv.setPointerCapture(e.pointerId); last = pt(e); });
-    cv.addEventListener('pointermove', function (e) { if (!last) return; var p = pt(e); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(p.x, p.y); g.stroke(); last = p; drawn = true; });
+    cv.addEventListener('pointermove', function (e) { if (!last) return; var p = pt(e); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(p.x, p.y); g.stroke(); if (inside(p) && inside(last)) drawn = true; last = p; });
     cv.addEventListener('pointerup', function () { last = null; });
+    cv.addEventListener('pointercancel', function () { last = null; });
     return { clear: size, empty: function () { return !drawn; }, data: function () { return cv.toDataURL('image/png'); } };
   }
   // A typed signature for signers who cannot draw on a touch screen. The typed name is drawn onto a white canvas in a

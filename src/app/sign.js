@@ -82,7 +82,7 @@
     lede.textContent = T('Check a supervisor sign-off (SO-), an assessment (AS-) or a verified logbook summary (EV-) from a Wavelength export.');
     var form = '<form id="vf" method="get"><div class="field"><label for="c">' + esc(T('Code')) + '</label><input id="c" name="code" type="text" placeholder="SO-XXXX-XXXX · AS-XXXX-XXXX · EV-XXXX-XXXX" value="' + esc(code) + '" autocapitalize="characters" required></div><button class="btn teal block">' + esc(T('Verify')) + '</button></form>';
     if (!code) { root.innerHTML = form; return; }
-    fetch('/api/app/verify?code=' + encodeURIComponent(code)).then(function (r) { return r.json(); }).then(function (res) {
+    fetch('/api/app/verify?code=' + encodeURIComponent(code)).then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Could not reach Wavelength. Check your connection and try again.' }; }); }, function () { return { ok: false, error: 'Could not reach Wavelength. Check your connection and try again.' }; }) /* audit 12 Nov 2026: never a blank page */.then(function (res) {
       if (!res.ok) { root.innerHTML = err(res.error) + form; return; }
       if (res.kind === 'evidence') { head.textContent = T('Verified summary'); lede.textContent = ''; root.innerHTML = evidenceHtml(res) + pearlCta() + form; return; }
       if (res.kind === 'assessment') { head.textContent = T('Verified assessment'); lede.textContent = ''; root.innerHTML = assessmentVerifyHtml(res) + pearlCta() + form; return; }
@@ -131,7 +131,7 @@
     var findings = t.fields.filter(function (fd) { return f[fd.id] != null && f[fd.id] !== ''; }).map(function (fd) { return '<dt>' + esc(T(fd.label)) + '</dt><dd>' + esc(val(f[fd.id])) + (fd.unit ? ' ' + fd.unit : '') + '</dd>'; }).join('');
     var r = function (k, v, raw) { return v ? '<dt>' + esc(T(k)) + '</dt><dd>' + esc(raw ? v : val(v)) + '</dd>' : ''; };
     var imgNote = opts.shared ? ' · ' + N(opts.shared, '{n} image below', '{n} images below') : e.imageCount ? ' · ' + N(e.imageCount, '{n} image on the learner\'s phone', '{n} images on the learner\'s phone') : '';
-    return '<div class="card"><div class="row" style="margin-bottom:8px"><div class="grow"><b>' + esc(T(t.label)) + '</b><p class="small muted" style="margin:0">' + esc(fmt(e.date)) + ' · ' + esc(T(SUP[e.supervision] || '')) + (e.supervisor ? ' · ' + esc(e.supervisor) : '') + esc(imgNote) + '</p></div>' + (opts.decide ? '<select data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">' + esc(T('Confirm')) + '</option><option value="query">' + esc(T('Query')) + '</option></select>' : '') + '</div><div class="detail"><dl>' + r('Setting', e.setting) + r('Indication', e.indication, true) + findings + r('Overall', e.overall) + r('Image quality', e.quality) + r('Interpretation', e.interpretation, true) + r('Confirmed by', e.confirmation) + r('Impact', e.impact, true) + '</dl></div>' + (opts.shared ? '<div class="review-imgs" data-imgs="' + esc(e.id) + '"><p class="small muted">' + esc(T('Decrypting images…')) + '</p></div>' : '') + (opts.decide ? F.ratingHtml(C, T, e.id) : '') + '</div>';
+    return '<div class="card"><div class="row" style="margin-bottom:8px"><div class="grow"><b>' + esc(T(t.label)) + '</b><p class="small muted" style="margin:0">' + esc(fmt(e.date)) + ' · ' + esc(T(SUP[e.supervision] || '')) + (e.supervisor ? ' · ' + esc(e.supervisor) : '') + esc(imgNote) + '</p></div>' + (opts.decide ? '<select aria-label="' + esc(T('Decision for {scan}', { scan: (T(t.label)) + ', ' + fmt(e.date) })) + '" data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">' + esc(T('Confirm')) + '</option><option value="query">' + esc(T('Query')) + '</option></select>' : '') + '</div><div class="detail"><dl>' + r('Setting', e.setting) + r('Indication', e.indication, true) + findings + r('Overall', e.overall) + r('Image quality', e.quality) + r('Interpretation', e.interpretation, true) + r('Confirmed by', e.confirmation) + r('Impact', e.impact, true) + '</dl></div>' + (opts.shared ? '<div class="review-imgs" data-imgs="' + esc(e.id) + '"><p class="small muted">' + esc(T('Decrypting images…')) + '</p></div>' : '') + (opts.decide ? F.ratingHtml(C, T, e.id) : '') + '</div>';
   }
 
   function signPage() {
@@ -139,7 +139,7 @@
     history.replaceState(null, '', location.pathname); // keep the token out of history and screenshots of the address bar
     head.textContent = T('Sign off scans');
     if (!token) { root.innerHTML = err('This link is incomplete. Ask the learner to send it again.'); return; }
-    fetch('/api/app/signoff/view?t=' + encodeURIComponent(token)).then(function (r) { return r.json(); }).then(function (res) {
+    fetch('/api/app/signoff/view?t=' + encodeURIComponent(token)).then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Could not reach Wavelength. Check your connection and try again.' }; }); }, function () { return { ok: false, error: 'Could not reach Wavelength. Check your connection and try again.' }; }) /* audit 12 Nov 2026: never a blank page */.then(function (res) {
       if (!res.ok) { root.innerHTML = '<div class="' + (res.done ? 'ok' : 'err') + '">' + esc(T(res.error)) + '</div>'; return; }
       var shared = keyStr && window.crypto && crypto.subtle ? (res.images || []) : [];
       var byEntry = {}; shared.forEach(function (i) { (byEntry[i.entry] = byEntry[i.entry] || []).push(i); });
@@ -175,7 +175,7 @@
         post('/api/app/signoff/complete', d).then(function (r) {
           if (!r.ok) throw new Error(T(r.error || 'Could not submit.'));
           lede.textContent = '';
-          root.innerHTML = '<div class="ok"><b>' + esc(T('Thank you.')) + '</b> ' + esc(T('Your sign-off is recorded with code {code}. The learner sees it in their logbook straight away.', { code: r.code })) + '</div><p class="small muted">' + esc(T('Anyone can check it at thewavelength.co.uk/verify.')) + '</p>' + pearlCta() + '<a class="btn ghost block" href="/">' + esc(T('Visit Wavelength')) + '</a>';
+          root.innerHTML = '<div class="ok"><b>' + esc(T('Thank you.')) + '</b> ' + esc(T('Your sign-off is recorded with code {code}. The learner sees it in their logbook straight away.', { code: r.code })) + '</div>' + (r.skipped ? '<div class="warn" style="margin-top:10px">' + esc(T('{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.', { n: r.skipped })) + '</div>' : '') + '<p class="small muted">' + esc(T('Anyone can check it at thewavelength.co.uk/verify.')) + '</p>' + pearlCta() + '<a class="btn ghost block" href="/">' + esc(T('Visit Wavelength')) + '</a>';
         }).catch(function (ex) { b.disabled = false; b.textContent = T('Submit sign-off'); e2.textContent = ex.message; e2.hidden = false; });
       });
     });
@@ -186,7 +186,7 @@
     history.replaceState(null, '', location.pathname);
     head.textContent = T('Ultrasound assessment');
     if (!token) { root.innerHTML = err('This link is incomplete. Ask the learner to send it again.'); return; }
-    fetch('/api/app/assessment/view?t=' + encodeURIComponent(token)).then(function (r) { return r.json(); }).then(function (res) {
+    fetch('/api/app/assessment/view?t=' + encodeURIComponent(token)).then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Could not reach Wavelength. Check your connection and try again.' }; }); }, function () { return { ok: false, error: 'Could not reach Wavelength. Check your connection and try again.' }; }) /* audit 12 Nov 2026: never a blank page */.then(function (res) {
       if (!res.ok) { root.innerHTML = '<div class="' + (res.done ? 'ok' : 'err') + '">' + esc(T(res.error)) + '</div>'; return; }
       var kind = (C.assessmentKinds || []).find(function (k) { return k.id === res.kind; }) || { label: res.kind, help: '' };
       lede.textContent = T('{name} asks you to complete a {kind} for {module}.', { name: res.learner, kind: T(kind.label).toLowerCase(), module: res.pathwayLabel + ' ' + T(res.moduleLabel) });

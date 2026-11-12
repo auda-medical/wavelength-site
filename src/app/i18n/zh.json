@@ -2695,5 +2695,19 @@
 "Send to {name} in the app instead": "改为在应用中发送给 {name}",
 "Link your supervisor so requests go straight to their app": "关联您的督导，让请求直接进入其应用",
 "Link ready: not sent yet": "链接已就绪：尚未发送",
-"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "您的督导尚未收到任何内容。请立即将此链接发送给他们。Wavelength 不会替您发送。"
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "您的督导尚未收到任何内容。请立即将此链接发送给他们。Wavelength 不会替您发送。",
+"A scan was also changed on another device. The most recent version was kept.": "另一台设备也修改了一项扫描。已保留最新版本。",
+"Confirm or query at least one scan.": "请至少确认或质疑一项扫描。",
+"Connect to the internet to see your sign-off requests.": "请连接互联网以查看您的签核请求。",
+"Decision for {scan}": "对 {scan} 的决定",
+"The learner changed these scans after asking for sign-off, so this request no longer matches them. Ask them to send a new request.": "学员在请求签核后修改了这些扫描，因此该请求已不再匹配。请让其发送新的请求。",
+"This scan is waiting for sign-off. If you change it, that request no longer applies to it and you will need to send it again.": "此扫描正在等待签核。如果您修改它，该请求将不再适用，需要重新发送。",
+"This summary was not found.": "未找到此摘要。",
+"You are offline. Nothing has changed.": "您处于离线状态。没有任何更改。",
+"You have sent many invitations today. Try again tomorrow.": "您今天发送了很多邀请。请明天再试。",
+"{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.": "其中 {n} 项扫描在请求后被学员修改，因此您的决定未应用于它们。请让学员重新发送。",
+"Versions kept after a scan was changed on two devices": "在两台设备上修改同一扫描时保留的版本",
+"kept {date}": "保留于 {date}",
+"Use this version": "使用此版本",
+"Version restored. It syncs now.": "已恢复该版本，正在同步。"
 }

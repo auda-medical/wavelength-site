@@ -2733,5 +2733,19 @@
 "Send to {name} in the app instead": "Stattdessen in der App an {name} senden",
 "Link your supervisor so requests go straight to their app": "Verknüpfen Sie Ihren Supervisor, damit Anfragen direkt in seiner App ankommen",
 "Link ready: not sent yet": "Link bereit: noch nicht gesendet",
-"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Ihr Supervisor hat noch nichts erhalten. Senden Sie ihm jetzt diesen Link. Wavelength sendet ihn nicht für Sie."
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Ihr Supervisor hat noch nichts erhalten. Senden Sie ihm jetzt diesen Link. Wavelength sendet ihn nicht für Sie.",
+"A scan was also changed on another device. The most recent version was kept.": "Ein Scan wurde auch auf einem anderen Gerät geändert. Die neueste Version wurde behalten.",
+"Confirm or query at least one scan.": "Bestätigen oder hinterfragen Sie mindestens einen Scan.",
+"Connect to the internet to see your sign-off requests.": "Verbinden Sie sich mit dem Internet, um Ihre Freigabeanfragen zu sehen.",
+"Decision for {scan}": "Entscheidung für {scan}",
+"The learner changed these scans after asking for sign-off, so this request no longer matches them. Ask them to send a new request.": "Die lernende Person hat diese Scans nach der Anfrage geändert, daher passt die Anfrage nicht mehr. Bitten Sie um eine neue Anfrage.",
+"This scan is waiting for sign-off. If you change it, that request no longer applies to it and you will need to send it again.": "Dieser Scan wartet auf Freigabe. Wenn Sie ihn ändern, gilt die Anfrage nicht mehr und Sie müssen ihn erneut senden.",
+"This summary was not found.": "Diese Zusammenfassung wurde nicht gefunden.",
+"You are offline. Nothing has changed.": "Sie sind offline. Es wurde nichts geändert.",
+"You have sent many invitations today. Try again tomorrow.": "Sie haben heute viele Einladungen gesendet. Versuchen Sie es morgen erneut.",
+"{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.": "{n} dieser Scans wurden nach der Anfrage geändert, daher wurde Ihre Entscheidung für sie nicht übernommen. Bitten Sie darum, sie erneut zu senden.",
+"Versions kept after a scan was changed on two devices": "Versionen, die behalten wurden, als ein Scan auf zwei Geräten geändert wurde",
+"kept {date}": "behalten am {date}",
+"Use this version": "Diese Version verwenden",
+"Version restored. It syncs now.": "Version wiederhergestellt. Sie wird jetzt synchronisiert."
 }

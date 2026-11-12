@@ -14,7 +14,7 @@ A 76-year-old man has fractures of the sixth to ninth ribs on the left, close to
 - A serratus anterior plane block in the mid-axillary line
 - A rectus sheath block
 - A femoral nerve block
-: The serratus anterior plane block covers lateral fractures less reliably near the spine. The erector spinae plane block places the injection close to the spine and spreads over several levels.
+: The serratus anterior plane block suits lateral fractures but covers fractures close to the spine less reliably. The erector spinae plane block places the injection close to the spine and spreads over several levels.
 
 ## Case 2: rib or transverse process
 

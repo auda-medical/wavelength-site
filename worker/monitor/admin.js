@@ -11,7 +11,8 @@ import { audit } from '../audit.js';
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 const BASE = '/admin/sources/';
-const when = (v) => (v ? `${esc(ukDate(Date.parse(v)))} <small>${esc(String(v).slice(11, 16))} UTC</small>` : '<span class="muted">never</span>');
+// Audit 12 Nov 2026: the date and the time come from the same clock (UTC), so 23:30 UTC in summer is not shown with tomorrow's date.
+const when = (v) => (v ? `${esc(String(v).slice(0, 10))} <small>${esc(String(v).slice(11, 16))} UTC</small>` : '<span class="muted">never</span>');
 const STYLE = '<style>.ms-pill{display:inline-block;padding:2px 9px;border-radius:99px;background:#EDEAE3;font-size:12.5px}.ms-ok{background:#DDEFE9}.ms-bad{background:#F6DEDA}.ms-warn{background:#FBEFD5}.ms-pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#F7F5F0;border-radius:8px;padding:10px;font-size:13px;max-height:360px;overflow:auto}.ms-form{display:inline-grid;gap:6px;margin:4px 0}.ms-form label{display:grid;gap:3px;font-size:13px}.ms-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.ms-tabs a{padding:5px 12px;border:1px solid #E4E0D7;border-radius:99px;text-decoration:none;color:inherit;font-size:14px}.ms-tabs a[aria-current=page]{background:#0F1E33;color:#fff}</style>';
 const PILL = { ok: 'ms-ok', changed: 'ms-warn', unavailable: 'ms-bad', format_changed: 'ms-bad', never: '', unsupported: '', not_authorised: '', retired: '' };
 const pill = (s) => `<span class="ms-pill ${PILL[s] || ''}">${esc(String(s).replace(/_/g, ' '))}</span>`;
@@ -32,7 +33,7 @@ export async function sourcesAdminHtml(env, url) {
   const note = m ? `<p class="sv-banner" role="status" style="font-weight:600">${esc(m)}</p>` : '';
   if (change) return STYLE + note + await changeReport(env, change);
   const sources = (await env.DB.prepare('SELECT * FROM monitor_sources ORDER BY kind DESC, body, name').all()).results || [];
-  const open = (await env.DB.prepare("SELECT c.*, s.name FROM monitor_changes c JOIN monitor_sources s ON s.id = c.source_id WHERE c.review_status = 'open' ORDER BY c.id DESC LIMIT 100").all()).results || [];
+  const open = (await env.DB.prepare("SELECT c.*, s.name FROM monitor_changes c JOIN monitor_sources s ON s.id = c.source_id WHERE c.review_status IN ('open', 'acknowledged') ORDER BY c.id DESC LIMIT 100").all()).results || [];
   const lastRun = await env.DB.prepare("SELECT * FROM monitor_runs WHERE trigger = 'cron' ORDER BY id DESC LIMIT 1").first();
   const failing = sources.filter((s) => s.mode === 'auto' && s.failures >= 3);
   const dirs = sources.filter((s) => s.kind === 'directory');
@@ -116,17 +117,27 @@ export async function sourcesAdminPost(env, f, admin, ctx) {
     // The objection and every removal it implies are one batch: stored copies and history go together.
     const stmts = [env.DB.prepare('INSERT OR IGNORE INTO directory_optouts (source_id, name_norm, org_norm, created_by, note) VALUES (?,?,?,?,?)').bind(source, nn, on, `admin:${clip(admin, 40)}:${reviewer}`, note)];
     let removed = 0;
+    const outKeys = new Set();
     const snaps = (await env.DB.prepare(`SELECT id, source_id, entries FROM directory_snapshots WHERE source_id ${source === '*' ? "LIKE 'dir:%'" : '= ?'}`).bind(...(source === '*' ? [] : [source])).all()).results || [];
     for (const s of snaps) {
       const entries = JSON.parse(s.entries), out = entries.filter((e) => optedOut(e, [rule], s.source_id));
       if (!out.length) continue;
       removed = Math.max(removed, out.length);
+      for (const e of out) outKeys.add(e.key);
       const keep = entries.filter((e) => !out.includes(e));
       stmts.push(env.DB.prepare('UPDATE directory_snapshots SET entries = ?, entry_count = ? WHERE id = ?').bind(JSON.stringify(keep), keep.filter((e) => e.status !== 'removed').length, s.id));
       stmts.push(env.DB.prepare(`DELETE FROM directory_events WHERE source_id = ? AND entry_key IN (${out.map(() => '?').join(',')})`).bind(s.source_id, ...out.map((e) => e.key)));
     }
+    // Audit 12 Nov 2026: the person also leaves the change history kept on review items (monitor_changes.evidence).
+    const changes = (await env.DB.prepare(`SELECT id, source_id, evidence FROM monitor_changes WHERE classification = 'directory' AND source_id ${source === '*' ? "LIKE 'dir:%'" : '= ?'}`).bind(...(source === '*' ? [] : [source])).all().catch(() => ({ results: [] }))).results || [];
+    for (const c of changes) {
+      let ev; try { ev = JSON.parse(c.evidence || '{}'); } catch { stmts.push(env.DB.prepare('UPDATE monitor_changes SET evidence = ? WHERE id = ?').bind(JSON.stringify({ events: [], scrubbed: true }), c.id)); continue; }
+      const all = ev.events || [];
+      const keep = all.filter((e) => !outKeys.has(e.key) && ![e.after, e.before].flat().some((p) => p && p.name && optedOut(p, [rule], c.source_id)));
+      if (keep.length !== all.length) stmts.push(env.DB.prepare('UPDATE monitor_changes SET evidence = ? WHERE id = ?').bind(JSON.stringify({ ...ev, events: keep }), c.id));
+    }
     await env.DB.batch(stmts);
-    await audit(env, { actorType: 'admin', actorId: clip(admin, 40), action: 'directory.optout', meta: { removed } });
+    await audit(env, { actorType: 'admin', actorId: clip(admin, 40), action: 'directory.optout', meta: { count: removed } });
     return { tab: 'directories', m: removed ? `Objection recorded. ${removed} matching ${removed === 1 ? 'entry' : 'entries'} removed.` : 'Objection recorded. No matching entry is stored now; the person will not be taken in later.' };
   }
   if (action === 'optout_remove') {
@@ -142,6 +153,7 @@ export async function sourcesAdminPost(env, f, admin, ctx) {
     // 12 Nov 2026 (owner): one tap, Accept or Do not accept; the logged-in name is the reviewer; a note is optional.
     if (!outcome) return { change: f.get('change'), m: 'Choose Accept or Do not accept.' };
     const by = reviewer || clip(admin, 80) || 'admin';
+    await audit(env, { actorType: 'admin', actorId: clip(admin, 40), action: 'monitor.review', subjectType: 'monitor_change', subjectId: Number(f.get('change')), meta: { outcome } });
     const r = await env.DB.prepare("UPDATE monitor_changes SET review_status = ?, reviewed_by = ?, reviewed_at = ?, review_note = ? WHERE id = ? AND review_status IN ('open', 'acknowledged')").bind(outcome, `admin:${clip(admin, 40)}:${by}`, new Date().toISOString(), note || (outcome === 'approved' ? 'Accepted' : outcome === 'dismissed' ? 'Not accepted' : null), Number(f.get('change'))).run();
     if (r.meta && r.meta.changes && outcome !== 'acknowledged') {
       // The source's state follows its oldest open item: back to 'ok' when nothing is left open.

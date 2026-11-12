@@ -54,7 +54,7 @@ A painful, irreducible lump needs [urgent surgical review](/learn/strangulated-h
 - Femoral hernias never need surgery
 : Even a painless femoral hernia needs urgent referral.
 
-?? A soft groin lump grows when the patient coughs. It compresses easily and fills with blue colour flow. What is it?
+?? A soft groin lump grows when the patient coughs. It compresses easily and fills with colour flow when the patient coughs. What is it?
 + A saphena varix
 - A femoral hernia
 - A lymph node
