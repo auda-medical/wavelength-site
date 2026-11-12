@@ -256,7 +256,9 @@
   // Sign-off status per scan: green signed, amber awaiting a live request, red needs action, none when the learner marks it as not needing sign-off.
   function setPending(list) {
     var m = {}, now = Date.now();
-    (list || []).forEach(function (s) { if (s.status === 'pending' && s.method !== 'in-person' && s.expires_at > now) (s.entry_ids || []).forEach(function (id) { m[id] = { code: s.id, name: s.supervisor_name || '', exp: s.expires_at }; if (s.returned) m[id].returned = s.returned; }); });
+    // 12 Nov 2026 (owner): a request that went to a supervisor's dashboard (dash) is told apart from a link the learner
+    // must send on themselves. A dashboard request wins when a scan has both.
+    (list || []).forEach(function (s) { if (s.status === 'pending' && s.method !== 'in-person' && s.expires_at > now) (s.entry_ids || []).forEach(function (id) { if (m[id] && m[id].dash && !s.supervisor_id) return; m[id] = { code: s.id, name: s.supervisor_name || '', exp: s.expires_at, dash: !!s.supervisor_id }; if (s.returned) m[id].returned = s.returned; }); });
     return setKv('pending', m);
   }
   function waiting(e) { var p = (S.kv.pending || {})[e.id]; return p && p.exp > Date.now() ? p : null; }
@@ -1563,7 +1565,8 @@
   }
   function ratingDots(r) { if (!r) return ''; return '<span class="tl-dots" title="' + esc(T('Supervisor rating')) + '">' + ['image', 'accuracy'].map(function (k) { return r[k] ? '<i class="tl-' + r[k] + '"></i>' : ''; }).join('') + '</span>'; }
   function statusChip(e) {
-    var st = STATES[signState(e)];
+    var st = STATES[signState(e)], wl = signState(e) === 'waiting' ? waiting(e) : null;
+    if (wl && !wl.dash && !wl.returned) st = ['amber', 'Link not sent by Wavelength'];
     return st[1] ? '<span class="chip ' + st[0] + '">' + esc(T(st[1])) + (st[0] === 'green' ? ratingDots(e.signoff.rating) : '') + '</span>' : '';
   }
   var SUP = {}; C.supervision.forEach(function (s) { SUP[s.id] = s.label; });
@@ -3210,6 +3213,9 @@
       : e.signoffVoid ? '<div class="warn">' + esc(T('Signed by {name}, then edited. Ask for sign-off again.', { name: e.signoffVoid.name })) + '</div>' : '';
     var wt = !(so && so.status === 'confirmed') && waiting(e), state = signState(e);
     if (wt && wt.returned) { var rsup = wt.returned.reason === 'more_info' ? supervisorOf(wt.returned.from) : null; signHtml = '<div class="signbox" style="border-color:var(--red-line);background:var(--red-bg)"><b style="color:var(--red)">' + esc(T('Sent back to you')) + '</b> · ' + esc(returnedText(wt.returned)) + '</div><p class="hint" style="margin:8px 0 0">' + esc(rsup ? T('Edit the scan or add images if needed, then send it back.') : T('Send it to another supervisor.')) + '</p><div class="btns" style="margin-top:8px"><button class="btn teal sm" type="button" data-resendr="' + esc(wt.code) + '">' + esc(rsup ? T('Send back to {name}', { name: rsup.name || rsup.email }) : T('Send on')) + '</button></div>'; }
+    // 12 Nov 2026 (owner): a learner saw "Request sent" for a link nobody received. A link-only request says plainly that
+    // Wavelength did not deliver it, and offers a linked supervisor's dashboard instead.
+    else if (wt && !wt.dash) { var lsup = ((S.links || {}).supervisors || []).filter(function (s) { return s.status === 'active' && s.supervisorId; })[0]; signHtml = '<div class="signbox warn"><b>' + esc(T('Sign-off link created, not sent by Wavelength')) + '</b>. ' + esc(T('Only you can send this link, by email, WhatsApp or Teams. Wavelength cannot tell whether you sent it, and your supervisor gets nothing from Wavelength. Valid until {date}.', { date: fmt(new Date(wt.exp).toISOString()) })) + '</div>' + (lsup ? '<div class="btns" style="margin-top:10px"><button class="btn teal block" data-todash>' + esc(T('Send to {name} in the app instead', { name: lsup.name || lsup.email })) + '</button></div>' : '<p class="small" style="margin:8px 0 0"><a href="#/supervisors">' + esc(T('Link your supervisor so requests go straight to their app')) + '</a></p>'); if (lsup) setTimeout(function () { var bt = $('[data-todash]'); if (bt) bt.onclick = function () { busy(bt, true); sendDirect(e.id, lsup); }; }, 0); }
     else if (wt) signHtml = '<div class="signbox warn"><b>' + esc(T('Awaiting sign-off')) + '</b>' + (wt.name ? ' · ' + esc(wt.name) : '') + '. ' + esc(T('Request sent, valid until {date}.', { date: fmt(new Date(wt.exp).toISOString()) })) + '</div>' + (so ? '<p class="small muted" style="margin:8px 0 0">' + esc(so.status === 'query' ? T('Earlier: queried by {name}.', { name: so.name }) : T('Earlier: signed by {name}.', { name: so.name })) + '</p>' : '');
     else if (state === 'none') signHtml = '<p class="muted small" style="margin:0">' + esc(T('No sign-off needed for this scan.')) + '</p>';
     else if (!signHtml) signHtml = '<div class="signbox" style="border-color:var(--red-line);background:var(--red-bg)"><b style="color:var(--red)">' + esc(T('Not sent')) + '</b> ' + esc(T('for sign-off yet.')) + '</div>';
@@ -3591,7 +3597,7 @@
       });
       return;
     }
-    var html = '<h2>' + esc(T('Request ready')) + '</h2><p class="small muted">' + esc(T('Send the link by email, WhatsApp or Teams.')) + ' ' + esc(out.images ? T('It holds the key to {n}, so send it only to your supervisor.', { n: plural(out.images, 'encrypted image') }) : T('Anyone with the link can sign, so send it only to your supervisor.')) + '</p><div class="card" style="word-break:break-all;font-size:13px">' + esc(out.link) + '</div><div class="btns">' + (navigator.share ? '<button class="btn teal block" data-share>' + esc(T('Share link')) + '</button>' : '') + '<button class="btn block" data-copy>' + esc(T('Copy link')) + '</button><a class="btn ghost block" href="mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(msg) + '">' + esc(T('Email it')) + '</a><button class="btn ghost block" data-close>' + esc(T('Done')) + '</button></div>';
+    var html = '<h2>' + esc(T('Link ready: not sent yet')) + '</h2><div class="warn">' + esc(T('Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.')) + '</div><p class="small muted">' + esc(T('Send the link by email, WhatsApp or Teams.')) + ' ' + esc(out.images ? T('It holds the key to {n}, so send it only to your supervisor.', { n: plural(out.images, 'encrypted image') }) : T('Anyone with the link can sign, so send it only to your supervisor.')) + '</p><div class="card" style="word-break:break-all;font-size:13px">' + esc(out.link) + '</div><div class="btns">' + (navigator.share ? '<button class="btn teal block" data-share>' + esc(T('Share link')) + '</button>' : '') + '<button class="btn block" data-copy>' + esc(T('Copy link')) + '</button><a class="btn ghost block" href="mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(msg) + '">' + esc(T('Email it')) + '</a><button class="btn ghost block" data-close>' + esc(T('Done')) + '</button></div>';
     sheet(html, function (r2) {
       var sh = $('[data-share]', r2); if (sh) sh.onclick = function () { navigator.share({ title: subject, text: msg }).catch(function () {}); };
       $('[data-copy]', r2).onclick = function () { copy(out.link); };

@@ -2726,5 +2726,12 @@
 "Do not list me in Wavelength supervisor search": "No incluirme en la búsqueda de supervisores de Wavelength",
 "Once approved, logged-in learners can find you by name and ask to link: they see your name, role, organisation and approved areas, never your email. You can change this at any time.": "Una vez aprobado, los estudiantes con sesión iniciada pueden encontrarle por su nombre y pedir vincularse: ven su nombre, cargo, organización y áreas aprobadas, nunca su correo electrónico. Puede cambiarlo en cualquier momento.",
 "Approved supervisors are listed by default. Logged-in learners see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Untick to leave the search at any time.": "Los supervisores aprobados aparecen de forma predeterminada. Los estudiantes con sesión iniciada ven su nombre, cargo, organización y las áreas aprobadas por Wavelength, nunca su correo electrónico. Después pueden pedir vincularse y usted decide si acepta. Desmarque la casilla para salir de la búsqueda en cualquier momento.",
-"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "Muestra solo supervisores aprobados por Wavelength. Los supervisores pueden excluirse."
+"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "Muestra solo supervisores aprobados por Wavelength. Los supervisores pueden excluirse.",
+"Link not sent by Wavelength": "Enlace no enviado por Wavelength",
+"Sign-off link created, not sent by Wavelength": "Enlace de firma creado, no enviado por Wavelength",
+"Only you can send this link, by email, WhatsApp or Teams. Wavelength cannot tell whether you sent it, and your supervisor gets nothing from Wavelength. Valid until {date}.": "Solo usted puede enviar este enlace, por correo electrónico, WhatsApp o Teams. Wavelength no puede saber si lo envió y su supervisor no recibe nada de Wavelength. Válido hasta el {date}.",
+"Send to {name} in the app instead": "Enviar a {name} en la aplicación",
+"Link your supervisor so requests go straight to their app": "Vincule a su supervisor para que las solicitudes lleguen directamente a su aplicación",
+"Link ready: not sent yet": "Enlace listo: aún no enviado",
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Su supervisor no ha recibido nada. Envíele este enlace ahora. Wavelength no lo envía por usted."
 }

@@ -2878,5 +2878,12 @@
 "Do not list me in Wavelength supervisor search": "لا تُدرجني في بحث المشرفين في Wavelength",
 "Once approved, logged-in learners can find you by name and ask to link: they see your name, role, organisation and approved areas, never your email. You can change this at any time.": "بعد الموافقة، يمكن للمتعلمين المسجلين الدخول العثور عليك بالاسم وطلب الارتباط: يرون اسمك ودورك ومؤسستك والمجالات المعتمدة، ولا يرون بريدك الإلكتروني أبدًا. يمكنك تغيير ذلك في أي وقت.",
 "Approved supervisors are listed by default. Logged-in learners see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Untick to leave the search at any time.": "يُدرج المشرفون المعتمدون في البحث تلقائيًا. يرى المتعلمون المسجلون الدخول اسمك ودورك ومؤسستك والمجالات التي اعتمدتها Wavelength، ولا يرون بريدك الإلكتروني أبدًا. يمكنهم بعد ذلك طلب الارتباط، وأنت تقرر القبول. ألغِ التحديد لمغادرة البحث في أي وقت.",
-"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "يعرض فقط المشرفين المعتمدين من Wavelength. يمكن للمشرفين الانسحاب."
+"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "يعرض فقط المشرفين المعتمدين من Wavelength. يمكن للمشرفين الانسحاب.",
+"Link not sent by Wavelength": "لم يُرسل Wavelength الرابط",
+"Sign-off link created, not sent by Wavelength": "تم إنشاء رابط الاعتماد ولم يُرسله Wavelength",
+"Only you can send this link, by email, WhatsApp or Teams. Wavelength cannot tell whether you sent it, and your supervisor gets nothing from Wavelength. Valid until {date}.": "أنت وحدك من يمكنه إرسال هذا الرابط عبر البريد الإلكتروني أو واتساب أو Teams. لا يستطيع Wavelength معرفة ما إذا كنت قد أرسلته، ولا يتلقى المشرف أي شيء من Wavelength. صالح حتى {date}.",
+"Send to {name} in the app instead": "أرسله إلى {name} في التطبيق بدلًا من ذلك",
+"Link your supervisor so requests go straight to their app": "اربط مشرفك لتصل الطلبات مباشرة إلى تطبيقه",
+"Link ready: not sent yet": "الرابط جاهز: لم يُرسل بعد",
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "لم يصل أي شيء إلى مشرفك. أرسل له هذا الرابط الآن. لا يرسله Wavelength نيابةً عنك."
 }

@@ -2802,5 +2802,12 @@
 "Do not list me in Wavelength supervisor search": "Не показывать меня в поиске руководителей Wavelength",
 "Once approved, logged-in learners can find you by name and ask to link: they see your name, role, organisation and approved areas, never your email. You can change this at any time.": "После одобрения вошедшие в систему учащиеся смогут найти вас по имени и попросить о связи. Они видят ваше имя, должность, организацию и одобренные области, но никогда не видят ваш адрес электронной почты. Вы можете изменить это в любое время.",
 "Approved supervisors are listed by default. Logged-in learners see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Untick to leave the search at any time.": "Одобренные руководители по умолчанию показываются в поиске. Вошедшие в систему учащиеся видят ваше имя, должность, организацию и области, одобренные Wavelength, но никогда не видят ваш адрес электронной почты. Затем они могут попросить о связи, и вы решаете, принять ли запрос. Снимите отметку, чтобы в любое время выйти из поиска.",
-"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "Показывает только руководителей, одобренных Wavelength. Руководители могут отказаться от показа."
+"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "Показывает только руководителей, одобренных Wavelength. Руководители могут отказаться от показа.",
+"Link not sent by Wavelength": "Ссылка не отправлена Wavelength",
+"Sign-off link created, not sent by Wavelength": "Ссылка на подтверждение создана, но не отправлена Wavelength",
+"Only you can send this link, by email, WhatsApp or Teams. Wavelength cannot tell whether you sent it, and your supervisor gets nothing from Wavelength. Valid until {date}.": "Отправить эту ссылку можете только вы: по электронной почте, через WhatsApp или Teams. Wavelength не знает, отправили ли вы её, и ваш руководитель ничего не получает от Wavelength. Действует до {date}.",
+"Send to {name} in the app instead": "Вместо этого отправить {name} в приложении",
+"Link your supervisor so requests go straight to their app": "Свяжитесь с руководителем, чтобы запросы приходили прямо в его приложение",
+"Link ready: not sent yet": "Ссылка готова: ещё не отправлена",
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "Ваш руководитель ничего не получил. Отправьте ему эту ссылку сейчас. Wavelength не отправляет её за вас."
 }

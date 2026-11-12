@@ -16,6 +16,7 @@ import { actionsForSignoff, actionsForAssessment } from './verification/pathways
 import { reviewState, REVIEW_STATES } from './review.js';
 import { nowIso, parseTs } from './time.js';
 import { suggestDomain, domainAccepts } from './email-check.js';
+import { pushPerson } from './push.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
 const KINDS = (LOGBOOK.assessmentKinds || []).map((k) => k.id);
@@ -245,6 +246,8 @@ export async function supervisorAdd(env, l, req, ctx) {
     button: { href: link, label },
     text: `${who} has named you as an ultrasound supervisor on Wavelength, the free ultrasound logbook.\n\nAccept here: ${link}\n\nUse this email address (${email}) to log in or create your account. To reply to ${who}, reply to this email. If you do not know them, ignore this email.`,
   }).catch(() => false);
+  // 12 Nov 2026 (owner): a supervisor with an account also gets a phone notification, not only the email.
+  if (sup) { const ph = pushPerson(env, sup.id, 'link_invite', { learner: who }).catch(() => 0); if (ctx && ctx.waitUntil) ctx.waitUntil(ph); else await ph; }
   // 12 Nov 2026: whether the invitation email went is recorded, so a lost invitation can be found later.
   await audit(env, { actorType: 'learner', actorId: l.id, action: 'link.invite', subjectType: 'link', meta: { emailed: !!emailed, hasAccount: !!sup, domain: dom } });
   return json({ ok: true, emailed: !!emailed, hasAccount: !!sup });

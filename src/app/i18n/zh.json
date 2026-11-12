@@ -2688,5 +2688,12 @@
 "Do not list me in Wavelength supervisor search": "不要在 Wavelength 督导搜索中列出我",
 "Once approved, logged-in learners can find you by name and ask to link: they see your name, role, organisation and approved areas, never your email. You can change this at any time.": "获批后，已登录的学员可以按姓名找到您并请求关联：他们会看到您的姓名、职位、机构和获批领域，但绝不会看到您的电子邮箱。您可以随时更改此设置。",
 "Approved supervisors are listed by default. Logged-in learners see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Untick to leave the search at any time.": "获批的督导默认会出现在搜索中。已登录的学员会看到您的姓名、职位、机构和 Wavelength 批准的领域，但绝不会看到您的电子邮箱。他们随后可以请求关联，由您决定是否接受。取消勾选即可随时退出搜索。",
-"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "仅显示经 Wavelength 批准的督导。督导可以选择退出。"
+"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "仅显示经 Wavelength 批准的督导。督导可以选择退出。",
+"Link not sent by Wavelength": "链接未由 Wavelength 发送",
+"Sign-off link created, not sent by Wavelength": "已创建签核链接，未由 Wavelength 发送",
+"Only you can send this link, by email, WhatsApp or Teams. Wavelength cannot tell whether you sent it, and your supervisor gets nothing from Wavelength. Valid until {date}.": "只有您可以通过电子邮件、WhatsApp 或 Teams 发送此链接。Wavelength 无法知道您是否已发送，您的督导也不会收到 Wavelength 的任何通知。有效期至 {date}。",
+"Send to {name} in the app instead": "改为在应用中发送给 {name}",
+"Link your supervisor so requests go straight to their app": "关联您的督导，让请求直接进入其应用",
+"Link ready: not sent yet": "链接已就绪：尚未发送",
+"Nothing has gone to your supervisor. Send them this link now. Wavelength does not send it for you.": "您的督导尚未收到任何内容。请立即将此链接发送给他们。Wavelength 不会替您发送。"
 }
