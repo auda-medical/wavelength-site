@@ -3777,7 +3777,7 @@
     var ended = ((S.links || {}).ended || []).filter(function (x) { return x.role === 'learner'; });
     mount(shell({ title: T('Your supervisors'), back: 'me' },
       '<div class="card dark"><h3>' + esc(T('Link your supervisors')) + '</h3><p class="muted small">' + esc(T('A linked supervisor sees your progress and your written scan records in their own Wavelength app, never your images. Send sign-off and assessment requests straight to their dashboard. Remove a supervisor at any time.')) + '</p></div>' +
-      (S.me && S.me.supervisor && S.me.supervisor.search ? '<form id="svsf" class="card" role="search"><div class="field"><label for="svq">' + esc(T('Find a Wavelength Verified Supervisor')) + '</label><input id="svq" type="search" autocomplete="off" minlength="3" placeholder="' + esc(T('Name, at least 3 letters')) + '" aria-describedby="svq-h"><p class="hint" id="svq-h">' + esc(T('Shows only supervisors approved by Wavelength who chose to be found.')) + '</p></div><div id="svres" aria-live="polite"></div></form><p class="small muted" style="margin:-4px 0 12px">' + esc(T('Can\'t find them? Invite a supervisor by email.')) + '</p>' : '') +
+      (S.me && S.me.supervisor && S.me.supervisor.search ? '<form id="svsf" class="card" role="search"><div class="field"><label for="svq">' + esc(T('Find a Wavelength Verified Supervisor')) + '</label><input id="svq" type="search" autocomplete="off" minlength="3" placeholder="' + esc(T('Name, at least 3 letters')) + '" aria-describedby="svq-h"><p class="hint" id="svq-h">' + esc(T('Shows only supervisors approved by Wavelength. Supervisors can opt out.')) + '</p></div><div id="svres" aria-live="polite"></div></form><p class="small muted" style="margin:-4px 0 12px">' + esc(T('Can\'t find them? Invite a supervisor by email.')) + '</p>' : '') +
       '<form id="addf" class="card">' + listingBox('svfind2', T('Find your supervisor in an official directory (optional)'), T('Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.')) + '<div id="svpicked"></div><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off" aria-describedby="se2-h"><p class="hint" id="se2-h">' + esc(T('They may need checks and Wavelength approval before they can provide verified supervision. Their status shows as pending until then.')) + '</p></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
       inviteExplain() +
       (!S.links ? '<p class="muted small" role="status">' + esc(T('Checking…')) + '</p>' : (L2.supervisors || []).length ? '<h2 class="sec">' + esc(T('Linked and invited')) + '</h2>' + L2.supervisors.map(function (s) {
@@ -3797,12 +3797,27 @@
       $('#svpicked').innerHTML = '<p class="small" role="status">' + esc(T('Selected: {name}', { name: [r.name, r.organisation].filter(Boolean).join(', ') })) + (r.onWavelength ? ' · ' + esc(T('On Wavelength')) : '') + '<br>' + esc(listingRoles(r.roles)) + '<br><span class="muted">' + esc(T('Being listed is not Wavelength approval. Enter their email below to invite them.')) + '</span></p>';
       $('#se2').focus();
     });
+    // 12 Nov 2026 (owner): a learner typed "nhs.ner" and the invitation reached no one. The address the invitation goes
+    // to is shown as it is typed, and a likely slip in the domain is offered back to correct, or to keep as typed.
+    var keep = null, se2 = $('#se2'), to2 = document.createElement('p');
+    to2.className = 'small'; to2.id = 'se2-to'; to2.setAttribute('aria-live', 'polite'); to2.hidden = true;
+    var h2 = $('#se2-h'); (h2 || se2).insertAdjacentElement('afterend', to2);
+    function previewTo() { var v = se2.value.trim().toLowerCase(); to2.hidden = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); to2.innerHTML = esc(T('The invitation goes to:')) + ' <b style="word-break:break-all">' + esc(v) + '</b>'; }
+    se2.addEventListener('input', function () { keep = null; previewTo(); });
     $('#addf').addEventListener('submit', function (ev) {
-      ev.preventDefault(); var b = $('button', this), err = $('.err', this); busy(b, true);
-      api('/api/app/supervisors/add', { email: $('#se2').value }).then(function (res) {
+      ev.preventDefault(); var form = this, b = $('button.btn.teal.sm', form) || $('button', form), err = $('.err', form); busy(b, true);
+      var addr = se2.value.trim().toLowerCase();
+      api('/api/app/supervisors/add', { email: addr, confirmed: keep === addr }).then(function (res) {
+        if (!res.ok && res.suggest) {
+          busy(b, false);
+          err.innerHTML = esc(res.error) + '<div class="btns"><button type="button" class="btn teal block" data-use>' + esc(T('Use {email}', { email: res.suggest })) + '</button><button type="button" class="btn ghost block" data-keep>' + esc(T('Keep {email}', { email: addr })) + '</button></div>';
+          err.hidden = false;
+          $('[data-use]', err).onclick = function () { se2.value = res.suggest; keep = null; err.hidden = true; previewTo(); se2.focus(); };
+          $('[data-keep]', err).onclick = function () { keep = addr; err.hidden = true; form.dispatchEvent(new Event('submit', { cancelable: true })); };
+          return;
+        }
         if (!res.ok) throw new Error(res.error);
-        var to = $('#se2').value.trim().toLowerCase();
-        return loadLinks().then(function () { viewSupervisors(); inviteSent(to, res); });
+        return loadLinks().then(function () { viewSupervisors(); inviteSent(addr, res); });
       }).catch(function (ex) { busy(b, false); err.textContent = netFail(ex) ? T('Could not send. Check your connection.') : ex.message; err.hidden = false; });
     });
   }
@@ -4067,6 +4082,8 @@
     var link = NAT.origin + '/app/#/supervise';
     var msg = T('Hello, I use the free Wavelength ultrasound logbook and have added you as my supervisor. Open {link} and log in, or create a free account, with {email}. My invitation is waiting there. Thank you, {name}', { link: link, email: to, name: me.name || '' });
     var head = res.emailed ? T('Invitation sent to {email}.', { email: to }) : T('Invitation saved for {email}, but the email did not go out. Send the message below instead.', { email: to });
+    // 12 Nov 2026: no account with this address often means a typing slip. Say so plainly.
+    if (!res.hasAccount) head += ' ' + T('No Wavelength account uses this address yet. If your supervisor already has an account, check the spelling, and remove and re-add them if it is wrong.');
     sheet('<h2>' + esc(T('Invitation sent')) + '</h2><div class="' + (res.emailed ? 'ok' : 'warn') + '">' + esc(head) + '</div>' +
       '<p class="small">' + esc(T('Their status shows as pending until they accept, and while any checks and Wavelength approval are under way. That is expected.')) + ' ' + guideLink() + '</p>' +
       '<p class="small">' + esc(T('Hospital and NHS email often puts a first message from a new sender in junk. Ask your supervisor to check their junk folder and mark the email as Not junk, so later sign-off requests reach their inbox.')) + '</p>' +
@@ -4417,7 +4434,7 @@
         else if (!a && P.canApplyAgain) acts += '<div class="btns"><button class="btn teal block" data-svstart="apply-again">' + esc(T('Apply again as a supervisor')) + '</button></div>';
         if (P.canRenew) acts += '<div class="btns"><button class="btn teal block" data-svstart="renew">' + esc(T('Renew')) + '</button></div><p class="small muted">' + esc(T('Renewing takes a few minutes: check your details, confirm what has not changed and make a fresh declaration.')) + '</p>';
       }
-      var find = cur && P.searchAvailable ? '<h2 class="sec">' + esc(T('Being found')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="svfind"' + (P.searchableAt ? ' checked' : '') + '><span>' + esc(T('Let learners find me in Wavelength supervisor search')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Logged-in learners would see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Turn this off at any time.')) + '</p><div id="svprev"></div></div>' : '';
+      var find = cur && P.searchAvailable ? '<h2 class="sec">' + esc(T('Being found')) + '</h2><div class="card"><label class="check"><input type="checkbox" id="svfind"' + (P.searchableAt ? ' checked' : '') + '><span>' + esc(T('Let learners find me in Wavelength supervisor search')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Approved supervisors are listed by default. Logged-in learners see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Untick to leave the search at any time.')) + '</p><div id="svprev"></div></div>' : '';
       var stop = cur || st === 'paused' || (a && a.status !== 'draft') ? '<h2 class="sec">' + esc(T('Stop supervising')) + '</h2><div class="card"><a href="#/supervisor/stop">' + esc(T('Stop being a Wavelength supervisor')) + '</a></div>' : '';
       // Approved pathways and modules live in More info. Only a paused approval keeps its list here, so the person
       // can see which scopes are waiting for the lapse to be put right.
@@ -4523,7 +4540,9 @@
           dl('Documents', a.evidence.length ? String(a.evidence.length) : T('None')) + dl('Written explanation', a.justification ? T('{n} characters', { n: a.justification.length }) : '') +
           dl('Areas', a.areas.map(function (id) { return T((cfg.areas.filter(function (x) { return x.id === id; })[0] || { label: id }).label); }).join(', ')) +
           (a.kind === 'renewal' ? dl('What has changed', a.nothingChanged ? T('Nothing material has changed') : a.changesNote) : '') + '</dl></div>' +
-          '<div class="card"><label class="check"><input type="checkbox" id="decl" name="declaration" value="1"><span>' + esc(T(cfg.declaration)) + '</span></label></div>';
+          '<div class="card"><label class="check"><input type="checkbox" id="decl" name="declaration" value="1"><span>' + esc(T(cfg.declaration)) + '</span></label></div>' +
+          // 12 Nov 2026 (owner): approved supervisors are listed in supervisor search unless they opt out here.
+          '<div class="card"><label class="check"><input type="checkbox" id="svoptout"' + (P.searchable === false ? ' checked' : '') + '><span>' + esc(T('Do not list me in Wavelength supervisor search')) + '</span></label><p class="small muted" style="margin:8px 0 0">' + esc(T('Once approved, logged-in learners can find you by name and ask to link: they see your name, role, organisation and approved areas, never your email. You can change this at any time.')) + '</p></div>';
       }
       mount(svShell(T(SV_STEP_LABEL[step]), prev, head + '<form id="svf" novalidate>' + body + foot + '</form>'));
       svBindStep(step, a, P);
@@ -4534,7 +4553,8 @@
         var d = svCollect(step, f, a, P);
         if (typeof d === 'string') return fail(d);
         var b = $('button.teal', f); busy(b, true, step === 'submit' ? T('Sending…') : T('Saving…'));
-        var send = step === 'submit' ? api('/api/app/supervisor/submit', { declaration: true }) : api('/api/app/supervisor/application', d);
+        var oo = $('#svoptout', f);
+        var send = step === 'submit' ? api('/api/app/supervisor/submit', { declaration: true, searchOptOut: !!(oo && oo.checked) }) : api('/api/app/supervisor/application', d);
         send.then(function (res) {
           if (!res.ok) { if (res.step && res.step !== step && step === 'submit') { toast(res.error, 5000); go('supervisor/apply/' + res.step); return; } return fail(res.error || T('Something went wrong.')); }
           if (res.application) { S.sup = S.sup || P; S.sup.application = res.application; }

@@ -12,6 +12,7 @@
 // functions of worker/professional.js directly, so the general Professional verification screen (PROFESSIONAL_VERIFY)
 // stays off for everyone else. Viewing one's own status and stopping work whenever migration 0012 is applied.
 import LOGBOOK from '../data/logbook.json';
+import { optedOut } from './search.js';
 import { json, clip, body, fullName, TITLES, lifecycleReady } from './app-util.js';
 import { currentStatus, submitRegistration, submitCredential, amendCredentialModules, addEvidence, publicRegistration, publicCredential, config, logEvent, parseList, scopeLabel, TYPE } from './professional.js';
 import { standingOf, applyOn, areaLabels, AREAS, withdrawSupervisor, WITHDRAW_REASONS, activeBlock, verificationOf } from './supervisor-lifecycle.js';
@@ -82,10 +83,11 @@ async function overview(env, l) {
     waiting: waiting.map(fullName),
     registrations: st.registrations.map(publicRegistration),
     credentials: st.credentials.map((c) => publicCredential(c, (ev.results || []).filter((e) => e.subject_type === 'credential' && e.subject_id === c.id))),
-    searchable: !!(await env.DB.prepare('SELECT supervisor_searchable FROM learners WHERE id = ?').bind(l.id).first('supervisor_searchable')),
+    // Listed by default since 12 Nov 2026: findable unless the supervisor opted out (search.js).
+    searchable: !optedOut(await env.DB.prepare('SELECT searchable_at FROM learners WHERE id = ?').bind(l.id).first('searchable_at')),
     // Supervisor search (worker/search.js): whether it is switched on, and since when this person has been findable.
     searchAvailable: env.SUPERVISOR_SEARCH === 'true' && (await orgsReady(env)),
-    searchableAt: (await env.DB.prepare('SELECT searchable_at FROM learners WHERE id = ?').bind(l.id).first('searchable_at')) || null,
+    searchableAt: await (async () => { const at = await env.DB.prepare('SELECT searchable_at FROM learners WHERE id = ?').bind(l.id).first('searchable_at'); return optedOut(at) ? null : (at || 'default'); })(),
     config: { ...config(), areas: AREAS.map((a) => ({ id: a.id, label: a.label })), pathways: PATHWAY_CHOICES, bands: BANDS, declaration: DECLARATION, declarationVersion: DECLARATION_VERSION, reviewTime: REVIEW_TIME, withdrawReasons: WITHDRAW_REASONS },
   });
 }
@@ -249,6 +251,9 @@ async function submit(env, l, d, ctx) {
   const p = await problems(env, l, a);
   if (p.length) return json({ ok: false, error: p[0].error, step: p[0].step, problems: p }, 400);
   if (!d.declaration) return json({ ok: false, step: 'declaration', error: 'Tick the declaration to send your application.' }, 400);
+  // 12 Nov 2026 (owner): approved supervisors are listed in search by default; the application has a box to opt out.
+  if (d.searchOptOut) await env.DB.prepare('UPDATE learners SET supervisor_searchable = 0, supervisor_public_ref = NULL, searchable_at = ? WHERE id = ?').bind('out:' + nowIso(), l.id).run();
+  else await env.DB.prepare("UPDATE learners SET searchable_at = NULL WHERE id = ? AND searchable_at LIKE 'out:%'").bind(l.id).run();
   // Renewal grace (Fero, 6 October 2026): only a renewal sent on or before the review date, by someone fully approved
   // and current at that moment, can hold their status for up to 30 days while it is reviewed.
   let currentAtSubmit = 0;

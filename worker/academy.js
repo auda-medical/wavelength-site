@@ -181,7 +181,11 @@ export async function sendMailResult(env, { to, toName, subject, heading, paragr
       headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Zoho-enczapikey ${tok}` },
       body: JSON.stringify({ from: { address: env.APP_MAIL_FROM || env.MAIL_FROM || 'academy@thewavelength.co.uk', name: fromName || 'Wavelength' }, to: [{ email_address: { address: to, name: toName || to } }], reply_to: [replyTo || { address: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', name: 'Wavelength' }], subject, htmlbody: html, textbody: text || paragraphs.join('\n\n'), track_clicks: false, track_opens: false }),
     });
-    return res.ok ? 'sent' : 'refused';
+    if (res.ok) return 'sent';
+    // 12 Nov 2026: a refusal on 6 Nov left no reason behind. The provider's answer goes to the Worker log.
+    const why = await res.text().catch(() => '');
+    console.warn('email refused', res.status, String(why).slice(0, 400));
+    return 'refused';
   } catch { return 'unknown'; }
 }
 

@@ -53,13 +53,14 @@ async function world(env) {
   bad.testAccount = await person(env, 'review@x.co', 'Tess', 'Smith'); await approve(env, bad.testAccount.id);
   await env.DB.prepare('UPDATE learners SET test_account = 1 WHERE id = ?').bind(bad.testAccount.id).run();
   for (const b of Object.values(bad)) await forceSearchable(env, b.id);
-  // Approved and current, but never opted in.
-  bad.notOptedIn = await person(env, 'quiet@x.co', 'Quinn', 'Smith'); await approve(env, bad.notOptedIn.id);
+  // Approved and current, but opted out (12 Nov 2026: listed by default, so opting out is what keeps someone out).
+  bad.optedOut = await person(env, 'quiet@x.co', 'Quinn', 'Smith'); await approve(env, bad.optedOut.id);
+  assert.equal((await bad.optedOut.c.call('/api/app/supervisor/searchable', { on: false })).status, 200);
   const trainee = await person(env, 'trainee@x.co', 'Tom', 'Jones');
   return { good, bad, trainee };
 }
 
-test('only current, opted-in, real supervisors are ever found, whatever the query', async () => {
+test('only current, real supervisors who have not opted out are ever found, whatever the query', async () => {
   const env = makeEnv(ON);
   const { bad, trainee } = await world(env);
   for (const [q, org] of [['smith', ''], ['smi', ''], ['Smith Darent', ''], ['darent smith', ''], ['sm', 'wl-2'], ['smith', 'wl-2'], ['alice', ''], ['ali smi', '']]) {
@@ -107,9 +108,9 @@ test('searching needs a login, a verified email, the switch and both migrations'
   assert.equal((await search(client(handleApp, env), 'smith')).status, 401);
   const un = await signup(env, 'new@x.co');
   assert.equal((await search(un, 'smith')).status, 403);
-  const off = makeEnv({ ZEPTOMAIL_TOKEN: 'test' });
+  const off = makeEnv({ ZEPTOMAIL_TOKEN: 'test', SUPERVISOR_SEARCH: 'false' });
   const t = await person(off, 't@x.co', 'T', 'J');
-  assert.equal((await search(t.c, 'smith')).status, 503, 'SUPERVISOR_SEARCH is off by default');
+  assert.equal((await search(t.c, 'smith')).status, 503, 'SUPERVISOR_SEARCH off');
   for (const skip of ['0012_supervisor_lifecycle.sql', '0013_organisations.sql']) {
     const old = makeEnv(ON, { skipMigrations: [skip] });
     const o = await person(old, 'o@x.co', 'O', 'P');
@@ -216,12 +217,28 @@ test('opting in needs a current approval and the switch; opting out always works
   assert.deepEqual((await search(trainee.c, 'alice smith')).body.results, []);
   assert.equal((await trainee.c.call('/api/app/supervisors/request', { ref: ref2 })).status, 404);
   assert.equal((await goodOff.call('/api/app/supervisor/searchable', { on: true })).status, 503, 'opting in needs the switch');
-  const ev = (await env.DB.prepare("SELECT meta FROM audit_events WHERE action = 'supervisor.searchable' ORDER BY id").all()).results.map((e) => JSON.parse(e.meta).searchable);
-  assert.deepEqual(ev, [true, true, false], 'consent and its withdrawal are recorded');
+  const ev = (await env.DB.prepare("SELECT meta FROM audit_events WHERE action = 'supervisor.searchable' AND actor_id = ? ORDER BY id").bind(String(good.id)).all()).results.map((e) => JSON.parse(e.meta).searchable);
+  assert.deepEqual(ev, [true, true, false], 'being found and leaving are recorded');
 });
 
 test('search works with SUPERVISOR_APPROVAL_REQUIRED off: eligibility is always forced', async () => {
   const env = makeEnv({ ...ON, SUPERVISOR_APPROVAL_REQUIRED: 'false' });
   const { trainee } = await world(env);
   assert.deepEqual((await search(trainee.c, 'smith')).body.results.map((r) => r.name), ['Alice Smith']);
+});
+
+// 12 Nov 2026 (owner): an approved supervisor who never touched the setting is found, and gets a reference then.
+test('an approved supervisor is listed by default, without opting in', async () => {
+  const env = makeEnv(ON);
+  const { trainee } = await world(env);
+  const fresh = await person(env, 'fresh@x.co', 'Fred', 'Fresh');
+  await approve(env, fresh.id);
+  const r = await search(trainee.c, 'fresh');
+  assert.deepEqual(r.body.results.map((x) => x.name), ['Fred Fresh']);
+  assert.match(r.body.results[0].ref, /^[A-Za-z0-9]{16}$/);
+  assert.equal((await fresh.c.call('/api/app/supervisor')).body.searchable, true, 'shown as listed');
+  assert.equal((await trainee.c.call('/api/app/supervisors/request', { ref: r.body.results[0].ref })).status, 200, 'the learner can ask to link');
+  await fresh.c.call('/api/app/supervisor/searchable', { on: false });
+  assert.deepEqual((await search(trainee.c, 'fresh')).body.results, [], 'gone once opted out');
+  assert.equal((await fresh.c.call('/api/app/supervisor')).body.searchable, false);
 });

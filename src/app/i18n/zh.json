@@ -2680,5 +2680,13 @@
 "Recorded as a fascia iliaca block, so it counts towards your fascia iliaca targets.": "已记录为髂筋膜阻滞：计入您的髂筋膜阻滞目标。",
 "Only a link I send myself": "仅发送我自己转发的链接",
 "With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "仅发送链接时，您的督导老师只能通过链接查看图像，无法在其 Wavelength 应用中查看，也不会收到通知。",
-"Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first, sent only to the supervisor you choose, and deleted after sign-off or within 14 days.": "保存前请裁剪并遮盖识别信息，如有需要可添加标注。如果您与上级医师分享图像，图像会先在您的手机上加密，仅发送给您选择的上级医师，并在签核后或 14 天内删除。"
+"Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first, sent only to the supervisor you choose, and deleted after sign-off or within 14 days.": "保存前请裁剪并遮盖识别信息，如有需要可添加标注。如果您与上级医师分享图像，图像会先在您的手机上加密，仅发送给您选择的上级医师，并在签核后或 14 天内删除。",
+"The invitation goes to:": "邀请将发送至：",
+"Use {email}": "使用 {email}",
+"Keep {email}": "保留 {email}",
+"No Wavelength account uses this address yet. If your supervisor already has an account, check the spelling, and remove and re-add them if it is wrong.": "目前没有 Wavelength 账户使用此地址。如果您的督导已有账户，请检查拼写；如有错误，请将其移除后重新添加。",
+"Do not list me in Wavelength supervisor search": "不要在 Wavelength 督导搜索中列出我",
+"Once approved, logged-in learners can find you by name and ask to link: they see your name, role, organisation and approved areas, never your email. You can change this at any time.": "获批后，已登录的学员可以按姓名找到您并请求关联：他们会看到您的姓名、职位、机构和获批领域，但绝不会看到您的电子邮箱。您可以随时更改此设置。",
+"Approved supervisors are listed by default. Logged-in learners see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Untick to leave the search at any time.": "获批的督导默认会出现在搜索中。已登录的学员会看到您的姓名、职位、机构和 Wavelength 批准的领域，但绝不会看到您的电子邮箱。他们随后可以请求关联，由您决定是否接受。取消勾选即可随时退出搜索。",
+"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "仅显示经 Wavelength 批准的督导。督导可以选择退出。"
 }

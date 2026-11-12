@@ -6,7 +6,8 @@
 //   POST supervisor/searchable { on, rotate }   a supervisor opts in (only with a current approval) or out (always)
 //
 // Who can be found: only people who, at the moment of the search, hold a current Wavelength approval
-// (supervisorEligibility, forced on even when SUPERVISOR_APPROVAL_REQUIRED is off), have opted in, are not test or
+// (supervisorEligibility, forced on even when SUPERVISOR_APPROVAL_REQUIRED is off), have not opted out (listed by
+// default since 12 Nov 2026, owner), are not test or
 // review accounts and have no active block. The query starts from supervisor_approvals, never from learners, so there
 // is no code path that lists ordinary accounts. Results never carry an email address or an account id: `ref` is a
 // random 16-character value per supervisor, created on opt-in, replaced on rotation and cleared on opt-out.
@@ -83,7 +84,8 @@ export async function search(env, l, req, url) {
   const today = ukDate();
   const conds = [
     "a.status = 'approved'", '(a.review_on IS NULL OR a.review_on >= ?)',
-    'l.supervisor_searchable = 1', 'l.test_account = 0', 'l.supervisor_public_ref IS NOT NULL', "l.email_status = 'verified'", 'l.password_hash IS NOT NULL', 'l.id != ?',
+    // 12 Nov 2026 (owner): a current supervisor is listed by default; only one who opted out is left out.
+    OPTED_IN, 'l.test_account = 0', "l.email_status = 'verified'", 'l.password_hash IS NOT NULL', 'l.id != ?',
     'NOT EXISTS (SELECT 1 FROM supervisor_blocks b WHERE b.learner_id = l.id AND b.lifted_at IS NULL)',
     // At least one word must match the person's name: no organisation-only listing.
     `(${words.map(() => `${nameExpr} LIKE ?`).join(' OR ')})`,
@@ -98,7 +100,9 @@ export async function search(env, l, req, url) {
   for (const r of results) {
     if (out.length >= MAX_RESULTS) break;
     const el = await eligibleNow(env, r.id);
-    if (el) out.push(await resultFor(env, r, el));
+    if (!el) continue;
+    if (!r.ref) r.ref = await defaultRef(env, r.id);
+    if (r.ref) out.push(await resultFor(env, r, el));
   }
   return json({ ok: true, results: out });
 }
@@ -137,6 +141,21 @@ export async function requestSupervisor(env, l, d, ctx) {
 }
 
 // What a supervisor would look like in search: shown on the opt-in screen so they see exactly what will appear.
+// Listed by default (owner, 12 Nov 2026): searchable_at holds 'out:<time>' once a supervisor opts out.
+export const OPTED_OUT_PREFIX = 'out:';
+const OPTED_IN = "(l.searchable_at IS NULL OR l.searchable_at NOT LIKE 'out:%')";
+export const optedOut = (at) => String(at || '').startsWith(OPTED_OUT_PREFIX);
+// A supervisor listed by default gets a reference the first time a search finds them.
+async function defaultRef(env, id) {
+  for (let i = 0; i < 3; i++) {
+    try {
+      await env.DB.prepare("UPDATE learners SET supervisor_public_ref = ?, supervisor_searchable = 1, searchable_at = COALESCE(searchable_at, ?) WHERE id = ? AND supervisor_public_ref IS NULL AND (searchable_at IS NULL OR searchable_at NOT LIKE 'out:%')").bind(newRef(), nowIso(), id).run();
+      return (await env.DB.prepare("SELECT supervisor_public_ref FROM learners WHERE id = ? AND (searchable_at IS NULL OR searchable_at NOT LIKE 'out:%')").bind(id).first('supervisor_public_ref')) || null;
+    } catch { /* a reference collision: try another */ }
+  }
+  return null;
+}
+
 export async function searchPreview(env, l) {
   const el = await eligibleNow(env, l.id);
   const row = await env.DB.prepare('SELECT l.id, l.title, l.first_name, l.last_name, l.role, l.profile, l.organisation, NULL AS ref, o.name AS org_name FROM learners l LEFT JOIN organisations o ON o.id = l.organisation_id WHERE l.id = ?').bind(l.id).first();
@@ -152,7 +171,7 @@ export async function setSearchable(env, l, d) {
   if (!on) {
     // Switching off always works, at once, and the old reference stops working.
     await env.DB.batch([
-      env.DB.prepare('UPDATE learners SET supervisor_searchable = 0, searchable_at = NULL, supervisor_public_ref = NULL WHERE id = ?').bind(l.id),
+      env.DB.prepare('UPDATE learners SET supervisor_searchable = 0, searchable_at = ?, supervisor_public_ref = NULL WHERE id = ?').bind(OPTED_OUT_PREFIX + nowIso(), l.id),
       auditStmt(env, { actorType: 'supervisor', actorId: l.id, action: 'supervisor.searchable', subjectType: 'learner', subjectId: l.id, meta: { searchable: false } }),
     ]);
     return json({ ok: true, searchable: false, searchableAt: null });
@@ -163,13 +182,13 @@ export async function setSearchable(env, l, d) {
   if (!(await eligibleNow(env, l.id))) return json({ ok: false, error: 'Only a current Wavelength Verified Supervisor can be found in search. Your approval, registration and email all need to be current.' }, 403);
   const cur = await env.DB.prepare('SELECT supervisor_searchable, searchable_at, supervisor_public_ref FROM learners WHERE id = ?').bind(l.id).first();
   const rotate = !!(d && d.rotate) || !cur.supervisor_public_ref;
-  const at = cur.supervisor_searchable && cur.searchable_at ? cur.searchable_at : nowIso();
+  const at = cur.supervisor_searchable && cur.searchable_at && !optedOut(cur.searchable_at) ? cur.searchable_at : nowIso();
   for (let i = 0; i < 3; i++) {
     const ref = rotate ? newRef() : cur.supervisor_public_ref;
     try {
       await env.DB.batch([
         env.DB.prepare('UPDATE learners SET supervisor_searchable = 1, searchable_at = ?, supervisor_public_ref = ? WHERE id = ?').bind(at, ref, l.id),
-        // Consent to be found is recorded with its time (lawful basis: consent).
+        // Being found is recorded with its time. Since 12 Nov 2026 it is the default for an approved supervisor.
         auditStmt(env, { actorType: 'supervisor', actorId: l.id, action: 'supervisor.searchable', subjectType: 'learner', subjectId: l.id, meta: { searchable: true, rotated: rotate } }),
       ]);
       return json({ ok: true, searchable: true, searchableAt: at, preview: await searchPreview(env, l) });

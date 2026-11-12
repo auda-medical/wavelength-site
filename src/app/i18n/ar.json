@@ -2870,5 +2870,13 @@
 "Recorded as a fascia iliaca block, so it counts towards your fascia iliaca targets.": "سُجِّل كحصار للفافة الحرقفية: يُحتسب ضمن أهدافك لحصار اللفافة الحرقفية.",
 "Only a link I send myself": "رابط فقط أرسله بنفسي",
 "With a link only, your supervisor sees the images through the link, not in their Wavelength app, and gets no notification.": "عند إرسال رابط فقط، يرى مشرفك الصور عبر الرابط لا في تطبيق Wavelength، ولا يصله أي إشعار.",
-"Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first, sent only to the supervisor you choose, and deleted after sign-off or within 14 days.": "قصّ المعرّفات واحجبها قبل الحفظ، وأضف تعليقات توضيحية إن شئت. إذا شاركت الصور مع مشرف، فإنها تُشفَّر على هاتفك أولًا، وتُرسَل فقط إلى المشرف الذي تختاره، وتُحذَف بعد الاعتماد أو خلال 14 يومًا."
+"Crop and redact identifiers before you save, and annotate them if you wish. If you share images with a supervisor, they are encrypted on your phone first, sent only to the supervisor you choose, and deleted after sign-off or within 14 days.": "قصّ المعرّفات واحجبها قبل الحفظ، وأضف تعليقات توضيحية إن شئت. إذا شاركت الصور مع مشرف، فإنها تُشفَّر على هاتفك أولًا، وتُرسَل فقط إلى المشرف الذي تختاره، وتُحذَف بعد الاعتماد أو خلال 14 يومًا.",
+"The invitation goes to:": "تُرسل الدعوة إلى:",
+"Use {email}": "استخدام {email}",
+"Keep {email}": "الإبقاء على {email}",
+"No Wavelength account uses this address yet. If your supervisor already has an account, check the spelling, and remove and re-add them if it is wrong.": "لا يستخدم أي حساب في Wavelength هذا العنوان بعد. إذا كان لدى المشرف حساب بالفعل، فتحقق من التهجئة، وإذا كانت خاطئة فأزله ثم أضفه من جديد.",
+"Do not list me in Wavelength supervisor search": "لا تُدرجني في بحث المشرفين في Wavelength",
+"Once approved, logged-in learners can find you by name and ask to link: they see your name, role, organisation and approved areas, never your email. You can change this at any time.": "بعد الموافقة، يمكن للمتعلمين المسجلين الدخول العثور عليك بالاسم وطلب الارتباط: يرون اسمك ودورك ومؤسستك والمجالات المعتمدة، ولا يرون بريدك الإلكتروني أبدًا. يمكنك تغيير ذلك في أي وقت.",
+"Approved supervisors are listed by default. Logged-in learners see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Untick to leave the search at any time.": "يُدرج المشرفون المعتمدون في البحث تلقائيًا. يرى المتعلمون المسجلون الدخول اسمك ودورك ومؤسستك والمجالات التي اعتمدتها Wavelength، ولا يرون بريدك الإلكتروني أبدًا. يمكنهم بعد ذلك طلب الارتباط، وأنت تقرر القبول. ألغِ التحديد لمغادرة البحث في أي وقت.",
+"Shows only supervisors approved by Wavelength. Supervisors can opt out.": "يعرض فقط المشرفين المعتمدين من Wavelength. يمكن للمشرفين الانسحاب."
 }

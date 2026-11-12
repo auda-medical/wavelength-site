@@ -104,12 +104,13 @@ test('with both switches off, an accepted link works as before and is labelled "
 // The production configuration from Step 3a (7 October 2026), read from wrangler.jsonc: applications open, approval
 // enforcement and search off. Existing links behave as before, an unconfirmed email cannot apply, and starting,
 // cancelling or sending an application never makes anyone approved.
-test('production configuration: applications open, enforcement and search off', async () => {
+test('production configuration: applications open, enforcement off, search on (12 Nov 2026)', async () => {
   const mailsBefore = mail.length;
   const env = makeEnv({ ZEPTOMAIL_TOKEN: 'test' });
   assert.equal(env.SUPERVISOR_APPLY, 'true');
   assert.equal(env.SUPERVISOR_APPROVAL_REQUIRED, 'false');
-  assert.equal(env.SUPERVISOR_SEARCH, 'false');
+  assert.equal(env.SUPERVISOR_SEARCH, 'true');
+  assert.equal(env.EMAIL_DOMAIN_CHECK, 'on');
   assert.equal(env.PROFESSIONAL_VERIFY, undefined);
   assert.equal(env.DIRECTORY_PUBLIC, undefined);
   assert.equal(env.APP_MIN_VERSION, '');
@@ -124,7 +125,7 @@ test('production configuration: applications open, enforcement and search off', 
   const me = (await p.sup.call('/api/app/me')).body.supervisor;
   assert.equal(me.apply, true);
   assert.equal(me.required, false);
-  assert.equal(me.search, false);
+  assert.equal(me.search, true);
   assert.equal((await p.sup.call('/api/app/supervisor')).body.available, true, 'the application journey is open');
 
   // An account whose email is not confirmed sees the journey but cannot save or send anything.
@@ -159,9 +160,11 @@ test('production configuration: applications open, enforcement and search off', 
   assert.equal((await p.learner.call('/api/app/supervisors')).body.supervisors[0].state, 'not_verified');
   assert.equal((await p.sup.call('/api/app/supervise/learner?id=' + p.lid)).status, 200);
 
-  // Search stays closed, for searching and for opting in.
-  assert.equal((await p.learner.call('/api/app/supervisors/search?q=smi')).status, 503);
-  assert.equal((await p.sup.call('/api/app/supervisor/searchable', { on: true })).status, 503);
+  // 12 Nov 2026: search is open in production. Only supervisors with a current approval can be found, so this
+  // unapproved supervisor is not listed.
+  const found = await p.learner.call('/api/app/supervisors/search?q=smi');
+  assert.notEqual(found.status, 503);
+  assert.ok(!JSON.stringify(found.body).includes('prod@x.co'));
   assert.match(await html(env, ''), /Needs a decision|New/);
   await settle();
   mail.length = mailsBefore; // later tests count the admin alerts they cause

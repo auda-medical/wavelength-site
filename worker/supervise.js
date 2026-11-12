@@ -15,6 +15,7 @@ import { audit, auditStmt } from './audit.js';
 import { actionsForSignoff, actionsForAssessment } from './verification/pathways.js';
 import { reviewState, REVIEW_STATES } from './review.js';
 import { nowIso, parseTs } from './time.js';
+import { suggestDomain, domainAccepts } from './email-check.js';
 
 const PATHS = Object.fromEntries(LOGBOOK.pathways.map((p) => [p.id, p]));
 const KINDS = (LOGBOOK.assessmentKinds || []).map((k) => k.id);
@@ -195,6 +196,12 @@ export async function supervisorAdd(env, l, req, ctx) {
   const email = clip(d && d.email, 160).toLowerCase();
   if (!EMAIL.test(email)) return json({ ok: false, error: 'Enter your supervisor\'s email address.' }, 400);
   if (email === String(l.email).toLowerCase()) return json({ ok: false, error: 'Enter your supervisor\'s email, not your own.' }, 400);
+  // 12 Nov 2026: a mistyped domain is held back with a suggestion (the learner may keep it), and a domain that cannot
+  // receive email is refused (email-check.js). The DNS lookup runs only with EMAIL_DOMAIN_CHECK on.
+  const [local, dom] = email.split('@');
+  const sug = d && d.confirmed ? null : suggestDomain(dom);
+  if (sug) return json({ ok: false, suggest: `${local}@${sug}`, typed: email, error: `Check the address: did you mean ${local}@${sug}?` }, 400);
+  if (env.EMAIL_DOMAIN_CHECK === 'on' && (await domainAccepts(dom)) === false) return json({ ok: false, error: `No email can be delivered to ${dom}. Check the address.` }, 400);
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM supervisor_links WHERE learner_id = ? AND status != 'ended'").bind(l.id).first();
   if (n.n >= 10) return json({ ok: false, error: 'You can link up to 10 supervisors. Remove one first.' }, 400);
   // A resend within two minutes of the last one sends nothing new, so nobody receives a burst of invitations.
@@ -238,6 +245,8 @@ export async function supervisorAdd(env, l, req, ctx) {
     button: { href: link, label },
     text: `${who} has named you as an ultrasound supervisor on Wavelength, the free ultrasound logbook.\n\nAccept here: ${link}\n\nUse this email address (${email}) to log in or create your account. To reply to ${who}, reply to this email. If you do not know them, ignore this email.`,
   }).catch(() => false);
+  // 12 Nov 2026: whether the invitation email went is recorded, so a lost invitation can be found later.
+  await audit(env, { actorType: 'learner', actorId: l.id, action: 'link.invite', subjectType: 'link', meta: { emailed: !!emailed, hasAccount: !!sup, domain: dom } });
   return json({ ok: true, emailed: !!emailed, hasAccount: !!sup });
 }
 // Ending a supervision relationship (the learner's "Remove supervisor", the supervisor's "End supervision" and
