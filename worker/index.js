@@ -381,6 +381,7 @@ async function adminRoute(req, env, ctx, url, p, s, who = null) {
       const f = await req.formData();
       if (who) f.set('reviewer', accountName);
       else if (accessEmail) f.set('reviewer', accessEmail);
+      else f.set('reviewer', String(s.admin_username || 'admin')); // 12 Nov 2026: never typed; the login is the reviewer
       const r = await sourcesAdminPost(env, f, who ? adminId : accessEmail ? 'access' : s.admin_username, ctx);
       return redirect(`/admin/sources/?${r.change ? `change=${encodeURIComponent(r.change)}&` : r.tab ? `tab=${encodeURIComponent(r.tab)}&` : ''}m=${encodeURIComponent(r.m)}`);
     }

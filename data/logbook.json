@@ -1527,7 +1527,7 @@
       "id": "famus",
       "label": "FAMUS",
       "name": "Focused Acute Medicine Ultrasound (Society for Acute Medicine)",
-      "source": "FAMUS curriculum packs: Thoracic (v1, 2023), DVT (v1.1, 2025), Peripheral access (v1.3), Ultrasound-assisted LP (v1.4), Abdominal-renal (v2.0). Training completes within 2 years of the first supervised scan.",
+      "source": "FAMUS curriculum packs: Thoracic (v1.1, Oct 2026), DVT (v1.2, Oct 2026), Peripheral access (v1.3), Ultrasound-assisted LP (v1.4), Abdominal-renal (v1.1, Oct 2026). The October 2026 versions add a statement on clinicians' responsibility for practice within their competence; requirements unchanged. Training completes within 2 years of the first supervised scan.",
       "checked": "2026-10-04",
       "windowFrom": "firstSupervised",
       "windowDays": 730,

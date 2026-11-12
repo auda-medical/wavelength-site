@@ -15,7 +15,13 @@ const when = (v) => (v ? `${esc(ukDate(Date.parse(v)))} <small>${esc(String(v).s
 const STYLE = '<style>.ms-pill{display:inline-block;padding:2px 9px;border-radius:99px;background:#EDEAE3;font-size:12.5px}.ms-ok{background:#DDEFE9}.ms-bad{background:#F6DEDA}.ms-warn{background:#FBEFD5}.ms-pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#F7F5F0;border-radius:8px;padding:10px;font-size:13px;max-height:360px;overflow:auto}.ms-form{display:inline-grid;gap:6px;margin:4px 0}.ms-form label{display:grid;gap:3px;font-size:13px}.ms-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.ms-tabs a{padding:5px 12px;border:1px solid #E4E0D7;border-radius:99px;text-decoration:none;color:inherit;font-size:14px}.ms-tabs a[aria-current=page]{background:#0F1E33;color:#fff}</style>';
 const PILL = { ok: 'ms-ok', changed: 'ms-warn', unavailable: 'ms-bad', format_changed: 'ms-bad', never: '', unsupported: '', not_authorised: '', retired: '' };
 const pill = (s) => `<span class="ms-pill ${PILL[s] || ''}">${esc(String(s).replace(/_/g, ' '))}</span>`;
-const reviewerField = '<label>Your name (recorded)<input name="reviewer" maxlength="80" required></label>';
+// 12 Nov 2026 (owner): the person logged in is the reviewer (worker/index.js sets it); no name to type.
+const reviewerField = '';
+// Two plain choices on every change. Accept: the change is real and Wavelength follows it (a guide, a link or a target is
+// updated in the next release if needed). Do not accept: it does not affect Wavelength (an event list, a date, a menu).
+const DECIDE_HELP = '<p class="admin-summary"><b>Accept</b>: the change is real and Wavelength should follow it. Any guide, link or target that needs updating is updated in the next release. <b>Do not accept</b>: it does not affect Wavelength (for example an event list, a date or a menu). Nothing changes. Your name is recorded from your login.</p>';
+const decide = (id, small) => `<div class="sv-actions" style="${small ? 'gap:6px' : ''}">${form('review', { change: id, outcome: 'approved' }, '', 'Accept')}${form('review', { change: id, outcome: 'dismissed' }, '', 'Do not accept')}</div>`;
+const OUTCOME = { approved: 'Accepted', dismissed: 'Not accepted', acknowledged: 'Being reviewed', open: 'Not reviewed' };
 const form = (action, hidden, inner, button) => `<form class="ms-form sv-form" method="post"><input type="hidden" name="action" value="${action}">${Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join('')}${inner}<button class="btn btn-ghost small" type="submit">${esc(button)}</button></form>`;
 
 export async function sourcesAdminHtml(env, url) {
@@ -41,7 +47,7 @@ export async function sourcesAdminHtml(env, url) {
   <p class="admin-summary">Daily checks of the official guidance behind Wavelength's guides, and of supervisor directories where the body has given permission. Checked by the cron every ten minutes, one source at a time; each source once a day. Nothing clinical is changed automatically: changes wait here for a person.</p>${note}
   <p class="admin-summary">${auto.filter((s) => s.last_success_at && ukDate(Date.parse(s.last_success_at)) === ukDate()).length} of ${auto.length} automatic sources checked today · last scheduled run ${lastRun ? when(lastRun.started_at) : '<span class="muted">none yet</span>'} · ${failing.length ? `<b>${failing.length} failing repeatedly</b>` : 'none failing repeatedly'} · guides needing review: ${guidesNeedingReview.length ? esc(guidesNeedingReview.join(', ')) : 'none'}</p>${nav}`;
   let body = '';
-  if (tab === 'review') body = open.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Detected</th><th scope="col">Source</th><th scope="col">Kind</th><th scope="col">Summary</th><th scope="col">Guides</th></tr></thead><tbody>${open.map((c) => `<tr><td>${when(c.detected_at)}</td><td><a class="text-link" href="${BASE}?change=${c.id}">${esc(c.name)}</a></td><td>${pill(c.classification === 'important' ? 'changed' : c.classification === 'format_changed' ? 'format_changed' : 'changed')} ${esc(c.classification)}</td><td>${esc(c.summary)}</td><td>${esc(JSON.parse(c.guides || '[]').join(', '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">Nothing needs review.</p>';
+  if (tab === 'review') body = open.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Detected</th><th scope="col">Source</th><th scope="col">Kind</th><th scope="col">Summary</th><th scope="col">Guides</th><th scope="col">Decision</th></tr></thead><tbody>${open.map((c) => `<tr><td>${when(c.detected_at)}</td><td><a class="text-link" href="${BASE}?change=${c.id}">${esc(c.name)}</a></td><td>${pill(c.classification === 'important' ? 'changed' : c.classification === 'format_changed' ? 'format_changed' : 'changed')} ${esc(c.classification)}</td><td>${esc(c.summary)} <a class="text-link" href="${BASE}?change=${c.id}">See the changed lines</a></td><td>${esc(JSON.parse(c.guides || '[]').join(', '))}</td><td>${decide(c.id, true)}</td></tr>`).join('')}</tbody></table></div>${DECIDE_HELP}` : '<p class="admin-summary">Nothing needs review.</p>';
   if (tab === 'sources') body = `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Source</th><th scope="col">State</th><th scope="col">Last successful check</th><th scope="col">Next check</th><th scope="col">Last change</th><th scope="col">Version / date</th><th scope="col"></th></tr></thead><tbody>${sources.map((s) => `<tr><td><a class="text-link" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.name)}</a><br><small>${esc(s.body || '')} · ${esc(s.mode.replace(/_/g, ' '))}${JSON.parse(s.guides || '[]').length ? ` · ${esc(JSON.parse(s.guides).join(', '))}` : ''}</small></td><td>${pill(s.status)}${s.failures ? `<br><small>${s.failures} failed in a row</small>` : ''}</td><td>${when(s.last_success_at)}</td><td>${s.mode === 'auto' ? when(s.next_check_at) : '<span class="muted">not scheduled</span>'}</td><td>${when(s.last_change_at)}</td><td><small>${esc(s.doc_version || '')} ${esc(s.published_on || '')}</small></td><td>${s.mode === 'auto' ? form('retry', { id: s.id }, '', 'Check now') : ''}</td></tr>`).join('')}</tbody></table></div>`;
   if (tab === 'directories') body = dirs.map((d) => { const c = JSON.parse(d.meta || '{}').counts || {}; return `<div class="sv-card" style="margin:0 0 12px"><h4 style="margin:0 0 6px">${esc(d.name)} ${pill(d.status)}</h4><p class="admin-summary">${d.mode === 'auto' ? `Last successful sync ${when(d.last_success_at)} · listed ${c.listed ?? 'n/a'} · added ${c.added || 0} · changed ${(c.organisation_changed || 0) + (c.modules_added || 0) + (c.modules_removed || 0) + (c.role_changed || 0) + (c.name_corrected || 0)} · removed ${c.removed || 0}` : 'Not read automatically: the body has not given written permission. Individual checks stay manual, on the person page.'}</p><p class="admin-summary"><small>${esc(JSON.parse(d.meta || '{}').why || '')}</small></p>${held[d.id] ? `<p class="admin-summary">${esc(held[d.id])}</p>${form('accept_drop', { id: d.id }, `${reviewerField}<label>How you checked the source (required)<input name="note" maxlength="500" required></label>`, 'Accept the fall and sync')}` : ''}</div>`; }).join('') + `<p class="admin-summary">Directory sync switch (DIRECTORY_SYNC): <b>${env.DIRECTORY_SYNC === 'true' ? 'on' : 'off'}</b>.</p>` + await optoutsPanel(env, dirs);
   if (tab === 'runs') { const runs = (await env.DB.prepare('SELECT r.*, s.name FROM monitor_runs r LEFT JOIN monitor_sources s ON s.id = r.source_id ORDER BY r.id DESC LIMIT 100').all()).results || []; body = runs.length ? `<div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">When</th><th scope="col">Source</th><th scope="col">Trigger</th><th scope="col">Outcome</th><th scope="col">Detail</th></tr></thead><tbody>${runs.map((r) => `<tr><td>${when(r.started_at)}</td><td>${esc(r.name || r.source_id)}</td><td>${esc(r.trigger)}</td><td>${esc(String(r.outcome || '').replace(/_/g, ' '))}${r.http_status ? ` <small>HTTP ${r.http_status}</small>` : ''}</td><td><small>${esc(r.error || r.counts || '')}</small></td></tr>`).join('')}</tbody></table></div>` : '<p class="admin-summary">No checks yet.</p>'; }
@@ -72,12 +78,12 @@ async function changeReport(env, id) {
   <dl class="sv-dl"><dt>Source</dt><dd><a class="text-link" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a> (${esc(c.body || '')})</dd><dt>Detected</dt><dd>${when(c.detected_at)}</dd><dt>Classification</dt><dd>${esc(c.classification)}</dd><dt>Summary</dt><dd>${esc(c.summary)}</dd>
   <dt>Wavelength guides affected</dt><dd>${guides.length ? guides.map((g) => `<a class="text-link" href="/guides/${esc(g)}/" target="_blank" rel="noopener">${esc(titles[g] || g)}</a>`).join(', ') : 'none'}</dd>
   ${ev.oldVersion || ev.newVersion ? `<dt>Version</dt><dd>${esc(ev.oldVersion || '?')} to ${esc(ev.newVersion || '?')}</dd>` : ''}${ev.oldPublishedOn || ev.newPublishedOn ? `<dt>Source date</dt><dd>${esc(ev.oldPublishedOn || '?')} to ${esc(ev.newPublishedOn || '?')}</dd>` : ''}
-  <dt>Review</dt><dd>${esc(c.review_status)}${c.reviewed_by ? ` by ${esc(c.reviewed_by)} ${esc((c.reviewed_at || '').slice(0, 10))}` : ''}${c.review_note ? `<br>${esc(c.review_note)}` : ''}</dd></dl>
+  <dt>Decision</dt><dd>${esc(OUTCOME[c.review_status] || c.review_status)}${c.reviewed_by ? ` by ${esc(String(c.reviewed_by).split(':').slice(2).join(':') || c.reviewed_by)} ${esc((c.reviewed_at || '').slice(0, 10))}` : ''}${c.review_note && !/^(Approved?|Accepted|Not accepted)$/i.test(c.review_note) ? `<br>${esc(c.review_note)}` : ''}</dd></dl>
   ${ev.requirementLines && ev.requirementLines.length ? `<h3>Lines that mention requirements</h3><div class="ms-pre">${esc(ev.requirementLines.join('\n'))}</div>` : ''}
   ${ev.added || ev.removed ? `<h3>Changed lines (${ev.addedCount || 0} added, ${ev.removedCount || 0} removed; up to 40 of each shown)</h3><div class="ms-pre">${esc(lines(ev.removed, '−'))}${ev.removed && ev.added ? '\n' : ''}${esc(lines(ev.added, '+'))}</div>` : ''}
   ${ev.events ? `<h3>Directory changes</h3><div class="ms-pre">${esc(ev.events.map((e) => `${e.kind}${e.key ? ' ' + e.key : ''}: ${JSON.stringify(e.after || e.before || {})}`).join('\n'))}</div>` : ''}
-  <p class="admin-summary">The Wavelength guide is never changed from here. If it needs an update, edit the guide, record the new review date (front matter reviewed) and release it as usual; then mark this change approved.</p>
-  ${c.review_status === 'open' ? `<div class="sv-actions">${form('review', { change: c.id, outcome: 'acknowledged' }, `${reviewerField}<label>Note (optional)<input name="note" maxlength="500"></label>`, 'Acknowledge: reviewing')}${form('review', { change: c.id, outcome: 'approved' }, `${reviewerField}<label>What was decided (required)<input name="note" maxlength="500" required></label>`, 'Reviewed: guide updated or no change needed')}${form('review', { change: c.id, outcome: 'dismissed' }, `${reviewerField}<label>Why it does not matter (required)<input name="note" maxlength="500" required></label>`, 'Dismiss: not a real change')}</div>` : c.review_status === 'acknowledged' ? form('review', { change: c.id, outcome: 'approved' }, `${reviewerField}<label>What was decided (required)<input name="note" maxlength="500" required></label>`, 'Reviewed: guide updated or no change needed') : ''}`;
+  ${c.review_status === 'open' || c.review_status === 'acknowledged' ? DECIDE_HELP : ''}
+  ${c.review_status === 'open' || c.review_status === 'acknowledged' ? decide(c.id) : ''}`;
 }
 
 export async function sourcesAdminPost(env, f, admin, ctx) {
@@ -92,7 +98,7 @@ export async function sourcesAdminPost(env, f, admin, ctx) {
   if (action === 'accept_drop') {
     // Only after a person has looked at the official directory: the reason is kept on the held review item.
     const id = clip(f.get('id'), 80), note = clip(f.get('note'), 500);
-    if (!reviewer || note.length < 3) return { tab: 'directories', m: 'Enter your name and how you checked the source.' };
+    if (!reviewer || note.length < 3) return { tab: 'directories', m: 'Say how you checked the source.' };
     const s = await env.DB.prepare("SELECT kind, mode FROM monitor_sources WHERE id = ?").bind(id).first();
     if (!s || s.kind !== 'directory') return { tab: 'directories', m: 'Not a directory.' };
     const r = await monitorRun(env, ctx, { trigger: 'manual', ids: [id], limit: 1, force: true, acceptDrop: true });
@@ -103,7 +109,7 @@ export async function sourcesAdminPost(env, f, admin, ctx) {
   if (action === 'optout') {
     const source = clip(f.get('source'), 80) || '*', name = clip(f.get('name'), 120), org = clip(f.get('organisation'), 160), note = clip(f.get('note'), 300);
     const nn = norm(name), on = org ? orgNorm(org) : null;
-    if (nn.replace(/ /g, '').length < 3 || !reviewer || note.length < 3) return { tab: 'directories', m: 'Enter the name as listed, your name and how the request arrived.' };
+    if (nn.replace(/ /g, '').length < 3 || !reviewer || note.length < 3) return { tab: 'directories', m: 'Enter the name as listed and how the request arrived.' };
     const dirs = ((await env.DB.prepare("SELECT id FROM monitor_sources WHERE kind = 'directory'").all()).results || []).map((r) => r.id);
     if (source !== '*' && !dirs.includes(source)) return { tab: 'directories', m: 'Not a directory.' };
     const rule = { source_id: source, name_norm: nn, org_norm: on };
@@ -125,7 +131,7 @@ export async function sourcesAdminPost(env, f, admin, ctx) {
   }
   if (action === 'optout_remove') {
     const note = clip(f.get('note'), 300);
-    if (!reviewer || note.length < 3) return { tab: 'directories', m: 'Enter your name and why the objection is withdrawn.' };
+    if (!reviewer || note.length < 3) return { tab: 'directories', m: 'Say why the objection is withdrawn.' };
     const r = await env.DB.prepare('DELETE FROM directory_optouts WHERE id = ?').bind(Number(f.get('id'))).run();
     if (r.meta && r.meta.changes) await audit(env, { actorType: 'admin', actorId: clip(admin, 40), action: 'directory.optout_withdrawn' });
     return { tab: 'directories', m: r.meta && r.meta.changes ? 'Objection withdrawn. The person is taken in again at the next sync.' : 'Nothing changed.' };
@@ -133,15 +139,16 @@ export async function sourcesAdminPost(env, f, admin, ctx) {
   if (action === 'review') {
     const outcome = ['acknowledged', 'approved', 'dismissed'].includes(f.get('outcome')) ? String(f.get('outcome')) : null;
     const note = clip(f.get('note'), 500);
-    if (!outcome || !reviewer) return { change: f.get('change'), m: 'Enter your name.' };
-    if (outcome !== 'acknowledged' && note.length < 3) return { change: f.get('change'), m: 'Say what was decided.' };
-    const r = await env.DB.prepare("UPDATE monitor_changes SET review_status = ?, reviewed_by = ?, reviewed_at = ?, review_note = ? WHERE id = ? AND review_status IN ('open', 'acknowledged')").bind(outcome, `admin:${clip(admin, 40)}:${reviewer}`, new Date().toISOString(), note || null, Number(f.get('change'))).run();
+    // 12 Nov 2026 (owner): one tap, Accept or Do not accept; the logged-in name is the reviewer; a note is optional.
+    if (!outcome) return { change: f.get('change'), m: 'Choose Accept or Do not accept.' };
+    const by = reviewer || clip(admin, 80) || 'admin';
+    const r = await env.DB.prepare("UPDATE monitor_changes SET review_status = ?, reviewed_by = ?, reviewed_at = ?, review_note = ? WHERE id = ? AND review_status IN ('open', 'acknowledged')").bind(outcome, `admin:${clip(admin, 40)}:${by}`, new Date().toISOString(), note || (outcome === 'approved' ? 'Accepted' : outcome === 'dismissed' ? 'Not accepted' : null), Number(f.get('change'))).run();
     if (r.meta && r.meta.changes && outcome !== 'acknowledged') {
       // The source's state follows its oldest open item: back to 'ok' when nothing is left open.
       const c = await env.DB.prepare('SELECT source_id FROM monitor_changes WHERE id = ?').bind(Number(f.get('change'))).first();
       if (c) await env.DB.prepare("UPDATE monitor_sources SET status = CASE WHEN EXISTS (SELECT 1 FROM monitor_changes WHERE source_id = ? AND review_status IN ('open', 'acknowledged')) THEN status ELSE (CASE WHEN status IN ('changed', 'format_changed') AND failures = 0 THEN 'ok' ELSE status END) END WHERE id = ?").bind(c.source_id, c.source_id).run();
     }
-    return { change: f.get('change'), m: r.meta && r.meta.changes ? `Recorded as ${outcome}.` : 'Nothing changed: it was already decided.' };
+    return { tab: 'review', m: r.meta && r.meta.changes ? `${OUTCOME[outcome]}: recorded under your name.` : 'Nothing changed: it was already decided.' };
   }
   return { tab: 'review', m: 'Nothing changed.' };
 }

@@ -191,8 +191,9 @@ test('a reviewer approves the change: the notice goes, the source is ok again, t
   const html = await sourcesAdminHtml(env, new URL(`https://x/admin/sources/?change=${c.id}`));
   assert.match(html, /within 18 months/);
   assert.match(html, /Possible change to requirements/);
-  assert.match((await sourcesAdminPost(env, adminForm({ action: 'review', change: c.id, outcome: 'approved', reviewer: 'Alex Reviewer' }), 'wavelength', ctx)).m, /Say what was decided/);
-  assert.equal((await sourcesAdminPost(env, adminForm({ action: 'review', change: c.id, outcome: 'approved', reviewer: 'Alex Reviewer', note: 'Guide updated: training window now 18 months; released 12 Oct.' }), 'wavelength', ctx)).m, 'Recorded as approved.');
+  // 12 Nov 2026 (owner): one tap, no note needed; the login is the reviewer.
+  assert.equal((await sourcesAdminPost(env, adminForm({ action: 'review', change: c.id, outcome: 'approved', reviewer: 'Alex Reviewer' }), 'wavelength', ctx)).m, 'Accepted: recorded under your name.');
+  assert.match(html, /Accept/); assert.match(html, /Do not accept/); assert.doesNotMatch(html, /Your name (recorded)|What was decided|Why it does not matter/);
   assert.equal((await row(env, HEART.id)).status, 'ok');
   assert.equal((await guideStatus(env, 'fusic-accreditation', null, { refresh: false })).pendingReview.length, 0);
   const rec = await env.DB.prepare('SELECT * FROM monitor_changes WHERE id = ?').bind(c.id).first();
@@ -274,7 +275,7 @@ test('the three dates: never checked, checked today, a failure keeps yesterday, 
   let st = await guideStatus(env, 'famus-accreditation', null, { refresh: false });
   assert.equal(st.checkedOn, null, 'before any check: no check date at all');
   assert.equal(st.reviewedOn, '2026-10-04');
-  assert.equal(st.updatedOn, '2026-10-05');
+  assert.equal(st.updatedOn, '2026-11-12');
   const ids = SOURCES.guides.find((g) => g.slug === 'famus-accreditation').sources;
   await monitorRun(env, ctx, { trigger: 'cron', ids, limit: ids.length, force: true });
   st = await guideStatus(env, 'famus-accreditation', null, { refresh: false });
@@ -282,7 +283,7 @@ test('the three dates: never checked, checked today, a failure keeps yesterday, 
   assert.equal(st.checkedToday, true);
   assert.equal(st.noChangeLatest, true);
   assert.equal(st.reviewedOn, '2026-10-04', 'a check is never a review');
-  assert.equal(st.updatedOn, '2026-10-05', 'nor a content update');
+  assert.equal(st.updatedOn, '2026-11-12', 'nor a content update');
   // Yesterday's success for all, then one source fails today: the guide is not "checked" as a whole; the others keep
   // their date, and the failed source is named with its own last success.
   await env.DB.prepare("UPDATE monitor_sources SET last_success_at = '2026-10-09T05:07:00.000Z' WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids)).run();

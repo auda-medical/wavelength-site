@@ -7,7 +7,7 @@ eyebrow: Guide · FAMUS
 summary: How to gain Focused Acute Medicine Ultrasound accreditation from the Society for Acute Medicine, module by module, from finding a supervisor to sending your completed assessment.
 date: 2026-10-04
 reviewed: 2026-10-04
-updated: 2026-10-05
+updated: 2026-11-12
 author: Dr Firas Abou-Auda
 order: 3
 pathway: famus
@@ -121,6 +121,8 @@ SAM also recommends:
 
 After a year of accreditation with regular scanning, and ideally some teaching, you are likely to be suitable to apply as a FAMUS supervisor yourself.
 
+The October 2026 curriculum packs add a reminder: FAMUS shows competence in defined scans, and you remain responsible for using ultrasound within your ongoing competence, your professional standards and your organisation's governance and scope of practice.
+
 ## FAMUS alongside other pathways
 
 - **Emergency medicine.** RCEM lists FAMUS as complementary learning evidence. FAMUS does not replace RCEM PoCUS sign-off.
@@ -146,13 +148,13 @@ The app does not replace SAM's paperwork. You still complete a FAMUS report shee
 
 ## Sources
 
-Checked against these pages and documents on 4 October 2026.
+Checked against these pages and documents on 4 October 2026. The thoracic, DVT and abdominal/renal curriculum packs were rechecked on 12 November 2026 against their October 2026 versions: the requirements are unchanged.
 
 - [SAM: FAMUS, how to accredit](https://www.acutemedicine.org.uk/famus/how-to-accredit/)
 - [SAM: FAMUS frequently asked questions](https://www.acutemedicine.org.uk/famus/faqs/)
 - [SAM: FAMUS theory module](https://www.acutemedicine.org.uk/famus/theory-module/)
-- [SAM: FAMUS thoracic module](https://www.acutemedicine.org.uk/famus/thoracic-module/) and [curriculum pack](https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-thoracic-v1.pdf)
-- [SAM: FAMUS abdominal/renal module](https://www.acutemedicine.org.uk/famus/abdominal-renal-module/)
-- [SAM: FAMUS DVT module](https://www.acutemedicine.org.uk/famus/dvt-module/)
+- [SAM: FAMUS thoracic module](https://www.acutemedicine.org.uk/famus/thoracic-module/) and [curriculum pack](https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-thoracic-v1.1.pdf)
+- [SAM: FAMUS abdominal/renal module](https://www.acutemedicine.org.uk/famus/abdominal-renal-module/) and [curriculum pack](https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-abdo_renal-v1.1.pdf)
+- [SAM: FAMUS DVT module](https://www.acutemedicine.org.uk/famus/dvt-module/) and [curriculum pack](https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-DVT-v1.2.pdf)
 - [SAM: FAMUS lumbar puncture module](https://www.acutemedicine.org.uk/famus/lumbar-puncture-module/)
 - [SAM: FAMUS peripheral access module](https://www.acutemedicine.org.uk/famus/peripheral-access-module/)

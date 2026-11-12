@@ -7,7 +7,7 @@ eyebrow: Guide · Logbook
 summary: What to record for every scan, how to keep patient data out of it, and the counting rules RCEM, FAMUS and FUSIC apply before they accept your logbook as evidence.
 date: 2026-10-04
 reviewed: 2026-10-04
-updated: 2026-10-11
+updated: 2026-11-12
 author: Dr Firas Abou-Auda
 order: 2
 pathway: all
@@ -164,7 +164,7 @@ Checked against these documents on 4 October 2026.
 
 - [RCEM: Ultrasound education and training, 2021 curriculum FAQ](https://rcem.ac.uk/ultrasound-education-training-2021-curriculum/)
 - [RCEM Point of Care Ultrasound Curriculum 2021, Appendix 3](https://rcemcurriculum.co.uk/wp-content/uploads/2021/06/Appendix-3-PoCUS-for-2021-RCEM-curriculum.pdf)
-- [FAMUS curriculum pack: thoracic module (Society for Acute Medicine)](https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-thoracic-v1.pdf)
+- [FAMUS curriculum pack: thoracic module (Society for Acute Medicine)](https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-thoracic-v1.1.pdf)
 - [FAMUS: how to accredit](https://www.acutemedicine.org.uk/famus/how-to-accredit/)
 - [FUSIC Heart training pack (Intensive Care Society)](https://ics.ac.uk/asset/68C9E1E9%2DF1D6%2D4E9B%2DB63971AC2DB41DD1/)
 - [FUSIC Lung training pack (Intensive Care Society)](https://ics.ac.uk/asset/DFBC4B66%2D9292%2D42C6%2DA9D21CB8B658A556/)

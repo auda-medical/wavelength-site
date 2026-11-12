@@ -22,7 +22,7 @@
       "label": "FAMUS (Society for Acute Medicine)",
       "capacities": { "supervisor": "all", "mentor": ["witness", "review", "formative"] },
       "credentialFor": { "supervisor": ["famus-supervisor"], "mentor": ["famus-mentor", "famus-supervisor", "famus-accredited"] },
-      "source": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-DVT-v1.1.pdf",
+      "source": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-DVT-v1.2.pdf",
       "rule": "Supervisors: may undertake supervised scans, review unsupervised scans and must perform ACTs. Mentors: will review images from unsupervised scans (mentored practice); cannot sign off ACTs (these must be done by a Supervisor). Supervisors must apply to the FAMUS administrator and be registered on the database. A mentor must be competent in performing the scan they intend to oversee and can be any grade clinician.",
       "asyncReview": "Permitted for mentored practice: mentors and supervisors review images from unsupervised scans. Directly supervised scans are overseen in person.",
       "modules": {

@@ -43,12 +43,12 @@
    "href": "/guides/ultrasound-logbook/",
    "draft": false,
    "reviewed": "2026-10-04",
-   "updated": "2026-10-11",
-   "contentVersion": "eca3750b07f098e8",
+   "updated": "2026-11-12",
+   "contentVersion": "5c5a003e8483afb6",
    "sources": [
     "g:5385918cc2ee",
     "g:50f2134f87a3",
-    "g:20ee0421f11f",
+    "g:1f6c6ba62deb",
     "g:5e2f7962ecbf",
     "g:13e3c9be560e",
     "g:849a75d32cfd",
@@ -62,16 +62,18 @@
    "href": "/guides/famus-accreditation/",
    "draft": false,
    "reviewed": "2026-10-04",
-   "updated": "2026-10-05",
-   "contentVersion": "45323e9ed8018375",
+   "updated": "2026-11-12",
+   "contentVersion": "5ad25ec68c296784",
    "sources": [
     "g:5e2f7962ecbf",
     "g:aa0067173e88",
     "g:c7c862b86b19",
     "g:08091376e8be",
-    "g:20ee0421f11f",
+    "g:1f6c6ba62deb",
     "g:42e834307295",
+    "g:famus-pack-abdo",
     "g:3a9960f0f8f7",
+    "g:famus-pack-dvt",
     "g:577b357cc1b8",
     "g:b33f93c82eb6"
    ]
@@ -226,11 +228,11 @@
    "why": null
   },
   {
-   "id": "g:20ee0421f11f",
+   "id": "g:1f6c6ba62deb",
    "kind": "guidance",
    "body": "SAM",
    "name": "FAMUS curriculum pack: thoracic module (Society for Acute Medicine)",
-   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-thoracic-v1.pdf",
+   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-thoracic-v1.1.pdf",
    "mode": "auto",
    "adapter": "page",
    "guides": [
@@ -790,8 +792,8 @@
    "id": "g:famus-pack-abdo",
    "kind": "guidance",
    "body": "SAM",
-   "name": "FAMUS curriculum pack: abdominal/renal module (v1)",
-   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-abdo_renal-v1.pdf",
+   "name": "FAMUS curriculum pack: abdominal/renal module (v1.1)",
+   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-abdo_renal-v1.1.pdf",
    "mode": "auto",
    "adapter": "page",
    "guides": [
@@ -806,8 +808,8 @@
    "id": "g:famus-pack-dvt",
    "kind": "guidance",
    "body": "SAM",
-   "name": "FAMUS curriculum pack: DVT module (v1.1)",
-   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-DVT-v1.1.pdf",
+   "name": "FAMUS curriculum pack: DVT module (v1.2)",
+   "url": "https://www.acutemedicine.org.uk/wp-content/uploads/FAMUS-curriculum-pack-DVT-v1.2.pdf",
    "mode": "auto",
    "adapter": "page",
    "guides": [
@@ -915,5 +917,5 @@
    "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the RCEM ultrasound education and training page with the two scales the guide cites."
   }
  ],
- "version": "ca3a2d6211692eab"
+ "version": "8083a552104d1f55"
 }
