@@ -2628,7 +2628,6 @@
 "Saved on this device. Send it for sign-off from Scans once it has synced.": "Enregistré sur cet appareil. Envoyez-le pour validation depuis Examens une fois synchronisé.",
 "Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.": "Signer maintenant : tendez votre téléphone à votre superviseur juste après l’enregistrement. Brouillon : enregistré dans votre carnet ; envoyez-le pour validation plus tard depuis Examens.",
 "Someone else": "Quelqu’un d’autre",
-"The learner shared images by link only. Ask them to send you the link, or update their app and send again.": "L’apprenant a partagé les images uniquement par lien. Demandez-lui de vous envoyer le lien, ou de mettre à jour son application et de renvoyer la demande.",
 "These images could not be opened. Ask the learner to send them again.": "Impossible d’ouvrir ces images. Demandez à l’apprenant de les renvoyer.",
 "Type their name": "Saisissez son nom",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "Votre superviseur la voit maintenant dans son application, avec {n}. Vous recevrez une notification à sa réponse.",
@@ -2747,5 +2746,7 @@
 "Versions kept after a scan was changed on two devices": "Versions conservées quand un examen a été modifié sur deux appareils",
 "kept {date}": "conservée le {date}",
 "Use this version": "Utiliser cette version",
-"Version restored. It syncs now.": "Version restaurée. Elle se synchronise maintenant."
+"Version restored. It syncs now.": "Version restaurée. Elle se synchronise maintenant.",
+"{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} a partagé {n} par lien : elles sont donc encore verrouillées sur son téléphone. Elles vous parviendront ici automatiquement la prochaine fois que {name} ouvrira Wavelength : rouvrez alors cette demande. Si vous en avez besoin plus tôt, demandez à {name} de vous envoyer le lien.",
+"Your supervisor can now see the images in your sign-off request.": "Votre superviseur peut maintenant voir les images de votre demande de validation."
 }

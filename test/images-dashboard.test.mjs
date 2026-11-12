@@ -86,7 +86,8 @@ test('an older app that sends no key: the supervisor is told the images came by 
   assert.equal(view.body.imageKey, null);
   assert.equal(view.body.images.length, 1);
   const app = readFileSync(new URL('../src/app/app.js', import.meta.url), 'utf8');
-  assert.match(app, /The learner shared images by link only/);
+  assert.equal(view.body.keyPending, true);
+  assert.ok(app.includes('shared {n} by link, so they are still locked on their phone'));
   assert.match(app, /key: q\.dash \? b64u\(q\.raw\) : undefined/, 'the app sends the key only for a dashboard request');
 });
 
@@ -126,4 +127,34 @@ test('1.0.26: on the learner page, a scan waiting for this supervisor says so an
   assert.equal(after.body.entries.length, 0, 'nothing waits after signing');
   const app = readFileSync(new URL('../src/app/app.js', import.meta.url), 'utf8');
   assert.match(app, /'Waiting for your sign-off'/);
+});
+
+// 13 Nov 2026 (owner, Zahra's request): a link request that the supervisor opens in the app had its images on the
+// server but no key, so the supervisor saw none. The view says the key is pending; the learner's app then sends the
+// key (resumeShares), and the supervisor sees the images.
+test('a link request opened on the dashboard: key pending, then the learner app sends it and the images show', async () => {
+  const env = makeEnv(); globalThis.__env = env;
+  const t = await linked(env, 'e');
+  const so = await t.learner.call('/api/app/signoff/request', { entryIds: ['scane000001'], supervisorName: 'Dr Sup', supervisorEmail: 'sup.e@x.co' });
+  assert.equal(so.status, 200, JSON.stringify(so.body));
+  const code = so.body.code;
+  assert.equal((await raw(t.learner, `/api/app/signoff/image?code=${code}&entry=scane000001&n=0`, CIPHER)).status, 200);
+  const first = await t.learner.call('/api/app/signoff/images', { code, images: [{ entry: 'scane000001', n: 0, w: 10, h: 10 }], declared: true });
+  assert.equal(first.body.dashboard, false, 'a link request: the key stays in the link');
+  const view = await t.sup.call('/api/app/supervise/signoff?code=' + code);
+  assert.equal(view.status, 200, JSON.stringify(view.body));
+  assert.equal(view.body.imageKey, null);
+  assert.equal(view.body.keyPending, true);
+  // The learner's app sees the request is now on a dashboard and posts the manifest again with the key.
+  const pend = (await t.learner.call('/api/app/signoffs')).body.signoffs.find((s) => s.id === code);
+  assert.ok(pend.supervisor_id, 'the learner app can tell the request is on a dashboard now');
+  const again = await t.learner.call('/api/app/signoff/images', { code, images: [{ entry: 'scane000001', n: 0, w: 10, h: 10 }], declared: true, key: KEY });
+  assert.equal(again.body.dashboard, true);
+  const view2 = await t.sup.call('/api/app/supervise/signoff?code=' + code);
+  assert.equal(view2.body.imageKey, KEY);
+  assert.equal(view2.body.keyPending, false);
+  const img = await raw(t.sup, `/api/app/supervise/signoff/image?code=${code}&entry=scane000001&n=0`);
+  assert.equal(img.status, 200);
+  const app = readFileSync(new URL('../src/app/app.js', import.meta.url), 'utf8');
+  assert.ok(app.includes('if (q.posted && !q.dash && open[q.code].dash'),'the app sends the key once the request is on a dashboard');
 });

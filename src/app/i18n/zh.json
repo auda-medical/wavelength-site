@@ -2590,7 +2590,6 @@
 "Saved on this device. Send it for sign-off from Scans once it has synced.": "已保存在此设备上。同步后，请在“扫查”中发送签署。",
 "Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.": "立即签署：保存后马上把手机交给督导老师。草稿：保存在日志中，稍后在“扫查”中发送签署。",
 "Someone else": "其他人",
-"The learner shared images by link only. Ask them to send you the link, or update their app and send again.": "学员仅通过链接分享了图像。请让对方发送链接，或更新应用后重新发送。",
 "These images could not be opened. Ask the learner to send them again.": "无法打开这些图像。请让学员重新发送。",
 "Type their name": "输入姓名",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "督导老师现在可在其应用中看到请求及 {n}。对方回复时您会收到通知。",
@@ -2709,5 +2708,7 @@
 "Versions kept after a scan was changed on two devices": "在两台设备上修改同一扫描时保留的版本",
 "kept {date}": "保留于 {date}",
 "Use this version": "使用此版本",
-"Version restored. It syncs now.": "已恢复该版本，正在同步。"
+"Version restored. It syncs now.": "已恢复该版本，正在同步。",
+"{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} 通过链接分享了 {n}，因此这些图像仍锁定在其手机上。{name} 下次打开 Wavelength 时，图像会自动送达此处：届时请再次打开此请求。如需尽快查看，请让 {name} 把链接发给您。",
+"Your supervisor can now see the images in your sign-off request.": "您的导师现在可以看到您签核请求中的图像了。"
 }

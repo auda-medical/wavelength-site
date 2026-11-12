@@ -534,6 +534,7 @@ section{position:relative}
 .ac-name-note{margin:-6px 0 0}
 .ac-hp{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);opacity:0}
 .ac-member-actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 12px}
+.ac-confirm{margin:14px 0 0;padding:12px 14px;border-radius:10px;background:#FBF1DC;border:1px solid #EBD3A0}.ac-confirm p{margin:0 0 8px}.ac-confirm .form-note{margin:8px 0 0}
 .ac-layout{display:grid;gap:40px;align-items:start}
 .ac-landing>*,.ac-layout>*{min-width:0}
 .prose a,.ac-register a{overflow-wrap:anywhere}

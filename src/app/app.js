@@ -3478,10 +3478,18 @@
     if (!S.db || !S.account || !navigator.onLine || !(window.crypto && crypto.subtle)) return;
     all('shares').then(function (qs) {
       var pend = S.kv.pending || {}, open = {};
-      Object.keys(pend).forEach(function (id) { open[pend[id].code] = true; });
+      Object.keys(pend).forEach(function (id) { open[pend[id].code] = pend[id]; });
       qs.forEach(function (q) {
         var live = open[q.code] && (!q.expires || q.expires > Date.now());
         if (!live) { if (q.posted || Date.now() - q.created > 864e5) { if (!q.closed) { q.closed = Date.now(); put('shares', q); } if (Date.now() - (q.closed || q.created) > 30 * 864e5) del('shares', q.code); } return; }
+        // 13 Nov 2026: a link request that is now on a supervisor's dashboard (they opened it in the app, or it was
+        // sent on to them) gets the key too, as a dashboard request does, so they see the images in the app. Without
+        // it the images reached the server but the supervisor saw none.
+        if (q.posted && !q.dash && open[q.code].dash && !(S.sharing && S.sharing[q.code])) {
+          q.dash = true;
+          finishShare(q).then(function () { toast(T('Your supervisor can now see the images in your sign-off request.'), 3500); }, function () { q.dash = false; });
+          return;
+        }
         if (q.posted || S.sharing && S.sharing[q.code]) return;
         if (q.files.some(function (f) { return f.state === 'failed'; })) return; // waits for the learner: retry, send without, or cancel
         runShare(q).then(function () {
@@ -4313,7 +4321,7 @@
       markOpened('signoff', code);
       var imgs = res.images || [], byEntry = {};
       imgs.forEach(function (im) { (byEntry[im.entry] = byEntry[im.entry] || []).push(im); });
-      var imgNote = !imgs.length ? T('No images were attached to this request. If you need them, tap Ask for more information.') : res.imageKey ? '' : T('The learner shared images by link only. Ask them to send you the link, or update their app and send again.');
+      var imgNote = !imgs.length ? T('No images were attached to this request. If you need them, tap Ask for more information.') : res.imageKey ? '' : T('{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.', { name: res.learner, n: plural(imgs.length, 'image') });
       sheet('<h2>' + esc(T('Sign off for {name}', { name: res.learner })) + '</h2><p class="muted small">' + esc(T('Confirm or query each scan, and rate image quality and diagnostic accuracy if you wish.')) + '</p>' + (imgNote ? '<div class="warn small">' + esc(imgNote) + '</div>' : '') + res.entries.map(function (e) { return entryCard(e, true, res.imageKey && byEntry[e.id] ? (window.WLZoom ? '<p class="small muted" style="margin:8px 0 0">' + esc(WLZoom.hint(T)) + '</p>' : '') + '<div class="review-imgs" data-simgs="' + esc(e.id) + '" style="margin-top:6px"><p class="small muted">' + esc(T('Opening {n}…', { n: plural(byEntry[e.id].length, 'image') })) + '</p></div>' : ''); }).join('') + declineButton('signoff', code) + signoffFormHtml(myPre()), function (root) {
         bindDecline(root, function () { dashSignoff(code, learnerId); });
         if (res.imageKey) dashImages(root, res, byEntry);

@@ -255,7 +255,17 @@ async function me(env, req) {
   const l = await learner(env, req);
   if (!l) return json({ loggedIn: false });
   const { results = [] } = await env.DB.prepare('SELECT code, module, module_title, issued_on FROM certificates WHERE learner_id = ? ORDER BY created_at DESC').bind(l.id).all();
-  return json({ loggedIn: true, firstName: l.first_name, certificates: results });
+  // 13 Nov 2026 (owner): a learner whose email is not confirmed sees a reminder and can have the link sent again.
+  return json({ loggedIn: true, firstName: l.first_name, certificates: results, emailConfirmed: l.email_status === 'verified' });
+}
+// POST /api/academy/confirm: the confirmation link again, for the signed-in learner (sendVerification limits how often).
+async function confirmAgain(env, req) {
+  const l = await learner(env, req);
+  if (!l) return json({ ok: false, error: 'Please register or sign in first.' }, 401);
+  if (l.email_status === 'verified') return json({ ok: true, verified: true });
+  if (!(await emailVerifyOn(env))) return json({ ok: false, error: 'Email is not switched on yet.' }, 503);
+  await sendVerification(env, l, 'verify');
+  return json({ ok: true });
 }
 
 async function submit(env, req, ctx) {
@@ -398,6 +408,7 @@ export async function handleAcademy(req, env, ctx) {
     if (p === '/api/academy/submit') return submit(env, req, ctx);
     if (p === '/api/academy/feedback') return feedback(env, req);
     if (p === '/api/academy/resend') return resend(env, req);
+    if (p === '/api/academy/confirm') return confirmAgain(env, req);
     return json({ ok: false }, 404);
   }
   if (p === '/api/academy/me') return me(env, req);

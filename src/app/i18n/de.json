@@ -2628,7 +2628,6 @@
 "Saved on this device. Send it for sign-off from Scans once it has synced.": "Auf diesem Gerät gespeichert. Senden Sie ihn unter Untersuchungen zur Bestätigung, sobald er synchronisiert ist.",
 "Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.": "Jetzt unterschreiben: Geben Sie Ihr Telefon direkt nach dem Speichern Ihrem Supervisor. Entwurf: im Logbuch gespeichert; später unter Untersuchungen zur Bestätigung senden.",
 "Someone else": "Jemand anderes",
-"The learner shared images by link only. Ask them to send you the link, or update their app and send again.": "Die lernende Person hat Bilder nur per Link geteilt. Bitten Sie um den Link oder darum, die App zu aktualisieren und erneut zu senden.",
 "These images could not be opened. Ask the learner to send them again.": "Diese Bilder konnten nicht geöffnet werden. Bitten Sie die lernende Person, sie erneut zu senden.",
 "Type their name": "Namen eingeben",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "Ihr Supervisor sieht sie jetzt in der App, mit {n}. Sie werden benachrichtigt, wenn er antwortet.",
@@ -2747,5 +2746,7 @@
 "Versions kept after a scan was changed on two devices": "Versionen, die behalten wurden, als ein Scan auf zwei Geräten geändert wurde",
 "kept {date}": "behalten am {date}",
 "Use this version": "Diese Version verwenden",
-"Version restored. It syncs now.": "Version wiederhergestellt. Sie wird jetzt synchronisiert."
+"Version restored. It syncs now.": "Version wiederhergestellt. Sie wird jetzt synchronisiert.",
+"{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} hat {n} per Link geteilt, daher sind sie noch auf dem Telefon gesperrt. Sie erscheinen hier automatisch, sobald {name} Wavelength das nächste Mal öffnet: Öffnen Sie diese Anfrage dann erneut. Wenn Sie sie früher brauchen, bitten Sie {name}, Ihnen den Link zu senden.",
+"Your supervisor can now see the images in your sign-off request.": "Ihre Supervisorin oder Ihr Supervisor kann die Bilder Ihrer Abzeichnungsanfrage jetzt sehen."
 }

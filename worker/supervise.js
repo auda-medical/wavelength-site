@@ -511,9 +511,11 @@ export async function superviseSignoffView(env, l, url) {
   if (g.res) return g.res;
   // A link from this supervisor's own learner (the guard checked the active link): opening it here attaches it to
   // this account, so Review, Ask for more, Decline and Sign work as for a dashboard request. The link still works.
+  let attached = false;
   if (!so.supervisor_id) {
     const took = await env.DB.prepare("UPDATE signoffs SET supervisor_id = ? WHERE id = ? AND supervisor_id IS NULL AND status = 'pending'").bind(l.id, so.id).run();
     if (!(took.meta && took.meta.changes)) return json({ ok: false, error: 'This request is no longer open.' }, 404);
+    attached = true;
   }
   // 1.0.21: images the learner shared with this request, and the key their app sent for a dashboard request.
   let images = [], imageKey = null;
@@ -522,7 +524,11 @@ export async function superviseSignoffView(env, l, url) {
     images = Array.isArray(m) ? m : [];
     imageKey = images.length && k ? k : null;
   }
-  return json({ ok: true, code: so.id, learner: fullName(so), entries: JSON.parse(so.snapshot), images, imageKey });
+  // 13 Nov 2026: images shared by link, now on this dashboard: the key is still only in the link and on the learner's
+  // phone. Their app sends it the next time it syncs (resumeShares); a phone with the native app is told now.
+  const keyPending = images.length > 0 && !imageKey;
+  if (keyPending && attached) await pushPerson(env, so.learner_id, 'img_key', { supervisor: fullName(l) }).catch(() => 0);
+  return json({ ok: true, code: so.id, learner: fullName(so), entries: JSON.parse(so.snapshot), images, imageKey, keyPending });
 }
 export async function superviseSignoffComplete(env, l, req, applySignoff, cleanSupervisor, deleteSharedImages, notify) {
   const d = await body(req);

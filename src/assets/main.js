@@ -327,6 +327,21 @@
         var p = member.querySelector('[data-ac-cert]'); p.hidden = false;
         p.innerHTML = '<a class="text-link" href="/elearning/certificate/' + acEsc(cert.code) + '/">View your certificate</a>';
       }
+      // 13 Nov 2026 (owner): email not confirmed yet: a reminder, and the link sent again on request.
+      if (me.emailConfirmed === false) {
+        var note = document.createElement('div'); note.className = 'ac-confirm';
+        note.innerHTML = '<p><strong>Please confirm your email.</strong> It makes sure your certificate reaches you and keeps your account safe.</p><button type="button" class="btn btn-ghost" data-ac-confirm>Send the confirmation link again</button><p class="form-note" role="status" data-ac-confirm-msg></p>';
+        member.insertBefore(note, member.querySelector('.ac-member-actions'));
+        var cb = note.querySelector('[data-ac-confirm]'), msg = note.querySelector('[data-ac-confirm-msg]');
+        cb.addEventListener('click', function () {
+          cb.disabled = true;
+          acPost('/api/academy/confirm', {}).then(function (res) {
+            if (res.verified) { note.remove(); return; }
+            msg.textContent = res.ok ? 'If we have not sent one in the last few minutes, a link is on its way. Check your junk folder too.' : (res.error || 'Could not send. Please try again.');
+            if (!res.ok) cb.disabled = false;
+          }).catch(function () { cb.disabled = false; msg.textContent = 'Could not send. Check your connection.'; });
+        });
+      }
     }).catch(function () {});
   }
 

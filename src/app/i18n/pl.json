@@ -2704,7 +2704,6 @@
 "Saved on this device. Send it for sign-off from Scans once it has synced.": "Zapisano na tym urządzeniu. Wyślij do podpisu z Badania po synchronizacji.",
 "Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.": "Podpisz teraz: podaj telefon opiekunowi zaraz po zapisaniu. Szkic: zapisany w dzienniku; wyślij do podpisu później z Badania.",
 "Someone else": "Ktoś inny",
-"The learner shared images by link only. Ask them to send you the link, or update their app and send again.": "Uczący się udostępnił obrazy tylko przez link. Poproś o link albo o aktualizację aplikacji i ponowne wysłanie.",
 "These images could not be opened. Ask the learner to send them again.": "Nie udało się otworzyć tych obrazów. Poproś uczącego się o ponowne wysłanie.",
 "Type their name": "Wpisz imię i nazwisko",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "Opiekun widzi ją teraz w aplikacji, z: {n}. Dostaniesz powiadomienie, gdy odpowie.",
@@ -2823,5 +2822,7 @@
 "Versions kept after a scan was changed on two devices": "Wersje zachowane, gdy badanie zmieniono na dwóch urządzeniach",
 "kept {date}": "zachowano {date}",
 "Use this version": "Użyj tej wersji",
-"Version restored. It syncs now.": "Wersję przywrócono. Synchronizuje się teraz."
+"Version restored. It syncs now.": "Wersję przywrócono. Synchronizuje się teraz.",
+"{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} udostępnia {n} przez link, więc nadal są zablokowane na telefonie tej osoby. Dotrą tu automatycznie, gdy {name} następnym razem otworzy Wavelength: wtedy otwórz tę prośbę ponownie. Jeśli potrzebujesz ich wcześniej, poproś {name} o przesłanie linku.",
+"Your supervisor can now see the images in your sign-off request.": "Twój superwizor widzi teraz obrazy z Twojej prośby o zatwierdzenie."
 }

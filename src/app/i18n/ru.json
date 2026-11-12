@@ -2704,7 +2704,6 @@
 "Saved on this device. Send it for sign-off from Scans once it has synced.": "Сохранено на этом устройстве. Отправьте на подпись из раздела «Исследования» после синхронизации.",
 "Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.": "Подписать сейчас: передайте телефон руководителю сразу после сохранения. Черновик: сохраняется в журнале; отправьте на подпись позже из раздела «Исследования».",
 "Someone else": "Другой человек",
-"The learner shared images by link only. Ask them to send you the link, or update their app and send again.": "Обучающийся поделился изображениями только по ссылке. Попросите прислать ссылку или обновить приложение и отправить снова.",
 "These images could not be opened. Ask the learner to send them again.": "Не удалось открыть изображения. Попросите обучающегося отправить их снова.",
 "Type their name": "Введите имя",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "Руководитель уже видит запрос в приложении ({n}). Вы получите уведомление, когда он ответит.",
@@ -2823,5 +2822,7 @@
 "Versions kept after a scan was changed on two devices": "Версии, сохранённые, когда исследование изменили на двух устройствах",
 "kept {date}": "сохранено {date}",
 "Use this version": "Использовать эту версию",
-"Version restored. It syncs now.": "Версия восстановлена. Сейчас синхронизируется."
+"Version restored. It syncs now.": "Версия восстановлена. Сейчас синхронизируется.",
+"{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} поделились {n} по ссылке, поэтому они пока заблокированы на телефоне. Они появятся здесь автоматически, когда {name} в следующий раз откроет Wavelength: тогда откройте этот запрос снова. Если они нужны раньше, попросите {name} прислать вам ссылку.",
+"Your supervisor can now see the images in your sign-off request.": "Ваш супервизор теперь видит изображения в вашем запросе на подтверждение."
 }

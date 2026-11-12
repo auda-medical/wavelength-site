@@ -2780,7 +2780,6 @@
 "Saved on this device. Send it for sign-off from Scans once it has synced.": "حُفظ على هذا الجهاز. أرسله للتوقيع من الفحوص بعد مزامنته.",
 "Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.": "وقّع الآن: سلّم هاتفك لمشرفك مباشرة بعد الحفظ. مسودة: تُحفظ في سجلك؛ أرسلها للتوقيع لاحقًا من الفحوص.",
 "Someone else": "شخص آخر",
-"The learner shared images by link only. Ask them to send you the link, or update their app and send again.": "شارك المتدرب الصور عبر رابط فقط. اطلب منه إرسال الرابط إليك، أو تحديث تطبيقه والإرسال مجددًا.",
 "These images could not be opened. Ask the learner to send them again.": "تعذّر فتح هذه الصور. اطلب من المتدرب إرسالها مجددًا.",
 "Type their name": "اكتب اسمه",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "يراه مشرفك الآن في تطبيقه، مع {n}. ستتلقى إشعارًا عندما يرد.",
@@ -2899,5 +2898,7 @@
 "Versions kept after a scan was changed on two devices": "نسخ محفوظة عندما عُدّل فحص على جهازين",
 "kept {date}": "حُفظت في {date}",
 "Use this version": "استخدم هذه النسخة",
-"Version restored. It syncs now.": "تمت استعادة النسخة. تجري مزامنتها الآن."
+"Version restored. It syncs now.": "تمت استعادة النسخة. تجري مزامنتها الآن.",
+"{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "شارك {name} {n} عبر رابط، لذا ما زالت مقفلة على هاتفه. ستصل إليك هنا تلقائيًا في المرة القادمة التي يفتح فيها {name} تطبيق Wavelength: افتح هذا الطلب مرة أخرى حينها. وإن احتجت إليها قبل ذلك، فاطلب من {name} أن يرسل لك الرابط.",
+"Your supervisor can now see the images in your sign-off request.": "يستطيع مشرفك الآن رؤية الصور في طلب الاعتماد الخاص بك."
 }

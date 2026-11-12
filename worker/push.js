@@ -53,6 +53,8 @@ export function pushText(kind, d) {
     req_signoff: ['Sign-off request', `${d.learner} sent you ${d.count === 1 ? 'a scan' : n(d.count, 'scan')} to sign off.`, sv],
     // 12 Nov 2026 (owner): a supervisor who already has an account hears about an invitation on their phone too.
     link_invite: ['Supervision request', `${d.learner} asked you to be their supervisor. Open the app to accept.`, '/supervise'],
+    // 13 Nov 2026: a supervisor opened a link request in the app; the learner's app sends the image key when it opens.
+    img_key: ['Your supervisor opened your request', `Open Wavelength so ${d.supervisor} can see the images.`, '/log?s=waiting'],
     req_assess: ['Assessment request', `${d.learner} asked you to complete an assessment.`, sv],
     rem_signoff: ['Still waiting for you', `${d.learner} is waiting for your sign-off.`, sv],
     rem_assess: ['Still waiting for you', `${d.learner} is waiting for an assessment.`, sv],

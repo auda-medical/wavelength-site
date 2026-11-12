@@ -2628,7 +2628,6 @@
 "Saved on this device. Send it for sign-off from Scans once it has synced.": "Guardado en este dispositivo. Envíelo para firma desde Exploraciones cuando se haya sincronizado.",
 "Sign now: hand your phone to your supervisor straight after saving. Draft: saved in your logbook; send it for sign-off later from Scans.": "Firmar ahora: dé su teléfono a su supervisor justo después de guardar. Borrador: se guarda en su registro; envíelo para firma más tarde desde Exploraciones.",
 "Someone else": "Otra persona",
-"The learner shared images by link only. Ask them to send you the link, or update their app and send again.": "El alumno compartió las imágenes solo por enlace. Pídale que le envíe el enlace, o que actualice su aplicación y vuelva a enviarla.",
 "These images could not be opened. Ask the learner to send them again.": "No se pudieron abrir estas imágenes. Pida al alumno que las envíe de nuevo.",
 "Type their name": "Escriba su nombre",
 "Your supervisor sees it in their app now, with {n}. You get a notification when they reply.": "Su supervisor ya la ve en su aplicación, con {n}. Recibirá una notificación cuando responda.",
@@ -2747,5 +2746,7 @@
 "Versions kept after a scan was changed on two devices": "Versiones conservadas cuando un estudio se modificó en dos dispositivos",
 "kept {date}": "conservada el {date}",
 "Use this version": "Usar esta versión",
-"Version restored. It syncs now.": "Versión restaurada. Se sincroniza ahora."
+"Version restored. It syncs now.": "Versión restaurada. Se sincroniza ahora.",
+"{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} compartió {n} por enlace, así que siguen bloqueadas en su teléfono. Le llegarán aquí automáticamente la próxima vez que {name} abra Wavelength: abra entonces esta solicitud de nuevo. Si las necesita antes, pida a {name} que le envíe el enlace.",
+"Your supervisor can now see the images in your sign-off request.": "Su supervisor ya puede ver las imágenes de su solicitud de validación."
 }

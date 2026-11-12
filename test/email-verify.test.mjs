@@ -323,3 +323,24 @@ test('the app hears when an invitation email fails, and an active supervisor is 
     assert.equal((await env.DB.prepare('SELECT status FROM supervisor_links WHERE id = ?').bind(id).first()).status, 'active', 'still linked');
   });
 });
+
+// 13 Nov 2026 (owner): Academy learners whose email is not confirmed see a reminder and can have the link sent again.
+test('Academy: an unconfirmed learner is told so and can have the confirmation link sent again', async () => {
+  const env = makeEnv(MAIL);
+  await withMailbox(async (box) => {
+    const c = academy(env);
+    assert.equal((await register(c, 'ac.confirm@x.co')).status, 200);
+    let me = (await c.call('/api/academy/me')).body;
+    assert.equal(me.emailConfirmed, false);
+    const before = box.tokens().length;
+    assert.equal((await c.call('/api/academy/confirm', {})).body.ok, true);
+    assert.equal(box.tokens().length, before, 'the two-minute gap: no second email straight away');
+    const anon = academy(env);
+    assert.equal((await anon.call('/api/academy/confirm', {})).status, 401);
+    const [t] = box.tokens();
+    assert.equal((await client(handleApp, env).call('/api/app/email/verify', { token: t })).body.verified, true);
+    me = (await c.call('/api/academy/me')).body;
+    assert.equal(me.emailConfirmed, true);
+    assert.equal((await c.call('/api/academy/confirm', {})).body.verified, true);
+  });
+});
