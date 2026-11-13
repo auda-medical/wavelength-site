@@ -141,6 +141,18 @@ App Store (the first update after 1.0.17, so it sums up 1.0.18 to 1.0.26), under
 
 Get a phone notification when a supervisor signs off or queries your scans, or someone sends you scans to sign (Me, Settings). Supervisors see your images in their app and can ask for more information without signing. Log a nerve block from a list, from femoral and PENG to serratus and erector spinae. Sign-off requests go to your linked supervisor by default. Zoom on review photos, export with or without images, and many smaller fixes.
 
+## Release 1.0.27 (34): what's new
+
+Same app code as website Release AR (`584a543`, live 13 Nov 2026).
+
+Google Play (after 1.0.26), under 500 characters:
+
+Sign-off links now say plainly that Wavelength has not sent them, and offer to send the request to your linked supervisor in the app instead. If a supervisor opens your link in their own Wavelength app, your phone passes on the images so they can see them there. Supervisors are listed for search by default, invitations catch common typing mistakes in email addresses, and an invited supervisor gets a phone notification. Many smaller fixes.
+
+App Store (the first update after 1.0.17, so it sums up 1.0.18 to 1.0.27; 1.0.26 was never sent to Apple), under 500 characters:
+
+Get a phone notification when a supervisor signs off or queries your scans, or someone sends you scans to sign (Me, Settings). Supervisors see your images in their app and can ask for more information without signing. Log a nerve block from a list. Sign-off requests go to your linked supervisor by default, and links say plainly they are not sent. Invitations catch typing mistakes in email addresses. Zoom on review photos, export with or without images, and many smaller fixes.
+
 ## Export compliance (Apple) and encryption
 
 `ITSAppUsesNonExemptEncryption` is false. The app's encryption (AES-256-GCM for encrypted backups and for images shared in sign-off links, HKDF and PBKDF2) runs through Web Crypto, which is provided by the operating system's own WebKit; HTTPS is the system's too. Argon2id (`vendor/noble-hashes`) derives a key from the backup passphrase: it is a key-derivation (hashing) function, not encryption. Apple treats encryption used only within its operating system as exempt, so App Store Connect should not ask; if it does, answer that the app uses only encryption provided by the operating system. Reviewed 12 October 2026; recheck if a native crypto library is ever added.
