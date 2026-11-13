@@ -2748,5 +2748,11 @@
 "Use this version": "Diese Version verwenden",
 "Version restored. It syncs now.": "Version wiederhergestellt. Sie wird jetzt synchronisiert.",
 "{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} hat {n} per Link geteilt, daher sind sie noch auf dem Telefon gesperrt. Sie erscheinen hier automatisch, sobald {name} Wavelength das nächste Mal öffnet: Öffnen Sie diese Anfrage dann erneut. Wenn Sie sie früher brauchen, bitten Sie {name}, Ihnen den Link zu senden.",
-"Your supervisor can now see the images in your sign-off request.": "Ihre Supervisorin oder Ihr Supervisor kann die Bilder Ihrer Abzeichnungsanfrage jetzt sehen."
+"Your supervisor can now see the images in your sign-off request.": "Ihre Supervisorin oder Ihr Supervisor kann die Bilder Ihrer Abzeichnungsanfrage jetzt sehen.",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "Excel im {name}. Kein offizielles Formular: Prüfen Sie, was Ihre Stelle verlangt.",
+"This destination has no logbook layout yet. Choose Excel instead.": "Für dieses Ziel gibt es noch kein Logbuch-Layout. Wählen Sie stattdessen Excel.",
+"Logbook layout": "Logbuch-Layout",
+"RCEM logbook layout": "RCEM-Logbuch-Layout",
+"FAMUS logbook layout": "FAMUS-Logbuch-Layout",
+"FUSIC logbook layout": "FUSIC-Logbuch-Layout"
 }

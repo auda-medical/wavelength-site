@@ -2710,5 +2710,11 @@
 "Use this version": "使用此版本",
 "Version restored. It syncs now.": "已恢复该版本，正在同步。",
 "{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} 通过链接分享了 {n}，因此这些图像仍锁定在其手机上。{name} 下次打开 Wavelength 时，图像会自动送达此处：届时请再次打开此请求。如需尽快查看，请让 {name} 把链接发给您。",
-"Your supervisor can now see the images in your sign-off request.": "您的导师现在可以看到您签核请求中的图像了。"
+"Your supervisor can now see the images in your sign-off request.": "您的导师现在可以看到您签核请求中的图像了。",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "Excel，采用{name}。并非官方表格：请核实您的机构要求。",
+"This destination has no logbook layout yet. Choose Excel instead.": "此目的地尚无日志格式。请改选 Excel。",
+"Logbook layout": "日志格式",
+"RCEM logbook layout": "RCEM 日志格式",
+"FAMUS logbook layout": "FAMUS 日志格式",
+"FUSIC logbook layout": "FUSIC 日志格式"
 }

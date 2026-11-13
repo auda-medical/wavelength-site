@@ -2824,5 +2824,11 @@
 "Use this version": "Использовать эту версию",
 "Version restored. It syncs now.": "Версия восстановлена. Сейчас синхронизируется.",
 "{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} поделились {n} по ссылке, поэтому они пока заблокированы на телефоне. Они появятся здесь автоматически, когда {name} в следующий раз откроет Wavelength: тогда откройте этот запрос снова. Если они нужны раньше, попросите {name} прислать вам ссылку.",
-"Your supervisor can now see the images in your sign-off request.": "Ваш супервизор теперь видит изображения в вашем запросе на подтверждение."
+"Your supervisor can now see the images in your sign-off request.": "Ваш супервизор теперь видит изображения в вашем запросе на подтверждение.",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "Excel в формате: {name}. Это не официальная форма: уточните требования вашей организации.",
+"This destination has no logbook layout yet. Choose Excel instead.": "Для этого назначения пока нет формата журнала. Выберите Excel.",
+"Logbook layout": "Формат журнала",
+"RCEM logbook layout": "формат журнала RCEM",
+"FAMUS logbook layout": "формат журнала FAMUS",
+"FUSIC logbook layout": "формат журнала FUSIC"
 }

@@ -4885,7 +4885,7 @@
     mount(shell({ title: T('Export'), back: 'log' },
       '<p class="muted small">' + esc(T('Exports build on this phone, in English so any assessor can read them. A verified summary sends only counts and dates to your account, never images or findings.')) + '</p><form id="xf">' +
       '<div class="field"><label for="ds">' + esc(T('Where is it going?')) + '</label><select id="ds" name="destination">' + DESTS.map(function (x) { return '<option value="' + x.id + '"' + (x.id === dest ? ' selected' : '') + '>' + esc(T(x.label)) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="field"><span class="lab">' + esc(T('Format')) + '</span>' + seg('fmt', [{ id: 'pdf', label: 'PDF for your portfolio' }, { id: 'xlsx', label: 'Excel' }, { id: 'csv', label: 'CSV' }], 'pdf') + '</div>' +
+      '<div class="field"><span class="lab">' + esc(T('Format')) + '</span>' + seg('fmt', [{ id: 'pdf', label: 'PDF for your portfolio' }, { id: 'xlsx', label: 'Excel' }, { id: 'csv', label: 'CSV' }, { id: 'layout', label: 'Logbook layout' }], 'pdf') + '<p class="hint" id="layhint" hidden></p></div>' +
       '<div class="two"><div class="field"><label for="from">' + esc(T('From')) + '</label><input type="date" id="from" name="from" value="' + first + '"></div><div class="field"><label for="to">' + esc(T('To')) + '</label><input type="date" id="to" name="to" value="' + today() + '"></div></div>' +
       '<div class="field"><label for="pw">' + esc(T('Pathway')) + '</label><select id="pw" name="pathway"><option value="">' + esc(T('All scans')) + '</option>' + myPaths().map(function (p) { return '<option value="' + p + '">' + esc(T('{p} scans only', { p: pwName(PATHS[p]) })) + '</option>'; }).join('') + '</select></div>' +
       '<div class="field"><label for="st">' + esc(T('Status')) + '</label><select id="st" name="status"><option value="">' + esc(T('All')) + '</option><option value="signed">' + esc(T('Signed off only')) + '</option></select></div>' +
@@ -4907,6 +4907,9 @@
     var tog = function () {
       var d = formData(f), v = d.fmt, mode = v === 'pdf' ? d.imgmode : 'none';
       $('#imgopt').hidden = v !== 'pdf'; $('#evopt').hidden = v === 'csv';
+      var lay = (DEST[$('#ds').value] || {}).layout, lb = $('input[name=fmt][value=layout]', f);
+      if (lb) { lb.hidden = !lay; $('label[for="' + lb.id + '"]', f).hidden = !lay; if (!lay && lb.checked) { $('input[name=fmt][value=pdf]', f).checked = true; return tog(); } }
+      var lh = $('#layhint'); lh.hidden = !(lay && v === 'layout'); if (lay) lh.textContent = T('Excel in the {name}. It is not an official form: check what your body asks for.', { name: T(lay.name) });
       $('#imgpick').hidden = mode !== 'pick'; if (mode === 'pick') drawPick();
       $('#imgdeclf').hidden = mode === 'none' || !mode;
     };
@@ -4914,7 +4917,7 @@
     ['from', 'to', 'pw', 'st'].forEach(function (id) { var el = $('#' + id); if (el) el.addEventListener('change', function () { if (formData(f).imgmode === 'pick') drawPick(); }); });
     var pickPath = function () { var x = DEST[$('#ds').value]; $('#pw').value = x && x.pathway && myPaths().indexOf(x.pathway) >= 0 && scansIn(x.pathway) ? x.pathway : ''; };
     $$('input[name=fmt]', f).forEach(function (i) { i.onchange = tog; });
-    $('#ds').onchange = pickPath; pickPath();
+    $('#ds').onchange = function () { pickPath(); tog(); }; pickPath(); tog();
     f.addEventListener('submit', function (ev) {
       ev.preventDefault(); var d = formData(f), b = $('button.teal', f), err = $('.err', f); err.hidden = true;
       var list = live().filter(function (e) {
@@ -4934,7 +4937,7 @@
       var evJob = d.verified && d.fmt !== 'csv' ? makeEvidence(d) : Promise.resolve(null);
       evJob.then(function (evd) {
         if (evd) b.textContent = T('Building your file…');
-        var job = d.fmt === 'csv' ? Promise.resolve(exportCsv(list, d)) : d.fmt === 'xlsx' ? fetchSignoffs().then(function (so) { return exportXlsx(list, d, so, evd); }) : fetchSignoffs().then(function (so) { return exportPdf(list, d, so, evd); });
+        var job = d.fmt === 'csv' ? Promise.resolve(exportCsv(list, d)) : d.fmt === 'layout' ? fetchSignoffs().then(function () { return exportLayout(list, d, evd); }) : d.fmt === 'xlsx' ? fetchSignoffs().then(function (so) { return exportXlsx(list, d, so, evd); }) : fetchSignoffs().then(function (so) { return exportPdf(list, d, so, evd); });
         return job.then(function (out) { return { out: out, ev: evd }; });
       }).then(function (res) { busy(b, false); deliver(res.out.blob, res.out.name, portfolioSteps(d.destination, res.ev)); })
         .catch(function (ex) { busy(b, false); err.textContent = ex.message || T('Could not build the file.'); err.hidden = false; });
@@ -5043,6 +5046,25 @@
     if (d.assessments) sheets.push({ name: 'Assessments', rows: [['Code', 'Date', 'Pathway', 'Module', 'Type', 'Outcome', 'Assessor', 'Method']].concat(asmRows(d.from, d.to)), widths: [16, 11, 10, 30, 30, 40, 30, 12] });
     sheets.push({ name: 'About', rows: [['Wavelength ultrasound logbook', ''], ['Name', acc.name], ['Email', acc.email], ['Grade or role', profile().grade || acc.role || ''], ['Registration', profile().registration || ''], ['Period', fmtEn(d.from) + ' to ' + fmtEn(d.to)], ['Scans', list.length], ['Generated', fmtEn(today())], ['Verified summary', evd ? evd.code : 'Not created'], ['Check it at', evd ? evd.link : NAT.host + '/verify'], ['Patient data', 'This record holds no patient identifiers.']], widths: [22, 60] });
     return { blob: WLZip.xlsx(sheets), name: 'Wavelength-logbook-' + dateStamp() + '.xlsx' };
+  }
+  // Logbook layouts (src/app/formats.js, data/logbook.json destinations[].layout): Excel arranged like a body's own logbook.
+  function soState(e) {
+    var so = e.signoff || {};
+    return { label: so.status === 'confirmed' ? 'Signed off' : waiting(e) ? 'Awaiting' : e.noSignoff ? 'Not needed' : so.status === 'query' ? 'Queried' : 'Not sent', by: so.name ? so.name + (so.role ? ', ' + so.role : '') : '', on: so.at ? so.at.slice(0, 10) : '', code: so.code || '', rating: so.rating || null };
+  }
+  function exportLayout(list, d, evd) {
+    var dest = DEST[d.destination]; if (!dest || !dest.layout) throw new Error(T('This destination has no logbook layout yet. Choose Excel instead.'));
+    var pid = d.pathway || dest.pathway;
+    var asm = d.assessments ? signedAssessments().filter(function (a) { return a.pathway === pid && (a.assessed_on || '') >= d.from && (a.assessed_on || '') <= d.to; }).map(function (a) {
+      var m = (PATHS[a.pathway] || { modules: [] }).modules.find(function (x) { return x.id === a.module; });
+      return { code: a.id, date: a.assessed_on, module: m ? m.label : a.module, kind: (KIND[a.kind] || {}).label || a.kind, outcome: (OUTCOME[a.outcome] || {}).label || a.outcome, assessor: a.supervisor_name + (a.supervisor_role ? ', ' + a.supervisor_role : '') };
+    }) : [];
+    var out = window.WLFormats.build(dest, pid, list, {
+      PATHS: PATHS, TYPES: TYPES, supLabel: function (id) { return SUP[id] || ''; }, signoffState: soState,
+      modulesFor: function (p, l) { return ENG.modulesFor(p, l, profile().targets); }, moduleStats: moduleStats,
+      assessments: asm, account: S.account, profile: profile(), from: fmtEn(d.from), to: fmtEn(d.to), generated: dateStamp(), evidence: evd, reflections: !!d.reflections
+    });
+    return { blob: WLZip.xlsx(out.sheets), name: out.name };
   }
   function blobToDataUrl(b) { return new Promise(function (ok) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.readAsDataURL(b); }); }
   function qrPng(text, px) {

@@ -3173,7 +3173,7 @@
       "region": ""
     }
   ],
-  "_help_destinations": "Export destinations. Steps show after a learner builds a portfolio export. Keep wording general: Wavelength is not integrated with these portfolios.",
+  "_help_destinations": "Export destinations. Steps show after a learner builds a portfolio export. Keep wording general: Wavelength is not integrated with these portfolios. body: how the About sheet names the organisation. layout: an Excel logbook arranged like the body's own logbook fields (src/app/formats.js explains the sources); Wavelength's own arrangement, never an official form or a claim of acceptance.",
   "destinations": [
     {
       "id": "rcem",
@@ -3184,7 +3184,111 @@
         "Create or open the entry for your ultrasound evidence and attach this PDF.",
         "Paste the verification link into the entry, so your supervisor and ARCP panel check the summary online.",
         "Link the entry to the PoCUS parts of the curriculum. RCEM sign-off is by DOPS, so ask your supervisor to complete the DOPS assessments in the e-portfolio."
-      ]
+      ],
+      "body": "RCEM",
+      "layout": {
+        "name": "RCEM logbook layout",
+        "file": "Wavelength-RCEM-logbook",
+        "sheets": "module",
+        "assessments": true,
+        "supervision": {
+          "direct": "Directly supervised",
+          "mentored": "Scanned alone, reviewed later",
+          "independent": "Independent",
+          "independentCounts": true
+        },
+        "columns": [
+          [
+            "No.",
+            "n",
+            6
+          ],
+          [
+            "Training reference",
+            "ref",
+            14
+          ],
+          [
+            "Date",
+            "date",
+            11
+          ],
+          [
+            "Modality",
+            "module",
+            22
+          ],
+          [
+            "Setting",
+            "setting",
+            18
+          ],
+          [
+            "Clinical question",
+            "indication",
+            30
+          ],
+          [
+            "Image quality",
+            "quality",
+            12
+          ],
+          [
+            "Findings",
+            "findings",
+            50
+          ],
+          [
+            "Interpretation",
+            "interpretation",
+            36
+          ],
+          [
+            "Supervision",
+            "supervision",
+            24
+          ],
+          [
+            "Supervisor",
+            "supervisor",
+            22
+          ],
+          [
+            "Formal imaging or outcome",
+            "outcome",
+            26
+          ],
+          [
+            "Impact on management",
+            "impact",
+            28
+          ],
+          [
+            "Signed off by",
+            "signedBy",
+            26
+          ],
+          [
+            "Sign-off date",
+            "signedOn",
+            12
+          ],
+          [
+            "Sign-off code",
+            "signoffCode",
+            16
+          ],
+          [
+            "Reflection",
+            "reflection",
+            50
+          ]
+        ],
+        "notes": [
+          "RCEM accepts any logbook platform that captures the minimum dataset within data protection rules; its preferred platform is the RCEM e-portfolio (risr/advance).",
+          "Sign-off is an entrustment decision by your supervisor, using your logbook, reflections and DOPS recorded in the e-portfolio. Attach this file to your e-portfolio entry."
+        ]
+      }
     },
     {
       "id": "famus",
@@ -3195,7 +3299,115 @@
         "When the summary shows your targets met, ask your supervisor to complete the Assessment of Completion of Training (ACT).",
         "Send the signed ACT to the FAMUS administrator. Include this PDF and the verification link if they ask for your logbook.",
         "For reaccreditation every three years, export a fresh verified summary."
-      ]
+      ],
+      "body": "the Society for Acute Medicine (FAMUS)",
+      "layout": {
+        "name": "FAMUS logbook layout",
+        "file": "Wavelength-FAMUS-logbook",
+        "sheets": "module",
+        "assessments": true,
+        "supervision": {
+          "direct": "Supervised",
+          "mentored": "Mentored",
+          "independent": "Not supervised or mentored"
+        },
+        "columns": [
+          [
+            "Scan no.",
+            "n",
+            8
+          ],
+          [
+            "Training reference",
+            "ref",
+            14
+          ],
+          [
+            "Date",
+            "date",
+            11
+          ],
+          [
+            "Module",
+            "module",
+            18
+          ],
+          [
+            "Setting",
+            "setting",
+            18
+          ],
+          [
+            "Indication",
+            "indication",
+            30
+          ],
+          [
+            "Findings",
+            "findings",
+            50
+          ],
+          [
+            "Overall",
+            "overall",
+            12
+          ],
+          [
+            "Image quality",
+            "quality",
+            12
+          ],
+          [
+            "Supervised or mentored",
+            "supervision",
+            22
+          ],
+          [
+            "Counts towards FAMUS",
+            "counts",
+            12
+          ],
+          [
+            "Supervisor or mentor",
+            "supervisor",
+            22
+          ],
+          [
+            "Countersigned",
+            "signoff",
+            12
+          ],
+          [
+            "Countersigned by",
+            "signedBy",
+            26
+          ],
+          [
+            "Date countersigned",
+            "signedOn",
+            12
+          ],
+          [
+            "Sign-off code",
+            "signoffCode",
+            16
+          ],
+          [
+            "Correlation with formal imaging or outcome",
+            "outcome",
+            28
+          ],
+          [
+            "Reflection",
+            "reflection",
+            50
+          ]
+        ],
+        "notes": [
+          "Complete a FAMUS report sheet for every scan, countersigned by your mentor. This file does not replace the report sheets.",
+          "When your targets are met, your supervisor completes the Assessment of Completion of Training (ACT). Send the signed ACT, with no patient identifiers, to the FAMUS administrator."
+        ]
+      }
     },
     {
       "id": "fusic",
@@ -3205,7 +3417,121 @@
         "Share this PDF and the verification link with your FUSIC supervisor.",
         "Upload it wherever your FUSIC accreditation asks for logbook evidence.",
         "Once your targets are met, ask your supervisor to arrange the final assessment."
-      ]
+      ],
+      "body": "the Intensive Care Society (FUSIC)",
+      "layout": {
+        "name": "FUSIC logbook layout",
+        "file": "Wavelength-FUSIC-logbook",
+        "sheets": "module",
+        "assessments": true,
+        "supervision": {
+          "direct": "Directly supervised",
+          "mentored": "Unsupervised, reviewed",
+          "independent": "Not reviewed"
+        },
+        "columns": [
+          [
+            "Scan no.",
+            "n",
+            8
+          ],
+          [
+            "Training reference",
+            "ref",
+            14
+          ],
+          [
+            "Date",
+            "date",
+            11
+          ],
+          [
+            "Module",
+            "module",
+            14
+          ],
+          [
+            "Setting",
+            "setting",
+            18
+          ],
+          [
+            "Healthy volunteer",
+            "volunteer",
+            10
+          ],
+          [
+            "Clinical question",
+            "indication",
+            30
+          ],
+          [
+            "Views obtained",
+            "f.views",
+            30
+          ],
+          [
+            "Findings",
+            "findings",
+            50
+          ],
+          [
+            "Image quality",
+            "quality",
+            12
+          ],
+          [
+            "Supervision",
+            "supervision",
+            22
+          ],
+          [
+            "Counts towards FUSIC",
+            "counts",
+            12
+          ],
+          [
+            "Mentor or trainer",
+            "supervisor",
+            22
+          ],
+          [
+            "Reviewed and signed",
+            "signoff",
+            12
+          ],
+          [
+            "Signed by",
+            "signedBy",
+            26
+          ],
+          [
+            "Date signed",
+            "signedOn",
+            12
+          ],
+          [
+            "Sign-off code",
+            "signoffCode",
+            16
+          ],
+          [
+            "Formal imaging or outcome",
+            "outcome",
+            26
+          ],
+          [
+            "Reflection",
+            "reflection",
+            50
+          ]
+        ],
+        "notes": [
+          "FUSIC asks for its standard reporting form for every training scan. This file does not replace the reporting forms.",
+          "Your logbook must run from first scan to last within 12 months, with no more than 10% of studies on healthy volunteers.",
+          "Complete the summary training record, signed by your mentor and supervisor (Heart) or trainer (other modules), and submit it through the FUSIC portal."
+        ]
+      }
     },
     {
       "id": "jrcptb",

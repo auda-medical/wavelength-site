@@ -2824,5 +2824,11 @@
 "Use this version": "Użyj tej wersji",
 "Version restored. It syncs now.": "Wersję przywrócono. Synchronizuje się teraz.",
 "{name} shared {n} by link, so they are still locked on their phone. They reach you here automatically the next time {name} opens Wavelength: open this request again then. If you need them sooner, ask {name} to send you the link.": "{name} udostępnia {n} przez link, więc nadal są zablokowane na telefonie tej osoby. Dotrą tu automatycznie, gdy {name} następnym razem otworzy Wavelength: wtedy otwórz tę prośbę ponownie. Jeśli potrzebujesz ich wcześniej, poproś {name} o przesłanie linku.",
-"Your supervisor can now see the images in your sign-off request.": "Twój superwizor widzi teraz obrazy z Twojej prośby o zatwierdzenie."
+"Your supervisor can now see the images in your sign-off request.": "Twój superwizor widzi teraz obrazy z Twojej prośby o zatwierdzenie.",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "Excel w formacie: {name}. To nie jest oficjalny formularz: sprawdź, czego wymaga Twoja instytucja.",
+"This destination has no logbook layout yet. Choose Excel instead.": "Dla tego miejsca nie ma jeszcze układu dziennika. Wybierz Excel.",
+"Logbook layout": "Układ dziennika",
+"RCEM logbook layout": "układ dziennika RCEM",
+"FAMUS logbook layout": "układ dziennika FAMUS",
+"FUSIC logbook layout": "układ dziennika FUSIC"
 }
