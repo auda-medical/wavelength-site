@@ -27,11 +27,12 @@ const ctx = (o = {}) => ({
 });
 const sheet = (out, name) => out.sheets.find((s) => s.name === name);
 
-test('RCEM, FAMUS and FUSIC each have a layout, with known sources only', () => {
-  const known = new Set(['n', 'ref', 'date', 'type', 'module', 'setting', 'age', 'sex', 'indication', 'findings', 'overall', 'quality', 'interpretation', 'outcome', 'impact', 'supervision', 'counts', 'supervisor', 'signoff', 'signedBy', 'signedOn', 'signoffCode', 'rating', 'volunteer', 'reflection', 'images']);
-  for (const id of ['rcem', 'famus', 'fusic']) {
+test('RCEM, FAMUS, FUSIC and RCoA/RA-UK each have a layout naming its sources, with known columns only', () => {
+  const known = new Set(['n', 'ref', 'date', 'type', 'module', 'setting', 'age', 'sex', 'indication', 'findings', 'overall', 'quality', 'interpretation', 'outcome', 'impact', 'supervision', 'counts', 'supervisor', 'signoff', 'signedBy', 'signedOn', 'signoffCode', 'rating', 'volunteer', 'reflection', 'images', 'blank', 'block', 'planA']);
+  for (const id of ['rcem', 'famus', 'fusic', 'rcoa']) {
     const d = DEST[id];
-    assert.ok(d.layout && d.body, id);
+    assert.ok(d.layout && d.body && d.steps.length, id);
+    assert.ok(d.layout.source && d.layout.source.length > 60, `${id} names the documents its columns follow`);
     for (const [h, src] of d.layout.columns) assert.ok(known.has(src) || /^f\.\w+$/.test(src), `${id}: ${h} -> ${src}`);
     assert.ok(d.layout.columns.some((c) => c[1] === 'ref'), `${id} has a training reference`);
     assert.ok(!d.layout.columns.some((c) => /patient|hospital number|nhs number|date of birth/i.test(c[0])), `${id} asks for no patient identifiers`);
@@ -95,4 +96,58 @@ test('the app offers the layout only where a destination has one, and loads form
   assert.match(html, /<script src="\/app\/formats\.js\?v=__V__"><\/script>/);
   assert.ok(html.indexOf('formats.js') < html.indexOf('/app/app.js'));
   assert.match(sw, /'\/app\/formats\.js\?v=__V__'/);
+});
+
+// Version 2, checked against road-to-number-one report 01 (13 Nov 2026).
+test('FUSIC starts with its training logbook table: study number, date, diagnosis, summary of main findings, mentor signature', () => {
+  assert.deepEqual(DEST.fusic.layout.columns.slice(0, 5).map((c) => c[0]), ['Study number', 'Date', 'Diagnosis', 'Summary of main findings', 'Mentor or trainer signature']);
+  const out = F.build(DEST.fusic, 'fusic', entries, ctx());
+  const about = sheet(out, 'About').rows.map((r) => r.join(' ')).join('\n');
+  assert.match(about, /Only the Summary Training Record \(STR\) is submitted/);
+  assert.match(about, /12 months from first scan to last, inside the 24-month/);
+  const sum = sheet(out, 'Summary');
+  assert.deepEqual(sum.rows[0].slice(8, 10), ['First scan', 'Last scan']);
+  assert.ok(sum.rows.some((r) => r[0] === 'Heart' && r[8] === '2026-11-01' && r[9] === '2026-11-03'));
+});
+
+test('FAMUS uses anonymised labels such as DVT1, and says only a registered Supervisor signs the ACT', () => {
+  const dvt = [scan({ type: 'dvt', supervision: 'direct' }), scan({ type: 'dvt', date: '2026-11-02', supervision: 'mentored' })];
+  const out = F.build(DEST.famus, 'famus', dvt, ctx());
+  const s = out.sheets.find((x) => x.name === 'DVT');
+  assert.equal(s.rows[1][s.rows[0].indexOf('Anonymised label')], 'DVT1');
+  assert.equal(s.rows[2][s.rows[0].indexOf('Anonymised label')], 'DVT2');
+  const about = sheet(out, 'About').rows.map((r) => r.join(' ')).join('\n');
+  assert.match(about, /Only a Supervisor registered on the FAMUS database signs the Assessment of Completion of Training/);
+  assert.match(about, /same label on your report sheet and on the images/);
+  assert.doesNotMatch(about, /\b(10|30) (supervised|mentored)\b/, 'no unverified FAMUS numbers in the notes');
+});
+
+test('RCEM leaves an entrustment level column to fill and counts reflections per modality', () => {
+  const out = F.build(DEST.rcem, 'rcem', [scan({ type: 'aaa', reflection: 'Fanned through the whole aorta to the bifurcation.' }), scan({ type: 'aaa', date: '2026-11-02' })], ctx());
+  const aaa = out.sheets.find((x) => x.name === 'AAA');
+  assert.equal(aaa.rows[1][aaa.rows[0].indexOf('Entrustment level (1 to 4)')], '');
+  const row = sheet(out, 'Summary').rows.find((r) => r[0] === 'AAA');
+  assert.equal(row[6], '1 / 5');
+});
+
+test('RCoA and RA-UK: nerve blocks only, a summary by block and supervision, Plan A blocks marked, no RCoA numbers', () => {
+  const blocks = [
+    scan({ type: 'block', findings: { nerve: 'Femoral nerve', side: 'Left', needle: 'In plane' } }),
+    scan({ type: 'block', date: '2026-11-02', supervision: 'mentored', findings: { nerve: 'Femoral nerve' } }),
+    scan({ type: 'block', date: '2026-11-03', findings: { nerve: 'Other block (name it below)', block: 'Genicular' } }),
+    scan({ type: 'fib', date: '2026-11-04', findings: {} }),
+    scan({ type: 'aaa', date: '2026-11-05' }),
+  ];
+  const out = F.build(DEST.rcoa, '', blocks, ctx());
+  assert.deepEqual(out.sheets.map((x) => x.name), ['Summary', 'Logbook', 'About']);
+  const log = sheet(out, 'Logbook');
+  assert.equal(log.rows.length, 5, 'header and four blocks; the AAA scan is left out');
+  assert.equal(log.rows[1][log.rows[0].indexOf('Training reference')], 'BLK-001');
+  assert.equal(log.rows[1][log.rows[0].indexOf('RA-UK Plan A')], 'Yes');
+  assert.equal(log.rows[3][log.rows[0].indexOf('Block')], 'Genicular');
+  const fem = sheet(out, 'Summary').rows.find((r) => r[0] === 'Femoral nerve');
+  assert.deepEqual(fem.slice(1, 6), ['Yes', 2, 1, 1, 0]);
+  const about = sheet(out, 'About').rows.map((r) => r.join(' ')).join('\n');
+  assert.match(about, /The RCoA sets no nerve block numbers/);
+  assert.match(about, /not an official document of the RCoA or RA-UK/);
 });

@@ -12,12 +12,20 @@
 //   columns:     [[header, source, width?], ...]; sources below
 //   notes:       lines added to the About sheet (what the body still needs on its own forms)
 //   assessments: true to add an Assessments sheet (DOPS, triggered assessments, ACT)
+//   source:      the body's documents the columns follow (printed in the About sheet)
+//   refStyle:    "plain" for labels like DVT1 (FAMUS asks the same label on the report sheet and the stored images);
+//                otherwise THOR-001
+//   types:       only these scan types (the RCoA and RA-UK layout keeps nerve blocks)
+//   summary:     "blocks" for a summary by block and supervision instead of by module
+//   planA:       block names counted as RA-UK Plan A blocks
 // }
 // Sources: n (row number in the sheet), ref (training reference: the module code and row number, never patient data),
 // date, type, module, setting, age, sex, indication, findings (every finding, "Label: value"), f.<field id> (one finding),
 // overall, quality, interpretation, outcome (confirmed by and agreement), impact, supervision (in the body's words),
 // counts (whether the scan counts towards the body's numbers), supervisor, signoff (status), signedBy, signedOn,
-// signoffCode, volunteer (Yes when the setting is a healthy volunteer), reflection, images.
+// signoffCode, volunteer (Yes when the setting is a healthy volunteer), reflection, images, blank (an empty column for
+// the learner to fill, such as the RCEM entrustment level), block (the nerve block named), planA (Yes when it is one of
+// layout.planA).
 (function (root) {
   'use strict';
   var Q = { g: 'Good', a: 'Acceptable', r: 'Not acceptable' };
@@ -30,19 +38,23 @@
   //        assessments (signed, in range), account, profile, from, to, generated, evidence }
   function build(dest, pid, list, ctx) {
     var L = dest && dest.layout; if (!L) throw new Error('No layout for this destination');
+    if (L.types) list = list.filter(function (e) { return L.types.indexOf(e.type) >= 0; });
     var pw = ctx.PATHS[pid] || ctx.PATHS[dest.pathway];
     var mods = pw ? ctx.modulesFor(pw.id, list) : [];
     var used = {}, sheets = [];
     var supWords = L.supervision || {};
     var counts = function (e) { return e.supervision === 'independent' && supWords.independentCounts !== true ? 'No' : 'Yes'; };
     var modOf = function (e) { var m = mods.find(function (x) { return x.types.indexOf(e.type) >= 0; }); return m ? m.label : ''; };
-    var code = function (m) { return (m && (m.code || m.label) || 'SCAN').replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase(); };
+    var code = function (m) { return (m && (m.code || m.label) || L.code || 'SCAN').replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase(); };
     var cell = function (src, e, i, m) {
       var t = ctx.TYPES[e.type] || { fields: [] }, f = e.findings || {}, so = ctx.signoffState(e);
       if (src.indexOf('f.') === 0) { var fd = t.fields.find(function (x) { return x.id === src.slice(2); }); var v = f[src.slice(2)]; return v == null || v === '' ? '' : clean(v) + (fd && fd.unit ? ' ' + fd.unit : ''); }
       switch (src) {
         case 'n': return i + 1;
-        case 'ref': return code(m) + '-' + String(i + 1).padStart(3, '0');
+        case 'ref': return L.refStyle === 'plain' ? code(m) + (i + 1) : code(m) + '-' + String(i + 1).padStart(3, '0');
+        case 'blank': return '';
+        case 'block': return f.nerve && !/^Other block/.test(f.nerve) ? clean(f.nerve) : clean(f.block || f.nerve || t.label);
+        case 'planA': return (L.planA || []).indexOf(f.nerve) >= 0 ? 'Yes' : 'No';
         case 'date': return e.date || '';
         case 'type': return t.label || e.type;
         case 'module': return m ? m.label : modOf(e);
@@ -74,9 +86,20 @@
     var head = cols.map(function (c) { return c[0]; }), widths = cols.map(function (c) { return c[2] || 16; });
     var table = function (rows, m) { return [head].concat(rows.map(function (e, i) { return cols.map(function (c) { return cell(c[1], e, i, m); }); })); };
     // Summary first: the body's modules, numbers and where the learner stands.
-    var sum = [['Module', 'Scans logged', 'Counted', 'Target', (supWords.direct || 'Directly supervised'), 'Supervised target', 'Signed off', 'Status']];
-    mods.forEach(function (m) { var s = ctx.moduleStats(pw, m, list); sum.push([m.label, s.logged != null ? s.logged : s.counted, s.counted, s.total || '', s.supervised, s.sup || '', s.signed, s.met ? 'Target met' : (s.needs && s.needs.length ? s.needs.join(', ') + ' needed' : '')]); });
-    sheets.push({ name: sheetName('Summary', used), rows: sum, widths: [30, 12, 10, 8, 20, 16, 10, 44] });
+    // First and last scan dates show the body's time windows (FUSIC 12 months, FAMUS 2 years); reflections are counted
+    // against RCEM's five per modality where a module sets them.
+    var span = function (rows) { var d = rows.map(function (e) { return e.date; }).filter(Boolean).sort(); return [d[0] || '', d[d.length - 1] || '']; };
+    var sum;
+    if (L.summary === 'blocks') {
+      var by = {}, order = [];
+      list.forEach(function (e) { var k = cell('block', e, 0, null) || 'Not named'; if (!by[k]) { by[k] = []; order.push(k); } by[k].push(e); });
+      sum = [['Block', 'RA-UK Plan A', 'Total', supWords.direct || 'Directly supervised', supWords.mentored || 'Reviewed later', supWords.independent || 'Independent', 'Signed off', 'First', 'Last']];
+      order.sort().forEach(function (k) { var r = by[k], n = function (v) { return r.filter(function (e) { return e.supervision === v; }).length; }; var sp = span(r); sum.push([k, cell('planA', r[0], 0, null), r.length, n('direct'), n('mentored'), n('independent'), r.filter(function (e) { return ctx.signoffState(e).label === 'Signed off'; }).length, sp[0], sp[1]]); });
+    } else {
+      sum = [['Module', 'Scans logged', 'Counted', 'Target', (supWords.direct || 'Directly supervised'), 'Supervised target', 'Reflections', 'Signed off', 'First scan', 'Last scan', 'Status']];
+      mods.forEach(function (m) { var s = ctx.moduleStats(pw, m, list); var sp = span(s.list || list.filter(function (e) { return m.types.indexOf(e.type) >= 0; })); sum.push([m.label, s.logged != null ? s.logged : s.counted, s.counted, s.total || '', s.supervised, s.sup || '', s.reflectionTarget ? s.reflections + ' / ' + s.reflectionTarget : (s.reflections != null ? s.reflections : ''), s.signed, sp[0], sp[1], s.met ? 'Target met' : (s.needs && s.needs.length ? s.needs.join(', ') + ' needed' : '')]); });
+    }
+    sheets.push({ name: sheetName('Summary', used), rows: sum, widths: L.summary === 'blocks' ? [34, 12, 8, 18, 18, 14, 10, 11, 11] : [30, 12, 10, 8, 20, 16, 12, 10, 11, 11, 44] });
     if (L.sheets === 'module' && mods.length) {
       mods.forEach(function (m) {
         var rows = list.filter(function (e) { return m.types.indexOf(e.type) >= 0 && (e.exclude || []).indexOf(m.id) < 0; });
@@ -92,7 +115,8 @@
     var about = [[L.name, ''], ['Name', acc.name || ''], ['Grade or role', prof.grade || acc.role || ''], ['Registration', prof.registration || ''], ['Period', ctx.from + ' to ' + ctx.to], ['Scans', list.length], ['Generated', ctx.generated || ''],
       ['Verified summary', ctx.evidence ? ctx.evidence.code : 'Not created'], ['Check it at', ctx.evidence ? ctx.evidence.link : ''],
       ['About this file', 'Wavelength arranged this file to follow the fields ' + (dest.body || 'the body') + ' publishes for its logbook. It is not an official document of ' + (dest.body || 'the body') + ', and ' + (dest.body || 'the body') + ' has not reviewed or endorsed it. Whether it is accepted is for ' + (dest.body || 'the body') + ', your supervisors and your training programme.'],
-      ['Training references', 'Each scan has a training reference (module code and number), never a patient identifier.'],
+      ['Fields follow', L.source || ''],
+      ['Training references', L.refStyle === 'plain' ? 'Each scan has an anonymised label (module code and number, such as DVT1), never a patient identifier. Use the same label on your report sheet and on the images stored on the machine.' : 'Each scan has a training reference (module code and number), never a patient identifier.'],
       ['Patient data', 'This record holds no patient identifiers.']].concat((L.notes || []).map(function (n, i) { return [i ? '' : 'Still needed', n]; }));
     sheets.push({ name: sheetName('About', used), rows: about, widths: [22, 90] });
     return { sheets: sheets, name: (L.file || 'Wavelength-logbook') + '-' + (ctx.generated || '') + '.xlsx' };
