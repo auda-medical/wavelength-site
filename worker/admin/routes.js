@@ -10,8 +10,9 @@ import {
   createAccount, issueActivation, activationAccount, completeActivation, changePassword, createSession, readSession,
   upgradeSession, markReauth, listSessions, revokeSessions, clearSessionCookie, signInAllowed, checkPasswordStep,
   enrolled, beginEnrolment, pendingSecret, finishEnrolment, checkSecondFactor, recoveryLeft, resetTwoStepStmts,
-  accountAudit, USERNAME_RE, revokeLinks,
+  accountAudit, USERNAME_RE, revokeLinks, clearFailures,
 } from './accounts.js';
+import { trustReady, grantTrust, checkTrust, useTrustStmts, revokeTrustStmts, listTrusted, forgetTrusted, clearTrustCookie, TRUST_DAYS } from './trust.js';
 import { adminPasswordProblem, checkAdminPassword, sameString, sha256Hex, otpauthUrl } from './crypto.js';
 import { permissionFor, permissionsOf, can, ROLES, SWITCHABLE, REAUTH_PERMISSIONS, REAUTH_MINUTES } from './permissions.js';
 import * as P from './pages.js';
@@ -64,21 +65,24 @@ export async function preAuthRoute(req, env, url, p, H) {
     if (req.method === 'POST') {
       const f = await req.formData();
       if (!csrfOk(f, cur.session)) return H.forbidden();
-      if (!(await signInAllowed(env, req))) return H.bare(P.twoStepPage({ csrf: cur.session.csrf, error: 'Too many attempts. Wait a minute and try again.' }), 429);
+      const offer = await trustReady(env);
+      if (!(await signInAllowed(env, req))) return H.bare(P.twoStepPage({ csrf: cur.session.csrf, offerTrust: offer, error: 'Too many attempts. Wait a minute and try again.' }), 429);
       const how = await checkSecondFactor(env, cur.account, f.get('code'));
       if (!how) {
         const again = await getAccount(env, cur.account.id);
         if (again && again.locked_until && again.locked_until > iso()) { await revokeSessions(env, again.id).run(); return H.redirect('/admin/login/?error=1', { 'Set-Cookie': clearSessionCookie() }); }
-        return H.bare(P.twoStepPage({ csrf: cur.session.csrf, error: 'That code is not correct, or was already used. Try the newest code.' }));
+        return H.bare(P.twoStepPage({ csrf: cur.session.csrf, offerTrust: offer, error: 'That code is not correct, or was already used. Try the newest code.' }));
       }
       await upgradeSession(env, cur.session.id, 'full', { reauth: true });
       await env.DB.batch([
         env.DB.prepare('UPDATE admin_accounts SET last_sign_in_at = ? WHERE id = ?').bind(iso(), cur.account.id),
         accountAudit(env, cur.account, 'admin.sign_in', { subjectId: cur.account.id, meta: { method: how } }),
       ]);
-      return H.redirect(how === 'recovery' ? `/admin/account/?m=${encodeURIComponent(`Signed in with a recovery code. ${await recoveryLeft(env, cur.account.id)} left.`)}` : '/admin/');
+      // "Trust this browser for 30 days" (unticked by default): only now, after the password and a correct code.
+      const trust = f.get('trust') === '1' ? await grantTrust(env, req, cur.account) : '';
+      return H.redirect(how === 'recovery' ? `/admin/account/?m=${encodeURIComponent(`Signed in with a recovery code. ${await recoveryLeft(env, cur.account.id)} left.`)}` : '/admin/', trust ? { 'Set-Cookie': trust } : {});
     }
-    return H.bare(P.twoStepPage({ csrf: cur.session.csrf }));
+    return H.bare(P.twoStepPage({ csrf: cur.session.csrf, offerTrust: await trustReady(env) }));
   }
 
   if (p === '/admin/two-step/setup/') {
@@ -111,8 +115,25 @@ export async function accountsLogin(req, env, url, H) {
   const f = await req.formData();
   const r = await checkPasswordStep(env, clip(f.get('username'), 100), f.get('password'));
   if (!r.ok) return H.refuse('/admin/login/?error=1');
-  const s = await createSession(env, req, r.account.id, enrolled(r.account) ? 'two_step' : 'enrol');
-  return H.redirect(enrolled(r.account) ? '/admin/two-step/' : '/admin/two-step/setup/', { 'Set-Cookie': s.cookie });
+  const a = r.account;
+  // A browser trusted for this account skips the code step. The password step above has already run unchanged: the
+  // address limit, a locked or disabled account and a wrong password are refused before trust is looked at.
+  const t = enrolled(a) && a.status === 'active' ? await checkTrust(env, req, a) : { trusted: false, clear: false };
+  if (t.trusted) {
+    const s = await createSession(env, req, a.id, 'full', { reauth: false });
+    await env.DB.batch([
+      clearFailures(env, a),
+      env.DB.prepare('UPDATE admin_accounts SET last_sign_in_at = ? WHERE id = ?').bind(iso(), a.id),
+      ...useTrustStmts(env, a, t.row),
+      accountAudit(env, a, 'admin.sign_in', { subjectId: a.id, meta: { method: 'trusted_browser' } }),
+    ]);
+    return H.redirect('/admin/', { 'Set-Cookie': s.cookie });
+  }
+  const s = await createSession(env, req, a.id, enrolled(a) ? 'two_step' : 'enrol');
+  const res = H.redirect(enrolled(a) ? '/admin/two-step/' : '/admin/two-step/setup/', { 'Set-Cookie': s.cookie });
+  // An unknown or expired trust token: ask for the code, and remove the stale cookie.
+  if (t.clear) res.headers.append('Set-Cookie', clearTrustCookie());
+  return res;
 }
 
 // ---------- Every console request once accounts are live ----------
@@ -164,7 +185,8 @@ export async function accountRoutes(req, env, url, p, who, H) {
   }
 
   if (p === '/admin/account/') {
-    const back = (m) => H.redirect(`/admin/account/?m=${encodeURIComponent(m)}`);
+    // forget: this browser's trust cookie goes too (its entry no longer exists).
+    const back = (m, forget = false) => H.redirect(`/admin/account/?m=${encodeURIComponent(m)}`, forget ? { 'Set-Cookie': clearTrustCookie() } : {});
     if (req.method === 'POST') {
       const f = await req.formData();
       const action = String(f.get('action') || '');
@@ -174,7 +196,7 @@ export async function accountRoutes(req, env, url, p, who, H) {
         const problem = pw !== String(f.get('password2') || '') ? 'The two new passwords are different.' : adminPasswordProblem(pw, { username: me.username, name: me.display_name });
         if (problem) return back(problem);
         await changePassword(env, me, pw, who.session.id);
-        return back('Password changed. Your other sessions have ended.');
+        return back('Password changed. Your other sessions have ended and every trusted browser is forgotten.', true);
       }
       // A new authenticator (a lost or replaced phone): password plus a current code or a recovery code; the old
       // authenticator and every recovery code stop working, other sessions end, and this session goes to set-up.
@@ -189,9 +211,10 @@ export async function accountRoutes(req, env, url, p, who, H) {
           env.DB.prepare('DELETE FROM admin_recovery_codes WHERE admin_id = ?').bind(me.id),
           env.DB.prepare('DELETE FROM admin_sessions WHERE admin_id = ? AND id <> ?').bind(me.id, who.session.id),
           env.DB.prepare("UPDATE admin_sessions SET stage = 'enrol', expires_at = ? WHERE id = ?").bind(new Date(Date.now() + 30 * 60e3).toISOString(), who.session.id),
+          ...(await revokeTrustStmts(env, me, me.id, 'two_step_renew')),
           accountAudit(env, me, 'admin.two_step_renew', { subjectId: me.id, meta: { with: how } }),
         ]);
-        return H.redirect('/admin/two-step/setup/');
+        return H.redirect('/admin/two-step/setup/', { 'Set-Cookie': clearTrustCookie() });
       }
       if (action === 'sign_out_everywhere') {
         await env.DB.batch([revokeSessions(env, me.id), accountAudit(env, me, 'admin.sign_out_everywhere', { subjectId: me.id })]);
@@ -202,9 +225,18 @@ export async function accountRoutes(req, env, url, p, who, H) {
         if (/^[0-9a-f]{16}$/.test(prefix)) await env.DB.prepare('DELETE FROM admin_sessions WHERE admin_id = ? AND substr(id, 1, 16) = ? AND id <> ?').bind(me.id, prefix, who.session.id).run();
         return back('That session has ended.');
       }
+      if (action === 'trust_forget') {
+        const r = await forgetTrusted(env, req, me, f.get('browser'));
+        return back(r.forgotten ? 'That browser is forgotten. It will ask for a code at its next sign-in.' : 'Nothing changed.', r.current);
+      }
+      if (action === 'trust_forget_all') {
+        const stmts = await revokeTrustStmts(env, me, me.id, 'forget_all');
+        if (stmts.length) await env.DB.batch(stmts);
+        return back('Every trusted browser is forgotten. Each will ask for a code at its next sign-in.', true);
+      }
       return back('Nothing changed.');
     }
-    return H.page(P.accountPage({ account: me, sessions: await listSessions(env, me.id), currentId: who.session.id, recoveryLeft: await recoveryLeft(env, me.id), perms: who.perms, msg: clip(url.searchParams.get('m'), 300) }), 'account');
+    return H.page(P.accountPage({ account: me, sessions: await listSessions(env, me.id), currentId: who.session.id, recoveryLeft: await recoveryLeft(env, me.id), trusted: await listTrusted(env, req, me.id), trustDays: TRUST_DAYS, perms: who.perms, msg: clip(url.searchParams.get('m'), 300) }), 'account');
   }
 
   if (p === '/admin/accounts/') return ownerAccounts(req, env, url, me, H);
@@ -272,11 +304,11 @@ async function ownerAccounts(req, env, url, me, H) {
   }
   if (action === 'reset_password') {
     const token = await issueActivation(env, target.id, me.id);
-    await env.DB.batch([env.DB.prepare('UPDATE admin_accounts SET password_hash = NULL, updated_at = ? WHERE id = ?').bind(iso(), target.id), revokeSessions(env, target.id), audit('admin.password_reset')]);
+    await env.DB.batch([env.DB.prepare('UPDATE admin_accounts SET password_hash = NULL, updated_at = ? WHERE id = ?').bind(iso(), target.id), revokeSessions(env, target.id), ...(await revokeTrustStmts(env, me, target.id, 'password_reset')), audit('admin.password_reset')]);
     return show(`Password reset for ${target.display_name}. Their old password no longer works and they are signed out.`, { name: target.display_name, url: activationUrl(new URL(req.url), token) });
   }
   if (action === 'reset_two_step') {
-    await env.DB.batch(resetTwoStepStmts(env, me, target));
+    await env.DB.batch(await resetTwoStepStmts(env, me, target));
     return show(`Two-step verification reset for ${target.display_name}. They are signed out and must set it up again after their password.`);
   }
   if (action === 'sign_out') {
@@ -285,7 +317,7 @@ async function ownerAccounts(req, env, url, me, H) {
   }
   if (action === 'disable') {
     if (target.role === 'owner' && !(await activeOwners(env, target.id))) return show('The last active owner cannot be disabled.');
-    await env.DB.batch([env.DB.prepare("UPDATE admin_accounts SET status = 'disabled', updated_at = ? WHERE id = ?").bind(iso(), target.id), revokeSessions(env, target.id), revokeLinks(env, target.id), audit('admin.disable')]);
+    await env.DB.batch([env.DB.prepare("UPDATE admin_accounts SET status = 'disabled', updated_at = ? WHERE id = ?").bind(iso(), target.id), revokeSessions(env, target.id), revokeLinks(env, target.id), ...(await revokeTrustStmts(env, me, target.id, 'disabled')), audit('admin.disable')]);
     return show(`${target.display_name} is disabled and signed out.`);
   }
   if (action === 'restore') {

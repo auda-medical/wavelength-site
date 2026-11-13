@@ -14,6 +14,7 @@ import {
 } from './crypto.js';
 import { auditStmt } from '../audit.js';
 import { rateLimit, clientIp, ipKey, LIMITS } from '../ratelimit.js';
+import { revokeTrustStmts } from './trust.js';
 
 export const COOKIE = '__Secure-wl_admin_session';
 export const SESSION_HOURS = 12;
@@ -101,6 +102,7 @@ export async function completeActivation(env, token, password) {
     env.DB.prepare('UPDATE admin_accounts SET password_hash = ?, password_changed_at = ?, failed_count = 0, locked_until = NULL, updated_at = ? WHERE id = ?')
       .bind(await hashAdminPassword(env, password), at, at, a.id),
     env.DB.prepare('DELETE FROM admin_sessions WHERE admin_id = ?').bind(a.id),
+    ...(await revokeTrustStmts(env, a, a.id, 'password_set')),
     accountAudit(env, a, 'admin.password_set', { subjectId: a.id, meta: { via: 'activation' } }),
   ]);
   return getAccount(env, a.id);
@@ -111,6 +113,7 @@ export async function changePassword(env, account, password, keepSessionId = '')
   await env.DB.batch([
     env.DB.prepare('UPDATE admin_accounts SET password_hash = ?, password_changed_at = ?, updated_at = ? WHERE id = ?').bind(await hashAdminPassword(env, password), at, at, account.id),
     env.DB.prepare('DELETE FROM admin_sessions WHERE admin_id = ? AND id <> ?').bind(account.id, keepSessionId),
+    ...(await revokeTrustStmts(env, account, account.id, 'password_change')),
     accountAudit(env, account, 'admin.password_change', { subjectId: account.id }),
   ]);
 }
@@ -118,12 +121,14 @@ export async function changePassword(env, account, password, keepSessionId = '')
 // ---------- Sessions ----------
 export const revokeSessions = (env, accountId) => env.DB.prepare('DELETE FROM admin_sessions WHERE admin_id = ?').bind(accountId);
 
-export async function createSession(env, req, accountId, stage) {
+// reauth: a full session made by password and code counts as a fresh check for owner security pages; one made by
+// password in a trusted browser does not (reauth: false).
+export async function createSession(env, req, accountId, stage, { reauth = stage === 'full' } = {}) {
   const token = newToken(), csrf = b64url(randomBytes(24)), now = Date.now();
   const expires = now + (STAGE_MINUTES[stage] ? STAGE_MINUTES[stage] * 60e3 : SESSION_HOURS * 3600e3);
   const ip = clientIp(req);
   await env.DB.prepare('INSERT INTO admin_sessions (id, admin_id, stage, csrf, created_at, expires_at, last_seen_at, reauth_at, ip_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .bind(await tokenId(token), accountId, stage, csrf, iso(now), iso(expires), iso(now), stage === 'full' ? iso(now) : null, ip ? (await sha256Hex('ip:' + ip)).slice(0, 22) : null).run();
+    .bind(await tokenId(token), accountId, stage, csrf, iso(now), iso(expires), iso(now), stage === 'full' && reauth ? iso(now) : null, ip ? (await sha256Hex('ip:' + ip)).slice(0, 22) : null).run();
   return { token, csrf, cookie: `${COOKIE}=${token}; Path=/admin; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_HOURS * 3600}` };
 }
 export const clearSessionCookie = () => `${COOKIE}=; Path=/admin; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
@@ -172,7 +177,7 @@ async function recordFailure(env, a, what) {
     accountAudit(env, a, lock ? 'admin.locked' : 'admin.sign_in_failed', { subjectId: a ? a.id : null, meta: { step: what } }),
   ]);
 }
-const clearFailures = (env, a) => env.DB.prepare('UPDATE admin_accounts SET failed_count = 0, locked_until = NULL WHERE id = ?').bind(a.id);
+export const clearFailures = (env, a) => env.DB.prepare('UPDATE admin_accounts SET failed_count = 0, locked_until = NULL WHERE id = ?').bind(a.id);
 
 // Network-address limit for every sign-in step (worker/ratelimit.js; the address itself is never stored).
 export async function signInAllowed(env, req) {
@@ -215,6 +220,7 @@ export async function finishEnrolment(env, account, code) {
     // The first Owner with two-step ends the shared login for good (see accountsLive).
     ...(account.role === 'owner' ? [env.DB.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('admin_accounts_live', ?)").bind(at)] : []),
     env.DB.prepare('DELETE FROM admin_recovery_codes WHERE admin_id = ?').bind(account.id),
+    ...(await revokeTrustStmts(env, account, account.id, 'two_step_enrolled')),
     ...(await Promise.all(codes.map(async (c) => env.DB.prepare('INSERT INTO admin_recovery_codes (admin_id, code_hash, created_at) VALUES (?, ?, ?)').bind(account.id, await recoveryHash(env, account.id, c), at)))),
     accountAudit(env, account, 'admin.two_step_enrolled', { subjectId: account.id, meta: { recoveryCodes: codes.length } }),
   ]);
@@ -249,12 +255,13 @@ export const recoveryLeft = async (env, accountId) => ((await env.DB.prepare('SE
 export const revokeLinks = (env, accountId) => env.DB.prepare('UPDATE admin_tokens SET used_at = ? WHERE admin_id = ? AND used_at IS NULL').bind(iso(), accountId);
 
 // ---------- Owner actions on another account ----------
-// Each returns the statements for one batch: the change, the session revocation where needed, and the audit entry.
-export function resetTwoStepStmts(env, owner, target) {
+// Each resolves to the statements for one batch: the change, the session revocation where needed, and the audit entry.
+export async function resetTwoStepStmts(env, owner, target) {
   return [
     env.DB.prepare('UPDATE admin_accounts SET totp_secret = NULL, totp_pending = NULL, totp_enrolled_at = NULL, totp_last_step = 0, updated_at = ? WHERE id = ?').bind(iso(), target.id),
     env.DB.prepare('DELETE FROM admin_recovery_codes WHERE admin_id = ?').bind(target.id),
     revokeSessions(env, target.id),
+    ...(await revokeTrustStmts(env, owner, target.id, 'two_step_reset')),
     accountAudit(env, owner, 'admin.two_step_reset', { subjectId: target.id }),
   ];
 }

@@ -33,8 +33,9 @@ export const SECRETS = {
   ADMIN_TOTP_KEY: btoa(String.fromCharCode(...new Uint8Array(32).map((_, i) => i * 7 + 1))),
   ADMIN_BOOTSTRAP_CODE: BOOTSTRAP,
 };
-export async function setupEnv(extra = {}) {
-  const env = makeEnv({ ...SECRETS, SUPERVISOR_APPLY: 'true', ZEPTOMAIL_TOKEN: 'test', ...extra });
+// opts: passed to makeEnv (skipMigrations, to test the Worker before a migration is applied).
+export async function setupEnv(extra = {}, opts = {}) {
+  const env = makeEnv({ ...SECRETS, SUPERVISOR_APPLY: 'true', ZEPTOMAIL_TOKEN: 'test', ...extra }, opts);
   for (const [k, v] of [['volunteer_username', 'volunteer'], ['admin_username', 'wavelength'], ['volunteer_hash', await hashPassword(VOL_PW)], ['admin_hash', await hashPassword(SHARED_PW)], ['session_secret', 'test-secret']]) {
     await env.DB.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').bind(k, v).run();
   }

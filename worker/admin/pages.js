@@ -21,11 +21,13 @@ export function qrSvg(text, size = 220) {
 const groupKey = (key) => key.replace(/(.{4})/g, '$1 ').trim();
 
 // ---------- Sign-in ----------
-export const twoStepPage = ({ csrf, error = '' }) => `${h2('Two-step verification')}
+// offerTrust: the "Trust this browser" box (migration 0019 applied). Unticked by default.
+export const twoStepPage = ({ csrf, error = '', offerTrust = false }) => `${h2('Two-step verification')}
 <p class="admin-summary">Enter the six-digit code from your authenticator app. If you do not have your phone, enter one of your recovery codes instead.</p>
 ${note(error, true)}
 <form class="form vol-login" method="post" action="/admin/two-step/">${hidden('_csrf', csrf)}
   <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" autocapitalize="none" maxlength="20" required autofocus></label>
+  ${offerTrust ? `<label class="consent" data-trust-box><input type="checkbox" name="trust" value="1"><span>Trust this browser for 30 days. You sign in here with your password only, without a code. Tick this only on your own computer, never a shared one.</span></label>` : ''}
   <div><button class="btn" type="submit">Continue</button></div>
   <p class="form-note"><a class="text-link" href="/admin/logout/">Cancel and sign out</a></p>
 </form>`;
@@ -78,7 +80,16 @@ export const deniedPage = () => `${h2('Not available to your account')}
 <p><a class="text-link" href="/admin/">Back to the console</a></p>`;
 
 // ---------- Own account ----------
-export const accountPage = ({ account, sessions, currentId, recoveryLeft, perms, msg = '' }) => `${h2('Your account')}
+// trusted: this account's trusted browsers (null before migration 0019, when the section is left out).
+const trustedSection = (trusted, days) => (trusted ? `<h3 style="margin:28px 0 10px">Trusted browsers</h3>
+<p class="admin-summary">In a trusted browser you sign in with your password only, without a code, for ${days} days from when you ticked "Trust this browser" (at most 10 browsers). Account and security pages still ask for a code. Changing your password or authenticator forgets them all.</p>
+${trusted.length ? `<div class="table-wrap"><table class="table admin-table" data-trusted-browsers><thead><tr><th scope="col">Browser</th><th scope="col">Trusted since</th><th scope="col">Last used</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+${trusted.map((x) => `<tr><td>${esc(x.label)}${x.current ? ' (this browser)' : ''}</td><td>${when(x.created_at)}</td><td>${when(x.last_used_at)}</td><td><form method="post">${hidden('action', 'trust_forget')}${hidden('browser', x.id)}<button class="btn btn-ghost small" type="submit">Forget this browser</button></form></td></tr>`).join('')}
+</tbody></table></div>
+<form method="post" style="margin-top:12px" onsubmit="return confirm(this.dataset.confirm)" data-confirm="Forget every trusted browser? Each will ask for a code at its next sign-in.">${hidden('action', 'trust_forget_all')}<button class="btn btn-ghost small" type="submit">Forget all browsers</button></form>`
+    : '<p class="admin-summary">No trusted browsers. To trust one, tick "Trust this browser for 30 days" when you next enter a code there.</p>'}` : '');
+
+export const accountPage = ({ account, sessions, currentId, recoveryLeft, trusted = null, trustDays = 30, perms, msg = '' }) => `${h2('Your account')}
 ${note(msg)}
 <p class="admin-summary">Signed in as <b>${esc(account.display_name)}</b> (${esc(account.username)}), ${esc((ROLES[account.role] || {}).label || account.role)}. Two-step verification is on. Recovery codes left: ${recoveryLeft}.</p>
 <h3 style="margin:28px 0 10px">What your account can do</h3>
@@ -104,7 +115,8 @@ ${note(msg)}
 <div class="table-wrap"><table class="table admin-table"><thead><tr><th scope="col">Signed in</th><th scope="col">Last active</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
 ${sessions.map((x) => `<tr><td>${when(x.created_at)}</td><td>${when(x.last_seen_at)}${x.id === currentId ? ' (this session)' : ''}</td><td>${x.id === currentId ? '' : `<form method="post">${hidden('action', 'sign_out_session')}${hidden('session', x.id.slice(0, 16))}<button class="btn btn-ghost small" type="submit">Sign out</button></form>`}</td></tr>`).join('')}
 </tbody></table></div>
-<form method="post" style="margin-top:12px">${hidden('action', 'sign_out_everywhere')}<button class="btn btn-ghost small" type="submit">Sign out everywhere, including here</button></form>`;
+<form method="post" style="margin-top:12px">${hidden('action', 'sign_out_everywhere')}<button class="btn btn-ghost small" type="submit">Sign out everywhere, including here</button></form>
+${trustedSection(trusted, trustDays)}`;
 
 // ---------- Owner: administrators ----------
 const roleOptions = (current) => Object.entries(ROLES).map(([k, r]) => `<option value="${k}"${k === current ? ' selected' : ''}>${esc(r.label)}</option>`).join('');

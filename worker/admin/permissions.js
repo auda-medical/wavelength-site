@@ -10,7 +10,7 @@
 export const PERMISSIONS = {
   // Everyone signed in
   'console.home': { kind: 'routine', label: 'Console home' },
-  'account.self': { kind: 'routine', label: 'Own account: password, two-step, sessions' },
+  'account.self': { kind: 'routine', label: 'Own account: password, two-step, sessions, trusted browsers' },
   // Volunteers
   'volunteers.view': { kind: 'routine', label: 'View volunteers' },
   'volunteers.contacted': { kind: 'routine', label: 'Mark volunteers contacted' },
@@ -113,7 +113,7 @@ const SUPERVISOR_ACTIONS = {
   notif_resend: 'supervisors.email', notif_mark_sent: 'supervisors.email',
 };
 export const POST_ROUTES = {
-  '/admin/account/': { password: 'account.self', two_step_renew: 'account.self', sign_out_everywhere: 'account.self', sign_out_session: 'account.self' },
+  '/admin/account/': { password: 'account.self', two_step_renew: 'account.self', sign_out_everywhere: 'account.self', sign_out_session: 'account.self', trust_forget: 'account.self', trust_forget_all: 'account.self' },
   '/admin/reauth/': { reauth: 'account.self' },
   '/admin/accounts/': {
     create: 'admins.manage', name: 'admins.manage', role: 'admins.manage', grants: 'admins.manage', link: 'admins.manage',
