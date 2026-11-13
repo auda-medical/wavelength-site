@@ -1,5 +1,5 @@
 {
- "_help": "Option lists for the tailored training enquiry form at /training/. Shared by build.js (the form) and worker/departments.js (validation and reporting). Edit here, then rebuild. The *Shown lists are what the form offers; the full lists also accept the wording of the earlier department form, so a page cached before a deploy still submits. types: the label shown and its reporting class (individual, group or organisation). countries: United Kingdom first. Only United Kingdom counts as a UK enquiry: the Crown Dependencies and Gibraltar are reported as international, as they are not part of the UK.",
+ "_help": "Option lists for the tailored training enquiry form at /training/. Shared by build.js (the form) and worker/departments.js (validation and reporting). Edit here, then rebuild. The *Shown lists are what the form offers; the full lists also accept the wording of the earlier department form, so a page cached before a deploy still submits. types: the label shown and its reporting class (individual, group or organisation). countries: United Kingdom first. Only United Kingdom counts as a UK enquiry: the Crown Dependencies and Gibraltar are reported as international, as they are not part of the UK. Department licence pilot (/departments/, POST /api/departments/pilot): pilotRoles must stay within roles; pilotSettings, pilotInterests and pilotSizes are the pilot form lists (number of clinicians who scan).",
  "types": [
   {
    "label": "Myself, as an individual",
@@ -164,6 +164,41 @@
   "The Wavelength app, Pearls or Academy",
   "A conference or event",
   "Other"
+ ],
+ "pilotRoles": [
+  "Clinical lead or consultant",
+  "Education or training lead",
+  "Consultant, GP or other senior doctor",
+  "Practice educator or ACP lead",
+  "Advanced clinical practitioner",
+  "Service or operational manager",
+  "Deanery or regional training team",
+  "Doctor in training",
+  "Other"
+ ],
+ "pilotSettings": [
+  "Emergency department",
+  "Acute medical unit",
+  "Critical care",
+  "Urgent treatment centre",
+  "Anaesthesia or regional anaesthesia",
+  "Other"
+ ],
+ "pilotInterests": [
+  "A dashboard for training leads",
+  "Governance and audit reports",
+  "Managing supervisors and sign-off",
+  "The Wavelength Academy for our team",
+  "Training days for our team",
+  "Not sure yet, we would like to talk it through"
+ ],
+ "pilotSizes": [
+  "Fewer than 10",
+  "10 to 25",
+  "26 to 50",
+  "51 to 100",
+  "More than 100",
+  "Not sure yet"
  ],
  "countries": [
   "United Kingdom",

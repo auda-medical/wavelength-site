@@ -9,7 +9,7 @@ import { appLinkFile } from './app-links.js';
 import { handleAcademy, sendCertificate } from './academy.js';
 import { handleApp } from './app.js';
 import { applyFaculty, facultyAdminHtml, facultyAdminPost } from './faculty.js';
-import { enquireTraining, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
+import { enquireTraining, enquirePilot, departmentsAdminHtml, departmentsAdminPost } from './departments.js';
 import { zohoConnectUrl, zohoCallback, zohoSubscribe, scheduledNewsletter, newsletterAdminHtml, newsletterAdminPost, issuePage } from './newsletter.js';
 import { supervisorsAdminHtml, supervisorCaseHtml, supervisorsAdminPost, evidenceFile } from './supervisors-admin.js';
 import { monitorRun } from './monitor/run.js';
@@ -452,6 +452,14 @@ export default {
       if (origin && origin !== url.origin) return withHeaders(new Response('Forbidden', { status: 403 }));
       if (!env.DB) return redirect('/training/?error=1#enquire');
       return redirect(await enquireTraining(env, req, ctx));
+    }
+    // Department licence pilot enquiries from /departments/ (same table and team email as /training/).
+    if (p === '/api/departments/pilot') {
+      if (req.method !== 'POST') return redirect('/departments/');
+      const origin = req.headers.get('Origin');
+      if (origin && origin !== url.origin) return withHeaders(new Response('Forbidden', { status: 403 }));
+      if (!env.DB) return redirect('/departments/?error=1#pilot');
+      return redirect(await enquirePilot(env, req, ctx));
     }
     // Cookieless website measurement (worker/metrics.js): always 204, never fails visibly.
     if (p === '/api/m') return beacon(req, env, ctx);
