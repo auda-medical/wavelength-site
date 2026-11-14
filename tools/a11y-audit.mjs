@@ -175,7 +175,7 @@ for (const g of ['/guides/rcem-ultrasound-sign-off/at-a-glance/']) if (fs.exists
 for (const p of ['/accessibility/', '/trust/', '/clinical-safety/']) if (fs.existsSync(path.join('dist', p, 'index.html')) && !sitePages.includes(p)) sitePages.push(p);
 sitePages = [...new Set(sitePages)];
 if (QUICK) {
-  const keep = new Set(['/', '/courses/', '/learn/', '/guides/', '/pocus-logbook/', '/app/get/', '/about/', '/contact/', '/privacy/', '/app-terms/', '/verify/', '/fr/', '/ar/', '/accessibility/', '/trust/', '/clinical-safety/', '/admin/login/', '/does-not-exist/']);
+  const keep = new Set(['/', '/courses/', '/learn/', '/guides/', '/pocus-logbook/', '/app/get/', '/about/', '/contact/', '/privacy/', '/app-terms/', '/verify/', '/fr/', '/ar/', '/accessibility/', '/trust/', '/clinical-safety/', '/departments/', '/training/', '/contact/', '/admin/login/', '/does-not-exist/']);
   sitePages = sitePages.filter((p) => keep.has(p) || p === testPage || p === (testPage || '') + 'test/' || /^\/elearning\/[^/]+\/$/.test(p) && !keep.has('el') && keep.add('el') || /^\/courses\/[^/]+\/$/.test(p) && !keep.has('c') && keep.add('c') || /^\/guides\/[^/]+\/$/.test(p) && !keep.has('g') && keep.add('g'));
 }
 console.log(`Website: ${sitePages.length} pages`);
