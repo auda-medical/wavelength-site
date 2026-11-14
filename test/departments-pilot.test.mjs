@@ -93,5 +93,7 @@ test('the page shows the decided licence prices and pilot terms, as planned pric
   assert.match(html, /a 30-minute call each month/);
   assert.match(html, /Nothing for six months/, 'the FAQ answers what the pilot costs');
   assert.match(html, /Trainees never pay/);
+  assert.match(html, /No invoice until the department tools are working/);
+  assert.match(html, /We send no invoice until the department tools in the licence are working, and we review these prices with our pilot departments before the first invoice/);
   assert.match(html, /"name":"What will the licence cost after the pilot\?"/, 'the FAQ reaches the structured data');
 });

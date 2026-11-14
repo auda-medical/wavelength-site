@@ -1126,7 +1126,7 @@ const DEPT_FAQS = [
   { q: 'Is the logbook recognised by RCEM, SAM, the ICS or RA-UK?', a: 'Wavelength is independent and is not endorsed by any college or society. The logbook tracks evidence against each pathway\'s published requirements. Whether evidence is accepted is decided by the body, your supervisors and your training programme.' },
   { q: 'How do we pay?', a: 'By invoice and purchase order. There is nothing to pay by card, and we can complete your supplier set-up forms.' },
   { q: 'What does the pilot cost?', a: 'Nothing for six months. In return we ask for a named lead, a 30-minute call each month, honest feedback and permission to evaluate the service. You may co-author a poster from it, but you do not have to. The terms fit on one page and are agreed in writing before anything starts.' },
-  { q: 'What will the licence cost after the pilot?', a: 'One annual price per department, by the number of clinicians in the department who scan: £1,500 a year for up to 25, £3,000 for 26 to 60 and £5,000 for more than 60. Founding pilot departments pay half in their first paid year. Prices exclude VAT where it applies. Trainees never pay.' },
+  { q: 'What will the licence cost after the pilot?', a: 'One annual price per department, by the number of clinicians in the department who scan: £1,500 a year for up to 25, £3,000 for 26 to 60 and £5,000 for more than 60. Founding pilot departments pay half in their first paid year. Prices exclude VAT where it applies. Trainees never pay. We send no invoice until the department tools in the licence are working, and we review these prices with our pilot departments before the first invoice.' },
   { q: 'What about information governance?', a: 'Your information governance team can ask us for our data protection documents. Images taken in the app stay on the clinician\'s phone unless they choose to share them, as set out in our privacy notice.' },
 ];
 {
@@ -1181,7 +1181,7 @@ const DEPT_FAQS = [
 <section class="section" id="pricing"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal">Pricing</p><h2 class="reveal" data-d="1">One annual licence per department.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:700px">The planned licence price, by the number of clinicians in your department who scan. The licence is being built with our pilot departments, and pilots are free for six months. Trainees never pay.</p></div>
   <div class="pillars">${DEPT_PRICES.map(([n, p], i) => `<div class="pillar reveal"${i ? ` data-d="${i}"` : ''}><div class="num">${esc(p)}</div><h3>${esc(n)} clinicians</h3><p>A year, for the whole department.</p></div>`).join('')}</div>
-  <p class="reveal" style="margin-top:24px;color:var(--slate)">Founding pilot departments pay half in their first paid year. Paid by invoice against a purchase order. Prices exclude VAT where it applies.</p>
+  <p class="reveal" style="margin-top:24px;color:var(--slate)">Founding pilot departments pay half in their first paid year. No invoice until the department tools are working. Paid by invoice against a purchase order. Prices exclude VAT where it applies.</p>
 </div></section>
 <section class="section sand"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal">The pilot</p><h2 class="reveal" data-d="1">Two or three pilot departments.</h2></div>
