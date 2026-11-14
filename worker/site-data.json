@@ -2,6 +2,7 @@
  "paths": [
   "/",
   "/about/",
+  "/accessibility/",
   "/app-terms/",
   "/app/delete-account/",
   "/app/get/",
@@ -11,6 +12,7 @@
   "/ar/contact/",
   "/booked/",
   "/cancellation/",
+  "/clinical-safety/",
   "/contact/",
   "/courses/",
   "/courses/core-emergency-ultrasound/",
@@ -480,6 +482,7 @@
   "/terms/",
   "/training/",
   "/training/thanks/",
+  "/trust/",
   "/verify/",
   "/website-terms/",
   "/zh/",
