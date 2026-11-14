@@ -60,7 +60,8 @@
       if (g.k === 'scans') return plural(g.n, 'more scan');
       if (g.k === 'supervised') return g.n + ' more supervised';
       if (g.k === 'reflections') return plural(g.n, 'more reflection');
-      return g.n + ' more ' + g.label.toLowerCase();
+      // Only an ordinary first word is lowercased, so acronyms such as DOPS and ACT keep their capitals (first-use audit Q13).
+      return g.n + ' more ' + g.label.replace(/^[A-Z][a-z]/, function (w) { return w.toLowerCase(); });
     });
     return {
       mod: mod, id: mod.id, label: mod.label, list: list, logged: list.length, counted: counted, total: total, sup: sup, supTarget: sup,

@@ -113,9 +113,16 @@ async function signup(env, req, ctx) {
   }
   let row = await env.DB.prepare('SELECT * FROM learners WHERE email = ?').bind(p.email).first();
   if (org.id && !existing) { await env.DB.prepare('UPDATE learners SET organisation_id = ? WHERE id = ?').bind(org.id, row.id).run(); row = { ...row, organisation_id: org.id }; }
+  // Road to #1, 13 Nov 2026 (first-use audit Q12): a supervisor signing up from an invitation, with the invited address,
+  // confirms that address by accepting the invitation straight after (supervisorAcceptInvite), so no separate
+  // "Confirm your email" message is sent. Nothing is verified here: if the acceptance never happens, the account stays
+  // unconfirmed and the usual resend works.
+  const invited = verifying && !existing && d.invite
+    ? await env.DB.prepare("SELECT 1 AS ok FROM supervisor_links WHERE invite_hash = ? AND supervisor_email = ? AND status = 'pending' AND invite_expires > ?").bind(await sha256(clip(d.invite, 100)), p.email, Date.now()).first().catch(() => null)
+    : null;
   // Sent before answering, so the person can be told it is on its way.
-  if (verifying && !existing) await sendVerification(env, row, 'verify').catch(() => false);
-  return json({ ok: true, account: account(row), verifyEmailSent: verifying && !existing }, 200, { 'Set-Cookie': await cookieFor(env, row.id) });
+  if (verifying && !existing && !invited) await sendVerification(env, row, 'verify').catch(() => false);
+  return json({ ok: true, account: account(row), verifyEmailSent: verifying && !existing && !invited }, 200, { 'Set-Cookie': await cookieFor(env, row.id) });
 }
 
 // "Someone tried to create an account with your email": at most one an hour per account through the outbox.

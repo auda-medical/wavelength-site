@@ -96,7 +96,7 @@ test('the app: Cancel on Ask for more information goes back to the request; savi
   assert.match(app, /bindDecline\(root, function \(\) \{ dashSignoff\(code, learnerId\); \}\)/);
   assert.match(app, /bindDecline\(root, function \(\) \{ dashAssess\(a, learnerId\); \}\)/);
   assert.match(app, /'Save and sign now: supervisor is with me'/);
-  assert.match(app, /'Save as draft'/);
+  assert.match(app, /'Save, sign later'/); // was "Save as draft" until the first-use audit (13 Nov 2026)
   assert.match(app, /name="suppick"/);
   assert.doesNotMatch(app, /<datalist id="supl">/, 'no plain browser list for the supervisor');
   assert.match(app, /id="melo"/, 'Log out on Me as well');

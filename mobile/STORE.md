@@ -40,14 +40,18 @@ The app is iPhone only (`TARGETED_DEVICE_FAMILY = 1`), so no iPad screenshots ar
 
 ## Listing text (English)
 
-Name: Wavelength: Ultrasound Logbook
+Road to #1, 13 Nov 2026 (first-use audit Q1): proposed wording, applied by the owner in Play Console and App Store Connect. Google Play has no keyword field, so "POCUS" goes in the name, short description and first line. Check the developer display name in Play Console shows "Wavelength" (it showed "The Wavelength"). Earlier name: "Wavelength: Ultrasound Logbook"; earlier short description: "Log ultrasound scans, get signed off and track RCEM, FAMUS and FUSIC targets."
+
+Name: Wavelength: POCUS Logbook
 Subtitle (Apple, 30 characters): POCUS logbook and sign-off
-Short description (Google, 80 characters): Log ultrasound scans, get signed off and track RCEM, FAMUS and FUSIC targets.
+Short description (Google, 80 characters): The free POCUS logbook: supervisor sign-off, RCEM, FAMUS and FUSIC targets.
 Category: Medical (Apple primary), Education (Apple secondary). Google: Medical.
 Keywords (Apple, 100 characters): pocus,ultrasound,logbook,emergency,rcem,famus,fusic,echo,efast,sign-off,portfolio,cpd,supervisor
 
 Description:
-Wavelength is a free point-of-care ultrasound logbook for doctors, advanced practitioners and other clinicians who scan.
+The free POCUS logbook with supervisor sign-off.
+
+Wavelength is a free point-of-care ultrasound (POCUS) logbook for doctors, advanced practitioners and other clinicians who scan.
 
 Log a scan in seconds. Pick the scan type, tick the findings and add images or short clips from your camera or photos. The built-in editor crops, rotates and blacks out identifiers before anything is saved, and adds text, clinical labels, arrows and pictograms that you can size and turn to follow the anatomy. Saving strips hidden photo data.
 

@@ -71,10 +71,10 @@ let code = null;
   await page.click('label[for=supervision1]'); await sleep(200); // Independent, reviewed by mentor
   await page.click('label[for=sp0]'); await sleep(300);
   const btns = await page.evaluate(() => ({ b1: document.querySelector('#sv1').textContent, b2: document.querySelector('#sv2').hidden ? null : document.querySelector('#sv2').textContent, hint: document.querySelector('#savehint').textContent, name: document.querySelector('#supv').value, boxHidden: document.querySelector('#supv').hidden }));
-  record('L2', 'The buttons follow the choice: "Save and send to Sam Supervisor" and "Save as draft", with a hint', before === 'Save scan' && btns.b1 === 'Save and send to Sam Supervisor' && btns.b2 === 'Save as draft' && /Sam Supervisor sees it in their app/.test(btns.hint) && btns.name === 'Sam Supervisor' && btns.boxHidden, btns);
+  record('L2', 'The buttons follow the choice: "Save and send to Sam Supervisor" and "Save, sign later", with a hint', before === 'Save scan' && btns.b1 === 'Save and send to Sam Supervisor' && btns.b2 === 'Save, sign later' && /Sam Supervisor sees it in their app/.test(btns.hint) && btns.name === 'Sam Supervisor' && btns.boxHidden, btns);
   await page.click('label[for=supervision0]'); await sleep(200);
   const direct = await page.evaluate(() => [document.querySelector('#sv1').textContent, document.querySelector('#sv2').textContent]);
-  record('L3', 'Directly supervised offers "Save and sign now: supervisor is with me" or "Save as draft"', direct[0] === 'Save and sign now: supervisor is with me' && direct[1] === 'Save as draft', direct);
+  record('L3', 'Directly supervised offers "Save and sign now: supervisor is with me" or "Save, sign later"', direct[0] === 'Save and sign now: supervisor is with me' && direct[1] === 'Save, sign later', direct);
   // 1.0.24 (owner, 20 Oct): two separate questions; a chosen supervisor can be cleared; independent goes in one step.
   const secs = await page.evaluate(() => ({ lvl: (document.querySelector('#fsh-supervision') || {}).textContent, sup: (document.querySelector('#fsh-supmentor') || {}).textContent, apart: !!document.querySelector('#fs-supervision') && !!document.querySelector('#fs-supmentor') && document.querySelector('#fs-supervision') !== document.querySelector('#fs-supmentor') }));
   record('F1', 'Level of supervision and Supervisor or mentor are two separate numbered questions', secs.lvl === 'Level of supervision' && secs.sup === 'Supervisor or mentor' && secs.apart, secs);
@@ -84,7 +84,7 @@ let code = null;
   await page.click('label[for=supervision2]'); await sleep(200); // Independent
   await page.click('label[for=sp0]'); await sleep(300);
   const indep = await page.evaluate(() => ({ b1: document.querySelector('#sv1').textContent, b2: document.querySelector('#sv2').hidden ? null : document.querySelector('#sv2').textContent, decl: !document.querySelector('#senddeclf').hidden }));
-  record('F3', 'Independent + Sam: "Save and send to Sam Supervisor" with the image declaration ready at the bottom', indep.b1 === 'Save and send to Sam Supervisor' && indep.b2 === 'Save as draft' && indep.decl, indep);
+  record('F3', 'Independent + Sam: "Save and send to Sam Supervisor" with the image declaration ready at the bottom', indep.b1 === 'Save and send to Sam Supervisor' && indep.b2 === 'Save, sign later' && indep.decl, indep);
   await shot(page, 'L-form-supervision');
   // The photo.
   await page.setInputFiles('#pick', img); await page.waitForSelector('.editor canvas', { timeout: 15000 }); await sleep(600);

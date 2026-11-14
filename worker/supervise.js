@@ -214,7 +214,7 @@ export async function supervisorAdd(env, l, req, ctx) {
   if (prev && prev.status === 'pending' && Date.now() - Date.parse(String(prev.created_at).replace(' ', 'T') + 'Z') < 120000) {
     const last = await env.DB.prepare("SELECT meta FROM audit_events WHERE action = 'link.invite' AND subject_id = ? ORDER BY id DESC LIMIT 1").bind(String(prev.id)).first().catch(() => null);
     let went = true; try { went = !last || JSON.parse(last.meta || '{}').emailed !== false; } catch { /* keep */ }
-    if (went) return json({ ok: true, emailed: true, recent: true, hasAccount: !!sup });
+    if (went) return json({ ok: true, emailed: true, recent: true, hasAccount: true });
   }
   if (prev && prev.status === 'active') return json({ ok: false, error: 'This supervisor is already linked.' }, 400);
   // Audit 12 Nov 2026: adding and removing in a loop could send unlimited invitations. 20 a day per account.
@@ -252,7 +252,7 @@ export async function supervisorAdd(env, l, req, ctx) {
     replyTo: { address: String(l.email), name: who },
     subject: `Ultrasound supervision request from ${who}`,
     heading: 'Supervise an ultrasound logbook',
-    paragraphs: [`${who} uses the free Wavelength ultrasound logbook and has named you as a supervisor.`, 'Once you accept, you see their progress against their pathway targets and their written scan records, never their images. They can send sign-off and assessment requests straight to your dashboard.', next, `To reply to ${who}, reply to this email.`],
+    paragraphs: [`${who} uses the free Wavelength ultrasound logbook and has named you as a supervisor.`, 'Once you accept, you see their progress against their pathway targets and their written scan records. Images reach you only with a sign-off request they choose to send, encrypted, and are deleted when the request is closed, or after 14 days at most. They can send sign-off and assessment requests straight to your dashboard.', next, `To reply to ${who}, reply to this email.`],
     button: { href: link, label },
     text: `${who} has named you as an ultrasound supervisor on Wavelength, the free ultrasound logbook.\n\nAccept here: ${link}\n\nUse this email address (${email}) to log in or create your account. To reply to ${who}, reply to this email. If you do not know them, ignore this email.`,
   }).catch(() => false);
@@ -262,7 +262,10 @@ export async function supervisorAdd(env, l, req, ctx) {
   const linkRow = await env.DB.prepare('SELECT id FROM supervisor_links WHERE learner_id = ? AND supervisor_email = ?').bind(l.id, email).first().catch(() => null);
   // 12 Nov 2026: whether the invitation email went is recorded, so a lost invitation can be found later.
   await audit(env, { actorType: 'learner', actorId: l.id, action: 'link.invite', subjectType: 'link', subjectId: linkRow ? linkRow.id : null, meta: { emailed: !!emailed, hasAccount: !!sup, domain: dom } });
-  return json({ ok: true, emailed: !!emailed, hasAccount: !!sup });
+  // Road to #1, 13 Nov 2026 (first-use audit Q15): the answer never says whether an account uses the address, which
+  // sign-up deliberately hides. hasAccount stays, always true, for app versions up to 1.0.27, which add a
+  // "No Wavelength account uses this address yet" note when it is false.
+  return json({ ok: true, emailed: !!emailed, hasAccount: true });
 }
 // Ending a supervision relationship (the learner's "Remove supervisor", the supervisor's "End supervision" and
 // "Decline" on an invitation). 1.0.12:
