@@ -1904,9 +1904,10 @@ const APP_LD = {
   ],
 };
 
-// Store links (owner, 20 Oct 2026). Google Play published 1.0.25 on 20 Oct. Put the App Store address in appStore the day
+// Store links (owner, 20 Oct 2026). Google Play published 1.0.25 on 20 Oct. The App Store published iPhone 1.0.17 on 13 Nov 2026
+// (21:36 UTC; owner asked for the App Store badge on 14 Nov). Put the App Store address in appStore the day
 // Apple publishes the iPhone app (https://apps.apple.com/app/id6822088185); until then the page says it is coming soon.
-const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: '' };
+const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: 'https://apps.apple.com/gb/app/wavelength-ultrasound-logbook/id6822088185' };
 // Wavelength app landing page (/app/get/). The app itself is static in src/app/.
 {
   const f = (icon, t, d) => `<div class="pillar reveal"><div class="num">${icon}</div><h3>${t}</h3><p>${d}</p></div>`;
@@ -1919,7 +1920,7 @@ const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thew
     { q: 'Can I edit images in the app?', a: 'Yes. The built-in editor crops, rotates, trims the patient banner from the top of the screen and blacks out any name, number, date or label, with undo. You do not need your phone\'s photo editor. Saving re-encodes the image, which removes hidden location and device data.' },
     { q: 'How fast is sign-off?', a: 'Immediate in person: your supervisor signs on your phone after the scan. By link, they open it on their own phone, confirm or query each scan and sign with a finger, and the sign-off appears in your logbook straight away. Include your images and clips in the link and your supervisor reviews them on their own phone before signing. They are encrypted on your phone, only your supervisor can open them, and they delete when your supervisor signs.' },
     { q: 'How does someone check a sign-off is genuine?', a: 'Each sign-off has a code (SO-XXXX-XXXX) and QR code, printed on your case PDFs and in the sign-off register of every export. Scanning it, or entering the code at thewavelength.co.uk/verify, shows the learner, the supervisor, the date and how they signed. The check shows the record as it was signed, so an edited PDF does not match it, and changing a signed scan in the app voids its sign-off.' },
-    { q: 'Is it on Google Play and the App Store?', a: STORES.appStore ? 'Yes. Get it on Google Play for Android or on the App Store for iPhone and iPad. You can also open it in your browser, or add it to your home screen from there, and it works like any app, including offline.' : 'Android: yes, on Google Play. iPhone: coming soon to the App Store. Until then, open it in Safari and add it to your home screen in two taps; it works like any app, including offline.' },
+    { q: 'Is it on Google Play and the App Store?', a: STORES.appStore ? 'Yes. Get it on Google Play for Android or on the App Store for iPhone. You can also open it in your browser, or add it to your home screen from there, and it works like any app, including offline.' : 'Android: yes, on Google Play. iPhone: coming soon to the App Store. Until then, open it in Safari and add it to your home screen in two taps; it works like any app, including offline.' },
     { q: 'What about my Academy certificates?', a: 'Log in with the same email and your Wavelength Academy certificates appear in the app, ready to share or verify.' },
   ];
   let html = layout({
