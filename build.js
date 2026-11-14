@@ -187,10 +187,11 @@ const NAV = [
     ...(liveGuides.length ? [{ href: '/guides/', label: 'Guides', short: 'Guides', text: 'Sign-off, accreditation and logbook guides for RCEM, FAMUS and FUSIC.' }] : []),
     ...(liveGuides.some((g) => g.slug === 'pocus-accreditation') ? [{ href: '/guides/pocus-accreditation/', label: 'Accreditation pathways', short: 'Accreditation', text: 'Which POCUS pathway fits you: UK and international pathways compared.' }] : []),
   ] }] : []),
-  { href: '/pocus-logbook/', label: 'App', match: ['/app/', '/pocus-logbook/'], children: [
+  { href: '/pocus-logbook/', label: 'App', match: ['/app/', '/pocus-logbook/', '/departments/'], children: [
     { href: '/pocus-logbook/', label: 'POCUS logbook and portfolio', short: 'Logbook', text: 'Your portfolio, tailored to your accrediting body.' },
     { href: '/app/get/', label: 'Wavelength app', short: 'App', text: 'Open it in your browser, get it on Google Play, or add it to your home screen.' },
     { href: '/pocus-logbook/help/', label: 'Logbook help', short: 'Help', text: 'How to use the app, one task at a time.' },
+    { href: '/departments/', label: 'For departments', short: 'Departments', text: 'A department licence for training leads, with the logbook free for trainees.' },
   ] },
   { href: '/faculty/', label: 'Faculty' },
   { href: '/about/', label: 'About' },
@@ -292,7 +293,7 @@ ${body}
         <p class="foot-tag">Point-of-care ultrasound education for emergency and acute clinicians: hands-on courses, free Pearls and Wavelength Academy.</p>
       </div>
       <div><h2>Courses</h2><ul>${openCourses.map((c) => `<li><a href="/courses/${c.slug}/">${esc(c.title)}</a></li>`).join('')}<li><a href="/courses/">All courses</a></li></ul></div>
-      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">Tailored training</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}${liveGuides.length ? '<li><a href="/guides/">Guides</a></li>' : ''}<li><a href="/pocus-logbook/">POCUS logbook</a></li>${liveGuides.some((g) => g.slug === 'pocus-accreditation') ? '<li><a href="/guides/pocus-accreditation/">Accreditation pathways</a></li>' : ''}<li><a href="/app/get/">Wavelength app</a></li><li><a href="/verify/">Verify a certificate or sign-off</a></li><li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
+      <div><h2>Wavelength</h2><ul><li><a href="/about/">About</a></li><li><a href="/faculty/">Faculty</a></li><li><a href="/training/">Tailored training</a></li><li><a href="/departments/">For departments</a></li><li><a href="/faculty/join/">Teach with us</a></li>${posts.length ? '<li><a href="/learn/">Pearls</a></li>' : ''}${liveModules.length ? '<li><a href="/elearning/">Academy</a></li>' : ''}${liveGuides.length ? '<li><a href="/guides/">Guides</a></li>' : ''}<li><a href="/pocus-logbook/">POCUS logbook</a></li>${liveGuides.some((g) => g.slug === 'pocus-accreditation') ? '<li><a href="/guides/pocus-accreditation/">Accreditation pathways</a></li>' : ''}<li><a href="/app/get/">Wavelength app</a></li><li><a href="/verify/">Verify a certificate or sign-off</a></li><li><a href="/subscribe/">Newsletter</a></li><li><a href="/contact/">Contact</a></li></ul></div>
       <div><h2>Contact</h2><ul><li><a href="mailto:${site.enquiriesEmail}">${site.enquiriesEmail}</a></li><li><a href="mailto:${site.bookingsEmail}">${site.bookingsEmail}</a></li></ul>${socialIcons()}</div>
     </div>
     <div class="bottom">
@@ -1110,6 +1111,113 @@ pages['/training/thanks/'] = layout({
   pathname: '/training/thanks/',
   noindex: true,
   body: `${pageHero({ eyebrow: 'Tailored Ultrasound Training', title: 'Thank you.', lede: 'We have your enquiry. A member of the team replies within five working days, with a proposal and quotation where we can help.', crumbs: [{ label: 'Home', href: '/' }, { label: 'Tailored Ultrasound Training', href: '/training/' }, { label: 'Thank you' }], extra: '<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="/courses/">Explore our courses</a><a class="btn btn-ghost light cta-caps" href="/app/get/">Start your free logbook</a></div>' })}`,
+});
+// For departments (/departments/, road to #1 plan, 13 Nov 2026). The logbook stays free for every trainee (D-10); a paid
+// department licence adds the training lead's view, governance reports, supervisor management, the Academy for the team
+// and training days. The licence is being shaped with two or three pilot departments, so this page says so and never
+// describes features as finished. Enquiries go to worker/departments.js (enquirePilot), into department_enquiries.
+// Never claim endorsement or recognition by any college or society; never promote this page inside the store apps.
+const DEPT_FAQS = [
+  { q: 'Will trainees have to pay?', a: 'No. The Wavelength logbook is free for every trainee, and stays free. The department licence pays for the department\'s own tools, not for a trainee\'s logbook.' },
+  { q: 'What can the department see?', a: 'Only what each trainee chooses to share with your department. Nothing is shared by default, and a trainee can stop sharing at any time. Their logbook stays theirs when they rotate or move on.' },
+  { q: 'Is the logbook recognised by RCEM, SAM, the ICS or RA-UK?', a: 'Wavelength is independent and is not endorsed by any college or society. The logbook tracks evidence against each pathway\'s published requirements. Whether evidence is accepted is decided by the body, your supervisors and your training programme.' },
+  { q: 'How do we pay?', a: 'By invoice and purchase order. There is nothing to pay by card, and we can complete your supplier set-up forms.' },
+  { q: 'What does the pilot cost?', a: 'Pilot terms are agreed with each department before anything starts. Tell us what you need and we will set out the terms in writing.' },
+  { q: 'What about information governance?', a: 'Your information governance team can ask us for our data protection documents. Images taken in the app stay on the clinician\'s phone unless they choose to share them, as set out in our privacy notice.' },
+];
+{
+  const opts = (xs) => xs.map((x) => `<option>${esc(x)}</option>`).join('');
+  pages['/departments/'] = layout({
+    title: 'For departments',
+    seoTitle: 'POCUS training governance for departments',
+    pathname: '/departments/',
+    description: 'A department licence for point-of-care ultrasound training: a training lead\'s view, governance reports and supervisor management, with the logbook free for every trainee. Now inviting pilot departments.',
+    jsonld: [
+      breadcrumbLd([{ label: 'Home', href: '/' }, { label: 'For departments', href: '/departments/' }]),
+      faqLd(DEPT_FAQS),
+    ],
+    body: `${pageHero({ eyebrow: 'For departments', title: 'POCUS training your department can see.', lede: 'The Wavelength logbook is free for every trainee, and stays free. A department licence adds what training leads need: one view of who is progressing, reports for governance, and help managing supervisors. We are inviting two or three departments to shape it with us as pilot sites.', crumbs: [{ label: 'Home', href: '/' }, { label: 'For departments' }], extra: `<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="#pilot" data-m="departments-hero-pilot">Ask about the pilot ${arrow}</a><a class="btn btn-ghost light cta-caps" href="/pocus-logbook/" data-m="departments-hero-logbook">See the free logbook</a></div>` })}
+<section class="section"><div class="wrap split">
+  <div><p class="eyebrow reveal">Free for trainees</p><h2 class="statement reveal" data-d="1" style="margin-top:22px">Every trainee keeps <span>a free logbook.</span></h2></div>
+  <ul class="checklist reveal" data-d="2">${[
+    'Log scans on iPhone, Android or the web, with images kept on the phone',
+    'Progress against RCEM, FAMUS, FUSIC and other pathways, side by side',
+    'Supervisor sign-off and structured assessments, with a checkable code on each sign-off',
+    'Verified evidence summaries and exports as PDF, Excel or CSV for a portfolio or appraisal',
+    'The logbook belongs to the trainee and moves with them between rotations and hospitals',
+  ].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
+</div></section>
+<section class="section sand" id="licence"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">The department licence</p><h2 class="reveal" data-d="1">What your department adds.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:700px">The licence is being built with our pilot departments, so each part is shaped around how training leads really work. We say what is ready and what is still in development before anything is agreed.</p></div>
+  <div class="pillars">
+    <div class="pillar reveal"><div class="num">01</div><h3>A training lead's view</h3><p>One screen showing which trainees are progressing, who is stuck and which sign-offs are waiting, for the trainees who share with your department.</p></div>
+    <div class="pillar reveal" data-d="1"><div class="num">02</div><h3>Governance reports</h3><p>Reports for your clinical governance and education meetings: scan activity, supervision and sign-off over time.</p></div>
+    <div class="pillar reveal" data-d="2"><div class="num">03</div><h3>Supervisor management</h3><p>See who supervises, which pathways each supervisor signs for, and where supervision capacity is short.</p></div>
+    <div class="pillar reveal"><div class="num">04</div><h3>The Academy for your team</h3><p>Suggest Wavelength Academy modules to your team and see completion, alongside each clinician's certificates and CPD hours.</p></div>
+    <div class="pillar reveal" data-d="1"><div class="num">05</div><h3>Training days</h3><p>Hands-on teaching for your department from our faculty, matched to the gaps your team wants to close.</p></div>
+  </div>
+</div></section>
+<section class="section"><div class="wrap split">
+  <div><p class="eyebrow reveal">Trainees choose</p><h2 class="display reveal" data-d="1" style="font-size:clamp(36px,4.6vw,56px);margin-top:20px">Sharing is opt-in.</h2></div>
+  <div class="reveal" data-d="2">
+    <p class="lede">A trainee chooses to share their logbook progress with your department. Nothing is shared by default.</p>
+    <p class="lede">They can stop sharing at any time, and their logbook stays theirs when they rotate or move on.</p>
+    <p class="lede">Your department sees only the trainees who have chosen to share with you.</p>
+  </div>
+</div></section>
+<section class="section sand"><div class="wrap split">
+  <div><p class="eyebrow reveal">Buying for the NHS</p><h2 class="display reveal" data-d="1" style="font-size:clamp(36px,4.6vw,56px);margin-top:20px">Invoice and purchase order.</h2></div>
+  <ul class="checklist reveal" data-d="1">${[
+    'An annual department licence, paid by invoice against your purchase order',
+    'No card payments, and nothing bought inside the app',
+    'We complete supplier set-up forms and answer information governance questions',
+    'Pilot terms agreed in writing with each department before anything starts',
+  ].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
+</div></section>
+<section class="section"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">The pilot</p><h2 class="reveal" data-d="1">Two or three pilot departments.</h2></div>
+  <ol class="ac-steps">${[
+    ['Tell us about your department', 'Who leads ultrasound training, roughly how many clinicians scan, and what you most need to see. The form below takes a few minutes.'],
+    ['Agree the pilot', 'We set out in writing what the pilot includes, how long it runs, and what we ask of you: a named lead and honest feedback.'],
+    ['Shape the licence', 'Your trainees keep using the free logbook. You use the department tools as they are built, and tell us what works.'],
+    ['Review together', 'At the end we review the pilot with you. Anything published about it, such as an audit, needs your department\'s agreement.'],
+  ].map(([h, t], i) => `<li class="reveal" data-d="${i}"><span class="ac-step-n">${i + 1}</span><h3>${h}</h3><p>${t}</p></li>`).join('')}</ol>
+</div></section>
+<section class="section sand" id="pilot"><div class="wrap split">
+  <div>
+    <p class="eyebrow reveal">Ask about the pilot</p>
+    <h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,56px);margin:20px 0 24px">Tell us about your department.</h2>
+    <p class="lede reveal" data-d="2">There is no obligation. We read every enquiry and reply within five working days.</p>
+    <aside class="callout reveal" style="margin-top:36px"><p class="callout-title">Looking for teaching only?</p><p>For a course or a training day without the licence, use the <a class="text-link" href="/training/">tailored training form</a>.</p></aside>
+  </div>
+  <form class="form" method="post" action="/api/departments/pilot" data-m-form="dept-pilot">
+    <p class="form-error" data-show-on="error" hidden>Please complete the required fields, check your phone number and tick the privacy box.</p>
+    <div class="sub-row"><label>First name<input name="first_name" autocomplete="given-name" required maxlength="80"></label><label>Last name<input name="last_name" autocomplete="family-name" required maxlength="80"></label></div>
+    <div class="sub-row"><label>Work email<input name="email" type="email" autocomplete="email" required maxlength="160"></label><label>Phone (optional)<input name="phone" type="tel" autocomplete="tel" maxlength="40" inputmode="tel"><span class="hint">Include the country code if you are outside the UK</span></label></div>
+    <div class="sub-row"><label>Your role<select name="role"><option value="">Choose one</option>${opts(DEPT_FORM.pilotRoles)}</select></label><label>Department type<select name="setting"><option value="">Choose one</option>${opts(DEPT_FORM.pilotSettings)}</select></label></div>
+    <label>Department and hospital or trust<input name="organisation" autocomplete="organization" required maxlength="200" placeholder="For example, Emergency Department, and the hospital's name"></label>
+    <div class="sub-row"><label>Country<select name="country" required autocomplete="country-name">${DEPT_FORM.countries.map((c, i) => `<option${i === 0 ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label><label>Clinicians in your department who scan<select name="group_size" required><option value="">Choose one</option>${opts(DEPT_FORM.pilotSizes)}</select></label></div>
+    <fieldset class="vol-dates"><legend>What would help your department most? (optional)</legend>${boxes('interests', DEPT_FORM.pilotInterests)}</fieldset>
+    <div class="sub-row"><label>When would you like to start? (optional)<input name="timing" maxlength="200" placeholder="For example, the February rotation"></label><label>How did you hear about us? (optional)<select name="heard"><option value="">Choose one</option>${opts(DEPT_FORM.heard)}</select></label></div>
+    <label>Anything else (optional)<textarea name="details" maxlength="3000" rows="5" placeholder="How you track ultrasound training now, what governance asks of you, or anything else we should know."></textarea></label>
+    <input type="hidden" name="campaign" value="">
+    <label class="ac-hp" aria-hidden="true">Leave blank<input name="wl_trap" tabindex="-1" autocomplete="off"></label>
+    <label class="consent"><input type="checkbox" name="confirm_privacy" value="yes" required><span>Wavelength stores my details to answer this enquiry, as set out in the <a class="text-link" href="/privacy/">privacy notice</a>.</span></label>
+    <div><button class="btn btn-teal cta-caps" type="submit">Send my enquiry ${arrow}</button></div>
+  </form>
+</div></section>
+<section class="section"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">Questions</p><h2 class="reveal" data-d="1">Before you ask.</h2></div>
+  ${faqHtml(DEPT_FAQS)}
+  <p class="source" style="margin-top:28px">Wavelength is independent. It is not run or endorsed by the NHS, the Royal College of Emergency Medicine, the Society for Acute Medicine, the Intensive Care Society or Regional Anaesthesia UK.</p>
+</div></section>`,
+  });
+}
+pages['/departments/thanks/'] = layout({
+  title: 'Enquiry received',
+  pathname: '/departments/thanks/',
+  noindex: true,
+  body: `${pageHero({ eyebrow: 'For departments', title: 'Thank you.', lede: 'We have your enquiry about the department pilot. A member of the team replies within five working days.', crumbs: [{ label: 'Home', href: '/' }, { label: 'For departments', href: '/departments/' }, { label: 'Thank you' }], extra: '<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="/pocus-logbook/">See the free logbook</a><a class="btn btn-ghost light cta-caps" href="/elearning/">Explore the Academy</a></div>' })}`,
 });
 pages['/faculty/join/thanks/'] = layout({
   title: 'Application received',
@@ -2564,6 +2672,7 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'), `# Search engines and AI assista
     '',
     line('Wavelength POCUS logbook', '/pocus-logbook/', 'free ultrasound logbook and portfolio app (iPhone, Android and web): log scans with images kept on the phone, track progress against RCEM, FAMUS and other targets, and get supervisor sign-off.'),
     line('Get the app', '/app/get/'),
+    line('For departments', '/departments/', 'a department licence (training lead view, governance reports, supervisor management, Academy for the team, training days) being shaped with pilot departments; the logbook stays free for trainees.'),
     '',
     '## About',
     '',

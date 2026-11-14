@@ -67,6 +67,55 @@ export async function enquireTraining(env, req, ctx) {
   const d = readEnquiry(f);
   const problem = enquiryProblem(d, f);
   if (problem) return `/training/?error=${problem === 'phone' ? 'phone' : '1'}#enquire`;
+  return save(env, ctx, d, '/training/thanks/');
+}
+
+// Department licence pilot (/departments/, owner's road to #1 plan, 13 Nov 2026): a department asks to join the pilot.
+//   POST /api/departments/pilot  saves to the same department_enquiries table (no migration), marked by the training
+//                                column starting "Department licence pilot", so the admin list, CSV, pipeline and
+//                                daily email retry all keep working; then redirects to /departments/thanks/.
+// The organisation is required here: a pilot is always for a department.
+export const PILOT = 'Department licence pilot';
+export const isPilot = (r) => String((r && r.training) || '').startsWith(PILOT);
+export function readPilot(f) {
+  const country = one(f, 'country', FORM.countries);
+  const interests = pick(f, 'interests', FORM.pilotInterests);
+  return {
+    first: clip(f.get('first_name'), 80),
+    last: clip(f.get('last_name'), 80),
+    email: clip(f.get('email'), 160).toLowerCase(),
+    phone: clip(f.get('phone'), 40),
+    role: one(f, 'role', FORM.pilotRoles),
+    type: 'A clinical team or department', cls: 'organisation',
+    org: clip(f.get('organisation'), 200),
+    setting: one(f, 'setting', FORM.pilotSettings),
+    country, region: regionOf(country),
+    location: '',
+    training: [PILOT, ...interests].join('; '),
+    topics: '',
+    size: one(f, 'group_size', FORM.pilotSizes),
+    timing: clip(f.get('timing'), 200),
+    budget: '',
+    heard: one(f, 'heard', FORM.heard),
+    campaign: clip(f.get('campaign'), 60).toLowerCase().replace(/[^a-z0-9_-]/g, ''),
+    details: clip(f.get('details'), 3000),
+  };
+}
+export function pilotProblem(d, f) {
+  if (!d.first || !d.last || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email) || !d.org || !d.size || !d.country || !f.get('confirm_privacy')) return 'missing';
+  if (!phoneOk(d.phone)) return 'phone';
+  return null;
+}
+export async function enquirePilot(env, req, ctx) {
+  const f = await req.formData();
+  if (clip(f.get('wl_trap'), 200)) return '/departments/thanks/'; // honeypot
+  const d = readPilot(f);
+  const problem = pilotProblem(d, f);
+  if (problem) return `/departments/?error=${problem === 'phone' ? 'phone' : '1'}#pilot`;
+  return save(env, ctx, d, '/departments/thanks/');
+}
+
+async function save(env, ctx, d, done) {
   let r;
   if (await wideColumns(env)) {
     r = await env.DB.prepare('INSERT INTO department_enquiries (first_name,last_name,email,phone,role,organisation,setting,training,topics,group_size,timing,details,enquiry_type,enquiry_class,country,region,location,budget,heard,campaign) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id')
@@ -80,16 +129,18 @@ export async function enquireTraining(env, req, ctx) {
     // Aggregate conversion counters: never the message, name or contact details.
     ctx.waitUntil(count(env, [['conv.enquiry', HEARD[d.heard] || 'not_given'], ['conv.enquiry_region', d.region || 'not_given'], ['conv.enquiry_class', d.cls || 'department'], ...(d.campaign ? [['conv.enquiry_campaign', d.campaign]] : [])]));
   }
-  return '/training/thanks/';
+  return done;
 }
 
 async function notifyTeam(env, id, d) {
   const mark = (err) => env.DB.prepare(err ? 'UPDATE department_enquiries SET email_error = ? WHERE id = ?' : "UPDATE department_enquiries SET emailed_at = datetime('now') WHERE id = ?").bind(...(err ? [String(err).slice(0, 500), id] : [id])).run();
   if (!env.ZEPTOMAIL_TOKEN) return mark('Email not set up yet (ZEPTOMAIL_TOKEN missing)');
-  const rows = [['Name', `${d.first} ${d.last}`], ['Email', d.email], ['Phone', d.phone], ['Enquiring for', d.type], ['Role', d.role], ['Organisation', d.org], ['Setting', d.setting], ['Country', d.country], ['Preferred location', d.location], ['Training wanted', d.training], ['Modules', d.topics], ['Participants', d.size], ['Preferred dates', d.timing], ['Budget', d.budget], ['Heard about us', d.heard], ['Campaign link', d.campaign], ['Details', d.details]].filter(([, v]) => v);
+  const pilot = isPilot(d);
+  const kind = pilot ? 'department licence pilot enquiry' : 'tailored training enquiry';
+  const rows = [['Name', `${d.first} ${d.last}`], ['Email', d.email], ['Phone', d.phone], ['Enquiring for', d.type], ['Role', d.role], ['Organisation', d.org], ['Setting', d.setting], ['Country', d.country], ['Preferred location', d.location], [pilot ? 'Pilot interests' : 'Training wanted', d.training], ['Modules', d.topics], [pilot ? 'Clinicians who scan' : 'Participants', d.size], ['Preferred dates', d.timing], ['Budget', d.budget], ['Heard about us', d.heard], ['Campaign link', d.campaign], ['Details', d.details]].filter(([, v]) => v);
   const who = d.org || `${d.first} ${d.last}`;
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#0F1E33"><p>A new tailored training enquiry arrived through the website. Reply to this email to answer ${esc(d.first)} directly.</p><table cellpadding="6" style="border-collapse:collapse">${rows.map(([k, v]) => `<tr><td style="vertical-align:top;color:#5B6878;white-space:nowrap">${esc(k)}</td><td style="white-space:pre-wrap">${esc(v)}</td></tr>`).join('')}</table><p>See all enquiries: https://thewavelength.co.uk/admin/departments/</p></div>`;
-  const text = `A new tailored training enquiry arrived through the website.\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nSee all enquiries: https://thewavelength.co.uk/admin/departments/`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#0F1E33"><p>A new ${kind} arrived through the website. Reply to this email to answer ${esc(d.first)} directly.</p><table cellpadding="6" style="border-collapse:collapse">${rows.map(([k, v]) => `<tr><td style="vertical-align:top;color:#5B6878;white-space:nowrap">${esc(k)}</td><td style="white-space:pre-wrap">${esc(v)}</td></tr>`).join('')}</table><p>See all enquiries: https://thewavelength.co.uk/admin/departments/</p></div>`;
+  const text = `A new ${kind} arrived through the website.\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nSee all enquiries: https://thewavelength.co.uk/admin/departments/`;
   try {
     const res = await fetch(env.ZEPTOMAIL_API || 'https://cpaas.zoho.eu/v1.1/email', {
       method: 'POST',
@@ -98,7 +149,9 @@ async function notifyTeam(env, id, d) {
         from: { address: env.MAIL_FROM || 'academy@thewavelength.co.uk', name: 'Wavelength website' },
         to: [{ email_address: { address: env.MAIL_REPLY_TO || 'hello@thewavelength.co.uk', name: 'Wavelength' } }],
         reply_to: [{ address: d.email, name: `${d.first} ${d.last}` }],
-        subject: `Tailored training enquiry: ${who} (${[d.country, d.size && `${d.size} participant${d.size === '1' ? '' : 's'}`].filter(Boolean).join(', ')})`.replace(/[\r\n]/g, ' '),
+        subject: (pilot
+          ? `Department pilot enquiry: ${who} (${[d.country, d.size && `${d.size} clinicians who scan`].filter(Boolean).join(', ')})`
+          : `Tailored training enquiry: ${who} (${[d.country, d.size && `${d.size} participant${d.size === '1' ? '' : 's'}`].filter(Boolean).join(', ')})`).replace(/[\r\n]/g, ' '),
         htmlbody: html,
         textbody: text,
         track_clicks: false,
