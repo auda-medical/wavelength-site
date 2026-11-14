@@ -158,6 +158,8 @@ const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</
 const url = (p) => site.domain.replace(/\/$/, '') + p;
 const money = (n) => (n == null || n === '' ? null : '£' + Number(n).toLocaleString('en-GB', { minimumFractionDigits: Number(n) % 1 ? 2 : 0 }));
 const fmtDate = (iso, opts) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-GB', Object.assign({ timeZone: 'Europe/London' }, opts));
+// The owner's approval date for the trust, clinical safety and accessibility pages (lib/assurance-pages.js); empty = drafts.
+const ASSURANCE_APPROVED = /^\d{4}-\d{2}-\d{2}$/.test(site.assuranceApproved || '') ? site.assuranceApproved : '';
 const mailto = (to, subject) => `mailto:${to}?subject=${encodeURIComponent(subject)}`;
 
 const upcoming = (c) => (c.dates || []).filter((d) => d.date >= TODAY).sort((a, b) => a.date.localeCompare(b.date));
@@ -296,7 +298,7 @@ ${body}
     </div>
     <div class="bottom">
       <span>© <span data-year>${new Date().getFullYear()}</span> ${site.company}${site.companyNumber ? `, registered in England and Wales no. ${site.companyNumber}` : ''}. All rights reserved. Wavelength is a trading name of ${site.company}.${site.registeredOffice ? ` Registered office: ${esc(site.registeredOffice)}.` : ''} Wavelength is an independent education provider. It is not run or endorsed by the NHS, Dartford and Gravesham NHS Trust, RCEM, FAMUS or EUSEM.${site.icoNumber ? ` ICO registration ${esc(site.icoNumber)}.` : ''}</span>
-      <span><a href="/privacy/">Privacy</a> · <a href="/website-terms/">Website terms</a> · <a href="/terms/">Booking terms</a> · <a href="/cancellation/">Cancellations</a></span>
+      <span><a href="/privacy/">Privacy</a> · <a href="/website-terms/">Website terms</a> · <a href="/terms/">Booking terms</a> · <a href="/cancellation/">Cancellations</a>${ASSURANCE_APPROVED ? ' · <a href="/accessibility/">Accessibility</a> · <a href="/trust/">Trust and security</a>' : ''}</span>
     </div>
   </div>
 </footer>
@@ -550,7 +552,7 @@ function socialIcons() {
 function reviewsBand() {
   const r = site.reviews; if (!r || !(r.items || []).length) return '';
   const star = '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M10 1.5l2.6 5.5 6 .8-4.4 4.1 1.1 6-5.3-2.9-5.3 2.9 1.1-6L1.4 7.8l6-.8z"/></svg>';
-  const stars = `<span class="stars" aria-label="5 out of 5 stars">${star.repeat(5)}</span>`;
+  const stars = `<span class="stars" role="img" aria-label="5 out of 5 stars">${star.repeat(5)}</span>`;
   return `<section class="section reviews-band on-dark">${mesh}
   <div class="wrap">
     <div class="section-head"><p class="eyebrow reveal">Delegate reviews</p><h2 class="reveal" data-d="1">What delegates say about courses led by our Course Director.</h2><a class="rating-badge reveal" data-d="2" href="${r.url}" rel="noopener" target="_blank">${stars}<span>Rated 5 stars on Google</span></a></div>
@@ -1902,9 +1904,10 @@ const APP_LD = {
   ],
 };
 
-// Store links (owner, 20 Oct 2026). Google Play published 1.0.25 on 20 Oct. Put the App Store address in appStore the day
+// Store links (owner, 20 Oct 2026). Google Play published 1.0.25 on 20 Oct. The App Store published iPhone 1.0.17 on 13 Nov 2026
+// (21:36 UTC; owner asked for the App Store badge on 14 Nov). Put the App Store address in appStore the day
 // Apple publishes the iPhone app (https://apps.apple.com/app/id6822088185); until then the page says it is coming soon.
-const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: '' };
+const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: 'https://apps.apple.com/gb/app/wavelength-ultrasound-logbook/id6822088185' };
 // Wavelength app landing page (/app/get/). The app itself is static in src/app/.
 {
   const f = (icon, t, d) => `<div class="pillar reveal"><div class="num">${icon}</div><h3>${t}</h3><p>${d}</p></div>`;
@@ -1917,7 +1920,7 @@ const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thew
     { q: 'Can I edit images in the app?', a: 'Yes. The built-in editor crops, rotates, trims the patient banner from the top of the screen and blacks out any name, number, date or label, with undo. You do not need your phone\'s photo editor. Saving re-encodes the image, which removes hidden location and device data.' },
     { q: 'How fast is sign-off?', a: 'Immediate in person: your supervisor signs on your phone after the scan. By link, they open it on their own phone, confirm or query each scan and sign with a finger, and the sign-off appears in your logbook straight away. Include your images and clips in the link and your supervisor reviews them on their own phone before signing. They are encrypted on your phone, only your supervisor can open them, and they delete when your supervisor signs.' },
     { q: 'How does someone check a sign-off is genuine?', a: 'Each sign-off has a code (SO-XXXX-XXXX) and QR code, printed on your case PDFs and in the sign-off register of every export. Scanning it, or entering the code at thewavelength.co.uk/verify, shows the learner, the supervisor, the date and how they signed. The check shows the record as it was signed, so an edited PDF does not match it, and changing a signed scan in the app voids its sign-off.' },
-    { q: 'Is it on Google Play and the App Store?', a: STORES.appStore ? 'Yes. Get it on Google Play for Android or on the App Store for iPhone and iPad. You can also open it in your browser, or add it to your home screen from there, and it works like any app, including offline.' : 'Android: yes, on Google Play. iPhone: coming soon to the App Store. Until then, open it in Safari and add it to your home screen in two taps; it works like any app, including offline.' },
+    { q: 'Is it on Google Play and the App Store?', a: STORES.appStore ? 'Yes. Get it on Google Play for Android or on the App Store for iPhone. You can also open it in your browser, or add it to your home screen from there, and it works like any app, including offline.' : 'Android: yes, on Google Play. iPhone: coming soon to the App Store. Until then, open it in Safari and add it to your home screen in two taps; it works like any app, including offline.' },
     { q: 'What about my Academy certificates?', a: 'Log in with the same email and your Wavelength Academy certificates appear in the app, ready to share or verify.' },
   ];
   let html = layout({
@@ -2270,6 +2273,26 @@ for (const [p, l] of Object.entries(legal)) {
     body: `${pageHero({ eyebrow: 'Wavelength', title: esc(l.title), lede: `Last updated ${fmtDate(l.updated || site.legalUpdated || TODAY, { day: 'numeric', month: 'long', year: 'numeric' })}.`, crumbs: [{ label: 'Home', href: '/' }, { label: l.title }] })}
 <section class="section"><div class="wrap"><div class="prose reveal">${l.body}</div></div></section>`,
   });
+}
+
+// NHS assurance pages (November 2026): /trust/, /clinical-safety/ and /accessibility/ (lib/assurance-pages.js).
+// Until the owner approves the wording and sets assuranceApproved (YYYY-MM-DD) in data/site.json, they build as
+// drafts: noindex, out of the sitemap and the footer, with a draft note at the top.
+{
+  const ASSURANCE = require('./lib/assurance-pages.js').assurancePages({ site, esc, approved: ASSURANCE_APPROVED ? { iso: ASSURANCE_APPROVED, human: fmtDate(ASSURANCE_APPROVED, { day: 'numeric', month: 'long', year: 'numeric' }) } : null });
+  const draft = ASSURANCE_APPROVED ? '' : '<div class="callout" role="note"><p><b>Draft for the director\'s approval.</b> This page is not yet published or linked from the website, and its wording may change.</p></div>';
+  for (const [p, a] of Object.entries(ASSURANCE)) {
+    pages[p] = layout({
+      title: a.title,
+      seoTitle: a.seoTitle,
+      pathname: p,
+      noindex: !ASSURANCE_APPROVED,
+      description: a.description,
+      jsonld: [breadcrumbLd([{ label: 'Home', href: '/' }, { label: a.title, href: p }])],
+      body: `${pageHero({ eyebrow: 'Wavelength', title: esc(a.title), lede: `Last updated ${fmtDate(a.updated, { day: 'numeric', month: 'long', year: 'numeric' })}.`, crumbs: [{ label: 'Home', href: '/' }, { label: a.title }] })}
+<section class="section"><div class="wrap"><div class="prose reveal">${draft}${a.body}</div></div></section>`,
+    });
+  }
 }
 
 // 404
@@ -2676,19 +2699,29 @@ fs.writeFileSync(
     .filter((p) => !(p === '/guides/' && !liveGuides.length) && !guides.some((g) => g.draft === true && p.startsWith(`/guides/${g.slug}/`)))
     // Utility pages that should stay reachable but are not search landing pages. One-page guides are noindex: the full guide ranks.
     .filter((p) => !['/app/delete-account/'].includes(p) && !/^\/guides\/[^/]+\/at-a-glance\/$/.test(p))
-    .map((p) => `  <url><loc>${url(p)}</loc>${/^\d{4}-\d{2}-\d{2}$/.test(LASTMOD[p] || '') ? `<lastmod>${LASTMOD[p]}</lastmod>` : ''}<priority>${p === '/' ? '1.0' : p.startsWith('/courses/') || p === '/pocus-logbook/' ? '0.9' : p.startsWith('/guides/') ? '0.8' : ['/privacy/', '/website-terms/', '/terms/', '/cancellation/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
+    .filter((p) => ASSURANCE_APPROVED || !['/trust/', '/clinical-safety/', '/accessibility/'].includes(p))
+    .map((p) => `  <url><loc>${url(p)}</loc>${/^\d{4}-\d{2}-\d{2}$/.test(LASTMOD[p] || '') ? `<lastmod>${LASTMOD[p]}</lastmod>` : ''}<priority>${p === '/' ? '1.0' : p.startsWith('/courses/') || p === '/pocus-logbook/' ? '0.9' : p.startsWith('/guides/') ? '0.8' : ['/privacy/', '/website-terms/', '/terms/', '/cancellation/', '/accessibility/', '/clinical-safety/'].includes(p) ? '0.3' : '0.7'}</priority></url>`)
     .join('\n')}\n</urlset>\n`
 );
 fs.writeFileSync(path.join(DIST, 'site.webmanifest'), JSON.stringify({ name: site.name, short_name: site.name, start_url: '/', icons: [{ src: '/assets/logo-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/logo-512.png', sizes: '512x512', type: 'image/png' }], theme_color: '#0A1526', background_color: '#0A1526', display: 'standalone' }));
-fs.writeFileSync(
-  path.join(DIST, '_headers'),
-  `/assets/*\n  Cache-Control: public, max-age=86400\n/assets/fonts/*\n  ! Cache-Control\n  Cache-Control: public, max-age=31536000, immutable\n/assets/guides/*\n  X-Robots-Tag: noindex\n/app/sw.js\n  Cache-Control: no-cache\n/app/\n  Cache-Control: no-cache\n/app/vendor/*\n  Cache-Control: public, max-age=2592000\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
-);
 // Weekly Pearl newsletter: one email page per queued pearl and the send queue the Worker reads on Tuesdays
 // (lib/pearl-issue.js, worker/newsletter.js). Runs last: it needs the built test pages.
 {
   const q = require('./lib/pearl-issue.js').buildQueue(ROOT, DIST);
   const waiting = q.filter((x) => !x.ready);
   console.log(`Pearl newsletter queue: ${q.length - waiting.length} of ${q.length} ready${waiting.length ? '. Not ready: ' + waiting.map((x) => `${x.slug} (${x.reason})`).join('; ') : ''}`);
+}
+// Security headers. Written last, after every HTML file (including the newsletter pages above), because the
+// Content-Security-Policy lists a hash of each inline script the build wrote (lib/csp.js). Any page that adds an inline
+// script gets it allowed automatically; a script added later by anything else is refused.
+{
+  const CSP = require('./lib/csp.js');
+  const hashes = CSP.scriptHashes(DIST);
+  if (hashes.length > 60) console.warn(`Warning: ${hashes.length} distinct inline scripts; consider moving them into files so the CSP header stays short.`);
+  const csp = CSP.policy(hashes);
+  fs.writeFileSync(
+    path.join(DIST, '_headers'),
+    `/assets/*\n  Cache-Control: public, max-age=86400\n/assets/fonts/*\n  ! Cache-Control\n  Cache-Control: public, max-age=31536000, immutable\n/assets/guides/*\n  X-Robots-Tag: noindex\n/app/sw.js\n  Cache-Control: no-cache\n/app/\n  Cache-Control: no-cache\n/app/vendor/*\n  Cache-Control: public, max-age=2592000\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: ${csp}\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Strict-Transport-Security: max-age=31536000; includeSubDomains\n`
+  );
 }
 console.log(`Built ${Object.keys(pages).length} pages to dist/`);

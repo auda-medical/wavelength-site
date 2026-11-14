@@ -51,6 +51,10 @@ const HEADERS = {
   'Referrer-Policy': 'same-origin',
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
+  // The public site's policy (dist/_headers, lib/csp.js) allows only the build's own inline scripts. Console pages are
+  // assembled here at request time and use inline confirm handlers, so they keep the policy without script-src.
+  // Setting it here replaces the static one on every admin and volunteer response.
+  'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests",
 };
 
 function withHeaders(res, extra = {}) {
