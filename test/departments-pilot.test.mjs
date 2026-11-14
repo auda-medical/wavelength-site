@@ -78,3 +78,20 @@ test('the page keeps the logbook free, claims no endorsement, and the store app 
     assert.doesNotMatch(fs.readFileSync(new URL(`../src/app/${f}`, import.meta.url), 'utf8'), /\/departments\/|department licen[cs]e/i, `src/app/${f}`);
   }
 });
+
+// Owner decisions D-111 (prices) and D-112 (pilot terms), published 14 Nov 2026.
+test('the page shows the decided licence prices and pilot terms, as planned prices for a licence still being built', () => {
+  const build = fs.readFileSync(new URL('../build.js', import.meta.url), 'utf8');
+  assert.match(build, /const DEPT_PRICES = \[\['Up to 25', '£1,500'\], \['26 to 60', '£3,000'\], \['More than 60', '£5,000'\]\];/);
+  const html = fs.readFileSync(new URL('../dist/departments/index.html', import.meta.url), 'utf8');
+  for (const p of ['£1,500', '£3,000', '£5,000']) assert.ok(html.includes(p), p);
+  assert.match(html, /The planned licence price/);
+  assert.match(html, /being built with our pilot departments/);
+  assert.match(html, /Founding pilot departments pay half in their first paid year/);
+  assert.match(html, /Prices exclude VAT where it applies/);
+  assert.match(html, /Free for six months, on one page of written terms/);
+  assert.match(html, /a 30-minute call each month/);
+  assert.match(html, /Nothing for six months/, 'the FAQ answers what the pilot costs');
+  assert.match(html, /Trainees never pay/);
+  assert.match(html, /"name":"What will the licence cost after the pilot\?"/, 'the FAQ reaches the structured data');
+});
