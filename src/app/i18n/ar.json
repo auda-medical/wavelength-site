@@ -2925,5 +2925,16 @@
 "Wavelength ultrasound logbook": "سجل Wavelength للموجات فوق الصوتية",
 "You can review and sign straight away.": "يمكنك المراجعة والاعتماد فورًا.",
 "You see written records. Images reach you only with a sign-off request they choose to send, encrypted, and are deleted when the request is closed, or after 14 days at most.": "ترى السجلات المكتوبة. لا تصلك الصور إلا مع طلب اعتماد يختار إرساله، وهي مشفّرة، وتُحذف عند إغلاق الطلب أو بعد 14 يومًا كحد أقصى.",
-"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} من فحوصك البالغ عددها {all} موجودة في هذا التصدير. غيّر التواريخ أو المسار أو الحالة لتشمل المزيد."
+"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} من فحوصك البالغ عددها {all} موجودة في هذا التصدير. غيّر التواريخ أو المسار أو الحالة لتشمل المزيد.",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "ملف Excel بتنسيق {name}. ليس نموذجًا رسميًا: تحقق مما تطلبه جهتك.",
+"This destination has no logbook layout yet. Choose Excel instead.": "لا يوجد تنسيق سجل لهذه الوجهة بعد. اختر Excel بدلًا من ذلك.",
+"Logbook layout": "تنسيق السجل",
+"RCEM logbook layout": "تنسيق سجل RCEM",
+"FAMUS logbook layout": "تنسيق سجل FAMUS",
+"FUSIC logbook layout": "تنسيق سجل FUSIC",
+"Anaesthesia: RCoA logbook (Lifelong Learning Platform) and RA-UK blocks": "التخدير: سجل RCoA (Lifelong Learning Platform) وإحصارات RA-UK",
+"Open your RCoA Lifelong Learning Platform (LLP) logbook, or the logbook your school uses.": "افتح سجلك في RCoA Lifelong Learning Platform (LLP)، أو السجل الذي يستخدمه برنامجك.",
+"Use the Summary sheet to see your nerve blocks by type and supervision, including RA-UK's Plan A blocks.": "استخدم ورقة Summary لرؤية إحصارات الأعصاب حسب النوع والإشراف، بما فيها إحصارات Plan A من RA-UK.",
+"Copy cases across where your logbook needs them. Your trainers record HALO sign-off in the LLP: this file does not replace it.": "انقل الحالات حيث يحتاجها سجلك. يسجل مدربوك اعتماد HALO في LLP: هذا الملف لا يحل محله.",
+"RCoA and RA-UK nerve block layout": "تنسيق سجل الإحصارات لـ RCoA وRA-UK"
 }

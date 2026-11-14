@@ -2849,5 +2849,16 @@
 "Wavelength ultrasound logbook": "Dziennik ultrasonograficzny Wavelength",
 "You can review and sign straight away.": "Możesz od razu przejrzeć i zatwierdzić.",
 "You see written records. Images reach you only with a sign-off request they choose to send, encrypted, and are deleted when the request is closed, or after 14 days at most.": "Widzisz pisemne opisy. Obrazy docierają do Ciebie tylko z prośbą o zatwierdzenie, którą zdecydują się wysłać, w formie zaszyfrowanej, i są usuwane po zamknięciu prośby, najpóźniej po 14 dniach.",
-"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} z Twoich {all} badań jest w tym eksporcie. Zmień daty, ścieżkę lub status, aby uwzględnić więcej."
+"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} z Twoich {all} badań jest w tym eksporcie. Zmień daty, ścieżkę lub status, aby uwzględnić więcej.",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "Excel w formacie: {name}. To nie jest oficjalny formularz: sprawdź, czego wymaga Twoja instytucja.",
+"This destination has no logbook layout yet. Choose Excel instead.": "Dla tego miejsca nie ma jeszcze układu dziennika. Wybierz Excel.",
+"Logbook layout": "Układ dziennika",
+"RCEM logbook layout": "układ dziennika RCEM",
+"FAMUS logbook layout": "układ dziennika FAMUS",
+"FUSIC logbook layout": "układ dziennika FUSIC",
+"Anaesthesia: RCoA logbook (Lifelong Learning Platform) and RA-UK blocks": "Anestezjologia: dziennik RCoA (Lifelong Learning Platform) i blokady RA-UK",
+"Open your RCoA Lifelong Learning Platform (LLP) logbook, or the logbook your school uses.": "Otwórz swój dziennik RCoA Lifelong Learning Platform (LLP) lub dziennik używany przez Twój ośrodek.",
+"Use the Summary sheet to see your nerve blocks by type and supervision, including RA-UK's Plan A blocks.": "Na arkuszu Summary zobaczysz swoje blokady nerwów według rodzaju i nadzoru, w tym blokady Plan A RA-UK.",
+"Copy cases across where your logbook needs them. Your trainers record HALO sign-off in the LLP: this file does not replace it.": "Przenieś przypadki tam, gdzie wymaga tego Twój dziennik. Twoi szkolący zatwierdzają HALO w LLP: ten plik tego nie zastępuje.",
+"RCoA and RA-UK nerve block layout": "układ dziennika blokad RCoA i RA-UK"
 }

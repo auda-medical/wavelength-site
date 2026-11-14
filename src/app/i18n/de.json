@@ -2773,5 +2773,16 @@
 "Wavelength ultrasound logbook": "Wavelength Ultraschall-Logbuch",
 "You can review and sign straight away.": "Sie können sofort prüfen und bestätigen.",
 "You see written records. Images reach you only with a sign-off request they choose to send, encrypted, and are deleted when the request is closed, or after 14 days at most.": "Sie sehen schriftliche Berichte. Bilder erreichen Sie nur mit einer Bestätigungsanfrage, die die Lernenden bewusst senden, verschlüsselt, und werden gelöscht, sobald die Anfrage geschlossen ist, spätestens nach 14 Tagen.",
-"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} Ihrer {all} Untersuchungen sind in diesem Export enthalten. Ändern Sie Zeitraum, Ausbildungsweg oder Status, um mehr einzuschließen."
+"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} Ihrer {all} Untersuchungen sind in diesem Export enthalten. Ändern Sie Zeitraum, Ausbildungsweg oder Status, um mehr einzuschließen.",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "Excel im {name}. Kein offizielles Formular: Prüfen Sie, was Ihre Stelle verlangt.",
+"This destination has no logbook layout yet. Choose Excel instead.": "Für dieses Ziel gibt es noch kein Logbuch-Layout. Wählen Sie stattdessen Excel.",
+"Logbook layout": "Logbuch-Layout",
+"RCEM logbook layout": "RCEM-Logbuch-Layout",
+"FAMUS logbook layout": "FAMUS-Logbuch-Layout",
+"FUSIC logbook layout": "FUSIC-Logbuch-Layout",
+"Anaesthesia: RCoA logbook (Lifelong Learning Platform) and RA-UK blocks": "Anästhesie: RCoA-Logbuch (Lifelong Learning Platform) und RA-UK-Blockaden",
+"Open your RCoA Lifelong Learning Platform (LLP) logbook, or the logbook your school uses.": "Öffnen Sie Ihr RCoA-Logbuch in der Lifelong Learning Platform (LLP) oder das Logbuch Ihrer Weiterbildungsstätte.",
+"Use the Summary sheet to see your nerve blocks by type and supervision, including RA-UK's Plan A blocks.": "Im Blatt Summary sehen Sie Ihre Nervenblockaden nach Art und Supervision, einschließlich der Plan-A-Blockaden von RA-UK.",
+"Copy cases across where your logbook needs them. Your trainers record HALO sign-off in the LLP: this file does not replace it.": "Übertragen Sie Fälle dorthin, wo Ihr Logbuch sie braucht. Ihre Ausbilder dokumentieren die HALO-Freigabe in der LLP: Diese Datei ersetzt sie nicht.",
+"RCoA and RA-UK nerve block layout": "RCoA- und RA-UK-Layout für Nervenblockaden"
 }

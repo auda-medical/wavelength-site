@@ -3173,7 +3173,7 @@
       "region": ""
     }
   ],
-  "_help_destinations": "Export destinations. Steps show after a learner builds a portfolio export. Keep wording general: Wavelength is not integrated with these portfolios.",
+  "_help_destinations": "Export destinations. Steps show after a learner builds a portfolio export. Keep wording general: Wavelength is not integrated with these portfolios. body: how the About sheet names the organisation. layout: an Excel logbook arranged like the body's own logbook fields (src/app/formats.js explains the options; layout.source names the documents, checked in road-to-number-one report 01 on 13 Nov 2026). Wavelength's own arrangement, never an official form or a claim of acceptance.",
   "destinations": [
     {
       "id": "rcem",
@@ -3184,7 +3184,119 @@
         "Create or open the entry for your ultrasound evidence and attach this PDF.",
         "Paste the verification link into the entry, so your supervisor and ARCP panel check the summary online.",
         "Link the entry to the PoCUS parts of the curriculum. RCEM sign-off is by DOPS, so ask your supervisor to complete the DOPS assessments in the e-portfolio."
-      ]
+      ],
+      "body": "RCEM",
+      "layout": {
+        "name": "RCEM logbook layout",
+        "file": "Wavelength-RCEM-logbook",
+        "sheets": "module",
+        "assessments": true,
+        "source": "RCEM PoCUS curriculum appendix (Appendix 3, final V2, March 2021), the RCEM Emergency Medicine Training Curriculum 2025 Update v1.5, the RCEM Ultrasound Education and Training FAQ and the SLO6 PoCUS entrustment scale guidance (August 2022). RCEM publishes no fixed logbook dataset; these columns cover what those documents ask a logbook entry to show.",
+        "supervision": {
+          "direct": "Directly supervised",
+          "mentored": "Scanned alone, reviewed later",
+          "independent": "Independent",
+          "independentCounts": true
+        },
+        "columns": [
+          [
+            "No.",
+            "n",
+            6
+          ],
+          [
+            "Training reference",
+            "ref",
+            14
+          ],
+          [
+            "Date",
+            "date",
+            11
+          ],
+          [
+            "Modality",
+            "module",
+            22
+          ],
+          [
+            "Setting",
+            "setting",
+            18
+          ],
+          [
+            "Clinical question",
+            "indication",
+            30
+          ],
+          [
+            "Image quality",
+            "quality",
+            12
+          ],
+          [
+            "Findings",
+            "findings",
+            50
+          ],
+          [
+            "Interpretation",
+            "interpretation",
+            36
+          ],
+          [
+            "Entrustment level (1 to 4)",
+            "blank",
+            14
+          ],
+          [
+            "Supervision",
+            "supervision",
+            24
+          ],
+          [
+            "Supervisor",
+            "supervisor",
+            22
+          ],
+          [
+            "Comparison with other imaging or outcome",
+            "outcome",
+            28
+          ],
+          [
+            "Impact on management",
+            "impact",
+            28
+          ],
+          [
+            "Signed off by",
+            "signedBy",
+            26
+          ],
+          [
+            "Sign-off date",
+            "signedOn",
+            12
+          ],
+          [
+            "Sign-off code",
+            "signoffCode",
+            16
+          ],
+          [
+            "Reflection",
+            "reflection",
+            50
+          ]
+        ],
+        "notes": [
+          "RCEM has no set logbook format and no RCEM app. Its preferred platform is the RCEM e-portfolio (risr/advance, formerly Kaizen); any platform that captures the minimal dataset securely is acceptable. Attach this file to your e-portfolio entry.",
+          "RCEM asks each scan report to state your entrustment level (1 to 4). Wavelength does not record it yet: fill in the Entrustment level column, or record it in the e-portfolio.",
+          "Logbook entries should reference images stored securely, with no identifiable information. Images stay on your phone or the machine; the training reference links them.",
+          "Sign-off is local, by your educational supervisor against the RCEM entrustment scale, with DOPS and other workplace-based assessments recorded in the e-portfolio. The indicative numbers are guidance, not a pass mark."
+        ]
+      }
     },
     {
       "id": "famus",
@@ -3195,7 +3307,119 @@
         "When the summary shows your targets met, ask your supervisor to complete the Assessment of Completion of Training (ACT).",
         "Send the signed ACT to the FAMUS administrator. Include this PDF and the verification link if they ask for your logbook.",
         "For reaccreditation every three years, export a fresh verified summary."
-      ]
+      ],
+      "body": "the Society for Acute Medicine (FAMUS)",
+      "layout": {
+        "name": "FAMUS logbook layout",
+        "file": "Wavelength-FAMUS-logbook",
+        "sheets": "module",
+        "assessments": true,
+        "refStyle": "plain",
+        "source": "FAMUS curriculum packs of the Society for Acute Medicine: DVT module v1.1 (April 2025, including the DVT reporting sheet), abdominal-renal module v1 (January 2023) and DVT and peripheral vascular access module v1 (January 2023). The thoracic module page could not be read on 13 November 2026.",
+        "supervision": {
+          "direct": "Supervised",
+          "mentored": "Mentored",
+          "independent": "Not supervised or mentored"
+        },
+        "columns": [
+          [
+            "Scan no.",
+            "n",
+            8
+          ],
+          [
+            "Anonymised label",
+            "ref",
+            12
+          ],
+          [
+            "Date",
+            "date",
+            11
+          ],
+          [
+            "Module",
+            "module",
+            18
+          ],
+          [
+            "Supervised or mentored",
+            "supervision",
+            22
+          ],
+          [
+            "Counts towards FAMUS",
+            "counts",
+            12
+          ],
+          [
+            "Setting",
+            "setting",
+            18
+          ],
+          [
+            "Indication",
+            "indication",
+            30
+          ],
+          [
+            "Image quality",
+            "quality",
+            12
+          ],
+          [
+            "Findings",
+            "findings",
+            50
+          ],
+          [
+            "Conclusion",
+            "interpretation",
+            36
+          ],
+          [
+            "Departmental scan or other imaging",
+            "outcome",
+            28
+          ],
+          [
+            "Mentor or supervisor",
+            "supervisor",
+            22
+          ],
+          [
+            "Countersigned",
+            "signoff",
+            12
+          ],
+          [
+            "Countersigned by",
+            "signedBy",
+            26
+          ],
+          [
+            "Date countersigned",
+            "signedOn",
+            12
+          ],
+          [
+            "Sign-off code",
+            "signoffCode",
+            16
+          ],
+          [
+            "Candidate reflection",
+            "reflection",
+            50
+          ]
+        ],
+        "notes": [
+          "FAMUS asks for a report sheet for every scan, countersigned by your mentor or supervisor. Use the anonymised label in this file on the report sheet and on the images stored on the machine. This file is the anonymised log of every scan; it does not replace the report sheets.",
+          "Only a Supervisor registered on the FAMUS database signs the Assessment of Completion of Training (ACT); a mentor cannot. The ACT records the supervisor's SAM membership number and your professional registration number.",
+          "Training should finish within 2 years of your first supervised scan. Keep your logbook up to date: it is used for reaccreditation every 3 years.",
+          "Patient-identifiable data must not leave your trust. Training scans go on PACS or in the notes only if agreed at the time with an accredited practitioner."
+        ]
+      }
     },
     {
       "id": "fusic",
@@ -3205,7 +3429,256 @@
         "Share this PDF and the verification link with your FUSIC supervisor.",
         "Upload it wherever your FUSIC accreditation asks for logbook evidence.",
         "Once your targets are met, ask your supervisor to arrange the final assessment."
-      ]
+      ],
+      "body": "the Intensive Care Society (FUSIC)",
+      "layout": {
+        "name": "FUSIC logbook layout",
+        "file": "Wavelength-FUSIC-logbook",
+        "sheets": "module",
+        "assessments": true,
+        "source": "FUSIC Heart Training Pack and Assessment Pack 2025 V1.3 (the training logbook table: study number, date, diagnosis, summary of main findings, mentor signature), the Lung, Abdomen, DVT and Vascular training details and the FUSIC FAQs of the Intensive Care Society. The first five columns follow that table; the rest are Wavelength's.",
+        "supervision": {
+          "direct": "Directly supervised",
+          "mentored": "Unsupervised, reviewed",
+          "independent": "Not reviewed"
+        },
+        "columns": [
+          [
+            "Study number",
+            "n",
+            8
+          ],
+          [
+            "Date",
+            "date",
+            11
+          ],
+          [
+            "Diagnosis",
+            "interpretation",
+            36
+          ],
+          [
+            "Summary of main findings",
+            "findings",
+            50
+          ],
+          [
+            "Mentor or trainer signature",
+            "signedBy",
+            26
+          ],
+          [
+            "Date signed",
+            "signedOn",
+            12
+          ],
+          [
+            "Sign-off code",
+            "signoffCode",
+            16
+          ],
+          [
+            "Training reference",
+            "ref",
+            14
+          ],
+          [
+            "Module",
+            "module",
+            14
+          ],
+          [
+            "Indication",
+            "indication",
+            30
+          ],
+          [
+            "Views obtained",
+            "f.views",
+            30
+          ],
+          [
+            "Image quality",
+            "quality",
+            12
+          ],
+          [
+            "Supervision",
+            "supervision",
+            22
+          ],
+          [
+            "Counts towards FUSIC",
+            "counts",
+            12
+          ],
+          [
+            "Mentor or trainer",
+            "supervisor",
+            22
+          ],
+          [
+            "Setting",
+            "setting",
+            18
+          ],
+          [
+            "Healthy volunteer",
+            "volunteer",
+            10
+          ],
+          [
+            "Formal imaging or outcome",
+            "outcome",
+            26
+          ],
+          [
+            "Reflection",
+            "reflection",
+            50
+          ]
+        ],
+        "notes": [
+          "FUSIC asks for its standard reporting form for every training scan. This file does not replace the reporting forms.",
+          "Only the Summary Training Record (STR) is submitted through the FUSIC Portal; the logbook stays with you. Complete the STR with your mentors and supervisor (Heart) or trainer (other modules).",
+          "Collect the logbook within 12 months from first scan to last, inside the 24-month accreditation window, with no more than 10% of scans on healthy volunteers. Course scans no longer count as supervised, and a repeat scan on the same patient counts only if the clinical picture has changed.",
+          "Attempt every view of the module on every scan. Store unsupervised scans for review under a training reference, never patient details."
+        ]
+      }
+    },
+    {
+      "id": "rcoa",
+      "label": "Anaesthesia: RCoA logbook (Lifelong Learning Platform) and RA-UK blocks",
+      "body": "the RCoA or RA-UK",
+      "steps": [
+        "Open your RCoA Lifelong Learning Platform (LLP) logbook, or the logbook your school uses.",
+        "Use the Summary sheet to see your nerve blocks by type and supervision, including RA-UK's Plan A blocks.",
+        "Copy cases across where your logbook needs them. Your trainers record HALO sign-off in the LLP: this file does not replace it."
+      ],
+      "layout": {
+        "name": "RCoA and RA-UK nerve block layout",
+        "file": "Wavelength-nerve-block-logbook",
+        "sheets": "all",
+        "types": [
+          "block",
+          "fib"
+        ],
+        "code": "BLK",
+        "summary": "blocks",
+        "planA": [
+          "Interscalene brachial plexus",
+          "Axillary brachial plexus",
+          "Rectus sheath",
+          "Erector spinae plane",
+          "Femoral nerve",
+          "Saphenous nerve (adductor canal)",
+          "Sciatic nerve (popliteal)"
+        ],
+        "source": "The RCoA logbook standards page and the SCATA Logbook Standards v1.0 (approved by the RCoA, 28 October 2024: summaries by date and supervision level, no patient identifiers), and RA-UK's seven Plan A blocks. The RCoA sets no block numbers, and its current logbook summary data set could not be read on 13 November 2026.",
+        "supervision": {
+          "direct": "Directly supervised",
+          "mentored": "Reviewed later",
+          "independent": "Independent",
+          "independentCounts": true
+        },
+        "columns": [
+          [
+            "No.",
+            "n",
+            6
+          ],
+          [
+            "Training reference",
+            "ref",
+            12
+          ],
+          [
+            "Date",
+            "date",
+            11
+          ],
+          [
+            "Block",
+            "block",
+            32
+          ],
+          [
+            "RA-UK Plan A",
+            "planA",
+            10
+          ],
+          [
+            "Side",
+            "f.side",
+            10
+          ],
+          [
+            "Needle approach",
+            "f.needle",
+            12
+          ],
+          [
+            "Spread seen",
+            "f.spread",
+            10
+          ],
+          [
+            "Agent and volume",
+            "f.agent",
+            22
+          ],
+          [
+            "Block effective",
+            "f.effect",
+            12
+          ],
+          [
+            "Complication",
+            "f.complication",
+            24
+          ],
+          [
+            "Setting",
+            "setting",
+            18
+          ],
+          [
+            "Supervision",
+            "supervision",
+            20
+          ],
+          [
+            "Supervisor",
+            "supervisor",
+            22
+          ],
+          [
+            "Signed off by",
+            "signedBy",
+            26
+          ],
+          [
+            "Sign-off date",
+            "signedOn",
+            12
+          ],
+          [
+            "Sign-off code",
+            "signoffCode",
+            16
+          ],
+          [
+            "Reflection",
+            "reflection",
+            50
+          ]
+        ],
+        "notes": [
+          "The RCoA sets no nerve block numbers: HALO, by your trainers, is the summative assessment, and logbook numbers are not. Any local target comes from your school.",
+          "The RCoA recommends its Lifelong Learning Platform logbook. This file is a summary to check and copy from; it is not an RCoA logbook."
+        ]
+      }
     },
     {
       "id": "jrcptb",

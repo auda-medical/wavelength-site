@@ -2735,5 +2735,16 @@
 "Wavelength ultrasound logbook": "Wavelength 超声日志",
 "You can review and sign straight away.": "您可以立即查看并签核。",
 "You see written records. Images reach you only with a sign-off request they choose to send, encrypted, and are deleted when the request is closed, or after 14 days at most.": "您可查看书面记录。图像仅随其选择发送的签核请求送达，经加密传输，并在请求关闭后删除，最长保留 14 天。",
-"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "此导出文件包含您 {all} 次扫查中的 {n} 次。请更改日期、路径或状态以纳入更多。"
+"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "此导出文件包含您 {all} 次扫查中的 {n} 次。请更改日期、路径或状态以纳入更多。",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "Excel，采用{name}。并非官方表格：请核实您的机构要求。",
+"This destination has no logbook layout yet. Choose Excel instead.": "此目的地尚无日志格式。请改选 Excel。",
+"Logbook layout": "日志格式",
+"RCEM logbook layout": "RCEM 日志格式",
+"FAMUS logbook layout": "FAMUS 日志格式",
+"FUSIC logbook layout": "FUSIC 日志格式",
+"Anaesthesia: RCoA logbook (Lifelong Learning Platform) and RA-UK blocks": "麻醉：RCoA 日志（Lifelong Learning Platform）与 RA-UK 阻滞",
+"Open your RCoA Lifelong Learning Platform (LLP) logbook, or the logbook your school uses.": "打开您的 RCoA Lifelong Learning Platform（LLP）日志，或您所在培训项目使用的日志。",
+"Use the Summary sheet to see your nerve blocks by type and supervision, including RA-UK's Plan A blocks.": "在 Summary 工作表中按类型和督导级别查看您的神经阻滞，包括 RA-UK 的 Plan A 阻滞。",
+"Copy cases across where your logbook needs them. Your trainers record HALO sign-off in the LLP: this file does not replace it.": "在您的日志需要时把病例抄录过去。您的带教老师在 LLP 中记录 HALO 签署：本文件不能替代。",
+"RCoA and RA-UK nerve block layout": "RCoA 与 RA-UK 神经阻滞格式"
 }

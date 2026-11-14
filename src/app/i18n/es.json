@@ -2773,5 +2773,16 @@
 "Wavelength ultrasound logbook": "Cuaderno de ecografía Wavelength",
 "You can review and sign straight away.": "Puede revisar y validar de inmediato.",
 "You see written records. Images reach you only with a sign-off request they choose to send, encrypted, and are deleted when the request is closed, or after 14 days at most.": "Ve registros escritos. Las imágenes solo le llegan con una solicitud de validación que decidan enviar, cifradas, y se eliminan al cerrar la solicitud, o como máximo a los 14 días.",
-"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} de sus {all} exploraciones están en esta exportación. Cambie las fechas, el itinerario o el estado para incluir más."
+"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} de sus {all} exploraciones están en esta exportación. Cambie las fechas, el itinerario o el estado para incluir más.",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "Excel en el {name}. No es un formulario oficial: compruebe lo que pide su organismo.",
+"This destination has no logbook layout yet. Choose Excel instead.": "Este destino aún no tiene un formato de registro. Elija Excel.",
+"Logbook layout": "Formato de registro",
+"RCEM logbook layout": "formato de registro de RCEM",
+"FAMUS logbook layout": "formato de registro de FAMUS",
+"FUSIC logbook layout": "formato de registro de FUSIC",
+"Anaesthesia: RCoA logbook (Lifelong Learning Platform) and RA-UK blocks": "Anestesia: registro del RCoA (Lifelong Learning Platform) y bloqueos de RA-UK",
+"Open your RCoA Lifelong Learning Platform (LLP) logbook, or the logbook your school uses.": "Abra su registro del RCoA Lifelong Learning Platform (LLP), o el registro que use su escuela.",
+"Use the Summary sheet to see your nerve blocks by type and supervision, including RA-UK's Plan A blocks.": "Use la hoja Summary para ver sus bloqueos nerviosos por tipo y supervisión, incluidos los bloqueos Plan A de RA-UK.",
+"Copy cases across where your logbook needs them. Your trainers record HALO sign-off in the LLP: this file does not replace it.": "Copie los casos donde su registro los necesite. Sus formadores registran la aprobación HALO en el LLP: este archivo no la sustituye.",
+"RCoA and RA-UK nerve block layout": "formato de registro de bloqueos RCoA y RA-UK"
 }

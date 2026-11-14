@@ -2849,5 +2849,16 @@
 "Wavelength ultrasound logbook": "Журнал УЗИ Wavelength",
 "You can review and sign straight away.": "Вы можете сразу просмотреть и подтвердить.",
 "You see written records. Images reach you only with a sign-off request they choose to send, encrypted, and are deleted when the request is closed, or after 14 days at most.": "Вы видите письменные протоколы. Изображения доходят до вас только вместе с запросом на подтверждение, который они решат отправить, в зашифрованном виде, и удаляются при закрытии запроса или не позднее чем через 14 дней.",
-"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} из ваших {all} исследований есть в этом экспорте. Измените даты, путь или статус, чтобы включить больше."
+"{n} of your {all} scans are in this export. Change the dates, pathway or status to include more.": "{n} из ваших {all} исследований есть в этом экспорте. Измените даты, путь или статус, чтобы включить больше.",
+"Excel in the {name}. It is not an official form: check what your body asks for.": "Excel в формате: {name}. Это не официальная форма: уточните требования вашей организации.",
+"This destination has no logbook layout yet. Choose Excel instead.": "Для этого назначения пока нет формата журнала. Выберите Excel.",
+"Logbook layout": "Формат журнала",
+"RCEM logbook layout": "формат журнала RCEM",
+"FAMUS logbook layout": "формат журнала FAMUS",
+"FUSIC logbook layout": "формат журнала FUSIC",
+"Anaesthesia: RCoA logbook (Lifelong Learning Platform) and RA-UK blocks": "Анестезиология: журнал RCoA (Lifelong Learning Platform) и блокады RA-UK",
+"Open your RCoA Lifelong Learning Platform (LLP) logbook, or the logbook your school uses.": "Откройте свой журнал RCoA Lifelong Learning Platform (LLP) или журнал, который использует ваша программа.",
+"Use the Summary sheet to see your nerve blocks by type and supervision, including RA-UK's Plan A blocks.": "На листе Summary видны ваши блокады по типу и уровню супервизии, включая блокады Plan A от RA-UK.",
+"Copy cases across where your logbook needs them. Your trainers record HALO sign-off in the LLP: this file does not replace it.": "Перенесите случаи туда, где они нужны вашему журналу. Ваши наставники подтверждают HALO в LLP: этот файл это не заменяет.",
+"RCoA and RA-UK nerve block layout": "формат журнала блокад RCoA и RA-UK"
 }
