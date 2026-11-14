@@ -6,15 +6,17 @@
    "href": "/guides/pocus-accreditation/",
    "draft": false,
    "reviewed": null,
-   "updated": "2026-10-11",
-   "contentVersion": "868eedbdd0e31ff0",
+   "updated": "2026-11-14",
+   "contentVersion": "dadcbc658da97924",
    "sources": [
     "g:5385918cc2ee",
     "g:50f2134f87a3",
     "g:5e2f7962ecbf",
     "g:f92d726b14bb",
     "g:eusem-us",
+    "g:88d36a8f7b32",
     "g:acem-p733",
+    "g:f4a8c0f71ca3",
     "g:cpocus-core",
     "g:acep-guidelines"
    ]
@@ -477,6 +479,20 @@
    "why": null
   },
   {
+   "id": "g:88d36a8f7b32",
+   "kind": "guidance",
+   "body": "EUSEM",
+   "name": "EUSEM: European Curriculum of Emergency Medicine",
+   "url": "https://eusem.org/education/learning-resources/european-curriculum-of-emergency-medicine",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation"
+   ],
+   "pathways": [],
+   "why": null
+  },
+  {
    "id": "g:8c62b3ed0de4",
    "kind": "guidance",
    "body": "RCEM",
@@ -740,6 +756,20 @@
    "why": null
   },
   {
+   "id": "g:f4a8c0f71ca3",
+   "kind": "guidance",
+   "body": "acem.org.au",
+   "name": "ACEM: ED trainee PoCUS logbook user guide",
+   "url": "https://acem.org.au/getmedia/ba2525be-fa3e-49ae-807f-9c01ec7afa5c/ED-Trainee-PoCUS-Logbook_User-Guide",
+   "mode": "auto",
+   "adapter": "page",
+   "guides": [
+    "pocus-accreditation"
+   ],
+   "pathways": [],
+   "why": null
+  },
+  {
    "id": "g:f92d726b14bb",
    "kind": "guidance",
    "body": "ICS",
@@ -917,5 +947,5 @@
    "why": "Tracked for clinical review (11 October 2026 inventory), not cited by the guide: a change here is reported to the reviewer, never shown on the guide. Linked from the RCEM ultrasound education and training page with the two scales the guide cites."
   }
  ],
- "version": "8083a552104d1f55"
+ "version": "81ebcd82b207c4a8"
 }

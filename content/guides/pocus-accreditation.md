@@ -6,7 +6,7 @@ seoTitle: "POCUS accreditation: UK and international pathways"
 eyebrow: Guide · Accreditation
 summary: Which POCUS pathway fits you: RCEM, FAMUS and FUSIC compared side by side, with links to international pathways and frameworks from EUSEM, ACEM, CPoCUS and ACEP.
 date: 2026-10-05
-updated: 2026-10-11
+updated: 2026-11-14
 author: Dr Firas Abou-Auda
 order: 0
 pathway: all
@@ -39,10 +39,10 @@ None of these comes from attending a course on its own. A course is one source o
 | A UK emergency medicine doctor outside training, an ACP or a physician associate | The RCEM PoCUS syllabus, in the modalities within your scope | Royal College of Emergency Medicine |
 | An acute or internal medicine clinician in the UK | [FAMUS accreditation](/guides/famus-accreditation/) | Society for Acute Medicine |
 | An intensive care, anaesthetic or acute clinician who wants focused echo | [FUSIC accreditation](/guides/fusic-accreditation/), often FUSIC Heart first | Intensive Care Society |
-| An emergency clinician in Europe | The EUSEM ultrasound curriculum, with your national rules | European Society for Emergency Medicine |
-| An emergency clinician in Australia or New Zealand | Your health service's credentialing, using ACEM's recommended framework (policy P733) | Your health service, with a framework from the Australasian College for Emergency Medicine |
-| An acute care clinician in Canada | The CPoCUS Acute Care CORE pathway | Canadian Point of Care Ultrasound Society |
-| An emergency physician in the United States | ACEP's ultrasound guidelines, and your hospital's credentialing rules | American College of Emergency Physicians |
+| An emergency clinician in Europe | The [EUSEM ultrasound section](https://eusem.org/sections-and-committees/sections/ultrasound-section) and the [European Curriculum of Emergency Medicine](https://eusem.org/education/learning-resources/european-curriculum-of-emergency-medicine), with your national rules | European Society for Emergency Medicine |
+| An emergency clinician in Australia or New Zealand | Your health service's credentialing, using ACEM's recommended framework, [policy P733](https://policy.acem.org.au/index.php/policies-menu/p733-recommendations-for-health-service-credentialing-em-ultrasonography) | Your health service, with a framework from the Australasian College for Emergency Medicine |
+| An acute care clinician in Canada | The [CPoCUS Acute Care CORE pathway](https://cpocus.ca/acute-care-core/) | Canadian Point of Care Ultrasound Society |
+| An emergency physician in the United States | [ACEP's ultrasound guidelines](https://www.acep.org/siteassets/sites/acep/media/ultrasound/pointofcareultrasound-guidelines.pdf) (PDF), and your hospital's credentialing rules | American College of Emergency Physicians |
 
 Many clinicians hold more than one. RCEM lists FAMUS and FUSIC as complementary evidence, and SAM recommends FUSIC Heart for focused echo because FAMUS has no cardiac module.
 
@@ -89,19 +89,29 @@ Wavelength has not checked these pathways and frameworks against each body's cur
 
 ### Europe: EUSEM
 
-The European Society for Emergency Medicine has an ultrasound section and publishes an emergency ultrasound curriculum. Read the [EUSEM ultrasound section](https://eusem.org/sections-and-committees/sections/ultrasound-section) and check your national rules.
+The European Society for Emergency Medicine has an ultrasound section, which says it is developing a unified European curriculum for emergency ultrasound. Until then, use EUSEM's curriculum for emergency medicine and your national rules.
+
+- [EUSEM ultrasound section](https://eusem.org/sections-and-committees/sections/ultrasound-section) (web page)
+- [European Curriculum of Emergency Medicine](https://eusem.org/education/learning-resources/european-curriculum-of-emergency-medicine) (web page, with the current curriculum and earlier editions to download as PDFs)
 
 ### Australia and New Zealand: ACEM
 
-The Australasian College for Emergency Medicine publishes policy P733, [Recommendations for Health Service Credentialing: EM Ultrasonography](https://policy.acem.org.au/index.php/policies-menu/p733-recommendations-for-health-service-credentialing-em-ultrasonography). ACEM provides a recommended framework: credentialing itself is the responsibility of your health service, not ACEM. Check the current version and your health service's credentialing rules.
+The Australasian College for Emergency Medicine publishes policy P733, Recommendations for Health Service Credentialing: EM Ultrasonography. ACEM provides a recommended framework: credentialing itself is the responsibility of your health service, not ACEM. Check the current version and your health service's credentialing rules.
+
+- [ACEM policy P733](https://policy.acem.org.au/index.php/policies-menu/p733-recommendations-for-health-service-credentialing-em-ultrasonography) (web page, with its revision history; print it or save it as a PDF from your browser)
+- [ACEM ED trainee PoCUS logbook: user guide](https://acem.org.au/getmedia/ba2525be-fa3e-49ae-807f-9c01ec7afa5c/ED-Trainee-PoCUS-Logbook_User-Guide) (PDF)
 
 ### Canada: CPoCUS
 
-The Canadian Point of Care Ultrasound Society publishes the [Acute Care CORE](https://cpocus.ca/acute-care-core/) pathway. Check CPoCUS for the current requirements.
+The Canadian Point of Care Ultrasound Society publishes the Acute Care CORE pathway as a web page. Check CPoCUS for the current requirements.
+
+- [CPoCUS Acute Care CORE](https://cpocus.ca/acute-care-core/) (web page)
 
 ### United States: ACEP
 
-The American College of Emergency Physicians publishes [ultrasound guidelines](https://www.acep.org/siteassets/sites/acep/media/ultrasound/pointofcareultrasound-guidelines.pdf). Check the current guidelines and your hospital's credentialing rules.
+The American College of Emergency Physicians publishes ultrasound guidelines. The edition free to download is the June 2016 policy statement; ACEP has revised the guidelines since, and the newer edition on acep.org asks you to sign in as an ACEP member. Check the current guidelines and your hospital's credentialing rules.
+
+- [ACEP Ultrasound Guidelines: Emergency, Point-of-Care and Clinical Ultrasound Guidelines in Medicine, June 2016](https://www.acep.org/siteassets/sites/acep/media/ultrasound/pointofcareultrasound-guidelines.pdf) (PDF)
 
 ## Using one logbook for more than one pathway
 
@@ -142,6 +152,8 @@ The UK figures come from the full guides, which were checked against these and f
 Official pages for the international pathways and frameworks. Wavelength has not checked this page's wording against them, so treat them as the authority:
 
 - [EUSEM: Ultrasound section](https://eusem.org/sections-and-committees/sections/ultrasound-section)
+- [EUSEM: European Curriculum of Emergency Medicine](https://eusem.org/education/learning-resources/european-curriculum-of-emergency-medicine)
 - [ACEM P733: Recommendations for Health Service Credentialing, EM Ultrasonography](https://policy.acem.org.au/index.php/policies-menu/p733-recommendations-for-health-service-credentialing-em-ultrasonography)
+- [ACEM: ED trainee PoCUS logbook user guide](https://acem.org.au/getmedia/ba2525be-fa3e-49ae-807f-9c01ec7afa5c/ED-Trainee-PoCUS-Logbook_User-Guide) (PDF)
 - [CPoCUS: Acute Care CORE](https://cpocus.ca/acute-care-core/)
-- [ACEP: Ultrasound Guidelines](https://www.acep.org/siteassets/sites/acep/media/ultrasound/pointofcareultrasound-guidelines.pdf)
+- [ACEP: Ultrasound Guidelines, June 2016](https://www.acep.org/siteassets/sites/acep/media/ultrasound/pointofcareultrasound-guidelines.pdf) (PDF)
