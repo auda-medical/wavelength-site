@@ -1117,12 +1117,16 @@ pages['/training/thanks/'] = layout({
 // and training days. The licence is being shaped with two or three pilot departments, so this page says so and never
 // describes features as finished. Enquiries go to worker/departments.js (enquirePilot), into department_enquiries.
 // Never claim endorsement or recognition by any college or society; never promote this page inside the store apps.
+// Owner decisions D1 (prices) and D2 (pilot terms), 14 Nov 2026 (road-to-number-one\00-ROAD-TO-NUMBER-ONE-PLAN.md section 6).
+// Shown as the planned licence prices: the licence is being built with the pilot departments.
+const DEPT_PRICES = [['Up to 25', '£1,500'], ['26 to 60', '£3,000'], ['More than 60', '£5,000']];
 const DEPT_FAQS = [
   { q: 'Will trainees have to pay?', a: 'No. The Wavelength logbook is free for every trainee, and stays free. The department licence pays for the department\'s own tools, not for a trainee\'s logbook.' },
   { q: 'What can the department see?', a: 'Only what each trainee chooses to share with your department. Nothing is shared by default, and a trainee can stop sharing at any time. Their logbook stays theirs when they rotate or move on.' },
   { q: 'Is the logbook recognised by RCEM, SAM, the ICS or RA-UK?', a: 'Wavelength is independent and is not endorsed by any college or society. The logbook tracks evidence against each pathway\'s published requirements. Whether evidence is accepted is decided by the body, your supervisors and your training programme.' },
   { q: 'How do we pay?', a: 'By invoice and purchase order. There is nothing to pay by card, and we can complete your supplier set-up forms.' },
-  { q: 'What does the pilot cost?', a: 'Pilot terms are agreed with each department before anything starts. Tell us what you need and we will set out the terms in writing.' },
+  { q: 'What does the pilot cost?', a: 'Nothing for six months. In return we ask for a named lead, a 30-minute call each month, honest feedback and permission to evaluate the service. You may co-author a poster from it, but you do not have to. The terms fit on one page and are agreed in writing before anything starts.' },
+  { q: 'What will the licence cost after the pilot?', a: 'One annual price per department, by the number of clinicians in the department who scan: £1,500 a year for up to 25, £3,000 for 26 to 60 and £5,000 for more than 60. Founding pilot departments pay half in their first paid year. Prices exclude VAT where it applies. Trainees never pay. We send no invoice until the department tools in the licence are working, and we review these prices with our pilot departments before the first invoice.' },
   { q: 'What about information governance?', a: 'Your information governance team can ask us for our data protection documents. Images taken in the app stay on the clinician\'s phone unless they choose to share them, as set out in our privacy notice.' },
 ];
 {
@@ -1171,19 +1175,24 @@ const DEPT_FAQS = [
     'An annual department licence, paid by invoice against your purchase order',
     'No card payments, and nothing bought inside the app',
     'We complete supplier set-up forms and answer information governance questions',
-    'Pilot terms agreed in writing with each department before anything starts',
+    'Pilot terms on one page, agreed in writing before anything starts',
   ].map((x) => `<li>${tick}<span>${x}</span></li>`).join('')}</ul>
 </div></section>
-<section class="section"><div class="wrap">
+<section class="section" id="pricing"><div class="wrap">
+  <div class="section-head"><p class="eyebrow reveal">Pricing</p><h2 class="reveal" data-d="1">One annual licence per department.</h2><p class="reveal" data-d="2" style="color:var(--slate);margin-top:16px;max-width:700px">The planned licence price, by the number of clinicians in your department who scan. The licence is being built with our pilot departments, and pilots are free for six months. Trainees never pay.</p></div>
+  <div class="pillars">${DEPT_PRICES.map(([n, p], i) => `<div class="pillar reveal"${i ? ` data-d="${i}"` : ''}><div class="num">${esc(p)}</div><h3>${esc(n)} clinicians</h3><p>A year, for the whole department.</p></div>`).join('')}</div>
+  <p class="reveal" style="margin-top:24px;color:var(--slate)">Founding pilot departments pay half in their first paid year. No invoice until the department tools are working. Paid by invoice against a purchase order. Prices exclude VAT where it applies.</p>
+</div></section>
+<section class="section sand"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal">The pilot</p><h2 class="reveal" data-d="1">Two or three pilot departments.</h2></div>
   <ol class="ac-steps">${[
     ['Tell us about your department', 'Who leads ultrasound training, roughly how many clinicians scan, and what you most need to see. The form below takes a few minutes.'],
-    ['Agree the pilot', 'We set out in writing what the pilot includes, how long it runs, and what we ask of you: a named lead and honest feedback.'],
+    ['Agree the pilot', 'Free for six months, on one page of written terms. We ask for a named lead, a 30-minute call each month, honest feedback and permission to evaluate the service. Nothing is shared beyond what each trainee chooses to share.'],
     ['Shape the licence', 'Your trainees keep using the free logbook. You use the department tools as they are built, and tell us what works.'],
-    ['Review together', 'At the end we review the pilot with you. Anything published about it, such as an audit, needs your department\'s agreement.'],
+    ['Review together', 'At the end we review the pilot with you. Anything published about it needs your department\'s agreement, and you may co-author a poster from it if you wish.'],
   ].map(([h, t], i) => `<li class="reveal" data-d="${i}"><span class="ac-step-n">${i + 1}</span><h3>${h}</h3><p>${t}</p></li>`).join('')}</ol>
 </div></section>
-<section class="section sand" id="pilot"><div class="wrap split">
+<section class="section" id="pilot"><div class="wrap split">
   <div>
     <p class="eyebrow reveal">Ask about the pilot</p>
     <h2 class="display reveal" data-d="1" style="font-size:clamp(38px,5vw,56px);margin:20px 0 24px">Tell us about your department.</h2>
@@ -1206,7 +1215,7 @@ const DEPT_FAQS = [
     <div><button class="btn btn-teal cta-caps" type="submit">Send my enquiry ${arrow}</button></div>
   </form>
 </div></section>
-<section class="section"><div class="wrap">
+<section class="section sand"><div class="wrap">
   <div class="section-head"><p class="eyebrow reveal">Questions</p><h2 class="reveal" data-d="1">Before you ask.</h2></div>
   ${faqHtml(DEPT_FAQS)}
   <p class="source" style="margin-top:28px">Wavelength is independent. It is not run or endorsed by the NHS, the Royal College of Emergency Medicine, the Society for Acute Medicine, the Intensive Care Society or Regional Anaesthesia UK.</p>
