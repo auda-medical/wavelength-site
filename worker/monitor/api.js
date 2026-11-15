@@ -67,7 +67,7 @@ export async function guideStatus(env, slug, ctx = null, { refresh = true } = {}
 // Only from directories that are authorised and synced. Names, organisations, roles and modules: never contact
 // details. A listed person is shown as "On Wavelength" only when they are an approved Wavelength supervisor whose
 // confirmed claim links them to the listing and who chose to be found (supervisor search consent).
-const MIN = 3, MAX_RESULTS = 8;
+const MIN = 1, MAX_RESULTS = 8; // 15 Nov 2026 (owner): suggestions from the first letter (was 3)
 let CACHE = { at: 0, key: '', list: [] };
 // Objections are applied on every read too, so a cached list never shows someone whose objection was just recorded.
 async function listings(env) {

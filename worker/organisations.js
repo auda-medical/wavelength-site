@@ -67,7 +67,7 @@ async function parentNames(env, rows) {
 export async function findOrganisations(env, q, { country = '', limit = MAX_RESULTS } = {}) {
   const qn = normOrg(q);
   const words = queryWords(q);
-  if (qn.length < 2 || !words.length) return [];
+  if (!qn.length || !words.length) return []; // 15 Nov 2026 (owner): suggestions from the first letter
   const where = words.map(() => "(' ' || m.n) LIKE ?").join(' AND ');
   const args = words.map((w) => `% ${w}%`);
   const cc = /^[A-Z]{2}$/.test(country) ? country : '';
@@ -92,7 +92,7 @@ async function searchRoute(env, url, ctx) {
   const head = { 'Cache-Control': 'public, max-age=3600' };
   if (!(await orgsReady(env))) return json({ ok: true, available: false, results: [] });
   const qn = normOrg(q);
-  if (qn.length < 2) return json({ ok: true, results: [], tooShort: true }, 200, head);
+  if (!qn.length) return json({ ok: true, results: [], tooShort: true }, 200, head);
   // One edge-cache entry per normalised query, so "Darent", "darent" and "darent " share it.
   const cache = typeof caches !== 'undefined' && caches.default;
   const key = cache ? new Request(`https://organisations.cache.invalid/?q=${encodeURIComponent(qn)}&c=${country}`) : null;
