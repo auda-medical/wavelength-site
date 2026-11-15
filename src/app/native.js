@@ -278,6 +278,22 @@
     onToken: function (fn) { quiet(FM.addListener('tokenReceived', function (e) { if (e && e.token) fn({ token: e.token, platform: PLATFORM }); })); }
   };
 
+  // ---------- Store ratings (1.0.29, StoreReview: StoreReviewPlugin.swift and StoreReviewPlugin.java) ----------
+  // requestReview asks the phone for its own rating prompt (iPhone: StoreKit; Android: Google Play In-App Review). The
+  // phone decides whether anything appears and nothing comes back about it; when to ask is decided in rating.js.
+  // openStore opens this app's page in the App Store (write a review) or Google Play, for "Rate Wavelength" in Settings.
+  var Review = on && (PLATFORM === 'ios' || PLATFORM === 'android') ? plugin('StoreReview') : null;
+  var STORE = { ios: 'https://apps.apple.com/app/id6822088185?action=write-review', android: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app' };
+  function review() {
+    if (!Review) return Promise.resolve(false);
+    try { return Review.requestReview().then(function () { return true; }, function () { return false; }); } catch (e) { return Promise.resolve(false); }
+  }
+  function openStore() {
+    var u = STORE[PLATFORM]; if (!u) return;
+    var fallback = function () { openExternal(u); };
+    try { var p = Review ? Review.openStore({ url: u }) : null; if (p && p.catch) p.catch(fallback); else if (!p) fallback(); } catch (e) { fallback(); }
+  }
+
   // Android draws behind the status and navigation bars from Android 15. Mark the page so CSS can keep content clear.
   if (on) document.documentElement.classList.add('native', 'native-' + (cap.getPlatform ? cap.getPlatform() : 'app'));
 
@@ -306,6 +322,9 @@
     captureRemove: captureRemove,
     captureFile: captureFile,
     push: push,
+    review: Review ? review : null,
+    openStore: Review ? openStore : null,
+    storeUrl: STORE[PLATFORM] || '',
     takeOpen: function () { var h = pendingOpen; pendingOpen = ''; return h; },
     plugin: plugin
   };

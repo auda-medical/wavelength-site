@@ -563,7 +563,7 @@
       SY.ran = true;
       SY.fail = !S.account ? '' : NETR.classify(ex, deviceNet());
       SY.err = SY.fail ? { kind: SY.fail, at: Date.now(), status: (ex && ex.status) || 0, vpn: !!(S.net && S.net.vpn) } : null;
-      if (SY.fail) logAttempt(false, SY.fail, failWhy(ex));
+      if (SY.fail) { logAttempt(false, SY.fail, failWhy(ex)); rateTrouble(); }
     }).then(function () {
       S.syncing = false; S.syncManual = false;
       if (!S.account || gen !== SESSION) return;
@@ -631,6 +631,7 @@
         if (!fresh.length) return;
         var keep = news().filter(function (n) { return !fresh.some(function (f) { return f.id === n.id; }); });
         toast(newsText(fresh), 4000);
+        if (fresh.some(function (f) { return f.status === 'confirmed'; })) rateMoment('signed');
         return setKv('news', keep.concat(fresh).slice(-50));
       }).then(function () { return setKv('lastSyncAfter', res.after || ''); }).then(function () { return setKv('lastSync', res.now); }).then(function () {
         if (res.more && (guard || 0) < 200) return pullAll((guard || 0) + 1, gen);
@@ -1233,6 +1234,37 @@
     });
   }
   if (NAT.push) NAT.push.onToken(function (t) { if (S.account && pushIsOn()) pushRegister(t); });
+  // 1.0.29: store ratings. After a good moment the store app may ask the phone for its official rating prompt; the
+  // rules (how long the app has been in use, how often, never after an error) are in rating.js. The phone decides
+  // whether a prompt appears. No question of our own first, nothing offered for a rating, nothing on the website.
+  var RATE = (function () {
+    if (!NAT.on || !NAT.review || !window.WLRating) return null;
+    var earliest = 0;
+    try { (JSON.parse(localStorage.getItem('wl-diag') || '[]') || []).forEach(function (d) { if (d && d.at > 0 && (!earliest || d.at < earliest)) earliest = d.at; }); } catch (e) { earliest = 0; }
+    var store = null; try { store = window.localStorage; } catch (e) { store = null; }
+    return WLRating.create({ storage: store, earliest: earliest });
+  })();
+  function rateTrouble() { if (RATE) RATE.trouble(); }
+  // kind: 'signed' (the learner sees new sign-offs), 'supervised' (a supervisor finished one), 'scan' (5th scan).
+  // Waits until no sheet, lock or manual sync is on screen (up to a minute), then checks the rules once more.
+  function rateMoment(kind) {
+    if (!RATE) return;
+    var tries = 0;
+    var ctx = function () {
+      var ents = live();
+      return { native: true, moment: kind, scans: ents.length, signoffs: ents.filter(function (e) { return signState(e) === 'signed'; }).length, troubleNow: !!SY.fail || refused().length > 0 };
+    };
+    if (!RATE.check(ctx()).ok) return;
+    (function later() {
+      setTimeout(function () {
+        if (!S.account) return;
+        if (document.querySelector('.sheet-bg') || document.querySelector('.app-lock') || userBusy()) { if (++tries < 20) later(); return; }
+        if (!RATE.check(ctx()).ok) return;
+        RATE.asked();
+        NAT.review();
+      }, 3000);
+    })();
+  }
   window.addEventListener('wl:open', function (e) { if (S.account && e.detail && e.detail.hash) { NAT.takeOpen(); location.hash = e.detail.hash; } });
   window.addEventListener('wl:notice', function (e) { var d = e.detail || {}; toast((d.title ? d.title + ': ' : '') + (d.body || ''), 6000); if (S.account) { S.sv = null; loadLinks(); } });
   function signedOut(to) { SESSION++; keptLast = null; clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.sv = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
@@ -1635,6 +1667,7 @@
     var upd = function (k, v) { var p = route().q; if (v) p.set(k, v); else p.delete(k); history.replaceState(null, '', '#/log?' + p.toString()); viewLog(route()); };
     $$('[data-f]').forEach(function (b) { b.addEventListener('click', function () { upd('type', b.dataset.f === 'all' ? '' : b.dataset.f); }); });
     $$('input[name=st]').forEach(function (i) { i.addEventListener('change', function () { upd('s', i.value); }); });
+    if (news().some(function (n) { return n.status === 'confirmed'; })) rateMoment('signed');
     if (news().length) setKv('news', []).then(function () { var d = $('.tabs .nd'); if (d) d.remove(); });
     var qi = $('#q'), tmr; qi.addEventListener('input', function () { clearTimeout(tmr); tmr = setTimeout(function () { upd('q', qi.value); var n = $('#q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); });
     loadThumbs();
@@ -2312,13 +2345,13 @@
           setTimeout(function () {
             // A new scan goes back Home; an edit goes back to the scan. A short note says what actually happened,
             // and changes to "synced" only once the server has acknowledged this scan.
-            var note = savedNote(out.id, !editing), act = editing ? '' : afterAct, ps = pickedSup();
+            var note = savedNote(out.id, !editing), act = editing ? '' : afterAct, ps = pickedSup(), nScans = live().length;
             go(editing ? 'entry/' + out.id : '');
-            sync().then(function () { note.update(); runAfter(out.id, act, ps); }, function () { runAfter(out.id, act, ps); });
+            sync().then(function () { note.update(); runAfter(out.id, act, ps); if (!editing && RATE && RATE.scanMilestone(nScans)) rateMoment('scan'); }, function () { runAfter(out.id, act, ps); });
           }, 0);
         }, function (ex) {
           // Not saved: stay on the form with everything as entered.
-          saving = false; busy(btn, false);
+          saving = false; busy(btn, false); rateTrouble();
           err.textContent = T('Could not save on this device: {why}', { why: (ex && ex.message) || ex }); err.hidden = false;
           scrollToField(err, true);
         });
@@ -3406,8 +3439,8 @@
         var b = $('button.teal', f); busy(b, true, T('Signing…'));
         api('/api/app/signoff/inperson', d).then(function (res) {
           if (!res.ok) throw new Error(res.error); closeSheet();
-          return sync().then(function () { NAT.haptic('success'); sheet('<h2>' + esc(T('Signed off')) + '</h2><p>' + T('Code <b>{code}</b>. Anyone can verify it at thewavelength.co.uk/verify.', { code: esc(res.code) }) + '</p><div class="btns"><button class="btn teal block" data-close>' + esc(T('Done')) + '</button></div>'); viewSignoff(route()); });
-        }).catch(function (ex) { busy(b, false); var err = $('.err', f); err.textContent = ex.message || T('Could not sign. Check the connection.'); err.hidden = false; });
+          return sync().then(function () { NAT.haptic('success'); sheet('<h2>' + esc(T('Signed off')) + '</h2><p>' + T('Code <b>{code}</b>. Anyone can verify it at thewavelength.co.uk/verify.', { code: esc(res.code) }) + '</p><div class="btns"><button class="btn teal block" data-close>' + esc(T('Done')) + '</button></div>'); viewSignoff(route()); rateMoment('signed'); });
+        }).catch(function (ex) { busy(b, false); rateTrouble(); var err = $('.err', f); err.textContent = ex.message || T('Could not sign. Check the connection.'); err.hidden = false; });
       });
     });
   }
@@ -4351,8 +4384,8 @@
         f.addEventListener('submit', function (ev) {
           ev.preventDefault(); var d = collectSignoff(root, f, pad); if (!d) return; d.code = code;
           var b = $('button.teal', f); busy(b, true, T('Signing…'));
-          api('/api/app/supervise/signoff', d).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(r2.skipped ? T('Signed off. Code {code}.', { code: r2.code }) + ' ' + T('{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.', { n: r2.skipped }) : T('Signed off. Code {code}.', { code: r2.code }), r2.skipped ? 8000 : 4000); loadLinks(); S.sv = null; render(true); })
-            .catch(function (ex) { busy(b, false); var err = $('.err', f); err.textContent = ex.message; err.hidden = false; });
+          api('/api/app/supervise/signoff', d).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(r2.skipped ? T('Signed off. Code {code}.', { code: r2.code }) + ' ' + T('{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.', { n: r2.skipped }) : T('Signed off. Code {code}.', { code: r2.code }), r2.skipped ? 8000 : 4000); loadLinks(); S.sv = null; render(true); if (RATE) { RATE.signedOff(); if (!r2.skipped) rateMoment('supervised'); } })
+            .catch(function (ex) { busy(b, false); rateTrouble(); var err = $('.err', f); err.textContent = ex.message; err.hidden = false; });
         });
       });
     }).catch(function (ex) { toast(netFail(ex) ? T('Could not load. Check your connection.') : T('Could not load.'), 5000); });
@@ -5587,10 +5620,13 @@
   function versionText(v) { return v.version ? (v.build ? T('Version {version} ({build})', { version: v.version, build: v.build }) : T('Version {version}', { version: v.version })) : T('Web app'); }
   function aboutFooter() {
     return '<footer class="about-foot"><p class="about-name">Wavelength</p><p data-appver>' + esc(NAT.version ? versionText({ version: NAT.version, build: '' }) : NAT.on ? '' : T('Web app')) + '</p><p><bdi dir="ltr">' + esc(COPYRIGHT) + '</bdi></p>' +
+      // 1.0.29: the store's own review page (App Store: write a review; Google Play: the listing). Store apps only.
+      (NAT.openStore ? '<button type="button" class="about-link" data-rate>' + esc(T('Rate Wavelength')) + '</button>' : '') +
       '<button type="button" class="about-link" data-about>' + esc(T('About Wavelength')) + '</button></footer>';
   }
   function bindAbout() {
     var b = $('[data-about]'); if (b) b.onclick = aboutSheet;
+    var rt = $('[data-rate]'); if (rt) rt.onclick = function () { NAT.openStore(); };
     appInfo().then(function (v) { $$('[data-appver]').forEach(function (el) { el.textContent = versionText(v); }); });
   }
   // 1.0.20 (owner): suggestions for the app, by email to the team, with the version and platform only.

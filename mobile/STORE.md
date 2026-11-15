@@ -165,6 +165,14 @@ Google Play and the App Store (after 1.0.27), under 500 characters (450):
 
 Export your logbook laid out like the RCEM, FAMUS, FUSIC or RCoA nerve block logbook, as an Excel file for your assessor. Clearer first steps for supervisors, who can review and sign straight away. "Save, sign later" for scans you will send for sign-off later. Your likely pathway is suggested from your role. Recommend Wavelength to a colleague from Me. Inviting a supervisor no longer shows whether they already have an account. Many smaller fixes.
 
+## Release 1.0.29 (36): what's new
+
+Same website code as `0483655` (no app changes there); the app adds store ratings (src/app/rating.js, StoreReviewPlugin on both phones). Android takes its version from the build environment (mobile/android/app/build.gradle): run the Android workflow with version `1.0.29`; its version code is the workflow run number (`WL_VERSION_CODE`), not 36, and must be higher than 1.0.28's. iPhone: 1.0.29 (36) is set in the Xcode project. Android adds Google's Play In-App Review library (`com.google.android.play:review:2.0.2`).
+
+Google Play and the App Store (after 1.0.28), under 500 characters (200):
+
+Wavelength may now occasionally ask you to rate it, using your phone's own rating prompt, and never more than a few times a year. You can also rate it at any time from Rate Wavelength in Me, Settings.
+
 ## Export compliance (Apple) and encryption
 
 `ITSAppUsesNonExemptEncryption` is false. The app's encryption (AES-256-GCM for encrypted backups and for images shared in sign-off links, HKDF and PBKDF2) runs through Web Crypto, which is provided by the operating system's own WebKit; HTTPS is the system's too. Argon2id (`vendor/noble-hashes`) derives a key from the backup passphrase: it is a key-derivation (hashing) function, not encryption. Apple treats encryption used only within its operating system as exempt, so App Store Connect should not ask; if it does, answer that the app uses only encryption provided by the operating system. Reviewed 12 October 2026; recheck if a native crypto library is ever added.
