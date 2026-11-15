@@ -46,7 +46,7 @@ Status 15 Nov 2026 (coordinating session, after an ASO email showed #33 US / #13
 
 Name: Wavelength: POCUS Logbook
 Subtitle (Apple, 30 characters): Ultrasound scans and sign-off
-Short description (Google, 80 characters): Free POCUS ultrasound logbook: supervisor sign-off, RCEM, FAMUS, FUSIC targets.
+Short description (Google, 80 characters): POCUS ultrasound logbook: supervisor sign-off, RCEM, FAMUS and FUSIC targets. (No "free": Play Console warned that price or promotion words in the short description can stop Google Play promoting the app. Translations: road-to-number-one/06-store-listing-translations.md, saved in Play Console 15 Nov for 10 languages.)
 Category: Medical (Apple primary), Education (Apple secondary). Google: Medical.
 Keywords (Apple, 100 characters): rcem,famus,fusic,eusem,efast,echo,emergency,log,procedure,portfolio,sonography,dops,supervisor,nerve
 
