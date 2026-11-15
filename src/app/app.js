@@ -1006,6 +1006,96 @@
     var h = text || ($('header.top h1') || $('h1', app) || {}).textContent || '';
     sr.textContent = ''; setTimeout(function () { sr.textContent = h; }, 60);
   }
+  // ---------- Suggestions under typed fields (15 Nov 2026) ----------
+  // Owner: every field where people type something that already exists in a list should drop down matching entries
+  // as soon as they type the first letter. Any input carrying sugAttrs() gets an ARIA combobox listbox (sugList()) right
+  // under it. Matching: every word typed must start a word of the entry (accents and case ignored); entries that start
+  // with the whole text come first. The text stays free: picking an entry only fills the field. Sources are on this
+  // device (the lists below, the learner's own logbook, their linked supervisors), so typing sends nothing anywhere.
+  var SUG_LISTS = {
+    grade: ['FY1', 'FY2', 'CT1', 'CT2', 'CT3', 'ACCS CT1', 'ACCS CT2', 'ACCS CT3', 'ST1', 'ST2', 'ST3', 'ST4', 'ST5', 'ST6', 'ST7', 'ST8', 'Specialty registrar', 'Registrar', 'Senior registrar', 'Clinical fellow', 'Ultrasound fellow', 'Locally employed doctor', 'Specialty doctor', 'Specialist', 'Associate specialist', 'Staff grade', 'Consultant', 'GP', 'GP trainee', 'Advanced clinical practitioner (ACP)', 'Trainee advanced clinical practitioner', 'Advanced nurse practitioner', 'Emergency nurse practitioner', 'Advanced critical care practitioner', 'Physician associate', 'Sonographer', 'Paramedic', 'Specialist paramedic', 'Nurse', 'Physiotherapist', 'Medical student', 'Resident', 'Attending physician', 'Fellow'],
+    specialty: ['Emergency medicine', 'Paediatric emergency medicine', 'Pre-hospital emergency medicine', 'Acute internal medicine', 'General internal medicine', 'Intensive care medicine', 'Critical care', 'Anaesthesia', 'Pain medicine', 'Respiratory medicine', 'Cardiology', 'Renal medicine', 'Gastroenterology', 'Hepatology', 'Geriatric medicine', 'Palliative medicine', 'Rheumatology', 'Musculoskeletal medicine', 'Sport and exercise medicine', 'Endocrinology and diabetes', 'Infectious diseases', 'Haematology', 'Oncology', 'General practice', 'Rural and remote medicine', 'Military medicine', 'Paediatrics', 'Neonatology', 'Obstetrics and gynaecology', 'General surgery', 'Trauma and orthopaedics', 'Vascular surgery', 'Urology', 'Radiology', 'Interventional radiology'],
+    region: ['London', 'South East', 'South West', 'East of England', 'East Midlands', 'West Midlands', 'North West', 'North East', 'Yorkshire and the Humber', 'Scotland', 'Wales', 'Northern Ireland', 'Ireland', 'Bedfordshire', 'Berkshire', 'Bristol', 'Buckinghamshire', 'Cambridgeshire', 'Cheshire', 'Cornwall', 'Cumbria', 'Derbyshire', 'Devon', 'Dorset', 'Durham', 'East Riding of Yorkshire', 'East Sussex', 'Essex', 'Gloucestershire', 'Greater Manchester', 'Hampshire', 'Herefordshire', 'Hertfordshire', 'Isle of Wight', 'Kent', 'Lancashire', 'Leicestershire', 'Lincolnshire', 'Merseyside', 'Norfolk', 'North Yorkshire', 'Northamptonshire', 'Northumberland', 'Nottinghamshire', 'Oxfordshire', 'Rutland', 'Shropshire', 'Somerset', 'South Yorkshire', 'Staffordshire', 'Suffolk', 'Surrey', 'Tyne and Wear', 'Warwickshire', 'West Sussex', 'West Yorkshire', 'Wiltshire', 'Worcestershire'],
+    country: [['GB', 'United Kingdom'], ['IE', 'Ireland'], ['AU', 'Australia'], ['NZ', 'New Zealand'], ['CA', 'Canada'], ['US', 'United States'], ['ZA', 'South Africa'], ['IN', 'India'], ['PK', 'Pakistan'], ['NG', 'Nigeria'], ['EG', 'Egypt'], ['SA', 'Saudi Arabia'], ['AE', 'United Arab Emirates'], ['QA', 'Qatar'], ['KW', 'Kuwait'], ['IQ', 'Iraq'], ['JO', 'Jordan'], ['SG', 'Singapore'], ['MY', 'Malaysia'], ['HK', 'Hong Kong'], ['CN', 'China'], ['FR', 'France'], ['BE', 'Belgium'], ['NL', 'Netherlands'], ['DE', 'Germany'], ['AT', 'Austria'], ['CH', 'Switzerland'], ['ES', 'Spain'], ['PT', 'Portugal'], ['IT', 'Italy'], ['PL', 'Poland'], ['DK', 'Denmark'], ['SE', 'Sweden'], ['NO', 'Norway'], ['FI', 'Finland'], ['GR', 'Greece'], ['TR', 'Turkey'], ['RU', 'Russia'], ['UA', 'Ukraine'], ['MX', 'Mexico'], ['BR', 'Brazil'], ['AR', 'Argentina']],
+    deptRole: ['Ultrasound lead', 'POCUS lead', 'Deputy ultrasound lead', 'Ultrasound faculty', 'Ultrasound fellow', 'FUSIC lead', 'FAMUS lead', 'Regional anaesthesia lead', 'Clinical lead', 'Educational supervisor', 'Clinical supervisor', 'College tutor', 'Training programme director', 'Simulation lead', 'Governance lead'],
+    'f:complication': ['None', 'Vascular puncture', 'Paraesthesia', 'Failed or partial block', 'Haematoma', 'Pneumothorax', 'Local anaesthetic toxicity', 'Infection', 'Patient discomfort', 'Procedure abandoned'],
+    'f:agent': ['Levobupivacaine 0.25%', 'Levobupivacaine 0.5%', 'Bupivacaine 0.25%', 'Bupivacaine 0.5%', 'Ropivacaine 0.2%', 'Ropivacaine 0.375%', 'Ropivacaine 0.5%', 'Lidocaine 1%', 'Lidocaine 2%', 'Prilocaine 1%', 'Chloroprocaine 1%']
+  };
+  SUG_LISTS.role = SUG_LISTS.grade;
+  var SUG_MAX = 12;
+  function sugNorm(s) { return String(s == null ? '' : s).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/['\u2019]/g, '').replace(/[^\p{L}\p{N}%.]+/gu, ' ').trim(); }
+  // 0: the entry starts with the whole text; 1: every typed word starts a word of the entry; -1: no match.
+  function sugScore(text, q) {
+    var t = sugNorm(text), n = sugNorm(q); if (!n) return -1;
+    if (t.indexOf(n) === 0) return 0;
+    var words = (' ' + t).split(' ');
+    return n.split(' ').every(function (w) { return words.some(function (x) { return x.indexOf(w) === 0; }); }) ? 1 : -1;
+  }
+  // The learner's own earlier answers, newest first, without repeats.
+  function sugHistory(get) {
+    var seen = {}, out = [];
+    (S.entries || []).slice().sort(function (a, b) { return String(b.updated_at || b.date || '').localeCompare(String(a.updated_at || a.date || '')); }).forEach(function (e) {
+      if (e.deleted) return; var v = String(get(e) || '').trim(); var k = sugNorm(v);
+      if (v && k && !seen[k] && v.length <= 120) { seen[k] = 1; out.push(v); }
+    });
+    return out;
+  }
+  function sugSource(kind) {
+    if (kind === 'supervisor') return (((S.links || {}).supervisors || []).map(function (s) { return s.name; }).filter(Boolean)).concat(sugHistory(function (e) { return e.supervisor; }));
+    if (kind === 'indication') return sugHistory(function (e) { return e.indication; });
+    if (kind.indexOf('f:') === 0) { var id = kind.slice(2); return sugHistory(function (e) { var f = e.findings || {}; return typeof f[id] === 'string' ? f[id] : ''; }).concat(SUG_LISTS[kind] || []); }
+    return SUG_LISTS[kind] || [];
+  }
+  function sugItems(kind, q) {
+    var seen = {}, hits = [];
+    sugSource(kind).forEach(function (o, i) {
+      var v = Array.isArray(o) ? o[0] : o, label = Array.isArray(o) ? o[0] + ' \u00b7 ' + o[1] : o, k = sugNorm(v);
+      if (seen[k]) return; seen[k] = 1;
+      var s = Array.isArray(o) ? [sugScore(o[0], q), sugScore(o[1], q)].filter(function (x) { return x >= 0; }).sort()[0] : sugScore(o, q);
+      if (s >= 0) hits.push({ v: v, label: label, s: s, i: i });
+    });
+    // An entry identical to what is typed already is no suggestion.
+    return hits.filter(function (h) { return sugNorm(h.v) !== sugNorm(q); }).sort(function (a, b) { return a.s - b.s || a.i - b.i; }).slice(0, SUG_MAX);
+  }
+  function sugAttrs(kind, id) { return ' data-suggest="' + kind + '" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + id + '-sug" autocomplete="off"'; }
+  function sugList(id) { return '<ul class="listing-list" id="' + id + '-sug" role="listbox" hidden></ul>'; }
+  (function () {
+    var cur = null;
+    var listOf = function (inp) { return document.getElementById(inp.getAttribute('aria-controls')); };
+    var close = function () {
+      if (!cur) return; var l = listOf(cur.inp); if (l) { l.hidden = true; l.innerHTML = ''; }
+      cur.inp.setAttribute('aria-expanded', 'false'); cur.inp.removeAttribute('aria-activedescendant'); cur = null;
+    };
+    var mark = function (i) {
+      if (!cur) return; cur.active = i; var l = listOf(cur.inp);
+      $$('li', l).forEach(function (li, k) { li.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
+      if (i >= 0) { cur.inp.setAttribute('aria-activedescendant', l.id + '-o' + i); var li = document.getElementById(l.id + '-o' + i); if (li && li.scrollIntoView) li.scrollIntoView({ block: 'nearest' }); } else cur.inp.removeAttribute('aria-activedescendant');
+    };
+    var pick = function (i) {
+      if (!cur || !cur.items[i]) return; var inp = cur.inp; inp.value = cur.items[i].v; close();
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    var draw = function (inp) {
+      var l = listOf(inp); if (!l) return;
+      var q = inp.value.trim(), items = q ? sugItems(inp.dataset.suggest, q) : [];
+      if (!items.length) { if (cur && cur.inp === inp) close(); else { l.hidden = true; l.innerHTML = ''; } return; }
+      if (cur && cur.inp !== inp) close();
+      cur = { inp: inp, items: items, active: -1 };
+      l.innerHTML = items.map(function (h, i) { return '<li role="option" id="' + l.id + '-o' + i + '" aria-selected="false" data-i="' + i + '"><b>' + esc(h.label) + '</b></li>'; }).join('');
+      l.hidden = false; inp.setAttribute('aria-expanded', 'true'); mark(-1);
+    };
+    app.addEventListener('input', function (e) { var t = e.target; if (t && t.dataset && t.dataset.suggest) draw(t); });
+    app.addEventListener('keydown', function (e) {
+      if (!cur || e.target !== cur.inp) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); mark(Math.min(cur.items.length - 1, cur.active + 1)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); mark(Math.max(0, cur.active - 1)); }
+      else if (e.key === 'Enter' && cur.active >= 0) { e.preventDefault(); pick(cur.active); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+    });
+    app.addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('[role=listbox] li[data-i]') && cur) e.preventDefault(); });
+    app.addEventListener('click', function (e) { var li = e.target.closest && e.target.closest('li[data-i]'); if (li && cur && li.parentNode === listOf(cur.inp)) pick(Number(li.dataset.i)); });
+    app.addEventListener('focusout', function (e) { if (cur && e.target === cur.inp) { var was = cur; setTimeout(function () { if (cur === was) close(); }, 150); } });
+  })();
   function mount(html) { app.innerHTML = html; bindUpdate(); $$('[data-install]', app).forEach(function (b) { b.addEventListener('click', doInstall); }); bindLang(app); if (navRestore) applyRestore(); }
 
   // ---------- Auth views ----------
@@ -1047,7 +1137,7 @@
     inp.addEventListener('input', function () {
       if (inp.value !== picked) hid.value = '';
       clearTimeout(timer); var q = inp.value.trim();
-      if (q.length < 2 || !navigator.onLine) { close(); return; }
+      if (!q.length || !navigator.onLine) { close(); return; } // 15 Nov 2026: from the first letter
       timer = setTimeout(function () {
         var my = ++seq;
         api('/api/app/organisations?q=' + encodeURIComponent(q)).then(function (res) {
@@ -1076,7 +1166,7 @@
       '<div class="two"><div class="field"><label for="fn">' + esc(T('First name')) + '</label><input id="fn" name="firstName" type="text" autocomplete="given-name" required></div><div class="field"><label for="ln">' + esc(T('Last name')) + '</label><input id="ln" name="lastName" type="text" autocomplete="family-name" required></div></div>' +
       '<div class="field"><label for="em">' + esc(T('Email')) + '</label><input id="em" name="email" type="email" autocomplete="email" required></div>' +
       pwFields('pw', T('Password'), 'password') +
-      '<div class="field"><label for="role">' + esc(T('Role')) + '</label><input id="role" name="role" type="text" placeholder="' + esc(T('For example ST4 emergency medicine, ACP, consultant')) + '" autocomplete="organization-title"></div>' +
+      '<div class="field"><label for="role">' + esc(T('Role')) + '</label><input id="role" name="role" type="text" placeholder="' + esc(T('For example ST4 emergency medicine, ACP, consultant')) + '"' + sugAttrs('role', 'role') + '>' + sugList('role') + '</div>' +
       orgField('org', T('Hospital or organisation'), '', '') +
       '<input type="text" name="wl_trap" tabindex="-1" autocomplete="off" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);opacity:0" aria-hidden="true">' +
       '<div class="field"><label class="check"><input type="checkbox" name="newsletter" value="1"><span>' + esc(T('Send me the Wavelength newsletter (optional).')) + '</span></label></div>' +
@@ -1278,7 +1368,7 @@
     if (!profile().onboarded) {
       authFrame(T('Which pathways are you working towards?'), T('Choose one or more. A scan can count towards several pathways when it meets their criteria. Change this any time.'),
         '<form id="f">' + pathwayPicker((profile().pathways || []).length ? profile().pathways : likelyPathways(profile().grade || S.account.role)) +
-        '<div class="field" style="margin-top:16px"><label for="grade">' + esc(T('Grade or role (optional)')) + '</label><input id="grade" name="grade" type="text" placeholder="' + esc(T('For example ST4, ACP, consultant')) + '" value="' + esc(profile().grade || S.account.role || '') + '"></div>' +
+        '<div class="field" style="margin-top:16px"><label for="grade">' + esc(T('Grade or role (optional)')) + '</label><input id="grade" name="grade" type="text" placeholder="' + esc(T('For example ST4, ACP, consultant')) + '" value="' + esc(profile().grade || S.account.role || '') + '"' + sugAttrs('grade', 'grade') + '>' + sugList('grade') + '</div>' +
         '<div class="field"><label class="check"><input type="checkbox" id="supv" value="1"' + (profile().supervisor ? ' checked' : '') + '><span>' + esc(T('I also supervise or assess other clinicians\' scanning.')) + '</span></label></div>' +
         '<div class="err" hidden></div><button class="btn teal block">' + esc(T('Continue')) + '</button></form>');
       var f = $('#f');
@@ -1682,7 +1772,7 @@
     if (fd.type === 'choice') return '<div class="field"><span class="lab" id="q-' + fd.id + '">' + esc(T(fd.label)) + '</span>' + seg(n, fd.options, v, '', 'q-' + fd.id) + '</div>';
     if (fd.type === 'multi') return '<div class="field"><span class="lab" id="q-' + fd.id + '">' + esc(T(fd.label)) + '<span class="lab-note">' + esc(T('Choose all that apply')) + '</span></span><div class="seg multi" role="group" aria-labelledby="q-' + fd.id + '">' + fd.options.map(function (o, i) { return '<input type="checkbox" name="' + n + '" id="' + id + i + '" value="' + esc(o) + '"' + ((v || []).indexOf(o) >= 0 ? ' checked' : '') + '><label for="' + id + i + '">' + esc(T(o)) + '</label>'; }).join('') + '</div></div>';
     if (fd.type === 'number') return '<div class="field"><label for="' + id + '">' + esc(T(fd.label)) + (fd.unit ? ' (' + fd.unit + ')' : '') + '</label><input id="' + id + '" name="' + n + '" type="number" inputmode="decimal" step="any" value="' + esc(v == null ? '' : v) + '"></div>';
-    return '<div class="field"><label for="' + id + '">' + esc(T(fd.label)) + '</label><input id="' + id + '" name="' + n + '" type="text" value="' + esc(v || '') + '"></div>';
+    return '<div class="field"><label for="' + id + '">' + esc(T(fd.label)) + '</label><input id="' + id + '" name="' + n + '" type="text" value="' + esc(v || '') + '"' + sugAttrs('f:' + fd.id, id) + '>' + sugList(id) + '</div>';
   }
   function modulesForType(type) {
     var out = [];
@@ -1855,7 +1945,7 @@
     supNames.forEach(function (n) { if (!picks.some(function (p) { return p.name === n; })) picks.push({ name: n, link: '' }); });
     picks = picks.slice(0, 8);
     var pickedAt = picks.findIndex(function (p) { return p.name === (e.supervisor || ''); });
-    var supField = !picks.length ? '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"></div>'
+    var supField = !picks.length ? '<div class="field"><label for="supv">' + esc(T('Supervisor or mentor')) + '</label><input id="supv" name="supervisor" type="text" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '"' + sugAttrs('supervisor', 'supv') + '>' + sugList('supv') + '</div>'
       : '<div class="field"><p class="hint" id="lab-supv" style="margin:0 0 8px">' + esc(T('Optional. Tap a selected name again to clear it.')) + '</p><div class="seg col sup" role="radiogroup" aria-labelledby="fsh-supmentor lab-supv">' + picks.map(function (p, i) { return '<input type="radio" name="suppick" id="sp' + i + '" value="' + i + '"' + (pickedAt === i ? ' checked' : '') + '><label for="sp' + i + '"><b>' + esc(p.name) + '</b><span>' + esc(p.link ? T('Linked supervisor: signs in their app') : T('From your earlier scans')) + '</span></label>'; }).join('') +
         '<input type="radio" name="suppick" id="spx" value="other"' + (pickedAt < 0 && e.supervisor ? ' checked' : '') + '><label for="spx"><b>' + esc(T('Someone else')) + '</b><span>' + esc(T('Type their name')) + '</span></label></div>' +
         '<input id="supv" name="supervisor" type="text" aria-labelledby="lab-supv" placeholder="' + esc(T('Name')) + '" value="' + esc(e.supervisor || '') + '" style="margin-top:8px"' + (pickedAt < 0 && e.supervisor ? '' : ' hidden') + '></div>';
@@ -1875,7 +1965,7 @@
         '<div class="field"><label for="setting">' + esc(T('Setting')) + '</label><select id="setting" name="setting"><option value="">' + esc(T('Choose')) + '</option>' + C.settings.map(function (s) { return '<option value="' + esc(s) + '"' + (e.setting === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
         '<div class="two"><div class="field"><label for="age">' + esc(T('Age band')) + '</label><select id="age" name="age"><option value="">' + esc(T('Not recorded')) + '</option>' + C.ageBands.map(function (s) { return '<option value="' + esc(s) + '"' + (e.age === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div>' +
         '<div class="field"><label for="sex">' + esc(T('Sex')) + '</label><select id="sex" name="sex"><option value="">' + esc(T('Not recorded')) + '</option>' + ['Female', 'Male'].map(function (s) { return '<option value="' + s + '"' + (e.sex === s ? ' selected' : '') + '>' + esc(T(s)) + '</option>'; }).join('') + '</select></div></div>' +
-        '<div class="field"><label for="ind">' + esc(T('Indication')) + '</label><input id="ind" name="indication" type="text" placeholder="' + esc(T('Clinical question, no identifiers')) + '" value="' + esc(e.indication || '') + '"></div>') +
+        '<div class="field"><label for="ind">' + esc(T('Indication')) + '</label><input id="ind" name="indication" type="text" placeholder="' + esc(T('Clinical question, no identifiers')) + '" value="' + esc(e.indication || '') + '"' + sugAttrs('indication', 'ind') + '>' + sugList('ind') + '</div>') +
       section('findings', T('Examination findings'), '<div id="findings"></div>', ' ') +
       section('interp', T('Interpretation and quality'),
         '<div class="field"><span class="lab" id="q-overall">' + esc(T('Overall')) + '</span>' + seg('overall', ['Normal', 'Abnormal', 'Indeterminate'], e.overall, '', 'q-overall') + '</div>' +
@@ -4563,7 +4653,7 @@
         body = (a.kind === 'renewal' ? '' : svHow()) + '<div class="field"><label for="sa0">' + esc(T('Title')) + '</label><select id="sa0" name="title"><option value="">' + esc(T('None')) + '</option>' + ['Dr', 'Prof', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx'].map(function (t) { return '<option' + (acc.title === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></div>' +
           '<div class="two"><div class="field"><label for="sa1">' + esc(T('First name')) + '</label><input id="sa1" name="firstName" type="text" required value="' + esc(acc.firstName || '') + '" autocomplete="given-name"></div><div class="field"><label for="sa2">' + esc(T('Last name')) + '</label><input id="sa2" name="lastName" type="text" required value="' + esc(acc.lastName || '') + '" autocomplete="family-name"></div></div>' +
           '<p class="hint">' + esc(T('Changing your name here changes it on your account too.')) + '</p>' +
-          '<div class="field"><label for="sa3">' + esc(T('Role or grade')) + '</label><input id="sa3" name="role" type="text" required value="' + esc(a.role || profile().grade || acc.role || '') + '" placeholder="' + esc(T('For example consultant in emergency medicine')) + '"></div>' +
+          '<div class="field"><label for="sa3">' + esc(T('Role or grade')) + '</label><input id="sa3" name="role" type="text" required value="' + esc(a.role || profile().grade || acc.role || '') + '" placeholder="' + esc(T('For example consultant in emergency medicine')) + '"' + sugAttrs('role', 'sa3') + '>' + sugList('sa3') + '</div>' +
           orgField('sa4', T('Organisation'), a.organisation || acc.organisation, a.organisationId || (a.organisation ? '' : acc.organisationId), true);
       }
       if (step === 'registration') {
@@ -4593,7 +4683,7 @@
           '<div class="field"><label for="se1">' + esc(T('Years of ultrasound practice')) + '</label><select id="se1" name="years"><option value="">' + esc(T('Choose')) + '</option>' + cfg.bands.years.map(function (b) { return '<option value="' + esc(b) + '"' + (a.experience.years === b ? ' selected' : '') + '>' + esc(T(b)) + '</option>'; }).join('') + '</select></div>' +
           '<div class="field"><label for="se2b">' + esc(T('Approximate number of scans you have performed')) + '</label><select id="se2b" name="scans"><option value="">' + esc(T('Choose')) + '</option>' + cfg.bands.scans.map(function (b) { return '<option value="' + esc(b) + '"' + (a.experience.scans === b ? ' selected' : '') + '>' + esc(T(b)) + '</option>'; }).join('') + '</select></div>' +
           svYesNo('teaching', T('Do you teach ultrasound?'), a.experience.teaching) + svYesNo('supervision', T('Have you supervised trainees\' scanning before?'), a.experience.supervision) +
-          '<div class="field"><label for="se5">' + esc(T('Departmental ultrasound role (optional)')) + '</label><input id="se5" name="deptRole" type="text" value="' + esc(a.experience.deptRole || '') + '" placeholder="' + esc(T('For example ultrasound lead')) + '"></div>';
+          '<div class="field"><label for="se5">' + esc(T('Departmental ultrasound role (optional)')) + '</label><input id="se5" name="deptRole" type="text" value="' + esc(a.experience.deptRole || '') + '" placeholder="' + esc(T('For example ultrasound lead')) + '"' + sugAttrs('deptRole', 'se5') + '>' + sugList('se5') + '</div>';
       }
       if (step === 'evidence') {
         body = '<p class="small">' + esc(T('Choose either route. Both can be sent.')) + '</p>' +
@@ -4661,7 +4751,7 @@
     return Object.keys(by).map(function (k) { return T(ROLE_WORD[k] || k) + ': ' + by[k].join(', '); }).join(' · ');
   }
   function listingBox(id, label, hint) {
-    return '<div class="field listing" data-listing="' + id + '" hidden><label for="' + id + '">' + esc(label) + '</label><input id="' + id + '" type="search" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + id + '-list" aria-describedby="' + id + '-h" placeholder="' + esc(T('Name, at least 3 letters')) + '"><p class="hint" id="' + id + '-h">' + esc(hint) + '</p><ul class="listing-list" id="' + id + '-list" role="listbox" hidden></ul><p class="small muted" data-listing-note aria-live="polite"></p></div>';
+    return '<div class="field listing" data-listing="' + id + '" hidden><label for="' + id + '">' + esc(label) + '</label><input id="' + id + '" type="search" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + id + '-list" aria-describedby="' + id + '-h" placeholder="' + esc(T('Start typing their name')) + '"><p class="hint" id="' + id + '-h">' + esc(hint) + '</p><ul class="listing-list" id="' + id + '-list" role="listbox" hidden></ul><p class="small muted" data-listing-note aria-live="polite"></p></div>';
   }
   function bindListing(id, onPick, opts) {
     var wrap = $('[data-listing="' + id + '"]'); if (!wrap) return;
@@ -4671,7 +4761,7 @@
     var pick = function (i) { var it = items[i]; if (!it) return; close(); input.value = it.name; onPick(it); };
     var show = function (res) {
       items = res.results || [];
-      note.textContent = items.length ? T(res.note || '') : input.value.trim().length >= 3 ? T('No listing found. Check the spelling, or enter the details by hand.') : '';
+      note.textContent = items.length ? T(res.note || '') : input.value.trim().length >= 1 ? T('No listing found. Check the spelling, or enter the details by hand.') : '';
       list.innerHTML = items.map(function (r, i) { return '<li role="option" id="' + id + '-o' + i + '" aria-selected="false" data-i="' + i + '"><b>' + esc(r.name) + '</b>' + (r.onWavelength ? ' <span class="chip green">' + esc(T('On Wavelength')) + '</span>' : '') + '<span class="small muted">' + esc([r.organisation, r.source].filter(Boolean).join(' · ')) + '</span><span class="small">' + esc(listingRoles(r.roles)) + '</span></li>'; }).join('');
       list.hidden = !items.length; input.setAttribute('aria-expanded', items.length ? 'true' : 'false'); mark(-1);
       $$('li', list).forEach(function (li) { li.onmousedown = function (e) { e.preventDefault(); }; li.onclick = function () { pick(Number(li.dataset.i)); }; });
@@ -4679,7 +4769,7 @@
     input.addEventListener('input', function () {
       clearTimeout(timer);
       var q = input.value.trim();
-      if (q.replace(/\s/g, '').length < 3) { close(); note.textContent = ''; return; }
+      if (!q.replace(/\s/g, '').length) { close(); note.textContent = ''; return; } // 15 Nov 2026: from the first letter
       timer = setTimeout(function () { var my = ++seq; api('/api/app/listings/search?q=' + encodeURIComponent(q) + (opts && opts.pathway ? '&pathway=' + encodeURIComponent(opts.pathway) : '')).then(function (res) { if (my === seq && res.ok) show(res); }).catch(function () { note.textContent = T('Could not search. Check your connection, or enter the details by hand.'); }); }, 250);
     });
     input.addEventListener('keydown', function (e) {
@@ -5743,8 +5833,8 @@
       var dir = '<form id="dirf" class="card"><label class="check"><input type="checkbox" name="listed" value="1"' + (D.listed ? ' checked' : '') + (D.eligible ? '' : ' disabled') + '><span>' + esc(T('List me in the public "Find an ultrasound supervisor" directory')) + '</span></label>' +
         (D.eligible ? '' : '<p class="small muted">' + esc(T('Not yet:')) + ' ' + (D.reasons || []).map(function (x) { return esc(T(x)); }).join(' ') + '</p>') +
         '<p class="small muted">' + esc(T('The directory shows your name, profession, organisation, region, verified credentials and supervisor modules. It never shows your email or registration number unless you add a contact address below and tick to show it.')) + (D.open ? '' : ' ' + esc(T('The directory is not open yet. Your choice is saved for when it opens.'))) + '</p>' +
-        '<div class="two"><div class="field"><label for="dr1">' + esc(T('Region')) + '</label><input id="dr1" type="text" name="region" value="' + esc(D.region || '') + '" placeholder="' + esc(T('For example Kent')) + '"></div><div class="field"><label for="dr2">' + esc(T('Country code')) + '</label><input id="dr2" type="text" name="country" maxlength="2" value="' + esc(D.country || '') + '" placeholder="GB"></div></div>' +
-        '<div class="field"><label for="dr3">' + esc(T('Specialty')) + '</label><input id="dr3" type="text" name="specialty" value="' + esc(D.specialty || '') + '"></div>' +
+        '<div class="two"><div class="field"><label for="dr1">' + esc(T('Region')) + '</label><input id="dr1" type="text" name="region" value="' + esc(D.region || '') + '" placeholder="' + esc(T('For example Kent')) + '"' + sugAttrs('region', 'dr1') + '>' + sugList('dr1') + '</div><div class="field"><label for="dr2">' + esc(T('Country code')) + '</label><input id="dr2" type="text" name="country" maxlength="2" value="' + esc(D.country || '') + '" placeholder="GB"' + sugAttrs('country', 'dr2') + '>' + sugList('dr2') + '</div></div>' +
+        '<div class="field"><label for="dr3">' + esc(T('Specialty')) + '</label><input id="dr3" type="text" name="specialty" value="' + esc(D.specialty || '') + '"' + sugAttrs('specialty', 'dr3') + '>' + sugList('dr3') + '</div>' +
         '<div class="field"><label for="dr4">' + esc(T('Contact email for learners (optional)')) + '</label><input id="dr4" name="contactEmail" type="email" value="' + esc(D.contactEmail || '') + '"></div>' +
         '<label class="check"><input type="checkbox" name="showContact" value="1"' + (D.showContact ? ' checked' : '') + '><span>' + esc(T('Show this contact email in the directory')) + '</span></label><div class="btns"><button class="btn sm">' + esc(T('Save directory settings')) + '</button></div></form>';
       mount(shell({ title: T('Professional verification'), back: 'me' },

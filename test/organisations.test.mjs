@@ -51,7 +51,9 @@ test('2 characters minimum, an hour of caching, and a public lookup that follows
   const c = client(handleApp, env);
   const res = await handleApp(new Request('https://thewavelength.co.uk/api/app/organisations?q=dv'), env, ctx);
   assert.equal(res.headers.get('Cache-Control'), 'public, max-age=3600');
-  const short = await c.call('/api/app/organisations?q=d');
+  // 15 Nov 2026 (owner): one letter already suggests; only an empty query is too short.
+  assert.ok((await c.call('/api/app/organisations?q=d')).body.results.some((o) => o.name === 'Darent Valley Hospital'), 'one letter suggests');
+  const short = await c.call('/api/app/organisations?q=');
   assert.deepEqual(short.body.results, []);
   assert.equal(short.body.tooShort, true);
   const one = await c.call('/api/app/organisations/wl-2');

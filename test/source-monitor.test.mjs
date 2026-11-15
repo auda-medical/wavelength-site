@@ -539,13 +539,15 @@ test('a listed person whose verification relies on the listing is flagged for re
   assert.equal((await sup.call('/api/app/listings/claims')).body.claims[0].changed, 'listing_removed');
 });
 
-test('name autocomplete: three letters, any order, a slip of a letter, hospital tells same names apart, nothing private', async () => {
+test('name autocomplete: from the first letter, any order, a slip of a letter, hospital tells same names apart, nothing private', async () => {
   const { env, n } = await setup({ DIRECTORY_SYNC: 'true' });
   await directory(env, n, BASE_DIR);
   await syncNow(env);
   const u = await verifiedAccount(env, 'learner.search@example.test');
   const q = async (s, extra = '') => (await u.call(`/api/app/listings/search?q=${encodeURIComponent(s)}${extra}`)).body;
-  assert.deepEqual((await q('al')).results, [], 'fewer than three letters: nothing');
+  // 15 Nov 2026 (owner): one letter already suggests; an empty query gives nothing.
+  assert.equal((await q('a')).results[0].name, 'Alex Example', 'one letter suggests');
+  assert.deepEqual((await q('')).results, [], 'empty: nothing');
   assert.equal((await q('ALE')).results[0].name, 'Alex Example', 'case does not matter');
   assert.equal((await q('example alex')).results[0].name, 'Alex Example', 'any order');
   assert.equal((await q('Aelx')).results.length, 0, 'not a letter salad');
