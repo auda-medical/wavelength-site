@@ -207,6 +207,10 @@ const TITLE_MAX = 60;
 // assistants join the two up.
 const FOUNDER_LD = { '@type': 'Person', '@id': url('/faculty/#director'), name: site.director.name, url: site.director.website || url('/faculty/'), sameAs: [site.director.website, site.director.linkedin].filter(Boolean) };
 const brandTitle = (t) => (`${t} | ${site.name}`.length <= TITLE_MAX ? `${t} | ${site.name}` : t);
+const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: 'https://apps.apple.com/gb/app/wavelength-ultrasound-logbook/id6822088185' };
+// Official store badges (the same images and sizes as /app/get/). m = analytics prefix for data-m.
+const storeBadges = (m, cls = 'rise') => `<div class="store-badges ${cls}"><a class="store-badge play" href="${STORES.play}" target="_blank" rel="noopener" data-m="${m}-play"><img src="/assets/badges/google-play-badge-en.png" width="646" height="250" alt="Get it on Google Play"></a><a class="store-badge apple" href="${STORES.appStore}" target="_blank" rel="noopener" data-m="${m}-appstore"><img src="/assets/badges/app-store-badge-en-gb.svg" width="120" height="40" alt="Download on the App Store"></a></div>`;
+
 function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png', scripts = '' }) {
   const canonical = url(pathname);
   const base = seoTitle || title;
@@ -698,6 +702,7 @@ pages['/'] = layout({
       <p class="lede" style="color:#D5DDE6">Scan when you work. Log when it suits you. Connect with your supervisors and see who is verified. Track your progress.</p>
       <ul class="checklist" style="margin-top:20px;color:#D5DDE6">${['Log scans from a photo or an upload, online or offline', 'Send scans to your supervisor to review when they are free, or sign off in person', 'Track RCEM, FAMUS and FUSIC targets, or editable international frameworks', 'Export a QR-verified portfolio for your e-portfolio or appraisal'].map((x) => `<li>${tick}<span>${esc(x)}</span></li>`).join('')}</ul>
       <div class="hero-ctas" style="margin-top:26px"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="home-logbook-start">Start your free logbook ${arrow}</a><a class="btn btn-ghost light" href="/pocus-logbook/#watch" data-m="home-logbook-how">See how the app works</a></div>
+      ${storeBadges('home-logbook', '')}
     </div>
   </div>
 </section>
@@ -1897,7 +1902,6 @@ pages['/app/delete-account/'] = layout({
 </div></div></section>`,
 });
 
-const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: 'https://apps.apple.com/gb/app/wavelength-ultrasound-logbook/id6822088185' };
 // The app as a SoftwareApplication, shared by /app/get/ and /pocus-logbook/ (same @id). Features listed here are all live in src/app/.
 const APP_LD = {
   '@context': 'https://schema.org', '@type': 'SoftwareApplication', '@id': url('/app/get/#app'), name: 'Wavelength', alternateName: 'Wavelength POCUS logbook',
@@ -2055,7 +2059,7 @@ ${ctaBand('Tune in. <em>Log it.</em>', 'Free for every clinician who scans. Get 
       title: 'Your portfolio, tailored to <em>your accrediting body.</em>',
       lede: 'For supported UK pathways, Wavelength arranges your scans, assessments and sign-offs around published portfolio requirements. International trackers provide editable starting frameworks that you can adapt to your local requirements. Export as PDF, Excel or CSV with a QR-verified summary.',
       crumbs: [{ label: 'Home', href: '/' }, { label: 'POCUS logbook' }],
-      extra: `<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="logbook-hero-start">Start your free logbook ${arrow}</a><a class="btn btn-ghost light" href="#watch" data-film-play="app-film" data-m="logbook-hero-watch">Watch how it works</a><a class="btn btn-ghost light" href="/app/" data-m="logbook-hero-browser">Open in your browser</a></div>
+      extra: `<div class="hero-ctas rise"><a class="btn btn-teal cta-caps" href="/app/get/" data-m="logbook-hero-start">Start your free logbook ${arrow}</a><a class="btn btn-ghost light" href="#watch" data-film-play="app-film" data-m="logbook-hero-watch">Watch how it works</a><a class="btn btn-ghost light" href="/app/" data-m="logbook-hero-browser">Open in your browser</a></div>${storeBadges('logbook-hero')}
       <div class="hero-meta rise"><div><b>Free</b>Logbook, sign-off and exports</div><div><b>${PATHWAYS.filter((p) => p.region === 'UK').length} UK pathways</b>Plus editable international frameworks</div><div><b>Nine languages</b>Exports in English</div><div><b>Photos stay on your phone</b>Only the written record syncs</div></div>`,
     })}
 <section class="section film-section" id="watch"><div class="wrap">
