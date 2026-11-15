@@ -185,6 +185,14 @@ Google Play and the App Store (after 1.0.28), under 500 characters (200):
 
 Wavelength may now occasionally ask you to rate it, using your phone's own rating prompt, and never more than a few times a year. You can also rate it at any time from Rate Wavelength in Me, Settings.
 
+## Release 1.0.30 (37): what's new
+
+The app adds the "New version available" pop-up (src/app/app.js updatePrompt; iPhone: GET /api/app/store-version, which the website must have before 1.0.30 is published; Android: Google Play's app-update library `com.google.android.play:app-update:2.1.0`, StoreReview checkUpdate). Android build environment: `WL_VERSION_CODE=37 WL_VERSION_NAME=1.0.30`. iPhone: 1.0.30 (37) is set in the Xcode project.
+
+Google Play and the App Store (after 1.0.29), under 500 characters:
+
+When a new version of Wavelength is out, the app now tells you once, with a button that takes you straight to the update. Your logbook stays on your phone.
+
 ## Export compliance (Apple) and encryption
 
 `ITSAppUsesNonExemptEncryption` is false. The app's encryption (AES-256-GCM for encrypted backups and for images shared in sign-off links, HKDF and PBKDF2) runs through Web Crypto, which is provided by the operating system's own WebKit; HTTPS is the system's too. Argon2id (`vendor/noble-hashes`) derives a key from the backup passphrase: it is a key-derivation (hashing) function, not encryption. Apple treats encryption used only within its operating system as exempt, so App Store Connect should not ask; if it does, answer that the app uses only encryption provided by the operating system. Reviewed 12 October 2026; recheck if a native crypto library is ever added.

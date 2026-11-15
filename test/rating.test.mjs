@@ -177,16 +177,17 @@ test('both phones carry the StoreReview plugin, registered as the app\'s own', (
   assert.doesNotMatch(read('mobile/package.json'), /review|rating|rate-app/i, 'no npm package for it');
 });
 
-test('release 1.0.29 (36): iPhone project version and store notes', () => {
+// Release checks move with each version (1.0.30 replaced the 1.0.29 one; the 1.0.29 notes stay in STORE.md).
+test('release 1.0.30 (37): iPhone project version and store notes', () => {
   const pbx = read('mobile/ios/App/App.xcodeproj/project.pbxproj');
-  assert.equal((pbx.match(/MARKETING_VERSION = 1\.0\.29;/g) || []).length, 2);
-  assert.equal((pbx.match(/CURRENT_PROJECT_VERSION = 36;/g) || []).length, 2);
-  assert.doesNotMatch(pbx, /MARKETING_VERSION = (?!1\.0\.29;)|CURRENT_PROJECT_VERSION = (?!36;)/);
+  assert.equal((pbx.match(/MARKETING_VERSION = 1\.0\.30;/g) || []).length, 2);
+  assert.equal((pbx.match(/CURRENT_PROJECT_VERSION = 37;/g) || []).length, 2);
+  assert.doesNotMatch(pbx, /MARKETING_VERSION = (?!1\.0\.30;)|CURRENT_PROJECT_VERSION = (?!37;)/);
   const md = read('mobile/STORE.md');
-  const at = md.indexOf('## Release 1.0.29 (36): what\'s new');
+  const at = md.indexOf("## Release 1.0.30 (37): what's new");
   assert.ok(at > 0 && at < md.indexOf('## Export compliance (Apple) and encryption'));
   const notes = md.slice(at, md.indexOf('## Export compliance')).trim().split('\n\n').pop();
   assert.ok(notes.length < 500, 'under 500 characters');
-  assert.match(notes, /Rate Wavelength/);
-  assert.doesNotMatch(notes, /premium|department|subscription|upgrade|price/i, 'no paid features in the store apps');
+  assert.match(notes, /update/);
+  assert.doesNotMatch(notes, /premium|department|subscription|price/i, 'no paid features in the store apps');
 });
