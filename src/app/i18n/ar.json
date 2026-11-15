@@ -1732,6 +1732,8 @@
 "Logged-in learners would see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Turn this off at any time.": "سيرى المتدربون المسجّلون اسمك ودورك ومؤسستك والمجالات التي وافق عليك Wavelength فيها، ولن يروا بريدك الإلكتروني أبدًا. يمكنهم بعد ذلك طلب الربط، وتختار أنت القبول أو الرفض. يمكنك إيقاف ذلك في أي وقت.",
 "NHS trust": "NHS trust",
 "Name, at least 3 letters": "الاسم، 3 أحرف على الأقل",
+"Start typing their name": "ابدأ بكتابة الاسم",
+"Type the first letter of their name.": "اكتب الحرف الأول من الاسم.",
 "No approved supervisor found. Check the spelling, or invite them by email.": "لم يُعثر على مشرف موافَق عليه. تحقق من التهجئة، أو ادعُه بالبريد الإلكتروني.",
 "No longer practising in the relevant ultrasound area": "لم يعد يمارس في مجال الموجات فوق الصوتية المعني",
 "No longer supervising ultrasound": "لم يعد يشرف على الموجات فوق الصوتية",

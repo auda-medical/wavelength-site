@@ -3857,7 +3857,7 @@
     var ended = ((S.links || {}).ended || []).filter(function (x) { return x.role === 'learner'; });
     mount(shell({ title: T('Your supervisors'), back: 'me' },
       '<div class="card dark"><h3>' + esc(T('Link your supervisors')) + '</h3><p class="muted small">' + esc(T('A linked supervisor sees your progress and your written scan records in their own Wavelength app. Images go only with a sign-off request you choose to send, encrypted, and are deleted when the request is closed, or after 14 days at most. Send sign-off and assessment requests straight to their dashboard. Remove a supervisor at any time.')) + '</p></div>' +
-      (S.me && S.me.supervisor && S.me.supervisor.search ? '<form id="svsf" class="card" role="search"><div class="field"><label for="svq">' + esc(T('Find a Wavelength Verified Supervisor')) + '</label><input id="svq" type="search" autocomplete="off" minlength="3" placeholder="' + esc(T('Name, at least 3 letters')) + '" aria-describedby="svq-h"><p class="hint" id="svq-h">' + esc(T('Shows only supervisors approved by Wavelength. Supervisors can opt out.')) + '</p></div><div id="svres" aria-live="polite"></div></form><p class="small muted" style="margin:-4px 0 12px">' + esc(T('Can\'t find them? Invite a supervisor by email.')) + '</p>' : '') +
+      (S.me && S.me.supervisor && S.me.supervisor.search ? '<form id="svsf" class="card" role="search"><div class="field listing"><label for="svq">' + esc(T('Find a Wavelength Verified Supervisor')) + '</label><input id="svq" type="search" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="svq-list" placeholder="' + esc(T('Start typing their name')) + '" aria-describedby="svq-h"><ul class="listing-list" id="svq-list" role="listbox" aria-label="' + esc(T('Find a Wavelength Verified Supervisor')) + '" hidden></ul><p class="hint" id="svq-h">' + esc(T('Shows only supervisors approved by Wavelength. Supervisors can opt out.')) + '</p></div><p class="small muted" id="svnote" aria-live="polite"></p><div id="svres"></div></form><p class="small muted" style="margin:-4px 0 12px">' + esc(T('Can\'t find them? Invite a supervisor by email.')) + '</p>' : '') +
       '<form id="addf" class="card">' + listingBox('svfind2', T('Find your supervisor in an official directory (optional)'), T('Search by name. Then enter their email to invite them: Wavelength never shows directory contact details.')) + '<div id="svpicked"></div><div class="field"><label for="se2">' + esc(T('Supervisor\'s email')) + '</label><input id="se2" type="email" required autocomplete="off" aria-describedby="se2-h"><p class="hint" id="se2-h">' + esc(svRequired() ? T('They may need checks and Wavelength approval before they can provide verified supervision. Their status shows as pending until then.') : T('They can review and sign your scans as soon as they accept. Becoming a Wavelength Verified Supervisor is optional for them.')) + '</p></div><div class="err" hidden></div><button class="btn teal sm">' + esc(T('Send invitation')) + '</button></form>' +
       inviteExplain() +
       (!S.links ? '<p class="muted small" role="status">' + esc(T('Checking…')) + '</p>' : (L2.supervisors || []).length ? '<h2 class="sec">' + esc(T('Linked and invited')) + '</h2>' + L2.supervisors.map(function (s) {
@@ -4114,31 +4114,61 @@
 
   // Supervisor search: results come only from current approvals whose holder opted in (worker/search.js). The ref is
   // opaque; a request creates an invitation the supervisor accepts on their dashboard.
+  // 15 Nov 2026 (owner): a dropdown of matching supervisors opens from the first letter typed (first or last name
+  // starting with it); choosing one shows them below with More info and Ask to link. Answers are kept per query while
+  // the screen is open, so typing back and forth does not search again.
   function bindSupSearch() {
     var f = $('#svsf'); if (!f) return;
-    var q = $('#svq', f), out = $('#svres', f), timer = 0, seq = 0;
+    var q = $('#svq', f), list = $('#svq-list', f), note = $('#svnote', f), out = $('#svres', f), timer = 0, seq = 0, items = [], active = -1, cache = {};
+    var close = function () { list.hidden = true; q.setAttribute('aria-expanded', 'false'); q.removeAttribute('aria-activedescendant'); active = -1; };
+    var mark = function (i) { active = i; $$('li', list).forEach(function (li, j) { li.setAttribute('aria-selected', j === i ? 'true' : 'false'); }); if (i >= 0) { q.setAttribute('aria-activedescendant', 'svq-o' + i); var li = $('#svq-o' + i, list); if (li && li.scrollIntoView) li.scrollIntoView({ block: 'nearest' }); } else q.removeAttribute('aria-activedescendant'); };
+    var meta = function (r) { return [r.role, r.specialty, r.organisation].filter(Boolean).join(' · '); };
+    // The chosen supervisor: the compact status, with what they are approved for behind More info (worker/search.js).
+    var pick = function (i) {
+      var r = items[i]; if (!r) return;
+      close(); q.value = r.name; note.textContent = '';
+      out.innerHTML = '<div class="sv-result" style="padding:10px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + esc(r.name) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(meta(r)) + '</p>' + verifiedLine() + ' <button type="button" class="vs-more" data-vinfo="0" aria-haspopup="dialog">' + esc(T('More info')) + '</button></div><button class="btn teal sm" type="button" data-svreq="0">' + esc(T('Ask to link')) + '</button></div>';
+      bindVerifiedInfo(out, function () { return { state: 'verified', verified: true, approved: r.verification && r.verification.approved ? r.verification.approved : WLV.groupsFromAreas(r.areas), reviewOn: null, pending: [], credentials: [] }; }, false);
+      var b = $('[data-svreq]', out);
+      b.onclick = function () {
+        busy(b, true);
+        api('/api/app/supervisors/request', { ref: r.ref }).then(function (j) {
+          if (!j.ok) { busy(b, false); toast(j.duplicate ? T('You have already asked this supervisor.') : j.error, 5000); return; }
+          toast(T('Request sent to {name}. They accept it in their Wavelength app.', { name: r.name }), 4000);
+          loadLinks().then(viewSupervisors);
+        }).catch(function () { busy(b, false); toast(T('Could not send. Check your connection.')); });
+      };
+      b.focus();
+    };
+    var show = function (rs) {
+      items = rs;
+      list.innerHTML = rs.map(function (r, i) { return '<li role="option" id="svq-o' + i + '" aria-selected="false" data-i="' + i + '"><b>' + esc(r.name) + '</b>' + (meta(r) ? '<span class="small muted">' + esc(meta(r)) + '</span>' : '') + verifiedLine() + '</li>'; }).join('');
+      list.hidden = !rs.length; q.setAttribute('aria-expanded', rs.length ? 'true' : 'false'); mark(-1);
+      note.textContent = rs.length ? '' : T('No approved supervisor found. Check the spelling, or invite them by email.');
+      $$('li', list).forEach(function (li) { li.onmousedown = function (e) { e.preventDefault(); }; li.onclick = function () { pick(Number(li.dataset.i)); }; });
+    };
     var run = function () {
-      var text = q.value.trim(); if (text.length < 3) { out.innerHTML = ''; return; }
+      var text = q.value.trim().toLowerCase();
+      if (!text) { seq++; items = []; close(); note.textContent = ''; return; }
+      if (cache[text]) { show(cache[text]); return; }
       var my = ++seq;
       api('/api/app/supervisors/search?q=' + encodeURIComponent(text)).then(function (res) {
         if (my !== seq) return;
-        if (!res.ok) { out.innerHTML = '<p class="small muted">' + esc(res.needVerify ? T('Confirm your email address to search for supervisors.') : res.error || T('Search is not available right now.')) + '</p>'; return; }
-        var rs = res.results || [];
-        // Search shows only supervisors approved now (worker/search.js): the compact status, with what they are
-        // approved for behind More info.
-        out.innerHTML = rs.length ? rs.map(function (r, i) { return '<div class="sv-result" style="padding:10px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + esc(r.name) + '</b><p class="small muted" style="margin:2px 0 0">' + esc([r.role, r.specialty, r.organisation].filter(Boolean).join(' · ')) + '</p>' + verifiedLine() + ' <button type="button" class="vs-more" data-vinfo="' + i + '" aria-haspopup="dialog">' + esc(T('More info')) + '</button></div><button class="btn teal sm" type="button" data-svreq="' + i + '">' + esc(T('Ask to link')) + '</button></div>'; }).join('') : '<p class="small muted">' + esc(T('No approved supervisor found. Check the spelling, or invite them by email.')) + '</p>';
-        bindVerifiedInfo(out, function (i) { var r = rs[Number(i)]; return r ? { state: 'verified', verified: true, approved: r.verification && r.verification.approved ? r.verification.approved : WLV.groupsFromAreas(r.areas), reviewOn: null, pending: [], credentials: [] } : null; }, false);
-        $$('[data-svreq]', out).forEach(function (b) { b.onclick = function () {
-          var r = rs[Number(b.dataset.svreq)]; busy(b, true);
-          api('/api/app/supervisors/request', { ref: r.ref }).then(function (j) {
-            if (!j.ok) { busy(b, false); toast(j.duplicate ? T('You have already asked this supervisor.') : j.error, 5000); return; }
-            toast(T('Request sent to {name}. They accept it in their Wavelength app.', { name: r.name }), 4000);
-            loadLinks().then(viewSupervisors);
-          }).catch(function () { busy(b, false); toast(T('Could not send. Check your connection.')); });
-        }; });
-      }).catch(function () { out.innerHTML = '<p class="small muted">' + esc(T('Could not search. Check your connection.')) + '</p>'; });
+        if (!res.ok) { items = []; close(); note.textContent = res.needVerify ? T('Confirm your email address to search for supervisors.') : res.error ? T(res.error) : T('Search is not available right now.'); return; }
+        cache[text] = res.results || [];
+        show(cache[text]);
+      }).catch(function () { if (my === seq) { items = []; close(); note.textContent = T('Could not search. Check your connection.'); } });
     };
-    q.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(run, 300); });
+    q.addEventListener('input', function () { clearTimeout(timer); out.innerHTML = ''; if (!q.value.trim()) { run(); return; } timer = setTimeout(run, 200); });
+    q.addEventListener('keydown', function (e) {
+      if (list.hidden) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); mark(Math.min(items.length - 1, active + 1)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); mark(Math.max(0, active - 1)); }
+      else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(active); }
+      else if (e.key === 'Escape') { e.preventDefault(); close(); }
+    });
+    q.addEventListener('focus', function () { if (items.length && q.value.trim() && !out.innerHTML) { list.hidden = false; q.setAttribute('aria-expanded', 'true'); } });
+    q.addEventListener('blur', function () { setTimeout(close, 150); });
     f.addEventListener('submit', function (e) { e.preventDefault(); clearTimeout(timer); run(); });
   }
   // Sign-off and assessment requests that came back because a supervisor became unavailable.
