@@ -42,11 +42,21 @@ The app is iPhone only (`TARGETED_DEVICE_FAMILY = 1`), so no iPad screenshots ar
 
 Road to #1, 13 Nov 2026 (first-use audit Q1): proposed wording, applied by the owner in Play Console and App Store Connect. Google Play has no keyword field, so "POCUS" goes in the name, short description and first line. Check the developer display name in Play Console shows "Wavelength" (it showed "The Wavelength"). Earlier name: "Wavelength: Ultrasound Logbook"; earlier short description: "Log ultrasound scans, get signed off and track RCEM, FAMUS and FUSIC targets."
 
+Status 15 Nov 2026 (coordinating session, after an ASO email showed #33 US / #13 UK for "wavelength ultrasound" and no rank for "pocus logbook"): the name had not been changed in either store. **Google Play: name, short description and full description below sent for review on 15 Nov.** **App Store: promotional text set 15 Nov (no review needed); name, subtitle, keywords and description below go in with the next version** (they cannot be edited while a version is waiting for review). Apple indexes name + subtitle + keywords together, so the keywords no longer repeat words from the name or subtitle.
+
 Name: Wavelength: POCUS Logbook
-Subtitle (Apple, 30 characters): POCUS logbook and sign-off
-Short description (Google, 80 characters): The free POCUS logbook: supervisor sign-off, RCEM, FAMUS and FUSIC targets.
+Subtitle (Apple, 30 characters): Ultrasound scans and sign-off
+Short description (Google, 80 characters): Free POCUS ultrasound logbook: supervisor sign-off, RCEM, FAMUS, FUSIC targets.
 Category: Medical (Apple primary), Education (Apple secondary). Google: Medical.
-Keywords (Apple, 100 characters): pocus,ultrasound,logbook,emergency,rcem,famus,fusic,echo,efast,sign-off,portfolio,cpd,supervisor
+Keywords (Apple, 100 characters): rcem,famus,fusic,eusem,efast,echo,emergency,log,procedure,portfolio,sonography,dops,supervisor,nerve
+
+Further keyword fields, one per App Store localisation, added with 1.0.29 (from road-to-number-one/05-discoverability-audit.md section 3.4; the U.K. field is the global one; no word repeated across U.K. and Australia):
+
+- English (Australia): acem,point,care,cardiac,lung,vascular,access,block,trainee,registrar,credential,evidence,mentor,cpd
+- English (U.S.): acep,emergency,efast,echo,log,procedure,credentialing,residency,sonography,portfolio,point,care,lung
+- English (Canada): cpocus,emergency,efast,echo,log,procedure,credential,residency,sonography,portfolio,point,care,lung
+
+Promotional text (Apple, 170 characters, set 15 Nov): Free for every clinician who scans. Log POCUS scans in seconds, get signed off by your supervisor the same day, and export for RCEM, FAMUS, FUSIC or your own pathway.
 
 Description:
 The free POCUS logbook with supervisor sign-off.
@@ -61,7 +71,7 @@ Get signed off the same day. Your supervisor signs on your phone, from a secure 
 
 Evidence anyone can check. Every sign-off, assessment and verified summary carries a code and QR code. Reviewers scan it and see the record as it was signed.
 
-Ready for your portfolio. Export PDF, Excel or CSV with a verified summary for your e-portfolio, college or appraisal.
+Ready for your portfolio. Export PDF, Excel or CSV with a verified summary for your e-portfolio, college or appraisal, or an Excel file laid out like the RCEM, FAMUS, FUSIC or RCoA nerve block logbook for your assessor.
 
 Your images stay with you. Photos and clips stay on your phone and in backups you save to your own cloud. They are left out of phone backups and phone-to-phone transfers. If you choose to share them with a supervisor for sign-off, they are encrypted on your phone before upload, only that supervisor can open them, and they are deleted after sign-off or within 14 days. Only the written record syncs, and it must never contain patient identifiers.
 
@@ -167,7 +177,7 @@ Export your logbook laid out like the RCEM, FAMUS, FUSIC or RCoA nerve block log
 
 ## Release 1.0.29 (36): what's new
 
-Same website code as `0483655` (no app changes there); the app adds store ratings (src/app/rating.js, StoreReviewPlugin on both phones). Android takes its version from the build environment (mobile/android/app/build.gradle): run the Android workflow with version `1.0.29`; its version code is the workflow run number (`WL_VERSION_CODE`), not 36, and must be higher than 1.0.28's. iPhone: 1.0.29 (36) is set in the Xcode project. Android adds Google's Play In-App Review library (`com.google.android.play:review:2.0.2`).
+Same website code as `0483655` (no app changes there); the app adds store ratings (src/app/rating.js, StoreReviewPlugin on both phones). Android takes its version from the build environment (mobile/android/app/build.gradle): the clean local build sets `WL_VERSION_CODE=36 WL_VERSION_NAME=1.0.29` (the GitHub workflow would use its run number instead; any code must be higher than 1.0.28's 35). iPhone: 1.0.29 (36) is set in the Xcode project. Android adds Google's Play In-App Review library (`com.google.android.play:review:2.0.2`).
 
 Google Play and the App Store (after 1.0.28), under 500 characters (200):
 
