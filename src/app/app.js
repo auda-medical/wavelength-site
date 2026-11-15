@@ -130,7 +130,7 @@
     if (me.recommendedVersion && verCmp(NAT.version, me.recommendedVersion) < 0) return 'recommended';
     return 'none';
   }
-  function storeUrl() { return NAT.platform === 'android' ? 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app' : 'https://thewavelength.co.uk/app/get/'; }
+  function storeUrl() { return NAT.platform === 'android' ? 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app' : NAT.platform === 'ios' ? 'https://apps.apple.com/app/id6822088185' : 'https://thewavelength.co.uk/app/get/'; }
   function updateBanner() {
     var lv = updateLevel(); if (lv === 'none') return '';
     if (lv === 'recommended') { var seen; try { seen = localStorage.getItem('wl-upd-hide'); } catch (e) { seen = null; } if (seen && seen === String((S.me || {}).recommendedVersion || 'r')) return ''; }
@@ -1372,7 +1372,42 @@
     var a = authNote(); if (!a) return '';
     return '<div class="warn" role="status"><p style="margin:0">' + esc(T('Sign in again to continue synchronising. Your local entries are safe.')) + '</p>' + (a.pending ? '<p class="small" style="margin:6px 0 0">' + esc(N(a.pending, '{n} entry is waiting on this device.', '{n} entries are waiting on this device.')) + '</p>' : '') + '</div>';
   }
-  function loadMe() { var t0 = Date.now(); return api('/api/app/me', undefined, { timeout: 15000 }).then(function (res) { if (!DIAG.me) { diag('me', String(res._status)); diag('meMs', Date.now() - t0); } if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); } }).catch(function (ex) { if (!DIAG.me) diag('me', ex && ex.timeout ? 'timeout' : 'offline'); /* offline: the cached account stays */ }); }
+  // 1.0.30 (owner, 15 Nov 2026): when the store has a newer Wavelength than this phone, a pop-up on opening the app says
+  // so, once per new version, and Update now opens the store listing. iPhone: the version Apple serves now
+  // (GET /api/app/store-version, from Apple's public lookup, so nobody is sent to a store that has not published it
+  // yet). Android: Google Play's own check (NAT.checkUpdate). Asked at most once a day; shown only on the home or Me
+  // screens, never during a scan, a sign-off or with another sheet open. A required update keeps its banner instead.
+  var UPD_SAFE = { home: 1, me: 1, logbook: 1 };
+  function updatePrompt() {
+    if (!NAT.on || !NAT.version || !S.account || updateLevel() === 'required') return;
+    var day = new Date().toISOString().slice(0, 10), last = null;
+    try { last = localStorage.getItem('wl-upd-day'); } catch (e) { /* storage blocked */ }
+    if (last === day) return;
+    try { localStorage.setItem('wl-upd-day', day); } catch (e) { /* storage blocked */ }
+    var ask = NAT.platform === 'android' ? NAT.checkUpdate().then(function (r) { return r && r.available ? { key: 'a' + (r.versionCode || '') } : null; })
+      : NAT.platform === 'ios' ? api('/api/app/store-version').then(function (r) { return r && r.ok && r.ios && verCmp(NAT.version, r.ios) < 0 ? { key: 'i' + r.ios } : null; })
+      : Promise.resolve(null);
+    ask.then(function (u) {
+      if (!u) return;
+      var seen = null; try { seen = localStorage.getItem('wl-upd-pop'); } catch (e) { /* storage blocked */ }
+      if (seen === u.key) return;
+      var shown = false;
+      var show = function () {
+        if (shown || !S.account || !UPD_SAFE[route().name] || document.querySelector('.sheet-bg')) return;
+        shown = true; window.removeEventListener('hashchange', later);
+        var remember = function () { try { localStorage.setItem('wl-upd-pop', u.key); } catch (e) { /* storage blocked */ } };
+        sheet('<h2>' + esc(T('New version available')) + '</h2><p>' + esc(NAT.platform === 'ios' ? T('A new version of Wavelength is ready in the App Store.') : T('A new version of Wavelength is ready in Google Play.')) + ' ' + esc(T('Update now to get the latest improvements. Your logbook stays on this phone.')) + '</p>' +
+          '<div class="btns"><button class="btn teal block" type="button" data-updnow>' + esc(T('Update now')) + '</button><button class="btn ghost block" type="button" data-close>' + esc(T('Not now')) + '</button></div>',
+        function (r2) {
+          remember();
+          $('[data-updnow]', r2).onclick = function () { closeSheet(); NAT.openListing(); };
+        });
+      };
+      var later = function () { setTimeout(show, 400); };
+      if (UPD_SAFE[route().name]) setTimeout(show, 1500); else window.addEventListener('hashchange', later);
+    }).catch(function () { /* offline or no store: say nothing */ });
+  }
+  function loadMe() { var t0 = Date.now(); return api('/api/app/me', undefined, { timeout: 15000 }).then(function (res) { if (!DIAG.me) { diag('me', String(res._status)); diag('meMs', Date.now() - t0); } if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); updatePrompt(); } }).catch(function (ex) { if (!DIAG.me) diag('me', ex && ex.timeout ? 'timeout' : 'offline'); /* offline: the cached account stays */ }); }
   function linksStale(ms) { return !S.linksAt || Date.now() - S.linksAt > ms; }
   function loadLinks() { return api('/api/app/supervisors').then(function (res) { if (res.ok) { S.links = res; S.linksAt = Date.now(); if (['home', 'me', 'supervise', 'supervisors'].indexOf(route().name) >= 0 && !document.querySelector('.sheet-bg')) render(true); } }).catch(function () { /* offline: try again on the next sync */ }); }
 

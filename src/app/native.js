@@ -288,6 +288,19 @@
     if (!Review) return Promise.resolve(false);
     try { return Review.requestReview().then(function () { return true; }, function () { return false; }); } catch (e) { return Promise.resolve(false); }
   }
+  // 1.0.30: Android asks Google Play whether a newer version is available (StoreReviewPlugin.java, checkUpdate). An older
+  // native build without the method, or no Play Store, answers null. The iPhone asks the website instead (app.js).
+  function checkUpdate() {
+    if (!Review || PLATFORM !== 'android') return Promise.resolve(null);
+    try { var p = Review.checkUpdate(); return p && p.then ? p.then(function (r) { return r || null; }, function () { return null; }) : Promise.resolve(null); } catch (e) { return Promise.resolve(null); }
+  }
+  // The store listing itself (not the review page), for Update now.
+  var LISTING = { ios: 'https://apps.apple.com/app/id6822088185', android: STORE.android };
+  function openListing() {
+    var u = LISTING[PLATFORM]; if (!u) return;
+    if (PLATFORM === 'android' && Review) { try { var p = Review.openStore({ url: u }); if (p && p.catch) { p.catch(function () { openExternal(u); }); return; } } catch (e) { /* falls through */ } }
+    openExternal(u);
+  }
   function openStore() {
     var u = STORE[PLATFORM]; if (!u) return;
     var fallback = function () { openExternal(u); };
@@ -324,6 +337,8 @@
     push: push,
     review: Review ? review : null,
     openStore: Review ? openStore : null,
+    checkUpdate: checkUpdate,
+    openListing: openListing,
     storeUrl: STORE[PLATFORM] || '',
     takeOpen: function () { var h = pendingOpen; pendingOpen = ''; return h; },
     plugin: plugin

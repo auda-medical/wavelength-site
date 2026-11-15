@@ -3,6 +3,7 @@
 // The website sends no header (or "web/<build>") and is never blocked. GET /api/app/me and account deletion always
 // work, so nobody is locked out of their own account or data.
 import { appVersion } from './log.js';
+import { json } from './app-util.js';
 
 // Compares dot-separated versions numerically, part by part: -1, 0 or 1. Missing parts count as 0.
 export function compareVersions(a, b) {
@@ -44,3 +45,30 @@ export function mustUpgrade(env, req, path) {
   return versionInfo(env, req).update === 'required';
 }
 export const UPGRADE = { ok: false, upgrade: true, error: 'Please update the Wavelength app to continue.' };
+
+// 1.0.30 (owner, 15 Nov 2026): GET /api/app/store-version, public. The version the App Store is serving now, read from
+// Apple's public lookup, so the iPhone app offers an update only once Apple has actually published it. Cached at the edge
+// for six hours; { ios: null } when Apple cannot be reached, and the app then simply says nothing. Android needs no
+// server: Google Play answers the app directly (StoreReviewPlugin.java, checkUpdate).
+export const APP_STORE_ID = '6822088185';
+const LOOKUP_TTL = 6 * 3600;
+export async function storeVersion(env, ctx) {
+  const cache = typeof caches !== 'undefined' && caches.default;
+  const key = cache ? new Request('https://store-version.cache.invalid/ios') : null;
+  if (cache) { const hit = await cache.match(key).catch(() => null); if (hit) return hit; }
+  let ios = null;
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 3000);
+    const r = await fetch(`https://itunes.apple.com/lookup?id=${APP_STORE_ID}&country=gb`, { signal: ctl.signal, headers: { Accept: 'application/json' } });
+    clearTimeout(timer);
+    if (r && r.ok) {
+      const j = await r.json();
+      const v = String((j && j.results && j.results[0] && j.results[0].version) || '');
+      if (VALID.test(v)) ios = v;
+    }
+  } catch { ios = null; }
+  const res = json({ ok: true, ios, iosUrl: `https://apps.apple.com/app/id${APP_STORE_ID}` }, 200, { 'Cache-Control': ios ? `public, max-age=${LOOKUP_TTL}` : 'no-store' });
+  if (cache && ios) { const put = cache.put(key, res.clone()).catch(() => {}); if (ctx && ctx.waitUntil) ctx.waitUntil(put); }
+  return res;
+}
