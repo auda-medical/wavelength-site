@@ -1,0 +1,2 @@
+/* Wavelength: app name on the home screen (the same in every language). */
+"CFBundleDisplayName" = "Wavelength";

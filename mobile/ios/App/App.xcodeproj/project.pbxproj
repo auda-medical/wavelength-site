@@ -21,6 +21,7 @@
 		5A1C0DE1A0E40000000000B1 /* WLNetworkPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1C0DE1A0E40000000000B2 /* WLNetworkPlugin.swift */; };
 		5A1C0DE1A0E40000000000C1 /* WLBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1C0DE1A0E40000000000C2 /* WLBridgeViewController.swift */; };
 		5A1C0DE1A0E40000000000D1 /* StoreReviewPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1C0DE1A0E40000000000D2 /* StoreReviewPlugin.swift */; };
+		5A1C0DE1A0E40000000000E1 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 5A1C0DE1A0E40000000000E0 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,15 @@
 		5A1C0DE1A0E40000000000C2 /* WLBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WLBridgeViewController.swift; sourceTree = "<group>"; };
 		5A1C0DE1A0E40000000000D2 /* StoreReviewPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreReviewPlugin.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		5A1C0DE1A0E40000000000E2 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		5A1C0DE1A0E40000000000E3 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		5A1C0DE1A0E40000000000E4 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		5A1C0DE1A0E40000000000E5 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		5A1C0DE1A0E40000000000E6 /* it */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = it; path = it.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		5A1C0DE1A0E40000000000E7 /* pl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pl; path = pl.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		5A1C0DE1A0E40000000000E8 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		5A1C0DE1A0E40000000000E9 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		5A1C0DE1A0E40000000000EA /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +91,7 @@
 				5A1C0DE1A0E40000000000D2 /* StoreReviewPlugin.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				5A1C0DE1A0E40000000000A2 /* PrivacyInfo.xcprivacy */,
+				5A1C0DE1A0E40000000000E0 /* InfoPlist.strings */,
 				5A1C0DE1A0E40000000000F2 /* GoogleService-Info.plist */,
 				5A1C0DE1A0E40000000000B3 /* App.entitlements */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -140,6 +151,14 @@
 			knownRegions = (
 				en,
 				Base,
+				fr,
+				es,
+				de,
+				it,
+				pl,
+				ar,
+				ru,
+				"zh-Hans",
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
@@ -164,6 +183,7 @@
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				5A1C0DE1A0E40000000000A1 /* PrivacyInfo.xcprivacy in Resources */,
+				5A1C0DE1A0E40000000000E1 /* InfoPlist.strings in Resources */,
 				5A1C0DE1A0E40000000000F1 /* GoogleService-Info.plist in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
@@ -202,6 +222,22 @@
 				504EC3111FED79650016851F /* Base */,
 			);
 			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		5A1C0DE1A0E40000000000E0 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				5A1C0DE1A0E40000000000E2 /* en */,
+				5A1C0DE1A0E40000000000E3 /* fr */,
+				5A1C0DE1A0E40000000000E4 /* es */,
+				5A1C0DE1A0E40000000000E5 /* de */,
+				5A1C0DE1A0E40000000000E6 /* it */,
+				5A1C0DE1A0E40000000000E7 /* pl */,
+				5A1C0DE1A0E40000000000E8 /* ar */,
+				5A1C0DE1A0E40000000000E9 /* ru */,
+				5A1C0DE1A0E40000000000EA /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
