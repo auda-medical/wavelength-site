@@ -1668,6 +1668,8 @@
 "Logged-in learners would see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Turn this off at any time.": "Les apprenants connectés verraient votre nom, votre fonction, votre établissement et les domaines pour lesquels Wavelength vous a approuvé, jamais votre e-mail. Ils peuvent alors demander à être liés, et vous choisissez d'accepter ou non. Désactivable à tout moment.",
 "NHS trust": "NHS trust",
 "Name, at least 3 letters": "Nom, au moins 3 lettres",
+"Start typing their name": "Commencez à saisir son nom",
+"Type the first letter of their name.": "Saisissez la première lettre de son nom.",
 "No approved supervisor found. Check the spelling, or invite them by email.": "Aucun superviseur approuvé trouvé. Vérifiez l'orthographe ou invitez-le par e-mail.",
 "No longer practising in the relevant ultrasound area": "N'exerce plus dans le domaine d'échographie concerné",
 "No longer supervising ultrasound": "Ne supervise plus l'échographie",

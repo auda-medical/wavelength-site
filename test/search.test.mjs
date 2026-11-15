@@ -91,14 +91,21 @@ test('results carry no email address or account id, only what the supervisor agr
   assert.ok(!/RCEM|FAMUS|FUSIC/.test(hit.badge));
 });
 
-test('no organisation-only listing, and short or empty queries are refused', async () => {
+test('no organisation-only listing; suggestions from the first letter; empty queries are refused', async () => {
   const env = makeEnv(ON);
   const { trainee } = await world(env);
   assert.deepEqual((await search(trainee.c, 'darent')).body.results, [], 'the organisation alone lists nobody');
-  assert.equal((await search(trainee.c, 'sm')).status, 400);
+  assert.deepEqual((await search(trainee.c, 'd')).body.results, [], 'nor does its first letter');
+  // 15 Nov 2026 (owner): one letter of the first or last name is enough.
+  for (const q of ['s', 'S', 'a', 'sm', 'al', 'alice s']) {
+    const r = await search(trainee.c, q);
+    assert.equal(r.status, 200, q);
+    assert.deepEqual(r.body.results.map((x) => x.name), ['Alice Smith'], q);
+  }
+  assert.deepEqual((await search(trainee.c, 'm')).body.results, [], 'a letter inside a name is not a match');
+  assert.equal((await search(trainee.c, 's', 'wl-2')).body.results.length, 1, 'one letter with an organisation');
   assert.equal((await search(trainee.c, '')).status, 400);
   assert.equal((await search(trainee.c, '%%%')).status, 400);
-  assert.equal((await search(trainee.c, 's', 'wl-2')).status, 400);
   assert.equal((await search(trainee.c, 'smith', 'wl-999999')).status, 400, 'an unknown organisation');
 });
 

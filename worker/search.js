@@ -1,6 +1,7 @@
 // Supervisor search (plan section 20). Behind SUPERVISOR_SEARCH = "true" (off by default) and migrations 0012 and
 // 0013. Routes under /api/app/ (logged in):
-//   GET  supervisors/search?q=&org=      verified email; q of 3+ characters, or an org id and 2+ characters; up to 8
+//   GET  supervisors/search?q=&org=      verified email; q of 1+ letters (15 Nov 2026, owner: a dropdown from the first
+//                                         letter typed); up to 8
 //   POST supervisors/request { ref }      ask a supervisor found in search; 5 a day; the supervisor accepts on their
 //                                         dashboard exactly as for an email invitation
 //   POST supervisor/searchable { on, rotate }   a supervisor opts in (only with a current approval) or out (always)
@@ -70,8 +71,9 @@ export async function search(env, l, req, url) {
   const orgRaw = clip(url.searchParams.get('org'), 40);
   const org = orgRaw ? await resolveOrg(env, orgRaw) : null;
   if (orgRaw && (!org || org.status !== 'active')) return json({ ok: false, error: 'Choose the organisation again from the list.' }, 400);
-  const min = org ? 2 : 3;
-  if (qn.replace(/ /g, '').length < min) return json({ ok: false, tooShort: true, error: org ? 'Type at least 2 letters of their name.' : 'Type at least 3 letters of their name.' }, 400);
+  // 15 Nov 2026 (owner): suggestions start at the first letter. Scraping stays bounded by the 8-result cap, the
+  // per-minute limits and the 200-a-day cap, which do not depend on the query length.
+  if (!qn.replace(/ /g, '').length) return json({ ok: false, tooShort: true, error: 'Type the first letter of their name.' }, 400);
 
   const rl = await rateLimitAll(env, 'search', [`acct:${l.id}`, await ipKey(clientIp(req))], { binding: 'RATE_LIMIT_SEARCH' });
   if (!rl.ok) return json({ ok: false, error: TOO_MANY }, 429, { 'Retry-After': '60' });

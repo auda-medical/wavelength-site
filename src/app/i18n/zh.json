@@ -1652,6 +1652,8 @@
 "Logged-in learners would see your name, role, organisation and the areas Wavelength approved you for, never your email. They can then ask to link, and you choose whether to accept. Turn this off at any time.": "已登录的学员将看到您的姓名、职务、机构以及 Wavelength 认可您的领域，但绝不会看到您的邮箱。学员随后可申请关联，由您决定是否接受。可随时关闭。",
 "NHS trust": "NHS trust",
 "Name, at least 3 letters": "姓名，至少 3 个字",
+"Start typing their name": "开始输入姓名",
+"Type the first letter of their name.": "请输入姓名的第一个字。",
 "No approved supervisor found. Check the spelling, or invite them by email.": "未找到认可督导老师。请检查拼写，或通过邮件邀请。",
 "No longer practising in the relevant ultrasound area": "不再从事相关超声领域工作",
 "No longer supervising ultrasound": "不再督导超声",
