@@ -248,6 +248,7 @@ function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogT
 ${noindex ? '' : `<link rel="canonical" href="${canonical}">`}
 ${noindex ? '<meta name="robots" content="noindex">' : '<meta name="robots" content="index, follow, max-image-preview:large">'}
 <meta name="theme-color" content="#0A1526">
+${noindex ? '' : '<meta name="apple-itunes-app" content="app-id=6822088185">'}
 <meta property="og:type" content="${ogType}">
 <meta property="og:site_name" content="${site.name}">
 <meta property="og:title" content="${esc(fullTitle)}">
@@ -1896,11 +1897,13 @@ pages['/app/delete-account/'] = layout({
 </div></div></section>`,
 });
 
+const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: 'https://apps.apple.com/gb/app/wavelength-ultrasound-logbook/id6822088185' };
 // The app as a SoftwareApplication, shared by /app/get/ and /pocus-logbook/ (same @id). Features listed here are all live in src/app/.
 const APP_LD = {
   '@context': 'https://schema.org', '@type': 'SoftwareApplication', '@id': url('/app/get/#app'), name: 'Wavelength', alternateName: 'Wavelength POCUS logbook',
   applicationCategory: 'MedicalApplication', operatingSystem: 'iOS, Android, web', url: url('/app/get/'), publisher: { '@id': url('/#org') },
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' },
+  downloadUrl: [STORES.appStore, STORES.play], sameAs: [STORES.appStore, STORES.play],
   inLanguage: ['en', 'fr', 'es', 'de', 'it', 'pl', 'ar', 'ru', 'zh-Hans'],
   featureList: [
     'Point-of-care ultrasound scan logbook, with images and clips kept on the device',
@@ -1916,7 +1919,6 @@ const APP_LD = {
 // Store links (owner, 20 Oct 2026). Google Play published 1.0.25 on 20 Oct. The App Store published iPhone 1.0.17 on 13 Nov 2026
 // (21:36 UTC; owner asked for the App Store badge on 14 Nov). Put the App Store address in appStore the day
 // Apple publishes the iPhone app (https://apps.apple.com/app/id6822088185); until then the page says it is coming soon.
-const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: 'https://apps.apple.com/gb/app/wavelength-ultrasound-logbook/id6822088185' };
 // Wavelength app landing page (/app/get/). The app itself is static in src/app/.
 {
   const f = (icon, t, d) => `<div class="pillar reveal"><div class="num">${icon}</div><h3>${t}</h3><p>${d}</p></div>`;
@@ -2368,6 +2370,7 @@ const notFound = layout({
 ${hreflang(alts)}
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#0A1526">
+<meta name="apple-itunes-app" content="app-id=6822088185">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="${site.name}">
 <meta property="og:title" content="${esc(fullTitle)}">
