@@ -2319,7 +2319,7 @@ const notFound = layout({
   const I18N = path.join(ROOT, 'data/i18n');
   const LANGS = [
     ['fr', 'Français', 'fr_FR'], ['es', 'Español', 'es_ES'], ['de', 'Deutsch', 'de_DE'], ['it', 'Italiano', 'it_IT'],
-    ['pl', 'Polski', 'pl_PL'], ['ar', 'العربية', 'ar_AR'], ['ru', 'Русский', 'ru_RU'], ['zh', '中文（简体）', 'zh_CN'],
+    ['pl', 'Polski', 'pl_PL'], ['ar', 'العربية', 'ar_AR'], ['ru', 'Русский', 'ru_RU'], ['zh', '中文（简体）', 'zh_CN'], ['el', 'Ελληνικά', 'el_GR'],
   ].filter(([l]) => fs.existsSync(path.join(I18N, `site.${l}.json`)));
   const LOCAL = { '/': '', '/app/get/': 'app/', '/about/': 'about/', '/contact/': 'contact/' };
   const altsFor = (enPath) => (enPath in LOCAL ? [['en', enPath], ...LANGS.map(([l]) => [l, `/${l}/${LOCAL[enPath]}`])] : null);
