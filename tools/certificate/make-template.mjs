@@ -11,7 +11,8 @@ import path from 'path';
 import { PDFDocument, PDFName, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
+// WL_ROOT: run this file from another folder that has pdf-lib installed and still write into this repository.
+const ROOT = process.env.WL_ROOT ? path.resolve(process.env.WL_ROOT) : path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const FONTS = path.join(ROOT, 'worker/fonts');
 const hex = (h) => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
 const C = { navy: '#0F1E33', teal: '#2A7F8A', tealInk: '#1F6670', light: '#7FC4CC', cream: '#F7F5F0', line: '#DCD7CC', slate: '#3C4A5E' };
@@ -23,7 +24,9 @@ doc.setTitle('Wavelength Academy certificate');
 doc.setAuthor('Wavelength');
 doc.setCreator('thewavelength.co.uk');
 doc.setProducer('Wavelength');
-const files = { serif: 'serif.ttf', serifSemi: 'serif-semi.ttf', serifItalic: 'serif-italic.ttf', sans: 'sans.ttf', sansMedium: 'sans-medium.ttf', sansSemi: 'sans-semi.ttf' };
+// nameAlt (16 Nov 2026, owner): EB Garamond Italic (SIL OFL 1.1, worker/fonts/ebgaramond-OFL.txt; from google/fonts
+// ofl/ebgaramond) prints a name that has Greek or Cyrillic letters; Latin names keep Cormorant (serifItalic) exactly.
+const files = { serif: 'serif.ttf', serifSemi: 'serif-semi.ttf', serifItalic: 'serif-italic.ttf', sans: 'sans.ttf', sansMedium: 'sans-medium.ttf', sansSemi: 'sans-semi.ttf', nameAlt: 'ebgaramond-italic.ttf' };
 const f = {};
 for (const [k, file] of Object.entries(files)) f[k] = await doc.embedFont(fs.readFileSync(path.join(FONTS, file)), { subset: true });
 
@@ -55,7 +58,7 @@ text('WAVELENGTH ACADEMY', f.sansSemi, 8.5, W - 64, ly + 16, C.tealInk, { align:
 text('Certificate of completion', f.serif, 44, cx, H - 178, C.navy, { align: 'center' });
 page.drawLine({ start: { x: cx - 36, y: H - 196 }, end: { x: cx + 36, y: H - 196 }, thickness: 1.2, color: col(C.teal) });
 text('This certifies that', f.sans, 12, cx, H - 228, C.slate, { align: 'center' });
-page.drawLine({ start: { x: cx - 220, y: H - 284 }, end: { x: cx + 220, y: H - 284 }, thickness: 0.6, color: col(C.line) });
+page.drawLine({ start: { x: cx - 220, y: H - 285.5 }, end: { x: cx + 220, y: H - 285.5 }, thickness: 0.6, color: col(C.line) }); // 1.5 pt lower (16 Nov 2026): room for Greek ρ and Cyrillic р
 text('has completed the Wavelength Academy e-learning module', f.sans, 12, cx, H - 310, C.slate, { align: 'center' });
 
 const bw = 176, gap = 14, bx0 = cx - (bw * 3 + gap * 2) / 2, by = 132;
@@ -77,7 +80,7 @@ text('which needs supervised practice and sign-off in your department. Wavelengt
 
 // Where the personal details go
 const slots = {
-  name: { font: 'serifItalic', size: 40, min: 18, maxWidth: W - 220, x: cx, y: H - 272, align: 'center', color: C.navy },
+  name: { font: 'serifItalic', alt: 'nameAlt', size: 40, min: 18, maxWidth: W - 220, x: cx, y: H - 272, align: 'center', color: C.navy },
   module: { font: 'serifSemi', size: 25, min: 14, maxWidth: W - 200, x: cx, y: H - 342, align: 'center', color: C.navy },
   scoreLine: { font: 'sans', size: 12, min: 9, maxWidth: W - 200, x: cx, y: H - 368, align: 'center', color: C.slate },
   cpd: { font: 'sansMedium', size: 11.5, min: 8, maxWidth: bw - 22, x: bx0 + 14, y: by + 14, align: 'left', color: C.navy },
@@ -93,10 +96,13 @@ for (let c = 0x20; c <= 0x7e; c++) cps.push(c);
 for (let c = 0xa0; c <= 0x17f; c++) cps.push(c);
 cps.push(0x2018, 0x2019, 0x201c, 0x201d, 0x2013, 0x00b7);
 const fontsMeta = {};
-for (const k of new Set(Object.values(slots).map((x) => x.font))) {
+const GREEK_CYRILLIC = [];
+for (let c = 0x370; c <= 0x3ff; c++) GREEK_CYRILLIC.push(c);
+for (let c = 0x400; c <= 0x4ff; c++) GREEK_CYRILLIC.push(c);
+for (const k of new Set(Object.values(slots).flatMap((x) => (x.alt ? [x.font, x.alt] : [x.font])))) {
   const ff = f[k];
   const map = {};
-  for (const cp of cps) {
+  for (const cp of k === 'nameAlt' ? [...cps, ...GREEK_CYRILLIC] : cps) {
     if (!ff.embedder.font.hasGlyphForCodePoint(cp)) continue;
     const ch = String.fromCodePoint(cp);
     const hx = ff.encodeText(ch).toString().replace(/[<>]/g, '');

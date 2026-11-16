@@ -12,17 +12,26 @@ function glyph(map, ch) {
   return map[plain.codePointAt(0)];
 }
 
-// Characters of text that the slot's font cannot print (they would be left out of the certificate), e.g. Arabic,
-// Cyrillic or Chinese letters. The Academy asks for the name in English letters instead (worker/academy.js).
+// Text is composed (NFC) first, so a letter typed with a separate accent mark keeps its accent.
+const nfc = (t) => String(t == null ? '' : t).normalize('NFC');
+const missing = (meta, fontKey, text) => [...new Set([...nfc(text)].filter((ch) => !glyph(meta.fonts[fontKey].map, ch)))];
+// The font a slot writes this text with: its own font, or (16 Nov 2026) its alt font when only that one can print the
+// text. The name's alt font is EB Garamond Italic, for names in Greek or Cyrillic letters; Latin names are unchanged.
+export function fontFor(meta, slot, text) {
+  const s = meta.slots[slot];
+  if (!s.alt || !meta.fonts[s.alt] || !missing(meta, s.font, text).length) return s.font;
+  return missing(meta, s.alt, text).length ? s.font : s.alt;
+}
+// Characters of text that the slot cannot print (they would be left out of the certificate), e.g. Arabic or Chinese
+// letters. The Academy asks for the name in Latin, Greek or Cyrillic letters instead (worker/academy.js).
 export function unprintable(meta, slot, text) {
-  const map = meta.fonts[meta.slots[slot].font].map;
-  return [...new Set([...String(text || '')].filter((ch) => !glyph(map, ch)))];
+  return missing(meta, fontFor(meta, slot, text), text);
 }
 
 function encode(meta, fontKey, text) {
   const map = meta.fonts[fontKey].map;
   let hexs = '', width = 0;
-  for (const ch of String(text)) {
+  for (const ch of nfc(text)) {
     const e = glyph(map, ch);
     if (!e) continue;
     hexs += e[0];
@@ -33,12 +42,13 @@ function encode(meta, fontKey, text) {
 
 function place(meta, slot, text) {
   const s = meta.slots[slot];
-  const { hexs, width } = encode(meta, s.font, text);
+  const font = fontFor(meta, slot, text);
+  const { hexs, width } = encode(meta, font, text);
   let size = s.size;
   while (size > s.min && width * size > s.maxWidth) size -= 0.5;
   const w = width * size;
   const x = s.align === 'center' ? s.x - w / 2 : s.align === 'right' ? s.x - w : s.x;
-  return `BT ${meta.fonts[s.font].res} ${size} Tf ${s.color.join(' ')} rg 1 0 0 1 ${x.toFixed(2)} ${s.y.toFixed(2)} Tm <${hexs}> Tj ET`;
+  return `BT ${meta.fonts[font].res} ${size} Tf ${s.color.join(' ')} rg 1 0 0 1 ${x.toFixed(2)} ${s.y.toFixed(2)} Tm <${hexs}> Tj ET`;
 }
 
 // d: { name, module, score, cpdHours, date (YYYY-MM-DD), code }

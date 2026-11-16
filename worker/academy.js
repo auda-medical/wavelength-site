@@ -27,9 +27,11 @@ const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(dat
 const redirect = (to, extra = {}) => new Response(null, { status: 303, headers: { Location: to, ...HEAD, ...extra } });
 const withHead = (res, extra = {}) => { const r = new Response(res.body, res); for (const [k, v] of Object.entries({ ...HEAD, ...extra })) r.headers.set(k, v); return r; };
 const fullName = (l) => [l.title, l.first_name, l.last_name].filter(Boolean).join(' ');
-// 25 Oct 2026: the certificate fonts print Latin letters only, so a name in Arabic, Cyrillic or Chinese letters came
-// out blank (WL-VAC-WHUD-L255 showed only "Ms"). The Academy asks for the name in English letters instead.
-const NAME_LETTERS = (bad) => `Write your name in English letters (A to Z), as you want it on your certificate. The certificate cannot print ${bad.slice(0, 6).join(' ')}.`;
+// 25 Oct 2026: the certificate fonts printed Latin letters only, so a name in Arabic, Cyrillic or Chinese letters came
+// out blank (WL-VAC-WHUD-L255 showed only "Ms"). The Academy asks for a name the certificate can print instead.
+// 16 Nov 2026 (owner, D-117): the certificate also prints Greek and Cyrillic names (EB Garamond Italic, worker/cert.js).
+const NAME_LETTERS = (bad) => `Write your name in Latin, Greek or Cyrillic letters, as you want it on your certificate. The certificate cannot print ${bad.slice(0, 6).join(' ')}.`;
+const PRINTABLE_LETTER = /[A-Za-z\u00c0-\u017f\u0370-\u03ff\u0400-\u04ff]/;
 const fmtDate = (iso) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 // ---------- Login cookie, signed with its own secret in the settings table ----------
@@ -289,8 +291,8 @@ async function submit(env, req, ctx) {
     const typed = clip(d.cert_name, 160);
     if (typed) certName = typed;
     const bad = unprintable(TEMPLATE_META, 'name', certName);
-    if (bad.length || !/[A-Za-z]/.test(certName)) {
-      return json({ ok: false, needName: true, error: bad.length ? NAME_LETTERS(bad) : 'Write your name in English letters (A to Z), as you want it on your certificate.', prefill: typed ? '' : (l.title || '') }, 422);
+    if (bad.length || !PRINTABLE_LETTER.test(certName)) {
+      return json({ ok: false, needName: true, error: bad.length ? NAME_LETTERS(bad) : 'Write your name in Latin, Greek or Cyrillic letters, as you want it on your certificate.', prefill: typed ? '' : (l.title || '') }, 422);
     }
   }
   await env.DB.prepare('INSERT INTO attempts (learner_id, module, score, right_count, total, passed, answers) VALUES (?,?,?,?,?,?,?)')
