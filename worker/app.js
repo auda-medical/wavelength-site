@@ -41,7 +41,7 @@ import { nowIso } from './time.js';
 import { queueStmt, render } from './notify.js';
 import { rateLimitAll, clientIp, ipKey, TOO_MANY } from './ratelimit.js';
 import { requestId, route as routeName, appVersion, log } from './log.js';
-import { versionInfo, mustUpgrade, UPGRADE } from './version.js';
+import { versionInfo, mustUpgrade, UPGRADE, storeVersion } from './version.js';
 import { handleOrganisations, checkOrgId, orgsReady } from './organisations.js';
 import { normOrg } from './org-norm.js';
 import { handleSearch, searchOn } from './search.js';
@@ -803,6 +803,7 @@ async function routeApp(req, env, ctx, url, p) {
   if (p === 'verify') return verify(env, url);
   if (p === 'assessment/view') return SV.assessmentView(env, url);
   if (p === 'directory') return directorySearch(env, url);
+  if (p === 'store-version') return storeVersion(env, ctx); // 1.0.30: the App Store's live version (worker/version.js)
   // Guide source status (public, for the website and the apps): worker/monitor/api.js.
   const mon = await handleMonitorPublic(env, req, url, p, ctx);
   if (mon) return mon;

@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted. 1.0.21 strings (images in the supervisor app, clearer saving) were added on 19 October 2026, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted. 1.0.21 strings (images in the supervisor app, clearer saving) were added on 19 October 2026, also machine-drafted. The 1.0.29 string (Rate Wavelength) was added on 15 November 2026, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Die lernende Person hat für dieses Modul ein eigenes Ziel gesetzt, das von der Curriculumvorgabe abweicht.",
 "12": "12",
@@ -1669,6 +1669,11 @@
 "NHS trust": "NHS Trust",
 "Name, at least 3 letters": "Name, mindestens 3 Buchstaben",
 "Start typing their name": "Namen eingeben",
+"New version available": "Neue Version verfügbar",
+"A new version of Wavelength is ready in the App Store.": "Eine neue Version von Wavelength ist im App Store verfügbar.",
+"A new version of Wavelength is ready in Google Play.": "Eine neue Version von Wavelength ist bei Google Play verfügbar.",
+"Update now to get the latest improvements. Your logbook stays on this phone.": "Aktualisieren Sie jetzt, um die neuesten Verbesserungen zu erhalten. Ihr Logbuch bleibt auf diesem Telefon.",
+"Update now": "Jetzt aktualisieren",
 "Type the first letter of their name.": "Geben Sie den ersten Buchstaben des Namens ein.",
 "No approved supervisor found. Check the spelling, or invite them by email.": "Kein zugelassener Supervisor gefunden. Prüfen Sie die Schreibweise oder laden Sie ihn per E-Mail ein.",
 "No longer practising in the relevant ultrasound area": "Nicht mehr im betreffenden Ultraschallbereich tätig",
@@ -2786,5 +2791,6 @@
 "Open your RCoA Lifelong Learning Platform (LLP) logbook, or the logbook your school uses.": "Öffnen Sie Ihr RCoA-Logbuch in der Lifelong Learning Platform (LLP) oder das Logbuch Ihrer Weiterbildungsstätte.",
 "Use the Summary sheet to see your nerve blocks by type and supervision, including RA-UK's Plan A blocks.": "Im Blatt Summary sehen Sie Ihre Nervenblockaden nach Art und Supervision, einschließlich der Plan-A-Blockaden von RA-UK.",
 "Copy cases across where your logbook needs them. Your trainers record HALO sign-off in the LLP: this file does not replace it.": "Übertragen Sie Fälle dorthin, wo Ihr Logbuch sie braucht. Ihre Ausbilder dokumentieren die HALO-Freigabe in der LLP: Diese Datei ersetzt sie nicht.",
-"RCoA and RA-UK nerve block layout": "RCoA- und RA-UK-Layout für Nervenblockaden"
+"RCoA and RA-UK nerve block layout": "RCoA- und RA-UK-Layout für Nervenblockaden",
+"Rate Wavelength": "Wavelength bewerten"
 }

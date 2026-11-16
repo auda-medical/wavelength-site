@@ -45,9 +45,9 @@ test('the version and build are never written into the app source', () => {
   assert.match(read('mobile/scripts/build-www.mjs'), /WL_VERSION_CODE/);
 });
 
-test('About strings are translated in all eight languages', () => {
+test('About strings are translated in all nine languages', () => {
   const keys = ['About Wavelength', 'Version {version} ({build})', 'Contact support', 'Privacy policy', 'Terms of use', 'Open-source licences', 'Developer', 'Website', 'Build', 'Web app'];
-  for (const lang of ['fr', 'es', 'de', 'it', 'pl', 'ru', 'ar', 'zh']) {
+  for (const lang of ['fr', 'es', 'de', 'it', 'pl', 'ru', 'ar', 'zh', 'el']) {
     const d = JSON.parse(read('src/app/i18n/' + lang + '.json'));
     for (const k of keys) assert.ok(d[k], lang + ': ' + k);
     assert.ok(d['Version {version} ({build})'].includes('{version}') && d['Version {version} ({build})'].includes('{build}'), lang + ' placeholders');

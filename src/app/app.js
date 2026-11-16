@@ -17,8 +17,8 @@
   var S = { account: null, me: null, entries: [], kv: {}, db: null, online: navigator.onLine, syncing: false, installEvt: null, urls: {}, assessments: [], links: null };
 
   // ---------- Language ----------
-  var LANGS = [['en', 'English'], ['fr', 'Français'], ['es', 'Español'], ['de', 'Deutsch'], ['it', 'Italiano'], ['pl', 'Polski'], ['ar', 'العربية'], ['ru', 'Русский'], ['zh', '中文（简体）']];
-  var LOCALES = { en: 'en-GB', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pl: 'pl-PL', ar: 'ar', ru: 'ru-RU', zh: 'zh-CN' };
+  var LANGS = [['en', 'English'], ['fr', 'Français'], ['es', 'Español'], ['de', 'Deutsch'], ['it', 'Italiano'], ['pl', 'Polski'], ['ar', 'العربية'], ['ru', 'Русский'], ['zh', '中文（简体）'], ['el', 'Ελληνικά']]; // Greek added 16 Nov 2026 (1.0.30)
+  var LOCALES = { en: 'en-GB', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pl: 'pl-PL', ar: 'ar', ru: 'ru-RU', zh: 'zh-CN', el: 'el-GR' };
   var LANG = 'en', L = {}, PR = null;
   function pickLang() {
     var saved = null; try { saved = localStorage.getItem('wl-lang'); } catch (e) { /* storage blocked */ }
@@ -130,7 +130,7 @@
     if (me.recommendedVersion && verCmp(NAT.version, me.recommendedVersion) < 0) return 'recommended';
     return 'none';
   }
-  function storeUrl() { return NAT.platform === 'android' ? 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app' : 'https://thewavelength.co.uk/app/get/'; }
+  function storeUrl() { return NAT.platform === 'android' ? 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app' : NAT.platform === 'ios' ? 'https://apps.apple.com/app/id6822088185' : 'https://thewavelength.co.uk/app/get/'; }
   function updateBanner() {
     var lv = updateLevel(); if (lv === 'none') return '';
     if (lv === 'recommended') { var seen; try { seen = localStorage.getItem('wl-upd-hide'); } catch (e) { seen = null; } if (seen && seen === String((S.me || {}).recommendedVersion || 'r')) return ''; }
@@ -563,7 +563,7 @@
       SY.ran = true;
       SY.fail = !S.account ? '' : NETR.classify(ex, deviceNet());
       SY.err = SY.fail ? { kind: SY.fail, at: Date.now(), status: (ex && ex.status) || 0, vpn: !!(S.net && S.net.vpn) } : null;
-      if (SY.fail) logAttempt(false, SY.fail, failWhy(ex));
+      if (SY.fail) { logAttempt(false, SY.fail, failWhy(ex)); rateTrouble(); }
     }).then(function () {
       S.syncing = false; S.syncManual = false;
       if (!S.account || gen !== SESSION) return;
@@ -631,6 +631,7 @@
         if (!fresh.length) return;
         var keep = news().filter(function (n) { return !fresh.some(function (f) { return f.id === n.id; }); });
         toast(newsText(fresh), 4000);
+        if (fresh.some(function (f) { return f.status === 'confirmed'; })) rateMoment('signed');
         return setKv('news', keep.concat(fresh).slice(-50));
       }).then(function () { return setKv('lastSyncAfter', res.after || ''); }).then(function () { return setKv('lastSync', res.now); }).then(function () {
         if (res.more && (guard || 0) < 200) return pullAll((guard || 0) + 1, gen);
@@ -1323,6 +1324,37 @@
     });
   }
   if (NAT.push) NAT.push.onToken(function (t) { if (S.account && pushIsOn()) pushRegister(t); });
+  // 1.0.29: store ratings. After a good moment the store app may ask the phone for its official rating prompt; the
+  // rules (how long the app has been in use, how often, never after an error) are in rating.js. The phone decides
+  // whether a prompt appears. No question of our own first, nothing offered for a rating, nothing on the website.
+  var RATE = (function () {
+    if (!NAT.on || !NAT.review || !window.WLRating) return null;
+    var earliest = 0;
+    try { (JSON.parse(localStorage.getItem('wl-diag') || '[]') || []).forEach(function (d) { if (d && d.at > 0 && (!earliest || d.at < earliest)) earliest = d.at; }); } catch (e) { earliest = 0; }
+    var store = null; try { store = window.localStorage; } catch (e) { store = null; }
+    return WLRating.create({ storage: store, earliest: earliest });
+  })();
+  function rateTrouble() { if (RATE) RATE.trouble(); }
+  // kind: 'signed' (the learner sees new sign-offs), 'supervised' (a supervisor finished one), 'scan' (5th scan).
+  // Waits until no sheet, lock or manual sync is on screen (up to a minute), then checks the rules once more.
+  function rateMoment(kind) {
+    if (!RATE) return;
+    var tries = 0;
+    var ctx = function () {
+      var ents = live();
+      return { native: true, moment: kind, scans: ents.length, signoffs: ents.filter(function (e) { return signState(e) === 'signed'; }).length, troubleNow: !!SY.fail || refused().length > 0 };
+    };
+    if (!RATE.check(ctx()).ok) return;
+    (function later() {
+      setTimeout(function () {
+        if (!S.account) return;
+        if (document.querySelector('.sheet-bg') || document.querySelector('.app-lock') || userBusy()) { if (++tries < 20) later(); return; }
+        if (!RATE.check(ctx()).ok) return;
+        RATE.asked();
+        NAT.review();
+      }, 3000);
+    })();
+  }
   window.addEventListener('wl:open', function (e) { if (S.account && e.detail && e.detail.hash) { NAT.takeOpen(); location.hash = e.detail.hash; } });
   window.addEventListener('wl:notice', function (e) { var d = e.detail || {}; toast((d.title ? d.title + ': ' : '') + (d.body || ''), 6000); if (S.account) { S.sv = null; loadLinks(); } });
   function signedOut(to) { SESSION++; keptLast = null; clearTimeout(SY.timer); cacheAccount(null); if (NAT.clearToken) NAT.clearToken(); hideLock(true); S.account = null; S.db = null; S.entries = []; S.me = null; S.sv = null; S.assessments = []; S.links = null; location.hash = to || '#/welcome'; render(); }
@@ -1340,7 +1372,42 @@
     var a = authNote(); if (!a) return '';
     return '<div class="warn" role="status"><p style="margin:0">' + esc(T('Sign in again to continue synchronising. Your local entries are safe.')) + '</p>' + (a.pending ? '<p class="small" style="margin:6px 0 0">' + esc(N(a.pending, '{n} entry is waiting on this device.', '{n} entries are waiting on this device.')) + '</p>' : '') + '</div>';
   }
-  function loadMe() { var t0 = Date.now(); return api('/api/app/me', undefined, { timeout: 15000 }).then(function (res) { if (!DIAG.me) { diag('me', String(res._status)); diag('meMs', Date.now() - t0); } if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); } }).catch(function (ex) { if (!DIAG.me) diag('me', ex && ex.timeout ? 'timeout' : 'offline'); /* offline: the cached account stays */ }); }
+  // 1.0.30 (owner, 15 Nov 2026): when the store has a newer Wavelength than this phone, a pop-up on opening the app says
+  // so, once per new version, and Update now opens the store listing. iPhone: the version Apple serves now
+  // (GET /api/app/store-version, from Apple's public lookup, so nobody is sent to a store that has not published it
+  // yet). Android: Google Play's own check (NAT.checkUpdate). Asked at most once a day; shown only on the home or Me
+  // screens, never during a scan, a sign-off or with another sheet open. A required update keeps its banner instead.
+  var UPD_SAFE = { home: 1, me: 1, logbook: 1 };
+  function updatePrompt() {
+    if (!NAT.on || !NAT.version || !S.account || updateLevel() === 'required') return;
+    var day = new Date().toISOString().slice(0, 10), last = null;
+    try { last = localStorage.getItem('wl-upd-day'); } catch (e) { /* storage blocked */ }
+    if (last === day) return;
+    try { localStorage.setItem('wl-upd-day', day); } catch (e) { /* storage blocked */ }
+    var ask = NAT.platform === 'android' ? NAT.checkUpdate().then(function (r) { return r && r.available ? { key: 'a' + (r.versionCode || '') } : null; })
+      : NAT.platform === 'ios' ? api('/api/app/store-version').then(function (r) { return r && r.ok && r.ios && verCmp(NAT.version, r.ios) < 0 ? { key: 'i' + r.ios } : null; })
+      : Promise.resolve(null);
+    ask.then(function (u) {
+      if (!u) return;
+      var seen = null; try { seen = localStorage.getItem('wl-upd-pop'); } catch (e) { /* storage blocked */ }
+      if (seen === u.key) return;
+      var shown = false;
+      var show = function () {
+        if (shown || !S.account || !UPD_SAFE[route().name] || document.querySelector('.sheet-bg')) return;
+        shown = true; window.removeEventListener('hashchange', later);
+        var remember = function () { try { localStorage.setItem('wl-upd-pop', u.key); } catch (e) { /* storage blocked */ } };
+        sheet('<h2>' + esc(T('New version available')) + '</h2><p>' + esc(NAT.platform === 'ios' ? T('A new version of Wavelength is ready in the App Store.') : T('A new version of Wavelength is ready in Google Play.')) + ' ' + esc(T('Update now to get the latest improvements. Your logbook stays on this phone.')) + '</p>' +
+          '<div class="btns"><button class="btn teal block" type="button" data-updnow>' + esc(T('Update now')) + '</button><button class="btn ghost block" type="button" data-close>' + esc(T('Not now')) + '</button></div>',
+        function (r2) {
+          remember();
+          $('[data-updnow]', r2).onclick = function () { closeSheet(); NAT.openListing(); };
+        });
+      };
+      var later = function () { setTimeout(show, 400); };
+      if (UPD_SAFE[route().name]) setTimeout(show, 1500); else window.addEventListener('hashchange', later);
+    }).catch(function () { /* offline or no store: say nothing */ });
+  }
+  function loadMe() { var t0 = Date.now(); return api('/api/app/me', undefined, { timeout: 15000 }).then(function (res) { if (!DIAG.me) { diag('me', String(res._status)); diag('meMs', Date.now() - t0); } if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); updatePrompt(); } }).catch(function (ex) { if (!DIAG.me) diag('me', ex && ex.timeout ? 'timeout' : 'offline'); /* offline: the cached account stays */ }); }
   function linksStale(ms) { return !S.linksAt || Date.now() - S.linksAt > ms; }
   function loadLinks() { return api('/api/app/supervisors').then(function (res) { if (res.ok) { S.links = res; S.linksAt = Date.now(); if (['home', 'me', 'supervise', 'supervisors'].indexOf(route().name) >= 0 && !document.querySelector('.sheet-bg')) render(true); } }).catch(function () { /* offline: try again on the next sync */ }); }
 
@@ -1725,6 +1792,7 @@
     var upd = function (k, v) { var p = route().q; if (v) p.set(k, v); else p.delete(k); history.replaceState(null, '', '#/log?' + p.toString()); viewLog(route()); };
     $$('[data-f]').forEach(function (b) { b.addEventListener('click', function () { upd('type', b.dataset.f === 'all' ? '' : b.dataset.f); }); });
     $$('input[name=st]').forEach(function (i) { i.addEventListener('change', function () { upd('s', i.value); }); });
+    if (news().some(function (n) { return n.status === 'confirmed'; })) rateMoment('signed');
     if (news().length) setKv('news', []).then(function () { var d = $('.tabs .nd'); if (d) d.remove(); });
     var qi = $('#q'), tmr; qi.addEventListener('input', function () { clearTimeout(tmr); tmr = setTimeout(function () { upd('q', qi.value); var n = $('#q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); });
     loadThumbs();
@@ -2402,13 +2470,13 @@
           setTimeout(function () {
             // A new scan goes back Home; an edit goes back to the scan. A short note says what actually happened,
             // and changes to "synced" only once the server has acknowledged this scan.
-            var note = savedNote(out.id, !editing), act = editing ? '' : afterAct, ps = pickedSup();
+            var note = savedNote(out.id, !editing), act = editing ? '' : afterAct, ps = pickedSup(), nScans = live().length;
             go(editing ? 'entry/' + out.id : '');
-            sync().then(function () { note.update(); runAfter(out.id, act, ps); }, function () { runAfter(out.id, act, ps); });
+            sync().then(function () { note.update(); runAfter(out.id, act, ps); if (!editing && RATE && RATE.scanMilestone(nScans)) rateMoment('scan'); }, function () { runAfter(out.id, act, ps); });
           }, 0);
         }, function (ex) {
           // Not saved: stay on the form with everything as entered.
-          saving = false; busy(btn, false);
+          saving = false; busy(btn, false); rateTrouble();
           err.textContent = T('Could not save on this device: {why}', { why: (ex && ex.message) || ex }); err.hidden = false;
           scrollToField(err, true);
         });
@@ -3496,8 +3564,8 @@
         var b = $('button.teal', f); busy(b, true, T('Signing…'));
         api('/api/app/signoff/inperson', d).then(function (res) {
           if (!res.ok) throw new Error(res.error); closeSheet();
-          return sync().then(function () { NAT.haptic('success'); sheet('<h2>' + esc(T('Signed off')) + '</h2><p>' + T('Code <b>{code}</b>. Anyone can verify it at thewavelength.co.uk/verify.', { code: esc(res.code) }) + '</p><div class="btns"><button class="btn teal block" data-close>' + esc(T('Done')) + '</button></div>'); viewSignoff(route()); });
-        }).catch(function (ex) { busy(b, false); var err = $('.err', f); err.textContent = ex.message || T('Could not sign. Check the connection.'); err.hidden = false; });
+          return sync().then(function () { NAT.haptic('success'); sheet('<h2>' + esc(T('Signed off')) + '</h2><p>' + T('Code <b>{code}</b>. Anyone can verify it at thewavelength.co.uk/verify.', { code: esc(res.code) }) + '</p><div class="btns"><button class="btn teal block" data-close>' + esc(T('Done')) + '</button></div>'); viewSignoff(route()); rateMoment('signed'); });
+        }).catch(function (ex) { busy(b, false); rateTrouble(); var err = $('.err', f); err.textContent = ex.message || T('Could not sign. Check the connection.'); err.hidden = false; });
       });
     });
   }
@@ -4471,8 +4539,8 @@
         f.addEventListener('submit', function (ev) {
           ev.preventDefault(); var d = collectSignoff(root, f, pad); if (!d) return; d.code = code;
           var b = $('button.teal', f); busy(b, true, T('Signing…'));
-          api('/api/app/supervise/signoff', d).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(r2.skipped ? T('Signed off. Code {code}.', { code: r2.code }) + ' ' + T('{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.', { n: r2.skipped }) : T('Signed off. Code {code}.', { code: r2.code }), r2.skipped ? 8000 : 4000); loadLinks(); S.sv = null; render(true); })
-            .catch(function (ex) { busy(b, false); var err = $('.err', f); err.textContent = ex.message; err.hidden = false; });
+          api('/api/app/supervise/signoff', d).then(function (r2) { if (!r2.ok) throw new Error(r2.error); closeSheet(); toast(r2.skipped ? T('Signed off. Code {code}.', { code: r2.code }) + ' ' + T('{n} of these scans had been changed by the learner after they asked, so your decision was not applied to them. Ask the learner to send those again.', { n: r2.skipped }) : T('Signed off. Code {code}.', { code: r2.code }), r2.skipped ? 8000 : 4000); loadLinks(); S.sv = null; render(true); if (RATE) { RATE.signedOff(); if (!r2.skipped) rateMoment('supervised'); } })
+            .catch(function (ex) { busy(b, false); rateTrouble(); var err = $('.err', f); err.textContent = ex.message; err.hidden = false; });
         });
       });
     }).catch(function (ex) { toast(netFail(ex) ? T('Could not load. Check your connection.') : T('Could not load.'), 5000); });
@@ -5707,10 +5775,13 @@
   function versionText(v) { return v.version ? (v.build ? T('Version {version} ({build})', { version: v.version, build: v.build }) : T('Version {version}', { version: v.version })) : T('Web app'); }
   function aboutFooter() {
     return '<footer class="about-foot"><p class="about-name">Wavelength</p><p data-appver>' + esc(NAT.version ? versionText({ version: NAT.version, build: '' }) : NAT.on ? '' : T('Web app')) + '</p><p><bdi dir="ltr">' + esc(COPYRIGHT) + '</bdi></p>' +
+      // 1.0.29: the store's own review page (App Store: write a review; Google Play: the listing). Store apps only.
+      (NAT.openStore ? '<button type="button" class="about-link" data-rate>' + esc(T('Rate Wavelength')) + '</button>' : '') +
       '<button type="button" class="about-link" data-about>' + esc(T('About Wavelength')) + '</button></footer>';
   }
   function bindAbout() {
     var b = $('[data-about]'); if (b) b.onclick = aboutSheet;
+    var rt = $('[data-rate]'); if (rt) rt.onclick = function () { NAT.openStore(); };
     appInfo().then(function (v) { $$('[data-appver]').forEach(function (el) { el.textContent = versionText(v); }); });
   }
   // 1.0.20 (owner): suggestions for the app, by email to the team, with the version and platform only.

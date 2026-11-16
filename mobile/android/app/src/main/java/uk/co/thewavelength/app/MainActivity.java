@@ -9,9 +9,11 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // The app's own plugins (not from npm) are registered before the bridge starts.
+        // The app's own plugins (not from npm) are registered before the bridge starts. 1.0.29: StoreReviewPlugin, the
+        // phone's own rating prompt (Google Play In-App Review) and the Play listing.
         registerPlugin(NetworkPlugin.class);
         registerPlugin(CapturePlugin.class);
+        registerPlugin(StoreReviewPlugin.class);
         super.onCreate(savedInstanceState);
         // 1.0.14: photos and clips taken with the camera go to Wavelength's private storage, never the gallery or
         // shared storage (WLChromeClient). Set while the activity is being created, as its result launcher requires.

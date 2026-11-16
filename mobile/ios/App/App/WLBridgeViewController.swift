@@ -6,5 +6,7 @@ import Capacitor
 class WLBridgeViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(WLNetworkPlugin())
+        // 1.0.29: the phone's own rating prompt and the App Store review page (StoreReviewPlugin.swift).
+        bridge?.registerPluginInstance(StoreReviewPlugin())
     }
 }
