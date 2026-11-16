@@ -209,9 +209,22 @@ const FOUNDER_LD = { '@type': 'Person', '@id': url('/faculty/#director'), name: 
 const brandTitle = (t) => (`${t} | ${site.name}`.length <= TITLE_MAX ? `${t} | ${site.name}` : t);
 const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: 'https://apps.apple.com/gb/app/wavelength-ultrasound-logbook/id6822088185' };
 // Official store badges (the same images and sizes as /app/get/). m = analytics prefix for data-m.
-// 16 Nov 2026: with a language (translated pages), the App Store link has no country, so Apple opens the visitor's own
-// store, and Google Play opens in that language. The badge images are the English ones, so those links carry lang="en".
-const storeBadges = (m, cls = 'rise', lang = '') => `<div class="store-badges ${cls}"><a class="store-badge play" href="${lang ? `${STORES.play}&amp;hl=${lang}` : STORES.play}" target="_blank" rel="noopener" data-m="${m}-play"${lang ? ' lang="en"' : ''}><img src="/assets/badges/google-play-badge-en.png" width="646" height="250" alt="Get it on Google Play"></a><a class="store-badge apple" href="${lang ? 'https://apps.apple.com/app/id6822088185' : STORES.appStore}" target="_blank" rel="noopener" data-m="${m}-appstore"${lang ? ' lang="en"' : ''}><img src="/assets/badges/app-store-badge-en-gb.svg" width="120" height="40" alt="Download on the App Store"></a></div>`;
+// 16 Nov 2026: with a language (translated pages), the badges are Apple's and Google's official artwork for that
+// language (src/assets/badges/README.md), with alt text matching the words on the badge; the App Store link has no
+// country, so Apple opens the visitor's own store, and Google Play opens in that language.
+const BADGE_LANG = {
+  fr: ['DISPONIBLE SUR Google Play', 'Télécharger dans l\u2019App Store', 126.50751], es: ['DISPONIBLE EN Google Play', 'Descargar en el App Store', 119.66407],
+  de: ['JETZT BEI Google Play', 'Laden im App Store', 119.66407], it: ['DISPONIBILE SU Google Play', 'Scarica su App Store', 119.66407],
+  pl: ['POBIERZ Z Google Play', 'Pobierz z App Store', 119.66407], ar: ['احصل عليه من Google Play', 'تنزيل من App Store', 119.66408],
+  ru: ['ДОСТУПНО В Google Play', 'Загрузите в App Store', 119.66407], zh: ['下载应用，请到 Google Play', '在 App Store 下载', 108.85157],
+  el: ['ΑΠΟΚΤΗΣΤΕ ΤΟ ΣΤΟ Google Play', 'Λήψη από το App Store', 119.66407],
+};
+const storeBadges = (m, cls = 'rise', lang = '') => {
+  const b = BADGE_LANG[lang];
+  const play = b ? `/assets/badges/google-play-badge-${lang}.png` : '/assets/badges/google-play-badge-en.png';
+  const apple = b ? `/assets/badges/app-store-badge-${lang}.svg` : '/assets/badges/app-store-badge-en-gb.svg';
+  return `<div class="store-badges ${cls}"><a class="store-badge play" href="${lang ? `${STORES.play}&amp;hl=${lang}` : STORES.play}" target="_blank" rel="noopener" data-m="${m}-play"><img src="${play}" width="646" height="250" alt="${esc(b ? b[0] : 'Get it on Google Play')}"></a><a class="store-badge apple" href="${lang ? 'https://apps.apple.com/app/id6822088185' : STORES.appStore}" target="_blank" rel="noopener" data-m="${m}-appstore"><img src="${apple}" width="${b ? Math.round(b[2]) : 120}" height="40" alt="${esc(b ? b[1] : 'Download on the App Store')}"></a></div>`;
+};
 
 function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png', scripts = '' }) {
   const canonical = url(pathname);
