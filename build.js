@@ -209,7 +209,9 @@ const FOUNDER_LD = { '@type': 'Person', '@id': url('/faculty/#director'), name: 
 const brandTitle = (t) => (`${t} | ${site.name}`.length <= TITLE_MAX ? `${t} | ${site.name}` : t);
 const STORES = { play: 'https://play.google.com/store/apps/details?id=uk.co.thewavelength.app', appStore: 'https://apps.apple.com/gb/app/wavelength-ultrasound-logbook/id6822088185' };
 // Official store badges (the same images and sizes as /app/get/). m = analytics prefix for data-m.
-const storeBadges = (m, cls = 'rise') => `<div class="store-badges ${cls}"><a class="store-badge play" href="${STORES.play}" target="_blank" rel="noopener" data-m="${m}-play"><img src="/assets/badges/google-play-badge-en.png" width="646" height="250" alt="Get it on Google Play"></a><a class="store-badge apple" href="${STORES.appStore}" target="_blank" rel="noopener" data-m="${m}-appstore"><img src="/assets/badges/app-store-badge-en-gb.svg" width="120" height="40" alt="Download on the App Store"></a></div>`;
+// 16 Nov 2026: with a language (translated pages), the App Store link has no country, so Apple opens the visitor's own
+// store, and Google Play opens in that language. The badge images are the English ones, so those links carry lang="en".
+const storeBadges = (m, cls = 'rise', lang = '') => `<div class="store-badges ${cls}"><a class="store-badge play" href="${lang ? `${STORES.play}&amp;hl=${lang}` : STORES.play}" target="_blank" rel="noopener" data-m="${m}-play"${lang ? ' lang="en"' : ''}><img src="/assets/badges/google-play-badge-en.png" width="646" height="250" alt="Get it on Google Play"></a><a class="store-badge apple" href="${lang ? 'https://apps.apple.com/app/id6822088185' : STORES.appStore}" target="_blank" rel="noopener" data-m="${m}-appstore"${lang ? ' lang="en"' : ''}><img src="/assets/badges/app-store-badge-en-gb.svg" width="120" height="40" alt="Download on the App Store"></a></div>`;
 
 function layout({ title, seoTitle, description, pathname, body, jsonld = [], ogType = 'website', noindex = false, ogImage = '/assets/og.png', scripts = '' }) {
   const canonical = url(pathname);
@@ -2445,6 +2447,7 @@ ${body}
     <h1 class="split-words">${t('home', 'title')}</h1>
     <p class="lede rise">${esc(t('home', 'lede'))}</p>
     ${ctas}
+    ${storeBadges('intl-home-' + lang, 'rise', lang)}
     <div class="hero-meta rise">${[['metaPathways', 'metaPathwaysText'], ['metaLanguages', 'metaLanguagesText'], ['metaPrivacy', 'metaPrivacyText'], ['metaFree', 'metaFreeText']].map(([a, b]) => `<div><b>${esc(t('home', a))}</b>${esc(t('home', b))}</div>`).join('')}</div>
   </div>
 </section>
@@ -2483,6 +2486,7 @@ ${body}
   <p class="eyebrow rise">${esc(t('app', 'eyebrow'))}</p>
   <h1 class="split-words">${t('app', 'title')}</h1>
   <p class="lede rise">${esc(t('app', 'lede'))}</p>
+  ${storeBadges('intl-app-' + lang, 'rise', lang)}
   <div class="hero-ctas rise app-ctas">
     <button class="app-dl" type="button" data-app-install data-app-href="${appHref}"><span class="app-dl-ico">${mark({ size: 30, ring: '#7FC4CC' })}</span><span><small>${esc(t('app', 'dlSmall'))}</small><b>${esc(t('app', 'dlButton'))}</b></span></button>
     <a class="btn btn-ghost light" href="${appHref}">${esc(t('app', 'browser'))}</a>
