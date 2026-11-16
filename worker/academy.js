@@ -283,7 +283,7 @@ async function submit(env, req, ctx) {
   const score = Math.round((100 * right) / total);
   const passed = score >= mod.passMark;
   // A pass that issues a certificate needs a name the certificate can print. An app account (or an Academy account
-  // registered before 25 Oct 2026) may have a name in other letters: ask for it in English letters (cert_name) before
+  // registered before 25 Oct 2026) may have a name in other letters: ask for it in letters the certificate prints (Latin, Greek or Cyrillic; cert_name) before
   // the attempt is recorded, so the resubmission is the one attempt. The account's own name is not changed.
   let cert = passed ? await env.DB.prepare('SELECT * FROM certificates WHERE learner_id = ? AND module = ?').bind(l.id, mod.slug).first() : null;
   let certName = fullName(l);

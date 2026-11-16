@@ -124,24 +124,27 @@ test('no summary without email set up', async () => {
 });
 
 // ---------- Certificate names ----------
-test('the certificate font check: Latin names with accents print, Arabic, Cyrillic and Chinese do not', () => {
+// 16 Nov 2026 (D-117): Greek and Cyrillic names now print too (EB Garamond Italic, test/cert-greek-cyrillic.test.mjs).
+test('the certificate font check: Latin, Greek and Cyrillic names print; Arabic and Chinese do not', () => {
   assert.deepEqual(unprintable(META, 'name', "Dr Łukasz Ñúñez O'Brien-Smith"), []);
   assert.deepEqual(unprintable(META, 'name', 'Ms Faiza Lafi Alshammari'), []);
   assert.ok(unprintable(META, 'name', 'Ms فائزة').length > 0);
-  assert.ok(unprintable(META, 'name', 'Иван').length > 0);
+  assert.deepEqual(unprintable(META, 'name', 'Иван'), []);
+  assert.deepEqual(unprintable(META, 'name', 'Νίκος'), []);
   assert.ok(unprintable(META, 'name', '王').length > 0);
 });
 
 const register = (c, extra = {}) => c.call('/api/academy/register', { module: MODULE, title: 'Ms', first_name: 'Faiza', last_name: 'Alshammari', email: 'f@x.co', role: 'Doctor', privacy: 'yes', ...extra });
 
-test('Academy registration asks for the name in English letters', async () => {
+test('Academy registration asks for the name in Latin, Greek or Cyrillic letters (an Arabic name)', async () => {
   const env = makeEnv({});
   const c = client(handleAcademy, env);
   const r = await register(c, { first_name: 'فائزة' });
   assert.equal(r.status, 400);
-  assert.match(r.body.error, /English letters/);
+  assert.match(r.body.error, /Latin, Greek or Cyrillic letters/);
   assert.equal((await env.DB.prepare('SELECT COUNT(*) AS n FROM learners').first()).n, 0);
   assert.equal((await register(c)).status, 200);
+  assert.equal((await register(c, { first_name: 'Νίκος', email: 'n@x.co' })).status, 200, 'a Greek name registers');
 });
 
 test('a pass with a name the certificate cannot print asks for it first, then issues the certificate with it', async () => {

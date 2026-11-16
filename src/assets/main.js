@@ -362,7 +362,7 @@
     var progress = form.querySelector('[data-progress]'), bar = form.querySelector('[data-bar]');
     var err = form.querySelector('[data-ac-error]'), result = document.querySelector('[data-ac-result]');
     var anchor = form.querySelector('.ac-submit');
-    // A name the certificate cannot print (other than English letters): the server asks for it in English letters,
+    // A name the certificate cannot print (Arabic, Chinese and other scripts; Latin, Greek and Cyrillic print since 16 Nov 2026): the server asks for it,
     // shown above the submit button; the next submit sends it with the answers.
     var nameBox = null;
     function askName(res) {
