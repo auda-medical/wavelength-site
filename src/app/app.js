@@ -17,8 +17,8 @@
   var S = { account: null, me: null, entries: [], kv: {}, db: null, online: navigator.onLine, syncing: false, installEvt: null, urls: {}, assessments: [], links: null };
 
   // ---------- Language ----------
-  var LANGS = [['en', 'English'], ['fr', 'Français'], ['es', 'Español'], ['de', 'Deutsch'], ['it', 'Italiano'], ['pl', 'Polski'], ['ar', 'العربية'], ['ru', 'Русский'], ['zh', '中文（简体）']];
-  var LOCALES = { en: 'en-GB', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pl: 'pl-PL', ar: 'ar', ru: 'ru-RU', zh: 'zh-CN' };
+  var LANGS = [['en', 'English'], ['fr', 'Français'], ['es', 'Español'], ['de', 'Deutsch'], ['it', 'Italiano'], ['pl', 'Polski'], ['ar', 'العربية'], ['ru', 'Русский'], ['zh', '中文（简体）'], ['el', 'Ελληνικά']]; // Greek added 16 Nov 2026 (1.0.30)
+  var LOCALES = { en: 'en-GB', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pl: 'pl-PL', ar: 'ar', ru: 'ru-RU', zh: 'zh-CN', el: 'el-GR' };
   var LANG = 'en', L = {}, PR = null;
   function pickLang() {
     var saved = null; try { saved = localStorage.getItem('wl-lang'); } catch (e) { /* storage blocked */ }

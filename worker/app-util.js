@@ -9,7 +9,7 @@ const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TITLES = ['Dr', 'Prof', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx'];
 const PATHWAYS = LOGBOOK.pathways.map((p) => p.id);
-const LANGS = ['en', 'fr', 'es', 'de', 'it', 'pl', 'ar', 'ru', 'zh'];
+const LANGS = ['en', 'fr', 'es', 'de', 'it', 'pl', 'ar', 'ru', 'zh', 'el'];
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 // ---------- Crypto helpers ----------

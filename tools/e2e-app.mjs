@@ -152,7 +152,7 @@ await S.page.screenshot({ path: `${out}/fr-supervise-390.png`, fullPage: true })
 await S.page.goto(BASE + '/app/#/supervise/' + learnerId); await S.page.waitForTimeout(2500);
 await S.page.screenshot({ path: `${out}/fr-learner-390.png`, fullPage: true }); await noOverflow(S.page, 'fr-learner');
 // Welcome screens in each language
-for (const lang of ['fr', 'es', 'de', 'it', 'pl', 'ar', 'ru', 'zh']) {
+for (const lang of ['fr', 'es', 'de', 'it', 'pl', 'ar', 'ru', 'zh', 'el']) {
   const W = await ctxFor(lang);
   await W.page.goto(BASE + '/app/?lang=' + lang + '#/welcome'); await W.page.waitForSelector('.auth', { timeout: 10000 }); await W.page.waitForTimeout(700);
   const dir = await W.page.evaluate(() => document.documentElement.dir);

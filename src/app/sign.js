@@ -4,7 +4,7 @@
   var C = window.WL_LOGBOOK, TYPES = {}; C.types.forEach(function (t) { TYPES[t.id] = t; });
   var SUP = {}; C.supervision.forEach(function (s) { SUP[s.id] = s.label; });
   var F = window.WLForms;
-  var LOCALES = { en: 'en-GB', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pl: 'pl-PL', ar: 'ar', ru: 'ru-RU', zh: 'zh-CN' };
+  var LOCALES = { en: 'en-GB', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pl: 'pl-PL', ar: 'ar', ru: 'ru-RU', zh: 'zh-CN', el: 'el-GR' };
   var LANG = 'en', L = {};
   function T(s, v) { var t = typeof L[s] === 'string' && L[s] ? L[s] : s; if (v) t = t.replace(/\{(\w+)\}/g, function (m, k) { return v[k] != null ? v[k] : m; }); return t; }
   function N(n, one, other) { var tr = L[other]; if (tr && typeof tr === 'object') { var pr = window.Intl && Intl.PluralRules ? new Intl.PluralRules(LOCALES[LANG]).select(n) : (n === 1 ? 'one' : 'other'); return (tr[pr] || tr.other).replace('{n}', n); } return T(n === 1 ? one : other, { n: n }); }

@@ -70,12 +70,12 @@ test('the scan form keeps its field names (presentation-only redesign)', () => {
   assert.match(form, /\['type', 'date', 'setting', 'age', 'sex', 'indication', 'overall', 'quality', 'interpretation', 'confirmation', 'concordant', 'impact', 'supervision', 'supervisor', 'reflection'\]\.forEach/);
 });
 
-test('every app string has a translation in all eight languages (machine-drafted ones marked for review)', () => {
+test('every app string has a translation in all nine languages (machine-drafted ones marked for review)', () => {
   execFileSync(process.execPath, ['tools/i18n-extract.mjs'], { cwd: new URL('..', import.meta.url) });
   const S = JSON.parse(readFileSync(new URL('../tools/i18n/strings.json', import.meta.url), 'utf8'));
   const dir = new URL('../src/app/i18n/', import.meta.url);
   const langs = readdirSync(dir).filter((f) => f.endsWith('.json'));
-  assert.equal(langs.length, 8);
+  assert.equal(langs.length, 9); // Greek added 16 Nov 2026
   for (const f of langs) {
     const d = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
     const miss = S.strings.filter((k) => !(k in d)).concat(Object.keys(S.plurals).filter((k) => !(k in d)));
