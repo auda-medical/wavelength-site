@@ -2759,5 +2759,6 @@
 "Your photos and clips are saved only in this copy of Wavelength. Removing it from your home screen deletes them, and Wavelength cannot bring them back. Make a backup file first, then restore it in the new app.": "您的照片和视频片段只保存在这个 Wavelength 副本中。将其从主屏幕移除会删除它们，Wavelength 无法恢复。请先创建备份文件，然后在新应用中恢复。",
 "Get it on Google Play": "在 Google Play 上获取",
 "Get it on the App Store": "在 App Store 下载",
-"Some photos or clips of this scan are not on this device. They stay on the phone or app copy where they were added, and Wavelength cannot bring them back. If you made a backup file there, restore it here.": "此次检查的部分照片或视频片段不在本设备上。它们保留在添加时所用的手机或应用副本中，Wavelength 无法恢复。如果您在那里创建过备份文件，请在此恢复。"
+"Some photos or clips of this scan are not on this device. They stay on the phone or app copy where they were added, and Wavelength cannot bring them back. If you made a backup file there, restore it here.": "此次检查的部分照片或视频片段不在本设备上。它们保留在添加时所用的手机或应用副本中，Wavelength 无法恢复。如果您在那里创建过备份文件，请在此恢复。",
+"Images and clips go into PDF exports. Excel and CSV list how many each scan has.": "图像和视频片段会包含在 PDF 导出中。Excel 和 CSV 会列出每次检查的数量。"
 }

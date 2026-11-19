@@ -2949,5 +2949,6 @@
 "Your photos and clips are saved only in this copy of Wavelength. Removing it from your home screen deletes them, and Wavelength cannot bring them back. Make a backup file first, then restore it in the new app.": "صورك ومقاطعك محفوظة في هذه النسخة من Wavelength فقط. إزالتها من الشاشة الرئيسية تحذفها، ولا يستطيع Wavelength استعادتها. أنشئ ملف نسخة احتياطية أولاً، ثم استعده في التطبيق الجديد.",
 "Get it on Google Play": "احصل عليه من Google Play",
 "Get it on the App Store": "حمّله من App Store",
-"Some photos or clips of this scan are not on this device. They stay on the phone or app copy where they were added, and Wavelength cannot bring them back. If you made a backup file there, restore it here.": "بعض صور أو مقاطع هذا الفحص ليست على هذا الجهاز. تبقى على الهاتف أو نسخة التطبيق التي أُضيفت فيها، ولا يستطيع Wavelength استعادتها. إذا أنشأت ملف نسخة احتياطية هناك، فاستعده هنا."
+"Some photos or clips of this scan are not on this device. They stay on the phone or app copy where they were added, and Wavelength cannot bring them back. If you made a backup file there, restore it here.": "بعض صور أو مقاطع هذا الفحص ليست على هذا الجهاز. تبقى على الهاتف أو نسخة التطبيق التي أُضيفت فيها، ولا يستطيع Wavelength استعادتها. إذا أنشأت ملف نسخة احتياطية هناك، فاستعده هنا.",
+"Images and clips go into PDF exports. Excel and CSV list how many each scan has.": "تُضاف الصور والمقاطع إلى ملفات PDF المُصدَّرة. يذكر Excel وCSV عددها لكل فحص."
 }

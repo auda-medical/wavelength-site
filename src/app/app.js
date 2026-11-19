@@ -5120,7 +5120,9 @@
       '<div class="field" id="evopt"><label class="check"><input type="checkbox" name="verified" value="1" checked><span>' + T('<b>Add a verified summary with a QR code.</b> Your supervisor, ARCP panel or accrediting body scans it to see your progress, sign-offs and assessments as Wavelength holds them. Needs internet.') + '</span></label></div>' +
       '<div class="field"><label class="check"><input type="checkbox" name="reflections" value="1" checked><span>' + esc(T('Include reflections')) + '</span></label></div>' +
       '<div class="field"><label class="check"><input type="checkbox" name="assessments" value="1" checked><span>' + esc(T('Include assessments')) + '</span></label></div>' +
-      '<div class="field" id="imgopt" data-req="imgmode"><span class="lab" id="lab-img">' + esc(T('Images')) + '</span>' + seg('imgmode', [{ id: 'none', label: 'No images' }, { id: 'all', label: 'All images' }, { id: 'pick', label: 'Choose scans' }], 'none', '', 'lab-img') + '<p class="hint">' + esc(T('PDF only. Images come from this phone; a clip shows its first frame.')) + '</p><div id="imgpick" hidden></div></div>' +
+      '<div class="field" id="imgopt" data-req="imgmode"><span class="lab" id="lab-img">' + esc(T('Images')) + '</span>' + seg('imgmode', [{ id: 'none', label: 'No images' }, { id: 'all', label: 'All images' }, { id: 'pick', label: 'Choose scans' }], 'all', '', 'lab-img') + '<p class="hint">' + esc(T('PDF only. Images come from this phone; a clip shows its first frame.')) + '</p><div id="imgpick" hidden></div></div>' +
+      // 19 Nov 2026 (owner): exports carry the images by default; spreadsheets say where the images go.
+      '<p class="hint" id="imgxls" hidden>' + esc(T('Images and clips go into PDF exports. Excel and CSV list how many each scan has.')) + '</p>' +
       '<div class="field" id="imgdeclf" data-req="imgdecl" hidden><label class="check"><input type="checkbox" id="imgdecl"><span>' + esc(T('I have checked every image and clip I am exporting. No patient name, hospital number, date of birth, face or other image of a person, voice or any other identifier remains, and sharing this file follows my hospital\'s information governance policy.')) + '</span></label></div>' +
       '<p class="hint" id="xcount" aria-live="polite"></p><div class="err" hidden></div><button class="btn teal block">' + esc(T('Create export')) + '</button></form>'));
     var f = $('#xf');
@@ -5134,7 +5136,7 @@
     };
     var tog = function () {
       var d = formData(f), v = d.fmt, mode = v === 'pdf' ? d.imgmode : 'none';
-      $('#imgopt').hidden = v !== 'pdf'; $('#evopt').hidden = v === 'csv';
+      $('#imgopt').hidden = v !== 'pdf'; $('#imgxls').hidden = v === 'pdf'; $('#evopt').hidden = v === 'csv';
       var lay = (DEST[$('#ds').value] || {}).layout, lb = $('input[name=fmt][value=layout]', f);
       if (lb) { lb.hidden = !lay; $('label[for="' + lb.id + '"]', f).hidden = !lay; if (!lay && lb.checked) { $('input[name=fmt][value=pdf]', f).checked = true; return tog(); } }
       var lh = $('#layhint'); lh.hidden = !(lay && v === 'layout'); if (lay) lh.textContent = T('Excel in the {name}. It is not an official form: check what your body asks for.', { name: T(lay.name) });
