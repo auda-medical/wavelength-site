@@ -42,6 +42,14 @@ class KV {
   async put(k, v) { this.m.set(k, typeof v === 'string' ? v : v); }
   async delete(k) { this.m.delete(k); }
 }
+// An R2 stand-in (put, get with .body and .arrayBuffer(), delete, list by prefix) for the photo backup (D-118).
+export class R2 {
+  constructor() { this.m = new Map(); }
+  async put(k, v) { this.m.set(k, new Uint8Array(v instanceof ArrayBuffer ? v : await new Response(v).arrayBuffer())); return { key: k }; }
+  async get(k) { const v = this.m.get(k); if (!v) return null; return { body: new Blob([v]).stream(), arrayBuffer: async () => v.slice().buffer }; }
+  async delete(k) { this.m.delete(k); }
+  async list({ prefix = '' } = {}) { return { objects: [...this.m.keys()].filter((k) => k.startsWith(prefix)).map((key) => ({ key })), truncated: false }; }
+}
 export function makeEnv(extra = {}, { skipMigrations = [] } = {}) {
   const wr = readFileSync(new URL('../../wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, '');
   const vars = JSON.parse(wr).vars;

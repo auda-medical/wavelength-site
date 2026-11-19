@@ -548,6 +548,7 @@
       return api('/api/app/signoffs').then(function (r) { stale(gen); if (r.ok) return setPending(r.signoffs); });
     }).then(function () { return loadAssessments(gen); }).then(function () {
       SY.fail = ''; SY.ran = true; SY.lastOk = Date.now(); SY.err = null; logAttempt(true, '');
+      if (mbState() === 'on') mbRun(); // D-118: photos and clips follow their scans
       window.dispatchEvent(new CustomEvent('wl:synced')); // 1.0.18: the server answers again (guide status retries)
       // Started offline: the account details and supervisor links could not load then, so fetch them now.
       if (!S.me) loadMe();
@@ -638,6 +639,158 @@
       });
     });
   }
+  // ---------- Automatic photo and clip backup (owner, 19 Nov 2026, D-118) ----------
+  // A learner removed the home screen copy of Wavelength and lost the clips of a signed-off scan: the written record
+  // synced, the clips never left the phone. Now every photo and clip is encrypted on this phone (mediabackup.js) and
+  // uploaded once its scan has synced, and a phone that signs in brings back what it does not hold. The backup key is
+  // kept in this account's database on the phone (kv mk) and, on the server, only wrapped with the password, so it is
+  // set up whenever the password is in hand: logging in, creating the account, a new password, or the Home card for a
+  // phone that was already signed in. Wavelength's servers never hold the key or an unencrypted photo.
+  var MB = { busy: false, again: false, left: 0, full: false, pw: '', p: null };
+  // Home, including the moments after logging in, when the address still reads #/login.
+  function mbHome() { return ['home', 'login', 'signup', 'reset'].indexOf(route().name) >= 0; }
+  function mbOn() { return !!(S.me && S.me.mediaBackup && window.WLMB && window.crypto && crypto.subtle); }
+  function mbState() { return !mbOn() ? 'off' : S.kv.mk ? 'on' : S.kv.mkLocked ? 'locked' : 'needpw'; }
+  function mbSetKey(raw, kid) { return setKv('mk', WLMB.b64(raw)).then(function () { return setKv('mkid', kid); }).then(function () { return setKv('mkLocked', false); }); }
+  // Wrap a key with the password and store it; reset replaces a different key (and the server drops what it made).
+  function mbStore(raw, pw, reset) {
+    return WLMB.wrap(raw, pw).then(function (w) {
+      w.password = pw; if (reset) w.reset = true;
+      return api('/api/app/media/key', w).then(function (r) { if (!r.ok) throw new Error(r.error || T('Something went wrong.')); return mbSetKey(raw, w.kid); });
+    });
+  }
+  // pw is known to be this account's password (it was just used to log in, sign up, reset or change it).
+  function mbWithPassword(pw) {
+    if (!mbOn() || !pw) return Promise.resolve(mbState());
+    return api('/api/app/media/key').then(function (res) {
+      if (!res.ok) return mbState();
+      var local = S.kv.mk ? WLMB.unb64(S.kv.mk) : null;
+      if (!res.key) return mbStore(local || WLMB.newKey(), pw).then(mbState);
+      return WLMB.unwrap(res.key, pw).then(function (raw) { return mbSetKey(raw, res.key.kid); }, function () {
+        // Wrapped with another password: it was reset. The same key on this phone is wrapped again with the new one;
+        // otherwise the backup waits for the previous password (Unlock your photo backup, on Home).
+        if (local && S.kv.mkid === res.key.kid) return mbStore(local, pw);
+        return setKv('mk', null).then(function () { return setKv('mkLocked', true); });
+      }).then(mbState);
+    }).then(function (st) { if (st === 'on') mbRun(); return st; }, function () { return mbState(); });
+  }
+  // A photo or clip saved again (edited): back it up again.
+  function mbForget(ids) { if (!ids.length || !S.kv.mbDone) return Promise.resolve(); var d = Object.assign({}, S.kv.mbDone); ids.forEach(function (id) { delete d[id]; }); return setKv('mbDone', d); }
+  function mbUp(r, e, srv, raw, kid) {
+    var known = (e.media || []).filter(function (m) { return m && m.id === r.id && m.sha256; })[0];
+    return (known ? Promise.resolve(known.sha256) : WLMB.sha(r.blob)).then(function (h) {
+      if (srv && srv.sha === h) return { sha: h };
+      return WLMB.seal(raw, r).then(function (buf) {
+        return NAT.net('/api/app/media?id=' + encodeURIComponent(r.id) + '&entry=' + encodeURIComponent(r.entryId) + '&sha=' + h + '&kid=' + encodeURIComponent(kid), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' }, body: buf, timeout: 180000 });
+      }).then(function (res) {
+        if (res.ok) return { sha: h };
+        return res.json().catch(function () { return {}; }).then(function (j) { return j.full ? 'full' : j.rekey ? 'rekey' : null; });
+      });
+    }).catch(function () { return null; }); // offline or refused: tried again on the next sync
+  }
+  function mbDown(id, raw) {
+    return NAT.net('/api/app/media?id=' + encodeURIComponent(id), { credentials: 'same-origin', timeout: 180000 })
+      .then(function (r) { if (!r.ok) throw new Error('not backed up'); return r.arrayBuffer(); })
+      .then(function (buf) { return WLMB.open(raw, buf, id); })
+      .then(function (rec) { return getOne('images', id).then(function (have) { return have ? null : put('images', rec); }); });
+  }
+  // Upload what the backup lacks, then bring back what this phone lacks. One run at a time; asked again while running,
+  // it runs once more after.
+  function mbRun() {
+    if (mbState() !== 'on' || !S.account || !S.db) return Promise.resolve();
+    if (MB.busy) { MB.again = true; return MB.p; }
+    MB.busy = true;
+    var gen = SESSION, raw = WLMB.unb64(S.kv.mk), kid = S.kv.mkid, done = Object.assign({}, S.kv.mbDone || {}), bad = Object.assign({}, S.kv.mbBad || {}), got = 0, rekey = false;
+    MB.p = api('/api/app/media/list').then(function (res) {
+      stale(gen);
+      if (!res.ok) throw new Error(res.error || 'list');
+      var srv = {}; (res.items || []).forEach(function (x) { srv[x.id] = x; });
+      var live = {}; S.entries.forEach(function (e) { if (!e.deleted) (e.images || []).forEach(function (im) { live[im.id] = e; }); });
+      return all('images').then(function (recs) {
+        var have = {}; recs.forEach(function (r) { have[r.id] = 1; });
+        var up = recs.filter(function (r) { var e = live[r.id]; return e && e.id === r.entryId && !e._dirty && !(srv[r.id] && done[r.id] === srv[r.id].sha); });
+        var down = Object.keys(srv).filter(function (id) { return !have[id] && live[id] && !bad[id]; });
+        MB.left = up.length + down.length; MB.full = false; mbPaint();
+        var chain = Promise.resolve(), stop = false;
+        up.forEach(function (r) {
+          chain = chain.then(function () {
+            if (stop) return; stale(gen);
+            return mbUp(r, live[r.id], srv[r.id], raw, kid).then(function (st) {
+              if (st && st.sha) done[r.id] = st.sha;
+              if (st === 'full') { MB.full = true; stop = true; }
+              if (st === 'rekey') { rekey = true; stop = true; }
+              MB.left = Math.max(0, MB.left - 1); mbPaint();
+            });
+          });
+        });
+        down.forEach(function (id) {
+          chain = chain.then(function () {
+            if (stop) return; stale(gen);
+            return mbDown(id, raw).then(function (r) { if (r !== null) got++; done[id] = srv[id].sha; }, function (ex) { if (!netFail(ex)) bad[id] = 1; })
+              .then(function () { MB.left = Math.max(0, MB.left - 1); mbPaint(); });
+          });
+        });
+        return chain;
+      });
+    }).then(function () {
+      return setKv('mbDone', done).then(function () { return setKv('mbBad', bad); }).then(function () {
+        // Another phone started a new backup: this phone's key is out of date, so it asks for the password again.
+        if (rekey) return setKv('mk', null).then(function () { return setKv('mkLocked', false); });
+      });
+    }).catch(function () { /* offline, signed out or the list failed: the next sync tries again */ }).then(function () {
+      MB.busy = false; mbPaint();
+      if (got && gen === SESSION && (mbHome() || ['entry', 'log'].indexOf(route().name) >= 0) && !$('.sheet')) render(true);
+      if (rekey && mbHome()) render(true);
+      if (MB.again) { MB.again = false; mbRun(); }
+    });
+    return MB.p;
+  }
+  function mbText() { return T('Automatic backup is on. Photos and clips are encrypted on this phone before they are uploaded, and only you can open them.') + (MB.left ? ' ' + T('Still to back up: {n}.', { n: MB.left }) : ''); }
+  function mbPaint() { var el = $('#mbstat'); if (el) el.textContent = mbText(); }
+  // Home and the Back up page: turn it on (a phone signed in before backup existed), unlock it (the password was
+  // reset since the backup was made), or say the space is full.
+  function mbCard() {
+    var st = mbState();
+    var pwField = function (id, label, ac) { return '<div class="field"><label for="' + id + '">' + esc(label) + '</label><input id="' + id + '" type="password" autocomplete="' + ac + '" required></div>'; };
+    if (st === 'needpw') return '<form class="card" id="mbon" novalidate><div class="row"><span class="muted">' + I.cloud + '</span><div class="grow"><h3>' + esc(T('Turn on automatic photo backup')) + '</h3><p class="small muted" style="margin:0">' + esc(T('Your photos and clips are encrypted on this phone and backed up as you save them, so a new phone gets them back when you sign in. Only you can open them. Enter your Wavelength password once to turn it on.')) + '</p></div></div>' + pwField('mbpw', T('Password'), 'current-password') + '<div class="btns"><button class="btn teal sm" type="submit">' + esc(T('Turn on backup')) + '</button></div></form>';
+    if (st === 'locked') return '<form class="card" id="mbunlock" novalidate><h3>' + esc(T('Unlock your photo backup')) + '</h3><p class="small muted">' + esc(T('Your password was changed since your photos were backed up. Enter your previous password to unlock them on this phone.')) + '</p>' + pwField('mbold', T('Previous password'), 'off') + pwField('mbcur', T('Current password'), 'current-password') + '<div class="btns"><button class="btn teal sm" type="submit">' + esc(T('Unlock')) + '</button><button class="btn ghost sm" type="button" id="mbnew">' + esc(T('Start a new backup instead')) + '</button></div></form>';
+    if (st === 'on' && MB.full) return '<div class="card"><p class="small" style="margin:0">' + esc(T('Your photo backup space is full. Export older scans with their images, then delete them from Wavelength to make room.')) + '</p></div>';
+    return '';
+  }
+  document.addEventListener('submit', function (ev) {
+    var f = ev.target; if (!f || (f.id !== 'mbon' && f.id !== 'mbunlock')) return;
+    ev.preventDefault(); var b = $('button[type=submit]', f); busy(b, true);
+    var fail = function (ex) { busy(b, false); toast((ex && ex.message) || T('Something went wrong.'), 5000); };
+    if (f.id === 'mbon') {
+      var pw = $('#mbpw', f).value;
+      api('/api/app/media/check', { password: pw }).then(function (r) { if (!r.ok) throw new Error(r.error); return mbWithPassword(pw); }).then(function (st) {
+        if (st === 'on') toast(T('Photo backup is on.')); render(true);
+      }).catch(fail);
+      return;
+    }
+    var old = $('#mbold', f).value, cur = $('#mbcur', f).value;
+    api('/api/app/media/check', { password: cur }).then(function (r) { if (!r.ok) throw new Error(r.error); return api('/api/app/media/key'); }).then(function (res) {
+      if (!res.ok || !res.key) throw new Error(T('Something went wrong.'));
+      var nope = function () { throw new Error(T('That previous password did not unlock the backup.')); };
+      return WLMB.unwrap(res.key, old).catch(function () { return res.prev ? WLMB.unwrap(res.prev, old) : nope(); }).catch(nope).then(function (raw) {
+        return WLMB.kid(raw).then(function (k) { if (k !== res.key.kid) nope(); return mbStore(raw, cur); });
+      });
+    }).then(function () { toast(T('Unlocked. Your photos are coming back.')); render(true); mbRun(); }).catch(fail);
+  });
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('#mbnew') : null; if (!b) return;
+    var f = b.form, cur = $('#mbcur', f).value;
+    if (!cur) { toast(T('Enter your current password first.'), 5000); $('#mbcur', f).focus(); return; }
+    sheet('<h2>' + esc(T('Start a new backup instead')) + '</h2><p class="small">' + esc(T('Photos and clips backed up with your previous password will be removed from the backup. Everything on this phone is then backed up again.')) + '</p><div class="btns"><button class="btn teal block" data-ok>' + esc(T('Start a new backup')) + '</button><button class="btn ghost block" data-no>' + esc(T('Cancel')) + '</button></div>', function (root) {
+      $('[data-no]', root).onclick = function () { closeSheet(); };
+      $('[data-ok]', root).onclick = function () {
+        busy(this, true);
+        api('/api/app/media/check', { password: cur }).then(function (r) { if (!r.ok) throw new Error(r.error); return mbStore(WLMB.newKey(), cur, true); })
+          .then(function () { return setKv('mbDone', {}); }).then(function () { closeSheet(); toast(T('Photo backup is on.')); render(true); mbRun(); })
+          .catch(function (ex) { closeSheet(); toast((ex && ex.message) || T('Something went wrong.'), 5000); });
+      };
+    });
+  });
   function dropImages(entryId) { return imagesFor(entryId).then(function (list) { return Promise.all(list.map(function (r) { return del('images', r.id); })); }).catch(function () {}); }
   function loadAssessments(gen) {
     if (gen === undefined) gen = SESSION;
@@ -1193,6 +1346,7 @@
         if (d.newsletter && !NAT.on) joinNewsletter(d); // the store apps subscribe through the server (worker/app.js signup)
         // This email already has Academy certificates: the account is finished from a link sent to that address.
         if (res.checkEmail) { authFrame(T('Check your email.'), T('We have sent a message to {email}. Open it to finish setting up your account, or to log in if you already have one. Check your junk folder too.', { email: d.email }), '<a class="btn block" href="#/login">' + esc(T('Back to log in')) + '</a>'); return; }
+        MB.pw = d.password;
         return saveLangAfter(res.account);
       }).catch(function (ex) { delete f.dataset.sending; busy(b, false); err.textContent = netFail(ex) ? T('Could not reach Wavelength. Check your connection and try again.') : ex.message || T('Something went wrong. Please try again.'); err.hidden = false; });
     });
@@ -1216,8 +1370,10 @@
     var f = $('#f'), err = $('.err', f);
     f.addEventListener('submit', function (e) {
       e.preventDefault(); err.hidden = true; var b = $('button', f); busy(b, true, T('Logging in…'));
+      var pw0 = $('#pw', f).value;
       api('/api/app/login', formData(f)).then(function (res) {
         if (!res.ok) { var ex = new Error(res.error); ex.noPassword = res.noPassword; throw ex; }
+        MB.pw = pw0; // D-118: unlocks (or sets up) the photo backup once the account has loaded
         return signedIn(res.account);
       }).catch(function (ex) { busy(b, false); err.innerHTML = esc(netFail(ex) ? T('Could not reach Wavelength. Check your connection and try again.') : (ex.message || T('Something went wrong.'))) + (ex.noPassword ? ' <a href="#/signup">' + esc(T('Create your account')) + '</a>' : ''); err.hidden = false; });
     });
@@ -1232,7 +1388,7 @@
         e.preventDefault(); var bad = pwProblem(f, 'pw'); if (bad) { err.textContent = bad; err.hidden = false; return; }
         var b = $('button', f); busy(b, true);
         api('/api/app/reset/complete', { token: t, password: $('#pw').value }).then(function (res) {
-          if (!res.ok) throw new Error(res.error); history.replaceState(null, '', '/app/#/'); return signedIn(res.account);
+          if (!res.ok) throw new Error(res.error); history.replaceState(null, '', '/app/#/'); MB.pw = $('#pw').value; return signedIn(res.account);
         }).catch(function (ex) { busy(b, false); err.textContent = ex.message; err.hidden = false; });
       });
       return;
@@ -1407,7 +1563,7 @@
       if (UPD_SAFE[route().name]) setTimeout(show, 1500); else window.addEventListener('hashchange', later);
     }).catch(function () { /* offline or no store: say nothing */ });
   }
-  function loadMe() { var t0 = Date.now(); return api('/api/app/me', undefined, { timeout: 15000 }).then(function (res) { if (!DIAG.me) { diag('me', String(res._status)); diag('meMs', Date.now() - t0); } if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); updatePrompt(); } }).catch(function (ex) { if (!DIAG.me) diag('me', ex && ex.timeout ? 'timeout' : 'offline'); /* offline: the cached account stays */ }); }
+  function loadMe() { var t0 = Date.now(); return api('/api/app/me', undefined, { timeout: 15000 }).then(function (res) { if (!DIAG.me) { diag('me', String(res._status)); diag('meMs', Date.now() - t0); } if (res.ok) { S.me = res; S.account = res.account; cacheAccount(res.account); if (route().name === 'home' || route().name === 'me') render(true); updatePrompt(); if (MB.pw) { var pw = MB.pw; MB.pw = ''; mbWithPassword(pw).then(function () { if (mbHome()) render(true); }); } else if (mbState() === 'on') mbRun(); } }).catch(function (ex) { if (!DIAG.me) diag('me', ex && ex.timeout ? 'timeout' : 'offline'); /* offline: the cached account stays */ }); }
   function linksStale(ms) { return !S.linksAt || Date.now() - S.linksAt > ms; }
   function loadLinks() { return api('/api/app/supervisors').then(function (res) { if (res.ok) { S.links = res; S.linksAt = Date.now(); if (['home', 'me', 'supervise', 'supervisors'].indexOf(route().name) >= 0 && !document.querySelector('.sheet-bg')) render(true); } }).catch(function () { /* offline: try again on the next sync */ }); }
 
@@ -1741,6 +1897,7 @@
     return '<div class="card" id="moving"><div class="row"><span class="muted">' + I.cloud + '</span><div class="grow"><h3>' + esc(T('Moving to the Wavelength app?')) + '</h3><p class="small muted" style="margin:0">' + esc(T('Your photos and clips are saved only in this copy of Wavelength. Removing it from your home screen deletes them, and Wavelength cannot bring them back. Make a backup file first, then restore it in the new app.')) + '</p></div></div><div class="btns"><a class="btn sm ghost" href="#/backup">' + esc(T('Back up')) + '</a><a class="btn sm ghost" href="' + store + '" target="_blank" rel="noopener">' + esc(android ? T('Get it on Google Play') : T('Get it on the App Store')) + '</a></div></div>';
   }
   function backupNudge() {
+    if (mbState() !== 'off') return mbCard();
     var withImg = live().filter(function (e) { return (e.images || []).length; }).length;
     if (!withImg) return '';
     var mv = movingNudge(); if (mv) return mv;
@@ -2466,6 +2623,7 @@
           if (media.length) out.media = media; else delete out.media;
           var jobs = draftImages.map(function (x) { var rec = { id: x.id, entryId: out.id, blob: x.blob, thumb: x.thumb, w: x.w, h: x.h, kind: x.kind || 'image', dur: x.dur, sha256: x.sha256, edits: x.edits, created: Date.now() }; if (x.base) rec.base = x.base; if (x.annot) rec.annot = x.annot; if (x.prov) rec.prov = x.prov; return put('images', rec); })
             .concat(removed.map(function (id) { return del('images', id); }));
+          jobs.push(mbForget(savedIds));
           return Promise.all(jobs);
         }).then(function () { return saveLocal(out); }).then(function () {
           // Saved on this device. Nothing after this point may report the save as failed (a second Save would then
@@ -5426,6 +5584,7 @@
       var clips = imgs.filter(isClip).length, n = pendingList().length;
       var last = S.kv.lastBackup;
       mount(shell({ title: T('Back up and restore'), back: 'me', tab: 'me' },
+        (mbState() === 'on' ? '<div class="card"><p class="small" style="margin:0" id="mbstat">' + esc(mbText()) + '</p></div>' : mbCard()) + // D-118
         '<div class="card"><h3>' + esc(T('What a backup holds')) + '</h3><p class="small muted">' + esc(T('Your logbook entries, photos and clips from this device, in one file encrypted with a passphrase you choose. Photos and clips are kept only on this device, so a backup is their only copy anywhere else.')) + '</p>' +
         '<p class="small muted">' + esc(n ? N(n, '{n} entry has not synced to your Wavelength account yet. It is included in the backup.', '{n} entries have not synced to your Wavelength account yet. They are included in the backup.') : T('Logbook entries also sync to your Wavelength account. Photos and clips do not.')) + ' ' + esc(T('Wavelength never receives the backup file or your passphrase.')) + '</p>' +
         '<p class="small" style="margin:0"><b>' + esc(plural(imgs.length - clips, 'image') + (clips ? ' · ' + plural(clips, 'clip') : '')) + '</b> · ' + (size / 1048576).toFixed(1) + ' MB · ' + esc(last ? T('Last backup file created {date}', { date: fmt(last) }) : T('No backup file created on this device yet')) + '</p></div>' +
@@ -5717,7 +5876,7 @@
       help +
       '<div class="sync-retry">' + retryButton('btn sm', 'data-resync') + '</div>' +
       '<p class="small muted" style="margin:12px 0 0">' + esc(T('This status is for this device only. Another phone or computer shows its own, and a scan saved here reaches your other devices only after this device has synced it.')) + '</p>' +
-      '<p class="small muted" style="margin:8px 0 0">' + esc(T('Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped. Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.')) + ' <a href="#/backup">' + esc(T('Back up and restore')) + '</a></p>' +
+      '<p class="small muted" style="margin:8px 0 0">' + esc(mbState() === 'on' ? T('Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped.') + ' ' + T('Automatic backup is on. Photos and clips are encrypted on this phone before they are uploaded, and only you can open them.') : T('Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped. Sync covers your logbook entries. Photos and clips stay on this device and are not uploaded: keep them safe with Back up and restore.')) + ' <a href="#/backup">' + esc(T('Back up and restore')) + '</a></p>' +
       (log.length ? '<details class="small muted sync-log"' + op('log') + ' style="margin-top:10px"><summary>' + esc(T('Recent sync attempts')) + '</summary><ul class="sync-diag">' + log.slice().reverse().map(function (a) { return '<li>' + esc(new Date(a.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'medium' })) + ': ' + esc(a.ok ? T('Synced') : T(NETR.pill(a.kind === 'timeout' ? 'unreachable' : a.kind).label, { n: '' })) + (a.ms ? ' (' + a.ms + ' ms)' : '') + (a.net ? ', ' + esc(a.net) : '') + (a.why ? ', ' + esc(a.why) : '') + (a.re ? ', ' + esc(T('logbook reopened')) : '') + '</li>'; }).join('') + '</ul></details>' : '') +
       (starts.length ? '<details class="small muted"' + op('starts') + ' style="margin-top:10px"><summary>' + esc(T('Start-up details')) + '</summary><ul class="sync-diag">' + starts.slice().reverse().map(function (d) { return '<li>' + esc(new Date(d.at).toLocaleString(LOCALES[LANG], { dateStyle: 'short', timeStyle: 'short' })) + ': ' + esc(d.path || '?') + ', ' + esc(T('logbook in {ms} ms', { ms: d.ui || '?' })) + ', ' + esc(T('server {result}', { result: d.me || '?' })) + (d.meMs ? ' (' + d.meMs + ' ms)' : '') + '</li>'; }).join('') + '</ul></details>' : '');
     var b = $('[data-resync]', el);
@@ -5749,6 +5908,7 @@
       '<h2 class="sec" style="margin-top:6px" id="sync">' + esc(T('Sync')) + '</h2><div class="card" id="syncpanel" data-syncpanel></div>' +
       // Audit 12 Nov 2026: versions kept when the same scan was changed on two devices can be put back.
       ((S.kv.conflicts || []).length ? '<div class="card" id="kept-versions"><p class="small" style="margin:0 0 8px"><b>' + esc(T('Versions kept after a scan was changed on two devices')) + '</b></p>' + S.kv.conflicts.slice().reverse().map(function (c, i) { var t2 = TYPES[c.entry.type] || { label: c.entry.type || '' }; return '<div class="row" style="margin:6px 0"><span class="grow small">' + esc(T(t2.label)) + ' · ' + esc(fmt(c.entry.date)) + ' · ' + esc(T('kept {date}', { date: fmt(new Date(c.at).toISOString()) })) + '</span><button type="button" class="btn ghost sm" data-restorekept="' + (S.kv.conflicts.length - 1 - i) + '">' + esc(T('Use this version')) + '</button></div>'; }).join('') + '</div>' : '') +
+      (mbState() === 'on' ? '<div class="card"><p class="small" style="margin:0" id="mbstat">' + esc(mbText()) + '</p></div>' : mbCard()) +
       '<h2 class="sec">' + esc(T('Backup')) + '</h2><div class="card"><p class="small muted" style="margin:0 0 10px">' + esc(S.kv.lastBackup ? T('Last backup file created {date}', { date: fmt(S.kv.lastBackup) }) : T('No backup file created on this device yet')) + '. ' + esc(T('Backups are encrypted with a passphrase you choose and saved where you decide.')) + '</p><a class="btn sm" href="#/backup">' + esc(T('Back up and restore')) + '</a></div>' +
       '<h2 class="sec">' + esc(T('Appearance')) + '</h2><div class="card"><div class="theme-pick" role="radiogroup" aria-label="' + esc(T('Appearance')) + '">' + opt('system', 's', T('Match my phone')) + opt('light', '', T('Light')) + opt('dark', 'd', T('Dark')) + '</div><p class="small muted" style="margin:12px 0 0">' + esc(T('Match my phone follows the light or dark setting on your phone.')) + '</p></div>' +
       '<h2 class="sec">' + esc(T('Language')) + '</h2><div class="card set-lang"><div class="row"><span>' + I.globe + '</span><b class="grow">' + esc(T('App language')) + '</b>' + langPicker('lang-m') + '</div><p class="small muted" style="margin:8px 0 0">' + esc(T('Exports and certificates stay in English so any assessor can read them.')) + '</p></div>' +
@@ -5764,7 +5924,7 @@
     if (route().q.get('sync')) $('#sync').scrollIntoView();
     $$('input[name=theme]').forEach(function (i) { i.onchange = function () { if (window.WLTheme) WLTheme.set(i.value); NAT.haptic(); }; });
     bindPw($('#cpw'), 'c2');
-    $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; var bad = pwProblem(f, 'c2'); if (bad) { toast(bad, 5000); return; } myPushToken().then(function (pt) { var fd = formData(f); if (pt) fd.pushToken = pt; return api('/api/app/password', fd); }).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
+    $('#cpw').addEventListener('submit', function (e) { e.preventDefault(); var f = this; var bad = pwProblem(f, 'c2'); if (bad) { toast(bad, 5000); return; } myPushToken().then(function (pt) { var fd = formData(f); if (pt) fd.pushToken = pt; return api('/api/app/password', fd).then(function (res) { if (res.ok && mbState() === 'on') mbStore(WLMB.unb64(S.kv.mk), fd.password).catch(function () {}); return res; }); }).then(function (res) { toast(res.ok ? T('Password changed.') : res.error); if (res.ok) f.reset(); }); });
     var ntp = $('#ntp'); if (ntp) ntp.onchange = function () { var on = ntp.checked; ntp.disabled = true; (on ? pushEnable() : pushDisable().then(function () { return false; })).then(function (ok) { ntp.disabled = false; ntp.checked = !!ok; }); };
     $('#nte').onchange = function () { var on = this.checked; saveProfile({ notifyEmail: on }).then(function () { toast(on ? T('Sign-off emails on.') : T('Sign-off emails off.')); }).catch(function (ex) { toast(ex.message); }); };
     bindLockCard();

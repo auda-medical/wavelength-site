@@ -38,6 +38,7 @@ import { approvalRequired, applyOn, standingOf, signerBlocked, NEUTRAL_REFUSAL }
 import { deliverLater } from './notify.js';
 import { audit, auditStmt } from './audit.js';
 import { nowIso } from './time.js';
+import { handleMedia, mediaOn, dropForEntry, dropRemoved, dropAccount } from './media-backup.js';
 import { queueStmt, render } from './notify.js';
 import { rateLimitAll, clientIp, ipKey, TOO_MANY } from './ratelimit.js';
 import { requestId, route as routeName, appVersion, log } from './log.js';
@@ -165,7 +166,7 @@ async function me(env, l, req) {
   const modules = Object.values(DATA.modules).filter((m) => !m.draft).map((m) => ({ slug: m.slug, title: m.title, cpdHours: m.cpdHours }));
   const life = await lifecycleReady(env);
   const sv = life ? await standingOf(env, l.id) : null;
-  return json({ ok: true, ...versionInfo(env, req), account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules, imageShare: imgOn(env), clipShare: imgOn(env) && env.CLIP_SHARE === 'true', verification: { email: await emailVerifyOn(env), professional: professionalOn(env) && (await verificationReady(env)), directory: env.DIRECTORY_PUBLIC === 'true' },
+  return json({ ok: true, ...versionInfo(env, req), account: account(l), certificates: certs.results || [], attempts: attempts.results || [], modules, mediaBackup: mediaOn(env), imageShare: imgOn(env), clipShare: imgOn(env) && env.CLIP_SHARE === 'true', verification: { email: await emailVerifyOn(env), professional: professionalOn(env) && (await verificationReady(env)), directory: env.DIRECTORY_PUBLIC === 'true' },
     // Supervisor journey: apply (applications open), required (dashboard needs approval), standing for this account,
     // and claimed: an invitation this person accepted that waits on their application (the app sends them there).
     supervisor: { available: life, apply: life && applyOn(env), required: life && approvalRequired(env), search: life && searchOn(env) && (await orgsReady(env)), standing: sv ? sv.standing : 'none', claimed: life ? ((await env.DB.prepare("SELECT COUNT(*) AS n FROM supervisor_links WHERE supervisor_id = ? AND status = 'pending' AND claimed_at IS NOT NULL").bind(l.id).first()) || {}).n || 0 : 0 } });
@@ -289,6 +290,7 @@ async function deleteAccount(env, l, req, ctx) {
   if (d.keepCertificates && hasCerts.n) stmts.push(env.DB.prepare('UPDATE learners SET password_hash = NULL, profile = NULL, declaration_at = NULL, organisation = NULL, role = NULL WHERE id = ?').bind(l.id));
   else stmts.push(env.DB.prepare('DELETE FROM attempts WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM certificates WHERE learner_id = ?').bind(l.id), env.DB.prepare('DELETE FROM learners WHERE id = ?').bind(l.id));
   await env.DB.batch(stmts);
+  await dropAccount(env, l.id); // every backed-up photo and clip, and the wrapped key (D-118)
   await forgetLearner(env, l.id);
   if (supervision.notify && supervision.notify.length) deliverLater(env, ctx, supervision.notify);
   return json({ ok: true }, 200, { 'Set-Cookie': clearCookie });
@@ -368,6 +370,7 @@ async function syncPost(env, l, req, ctx) {
     if (raw.deleted) {
       if (ex) await env.DB.prepare('UPDATE logbook_entries SET deleted = 1, data = ?, updated_at = ? WHERE id = ?').bind('{}', now, id).run();
       else await env.DB.prepare('INSERT INTO logbook_entries (id, learner_id, scan_type, scan_date, data, updated_at, deleted) VALUES (?,?,?,?,?,?,1)').bind(id, l.id, '', '', '{}', now).run();
+      if (ex) await dropForEntry(env, l.id, id); // its backed-up photos and clips go with it (D-118)
       saved.push({ id, deleted: true, updatedAt: now });
       continue;
     }
@@ -389,7 +392,10 @@ async function syncPost(env, l, req, ctx) {
       } else if (old.signoffVoid) e.signoffVoid = old.signoffVoid;
     }
     const text = JSON.stringify(e);
-    if (ex) await env.DB.prepare('UPDATE logbook_entries SET scan_type = ?, scan_date = ?, data = ?, updated_at = ?, deleted = 0 WHERE id = ?').bind(e.type, e.date, text, now, id).run();
+    if (ex) {
+      await env.DB.prepare('UPDATE logbook_entries SET scan_type = ?, scan_date = ?, data = ?, updated_at = ?, deleted = 0 WHERE id = ?').bind(e.type, e.date, text, now, id).run();
+      await dropRemoved(env, l.id, id, e.images); // a photo taken out of the scan leaves the backup too (D-118)
+    }
     else { await env.DB.prepare('INSERT INTO logbook_entries (id, learner_id, scan_type, scan_date, data, updated_at) VALUES (?,?,?,?,?,?)').bind(id, l.id, e.type, e.date, text, now).run(); created++; }
     saved.push({ ...e, updatedAt: now });
   }
@@ -728,7 +734,7 @@ export async function handleApp(req, env, ctx) {
   return out;
 }
 
-const AUTH_LIMITED = ['signup', 'login', 'reset/request', 'email/resend'];
+const AUTH_LIMITED = ['signup', 'login', 'reset/request', 'email/resend', 'media/check'];
 async function routeApp(req, env, ctx, url, p) {
   if (!env.DB) return json({ ok: false, error: 'The app is not available right now.' }, 503);
   if (req.method === 'POST') {
@@ -757,6 +763,8 @@ async function routeApp(req, env, ctx, url, p) {
     if (p === 'push/unregister') return json(await unregisterDevice(env, l, await body(req)));
     if (p === 'password') return changePassword(env, l, req);
     if (p === 'logout-all') return logoutAll(env, l, req);
+    const media = await handleMedia(env, l, req, url, p); // D-118: encrypted photo and clip backup (worker/media-backup.js)
+    if (media) return media;
     const org = await handleOrganisations(env, req, url, p, l, ctx, body);
     if (org) return org;
     const found = await handleSearch(env, l, req, url, p, ctx, body);
@@ -813,6 +821,8 @@ async function routeApp(req, env, ctx, url, p) {
   if (!l || !l.password_hash) return json({ ok: false, error: 'Please log in again.', auth: false }, 401);
   activity(env, ctx, l.id);
   if (p === 'sync') return syncGet(env, l, url);
+  const media = await handleMedia(env, l, req, url, p);
+  if (media) return media;
   if (p === 'signoffs') return signoffList(env, l);
   if (p === 'evidence') return listEvidence(env, l, json);
   if (p === 'assessments') return SV.assessmentList(env, l);

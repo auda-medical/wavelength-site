@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted. 1.0.21 strings (images in the supervisor app, clearer saving) were added on 19 October 2026, also machine-drafted. The 1.0.29 string (Rate Wavelength) was added on 15 November 2026, also machine-drafted. The 19 November 2026 strings (moving to the store app, photos on another device) were added, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted. 1.0.21 strings (images in the supervisor app, clearer saving) were added on 19 October 2026, also machine-drafted. The 1.0.29 string (Rate Wavelength) was added on 15 November 2026, also machine-drafted. The 19 November 2026 strings (moving to the store app, photos on another device) were added, also machine-drafted. The automatic photo backup strings (D-118, 19 November 2026) were added, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* 学员为此模块设定了自己的目标，与课程大纲数值不同。",
 "12": "12",
@@ -2760,5 +2760,22 @@
 "Get it on Google Play": "在 Google Play 上获取",
 "Get it on the App Store": "在 App Store 下载",
 "Some photos or clips of this scan are not on this device. They stay on the phone or app copy where they were added, and Wavelength cannot bring them back. If you made a backup file there, restore it here.": "此次检查的部分照片或视频片段不在本设备上。它们保留在添加时所用的手机或应用副本中，Wavelength 无法恢复。如果您在那里创建过备份文件，请在此恢复。",
-"Images and clips go into PDF exports. Excel and CSV list how many each scan has.": "图像和视频片段会包含在 PDF 导出中。Excel 和 CSV 会列出每次检查的数量。"
+"Images and clips go into PDF exports. Excel and CSV list how many each scan has.": "图像和视频片段会包含在 PDF 导出中。Excel 和 CSV 会列出每次检查的数量。",
+"Automatic backup is on. Photos and clips are encrypted on this phone before they are uploaded, and only you can open them.": "自动备份已开启。照片和视频片段在上传前会在本手机上加密，只有您能打开。",
+"Enter your current password first.": "请先输入当前密码。",
+"Photo backup is on.": "照片备份已开启。",
+"Photos and clips backed up with your previous password will be removed from the backup. Everything on this phone is then backed up again.": "使用旧密码备份的照片和视频片段将从备份中移除。之后本手机上的所有内容会重新备份。",
+"Previous password": "旧密码",
+"Start a new backup": "开始新的备份",
+"Start a new backup instead": "改为开始新的备份",
+"Still to back up: {n}.": "待备份：{n}。",
+"That previous password did not unlock the backup.": "该旧密码无法解锁备份。",
+"Turn on automatic photo backup": "开启照片自动备份",
+"Turn on backup": "开启备份",
+"Unlock your photo backup": "解锁您的照片备份",
+"Unlocked. Your photos are coming back.": "已解锁。您的照片正在恢复。",
+"Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped.": "在同步之前，新条目只存在于本设备上，如果设备丢失、损坏或被清除，这些条目将会丢失。",
+"Your password was changed since your photos were backed up. Enter your previous password to unlock them on this phone.": "自照片备份以来您的密码已更改。请输入旧密码以在本手机上解锁。",
+"Your photo backup space is full. Export older scans with their images, then delete them from Wavelength to make room.": "您的照片备份空间已满。请导出较早的检查及其图像，然后将其从 Wavelength 中删除以腾出空间。",
+"Your photos and clips are encrypted on this phone and backed up as you save them, so a new phone gets them back when you sign in. Only you can open them. Enter your Wavelength password once to turn it on.": "您的照片和视频片段会在本手机上加密，并在保存后立即备份，因此新手机登录后即可取回。只有您能打开它们。输入一次 Wavelength 密码即可开启。"
 }

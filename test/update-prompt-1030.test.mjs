@@ -50,7 +50,7 @@ test('the app asks once a day, pops up once per new version, only on safe screen
   assert.match(fn, /document\.querySelector\('\.sheet-bg'\)/, 'never over another sheet');
   const safe = APP.match(/var UPD_SAFE = (\{[^}]*\});/)[1];
   assert.doesNotMatch(safe, /new|sign|supervise|entry|edit/, 'never during a scan or a sign-off');
-  assert.match(APP, /cacheAccount\(res\.account\); if \(route\(\)\.name === 'home' \|\| route\(\)\.name === 'me'\) render\(true\); updatePrompt\(\); \}/, 'checked after the account loads');
+  assert.match(APP, /cacheAccount\(res\.account\); if \(route\(\)\.name === 'home' \|\| route\(\)\.name === 'me'\) render\(true\); updatePrompt\(\);/, 'checked after the account loads');
   assert.match(APP, /NAT\.platform === 'ios' \? 'https:\/\/apps\.apple\.com\/app\/id6822088185'/, 'the banner opens the App Store on iPhone');
 });
 

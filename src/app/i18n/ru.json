@@ -1,7 +1,7 @@
 {
 "_meta": {
 "note": "English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.",
-"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted. 1.0.21 strings (images in the supervisor app, clearer saving) were added on 19 October 2026, also machine-drafted. The 1.0.29 string (Rate Wavelength) was added on 15 November 2026, also machine-drafted. The 19 November 2026 strings (moving to the store app, photos on another device) were added, also machine-drafted."
+"review": "Machine-drafted translations, not professionally validated. A native speaker should review before a language is promoted; 1.0.11 strings were added on 9 October 2026; 1.0.12 strings were added on 9 October 2026, also machine-drafted. 1.0.13 editor strings (annotation size, zoom) were added on 10 October 2026, also machine-drafted. 1.0.14 strings (editor safety, colour, size, guides) were added on 10 October 2026, also machine-drafted. 1.0.16 strings (recovery tray, the Scan heading, unfinished photos on Save) were added on 12 October 2026, also machine-drafted. 1.0.17 strings (Size and Rotation) were added on 12 October 2026, also machine-drafted. 1.0.19 strings (sync attempts) were added on 19 October 2026, also machine-drafted. Release M strings (more information requests) were added on 19 October 2026, also machine-drafted. 1.0.20 strings (phone notifications) were added on 19 October 2026, also machine-drafted. 1.0.21 strings (images in the supervisor app, clearer saving) were added on 19 October 2026, also machine-drafted. The 1.0.29 string (Rate Wavelength) was added on 15 November 2026, also machine-drafted. The 19 November 2026 strings (moving to the store app, photos on another device) were added, also machine-drafted. The automatic photo backup strings (D-118, 19 November 2026) were added, also machine-drafted."
 },
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Обучающийся установил собственную цель для этого модуля, отличную от цифры программы.",
 "12": "12",
@@ -2874,5 +2874,22 @@
 "Get it on Google Play": "Доступно в Google Play",
 "Get it on the App Store": "Загрузите в App Store",
 "Some photos or clips of this scan are not on this device. They stay on the phone or app copy where they were added, and Wavelength cannot bring them back. If you made a backup file there, restore it here.": "Некоторых фото или клипов этого исследования нет на этом устройстве. Они остаются на телефоне или в копии приложения, где были добавлены, и Wavelength не может их вернуть. Если вы создали там файл резервной копии, восстановите его здесь.",
-"Images and clips go into PDF exports. Excel and CSV list how many each scan has.": "Изображения и клипы попадают в экспорт PDF. В Excel и CSV указано, сколько их у каждого исследования."
+"Images and clips go into PDF exports. Excel and CSV list how many each scan has.": "Изображения и клипы попадают в экспорт PDF. В Excel и CSV указано, сколько их у каждого исследования.",
+"Automatic backup is on. Photos and clips are encrypted on this phone before they are uploaded, and only you can open them.": "Автоматическое резервное копирование включено. Фото и клипы шифруются на этом телефоне перед загрузкой, и открыть их можете только вы.",
+"Enter your current password first.": "Сначала введите текущий пароль.",
+"Photo backup is on.": "Резервное копирование фото включено.",
+"Photos and clips backed up with your previous password will be removed from the backup. Everything on this phone is then backed up again.": "Фото и клипы, сохранённые с прежним паролем, будут удалены из резервной копии. Затем всё, что есть на этом телефоне, будет скопировано заново.",
+"Previous password": "Прежний пароль",
+"Start a new backup": "Начать новую резервную копию",
+"Start a new backup instead": "Вместо этого начать новую резервную копию",
+"Still to back up: {n}.": "Осталось скопировать: {n}.",
+"That previous password did not unlock the backup.": "Этот прежний пароль не открыл резервную копию.",
+"Turn on automatic photo backup": "Включить автоматическое резервное копирование фото",
+"Turn on backup": "Включить резервное копирование",
+"Unlock your photo backup": "Открыть резервную копию фото",
+"Unlocked. Your photos are coming back.": "Открыто. Ваши фото возвращаются.",
+"Until they sync, new entries exist only on this device and would be lost if it were lost, damaged or wiped.": "Пока они не синхронизированы, новые записи есть только на этом устройстве и будут потеряны, если его потерять, повредить или стереть.",
+"Your password was changed since your photos were backed up. Enter your previous password to unlock them on this phone.": "Ваш пароль изменился после резервного копирования фото. Введите прежний пароль, чтобы открыть их на этом телефоне.",
+"Your photo backup space is full. Export older scans with their images, then delete them from Wavelength to make room.": "Место для резервных копий фото заполнено. Экспортируйте старые исследования с изображениями, затем удалите их из Wavelength, чтобы освободить место.",
+"Your photos and clips are encrypted on this phone and backed up as you save them, so a new phone gets them back when you sign in. Only you can open them. Enter your Wavelength password once to turn it on.": "Ваши фото и клипы шифруются на этом телефоне и копируются сразу после сохранения, поэтому новый телефон получит их при входе. Открыть их можете только вы. Введите пароль Wavelength один раз, чтобы включить копирование."
 }
