@@ -438,7 +438,7 @@ export async function superviseLearner(env, l, url) {
   const asm = await signedAssessments(env, t.id);
   const pathways = (prof.pathways && prof.pathways.length ? prof.pathways : ['general']).filter((p) => PATHS[p]);
   const summary = buildSummary(entries, prof, pathways, asm);
-  const recent = entries.slice(0, 60).map((e) => ({ id: e.id, type: e.type, date: e.date, setting: e.setting, indication: e.indication, findings: e.findings, overall: e.overall, quality: e.quality, interpretation: e.interpretation, supervision: e.supervision, supervisor: e.supervisor, signoff: e.signoff ? { status: e.signoff.status, name: e.signoff.name, at: e.signoff.at, code: e.signoff.code, rating: e.signoff.rating } : null, images: (e.images || []).length }));
+  const recent = entries.slice(0, 60).map((e) => ({ id: e.id, type: e.type, date: e.date, setting: e.setting, indication: e.indication, findings: e.findings, overall: e.overall, quality: e.quality, interpretation: e.interpretation, confirmation: e.confirmation, impact: e.impact, supervision: e.supervision, supervisor: e.supervisor, signoff: e.signoff ? { status: e.signoff.status, name: e.signoff.name, at: e.signoff.at, code: e.signoff.code, rating: e.signoff.rating } : null, images: (e.images || []).length }));
   const so = await env.DB.prepare(`SELECT id, created_at, expires_at, entry_ids FROM signoffs WHERE learner_id = ? AND (supervisor_id = ? OR ${openLink('', await lifecycleReady(env))}) AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC`).bind(t.id, l.id, mail(l), Date.now()).all();
   const as = await env.DB.prepare("SELECT * FROM assessments WHERE learner_id = ? AND supervisor_id = ? AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC").bind(t.id, l.id, Date.now()).all();
   const done = await env.DB.prepare("SELECT * FROM assessments WHERE learner_id = ? AND status = 'signed' ORDER BY assessed_on DESC LIMIT 50").bind(t.id).all();
@@ -481,7 +481,7 @@ async function waitingFor(env, learnerId, l) {
   return m;
 }
 const P = globalThis.WLProgress.create(LOGBOOK);
-const scanRow = (e) => ({ id: e.id, type: e.type, date: e.date, setting: e.setting, indication: e.indication, findings: e.findings, overall: e.overall, quality: e.quality, interpretation: e.interpretation, supervision: e.supervision, supervisor: e.supervisor, signoff: e.signoff ? { status: e.signoff.status, name: e.signoff.name, at: e.signoff.at, code: e.signoff.code, rating: e.signoff.rating } : null, images: (e.images || []).length });
+const scanRow = (e) => ({ id: e.id, type: e.type, date: e.date, setting: e.setting, indication: e.indication, findings: e.findings, overall: e.overall, quality: e.quality, interpretation: e.interpretation, confirmation: e.confirmation, impact: e.impact, supervision: e.supervision, supervisor: e.supervisor, signoff: e.signoff ? { status: e.signoff.status, name: e.signoff.name, at: e.signoff.at, code: e.signoff.code, rating: e.signoff.rating } : null, images: (e.images || []).length });
 export async function superviseLearnerScans(env, l, url) {
   const g = await guard(env, l, url.searchParams.get('id'));
   if (g.res) return g.res;

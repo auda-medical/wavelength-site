@@ -3545,9 +3545,17 @@
     }).catch(function () { var bx = $('#hist'); if (bx) bx.innerHTML = '<p class="muted small">' + esc(T('Connect to the internet to see your sign-off requests.')) + '</p>'; }); // audit 12 Nov 2026: offline, say so instead of loading forever
   }
   // media (1.0.21): the scan's images, shown under its title and before the ratings, so they are seen before rating.
+  // 19 Nov 2026 (owner): a supervisor signing on the dashboard or on the learner's phone saw only the type, date and a
+  // short findings line, never the indication, interpretation or outcome. Both now show what the sign-off link page shows.
+  function scanDetail(e) {
+    var t = TYPES[e.type] || { fields: [] }, f = e.findings || {};
+    var r = function (k, v, raw) { return v ? '<dt>' + esc(T(k)) + '</dt><dd>' + esc(raw ? v : val(v)) + '</dd>' : ''; };
+    var findings = (t.fields || []).filter(function (fd) { var v = f[fd.id]; return v != null && v !== '' && !(Array.isArray(v) && !v.length); }).map(function (fd) { return '<dt>' + esc(T(fd.label)) + '</dt><dd>' + esc(val(f[fd.id])) + (fd.unit ? ' ' + esc(fd.unit) : '') + '</dd>'; }).join('');
+    return '<div class="detail" style="margin-top:8px"><dl>' + r('Setting', e.setting) + r('Indication', e.indication, true) + findings + r('Overall', e.overall) + r('Image quality', e.quality) + r('Interpretation', e.interpretation, true) + r('Confirmed by', e.confirmation) + r('Impact', e.impact, true) + '</dl></div>';
+  }
   function entryCard(e, decide, media) {
     var t = TYPES[e.type] || {};
-    return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T(t.label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (decide ? '<select aria-label="' + esc(T('Decision for {scan}', { scan: (T(t.label || e.type)) + ', ' + fmt(e.date) })) + '" data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">' + esc(T('Confirm')) + '</option><option value="query">' + esc(T('Query')) + '</option></select>' : '') + '</div>' + (media || '') + (decide ? F.ratingHtml(C, T, e.id) : '') + '</div>';
+    return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T(t.label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + '</p></div>' + (decide ? '<select aria-label="' + esc(T('Decision for {scan}', { scan: (T(t.label || e.type)) + ', ' + fmt(e.date) })) + '" data-dec="' + esc(e.id) + '" style="width:auto;min-height:40px;font-size:14px"><option value="confirmed">' + esc(T('Confirm')) + '</option><option value="query">' + esc(T('Query')) + '</option></select>' : '') + '</div>' + scanDetail(e) + (media || '') + (decide ? F.ratingHtml(C, T, e.id) : '') + '</div>';
   }
   function signoffFormHtml(pre) {
     return '<form id="pf">' + F.assessorHtml(T, pre) +
@@ -4418,7 +4426,7 @@
       revealIn(true);
     }).catch(function (ex) { svFail(T('Learner'), 'supervise', ex); });
   }
-  function svScanCard(e) { return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T((TYPES[e.type] || {}).label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + (e.images ? ' · ' + esc(plural(e.images, 'image')) : '') + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (e.signoff && e.signoff.status === 'confirmed' ? '<span class="chip green">' + esc(T('Signed off')) + ratingDots(e.signoff.rating) + '</span>' : e.waiting ? '<span class="chip amber">' + esc(T('Waiting for your sign-off')) + '</span>' : '<span class="chip">' + esc(T('Not signed')) + '</span>') + '</div>' + (e.waiting && !(e.signoff && e.signoff.status === 'confirmed') ? '<div class="btns" style="margin-top:8px"><button class="btn teal sm" type="button" data-sv-so="' + esc(e.waiting) + '">' + esc(T('Review and sign')) + '</button></div>' : '') + '</div>'; }
+  function svScanCard(e) { return '<div class="card" style="padding:12px"><div class="row"><div class="grow"><b>' + esc(T((TYPES[e.type] || {}).label || e.type)) + '</b><p class="small muted" style="margin:2px 0 0">' + esc(fmt(e.date)) + ' · ' + esc(supLabel(e.supervision)) + (e.images ? ' · ' + esc(plural(e.images, 'image')) : '') + '</p><p class="small" style="margin:4px 0 0">' + esc(summary(e)) + '</p></div>' + (e.signoff && e.signoff.status === 'confirmed' ? '<span class="chip green">' + esc(T('Signed off')) + ratingDots(e.signoff.rating) + '</span>' : e.waiting ? '<span class="chip amber">' + esc(T('Waiting for your sign-off')) + '</span>' : '<span class="chip">' + esc(T('Not signed')) + '</span>') + '</div>' + '<details class="sv-more"><summary class="small" style="margin-top:6px;cursor:pointer">' + esc(T('Scan details')) + '</summary>' + scanDetail(e) + '</details>' + (e.waiting && !(e.signoff && e.signoff.status === 'confirmed') ? '<div class="btns" style="margin-top:8px"><button class="btn teal sm" type="button" data-sv-so="' + esc(e.waiting) + '">' + esc(T('Review and sign')) + '</button></div>' : '') + '</div>'; }
   // The records behind a tile: filter in words, a way to clear it, and back to this learner.
   function viewSupervisedScans(id, r) {
     var f = SVF[r.q.get('f')] ? r.q.get('f') : 'all', type = r.q.get('type') || '', mod = r.q.get('module') || '', back = 'supervise/' + id;
