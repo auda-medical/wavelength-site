@@ -2,7 +2,7 @@
 "6": "6",
 "8": "8",
 "12": "12",
-"_meta": {"note":"English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.","review":"Machine-drafted Greek translation (Claude, 16 November 2026, for 1.0.30), not professionally validated. A native speaker should review before the language is promoted."},
+"_meta": {"note":"English text is the key. Plural keys hold one/few/many/other forms. Built by tools/i18n-merge.py.","review":"Machine-drafted Greek translation (Claude, 16 November 2026, for 1.0.30), not professionally validated. A native speaker should review before the language is promoted. The 19 November 2026 strings (moving to the store app, photos on another device) were added, also machine-drafted."},
 " and ": " και ",
 "\"Fewest\" and \"Most\" count every scan, supervised scan, reflection, rule and assessment still needed. Neither is a clinical priority.": "«Λιγότερα» και «Περισσότερα» μετρούν κάθε εξέταση, εξέταση υπό επίβλεψη, αναστοχασμό, κανόνα και αξιολόγηση που απομένει. Κανένα από τα δύο δεν αποτελεί κλινική προτεραιότητα.",
 "* The learner set their own target for this module, which differs from the curriculum figure.": "* Ο εκπαιδευόμενος όρισε δικό του στόχο για αυτή την ενότητα, που διαφέρει από τον αριθμό του προγράμματος σπουδών.",
@@ -2514,5 +2514,10 @@
 "{n} selected": {"one":"{n} επιλεγμένο","other":"{n} επιλεγμένα"},
 "{n} suggestions": {"one":"{n} πρόταση","other":"{n} προτάσεις"},
 "{n} ultrasound scans": {"one":"{n} εξέταση υπερήχων","other":"{n} εξετάσεις υπερήχων"},
-"{n} unfinished scans": {"one":"{n} ημιτελής εξέταση","other":"{n} ημιτελείς εξετάσεις"}
+"{n} unfinished scans": {"one":"{n} ημιτελής εξέταση","other":"{n} ημιτελείς εξετάσεις"},
+"Moving to the Wavelength app?": "Μεταφέρεστε στην εφαρμογή Wavelength;",
+"Your photos and clips are saved only in this copy of Wavelength. Removing it from your home screen deletes them, and Wavelength cannot bring them back. Make a backup file first, then restore it in the new app.": "Οι φωτογραφίες και τα βίντεό σας αποθηκεύονται μόνο σε αυτό το αντίγραφο του Wavelength. Αν το αφαιρέσετε από την αρχική οθόνη, διαγράφονται και το Wavelength δεν μπορεί να τα επαναφέρει. Δημιουργήστε πρώτα ένα αρχείο αντιγράφου ασφαλείας και μετά επαναφέρετέ το στη νέα εφαρμογή.",
+"Get it on Google Play": "Διαθέσιμο στο Google Play",
+"Get it on the App Store": "Λήψη από το App Store",
+"Some photos or clips of this scan are not on this device. They stay on the phone or app copy where they were added, and Wavelength cannot bring them back. If you made a backup file there, restore it here.": "Ορισμένες φωτογραφίες ή βίντεο αυτής της εξέτασης δεν βρίσκονται σε αυτή τη συσκευή. Παραμένουν στο τηλέφωνο ή στο αντίγραφο της εφαρμογής όπου προστέθηκαν και το Wavelength δεν μπορεί να τα επαναφέρει. Αν δημιουργήσατε εκεί αρχείο αντιγράφου ασφαλείας, επαναφέρετέ το εδώ."
 }
